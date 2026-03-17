@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>H2ToGo — Motor de Ruteo A*</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background: #1a73e8;
+            color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+        header h1 { font-size: 1.2rem; font-weight: 600; }
+        header p  { font-size: 0.8rem; opacity: 0.85; }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ---- Panel lateral ---- */
+        .panel {
+            width: 320px;
+            min-width: 280px;
+            background: #fff;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.08);
+            z-index: 10;
+        }
+
+        .panel h2 { font-size: 1rem; color: #333; border-bottom: 2px solid #1a73e8; padding-bottom: 6px; }
+
+        .instructions {
+            background: #e8f0fe;
+            border-left: 4px solid #1a73e8;
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 0.82rem;
+            color: #3c4043;
+            line-height: 1.5;
+        }
+
+        .coord-group label { font-size: 0.78rem; color: #555; font-weight: 600; }
+        .coord-row { display: flex; gap: 8px; margin-top: 4px; }
+        .coord-row input {
+            flex: 1;
+            padding: 7px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: #333;
+        }
+        .coord-row input:focus { outline: none; border-color: #1a73e8; }
+
+        .marker-dot {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        .dot-origin  { background: #34a853; }
+        .dot-destino { background: #ea4335; }
+
+        button {
+            padding: 11px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        button:active { transform: scale(0.97); }
+
+        #btn-calcular {
+            background: #1a73e8;
+            color: #fff;
+        }
+        #btn-calcular:hover { background: #1558b0; }
+        #btn-calcular:disabled { background: #a8c7fa; cursor: not-allowed; }
+
+        #btn-limpiar {
+            background: #f1f3f4;
+            color: #555;
+        }
+        #btn-limpiar:hover { background: #e0e0e0; }
+
+        /* ---- Resultado ---- */
+        #resultado {
+            font-size: 0.82rem;
+            padding: 10px 12px;
+            border-radius: 6px;
+            display: none;
+        }
+        .resultado-ok    { background: #e6f4ea; color: #1e7e34; border-left: 4px solid #34a853; }
+        .resultado-error { background: #fce8e6; color: #c62828; border-left: 4px solid #ea4335; }
+
+        /* ---- Link a Google Maps ---- */
+        #gmaps-link {
+            display: none;
+            font-size: 0.82rem;
+            background: #fff3e0;
+            border-left: 4px solid #fb8c00;
+            padding: 10px 12px;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        #gmaps-link a { color: #e65100; text-decoration: none; font-weight: 600; }
+        #gmaps-link a:hover { text-decoration: underline; }
+
+        /* ---- Mapa ---- */
+        #map {
+            flex: 1;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>💧 H2ToGo — Motor de Ruteo A*</h1>
+        <p>Trabajo Terminal 2026-B176 · OpenStreetMap + Spring Boot</p>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- ===== Panel lateral ===== -->
+    <aside class="panel">
+        <h2>Calcular Ruta</h2>
+
+        <div class="instructions">
+            <strong>¿Cómo usar?</strong><br>
+            1. Haz clic en el mapa para marcar el <strong>origen</strong> (verde).<br>
+            2. Haz clic de nuevo para el <strong>destino</strong> (rojo).<br>
+            3. Presiona <strong>Calcular Ruta</strong>.
+        </div>
+
+        <!-- Origen -->
+        <div class="coord-group">
+            <label><span class="marker-dot dot-origin"></span>Origen</label>
+            <div class="coord-row">
+                <input type="number" id="origin-lat" placeholder="Latitud"  step="0.000001" />
+                <input type="number" id="origin-lon" placeholder="Longitud" step="0.000001" />
+            </div>
+        </div>
+
+        <!-- Destino -->
+        <div class="coord-group">
+            <label><span class="marker-dot dot-destino"></span>Destino</label>
+            <div class="coord-row">
+                <input type="number" id="dest-lat" placeholder="Latitud"  step="0.000001" />
+                <input type="number" id="dest-lon" placeholder="Longitud" step="0.000001" />
+            </div>
+        </div>
+
+        <button id="btn-calcular" onclick="calcularRuta()">Calcular Ruta A*</button>
+        <button id="btn-limpiar"  onclick="limpiarMapa()">Limpiar</button>
+
+        <!-- Resultado -->
+        <div id="resultado"></div>
+
+        <!-- Link a Google Maps -->
+        <div id="gmaps-link">
+            <strong>Ver en Google Maps:</strong><br>
+            <a id="gmaps-anchor" href="#" target="_blank" rel="noopener noreferrer">
+                Abrir ruta en Google Maps →
+            </a>
+        </div>
+    </aside>
+
+    <!-- ===== Mapa Leaflet ===== -->
+    <div id="map"></div>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    // ==========================================================================
+    // Configuración inicial del mapa
+    // Centrado en la Delegación Benito Juárez, CDMX
+    // ==========================================================================
+    const BENITO_JUAREZ = [19.3788, -99.1605];
+    const API_URL = 'http://localhost:8080/api/route';
+
+    const map = L.map('map').setView(BENITO_JUAREZ, 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+    }).addTo(map);
+
+    // ==========================================================================
+    // Estado de la aplicación
+    // ==========================================================================
+    let markerOrigen  = null;
+    let markerDestino = null;
+    let polylineRuta  = null;
+    let clickStep     = 0; // 0 = esperando origen, 1 = esperando destino
+
+    // Iconos personalizados
+    const iconOrigen = L.divIcon({
+        className: '',
+        html: '<div style="background:#34a853;width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.5)"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+    });
+    const iconDestino = L.divIcon({
+        className: '',
+        html: '<div style="background:#ea4335;width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.5)"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+    });
+
+    // ==========================================================================
+    // Click en el mapa → asignar origen o destino
+    // ==========================================================================
+    map.on('click', function(e) {
+        const { lat, lng } = e.latlng;
+
+        if (clickStep === 0) {
+            // Colocar marcador de origen
+            if (markerOrigen) map.removeLayer(markerOrigen);
+            markerOrigen = L.marker([lat, lng], { icon: iconOrigen })
+                .addTo(map)
+                .bindPopup('Origen').openPopup();
+
+            document.getElementById('origin-lat').value = lat.toFixed(6);
+            document.getElementById('origin-lon').value = lng.toFixed(6);
+            clickStep = 1;
+
+        } else {
+            // Colocar marcador de destino
+            if (markerDestino) map.removeLayer(markerDestino);
+            markerDestino = L.marker([lat, lng], { icon: iconDestino })
+                .addTo(map)
+                .bindPopup('Destino').openPopup();
+
+            document.getElementById('dest-lat').value = lat.toFixed(6);
+            document.getElementById('dest-lon').value = lng.toFixed(6);
+            clickStep = 0; // Reiniciar ciclo para re-selección
+        }
+    });
+
+    // ==========================================================================
+    // Llamada al endpoint de Spring Boot
+    // ==========================================================================
+    async function calcularRuta() {
+        const originLat = parseFloat(document.getElementById('origin-lat').value);
+        const originLon = parseFloat(document.getElementById('origin-lon').value);
+        const destLat   = parseFloat(document.getElementById('dest-lat').value);
+        const destLon   = parseFloat(document.getElementById('dest-lon').value);
+
+        if ([originLat, originLon, destLat, destLon].some(isNaN)) {
+            mostrarResultado(false, 'Por favor, selecciona origen y destino en el mapa primero.');
+            return;
+        }
+
+        const btn = document.getElementById('btn-calcular');
+        btn.disabled = true;
+        btn.textContent = 'Calculando...';
+        ocultarResultado();
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    origenLat:  originLat,
+                    origenLon:  originLon,
+                    destinoLat: destLat,
+                    destinoLon: destLon
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.encontrada && data.coordenadas.length > 1) {
+                // Dibujar polyline de la ruta en el mapa
+                if (polylineRuta) map.removeLayer(polylineRuta);
+
+                const latLngs = data.coordenadas.map(c => [c.lat, c.lon]);
+                polylineRuta = L.polyline(latLngs, {
+                    color: '#1a73e8',
+                    weight: 5,
+                    opacity: 0.85,
+                    lineJoin: 'round'
+                }).addTo(map);
+
+                map.fitBounds(polylineRuta.getBounds(), { padding: [30, 30] });
+
+                mostrarResultado(true,
+                    `✓ Ruta encontrada: <strong>${data.distanciaTotalKm} km</strong> · ${data.coordenadas.length} puntos`
+                );
+
+                // Generar link a Google Maps
+                generarLinkGoogleMaps(originLat, originLon, destLat, destLon, latLngs);
+
+            } else {
+                mostrarResultado(false,
+                    'No se encontró ruta entre los puntos seleccionados. ' +
+                    'Verifica que ambos puntos estén dentro del área del mapa OSM cargado.'
+                );
+            }
+
+        } catch (err) {
+            mostrarResultado(false,
+                `Error de conexión con el servidor: <code>${err.message}</code>.<br>` +
+                'Verifica que Spring Boot esté corriendo en <strong>localhost:8080</strong>.'
+            );
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Calcular Ruta A*';
+        }
+    }
+
+    // ==========================================================================
+    // Google Maps — construir URL de direcciones con waypoints intermedios
+    //
+    // La URL de Google Maps Directions admite hasta ~10 waypoints sin API key.
+    // Usamos el origen, destino y una muestra de puntos intermedios para que
+    // Google Maps dibuje una ruta comparable.
+    //
+    // Formato:
+    //   https://www.google.com/maps/dir/?api=1&origin=LAT,LON&destination=LAT,LON
+    //   &waypoints=LAT,LON|LAT,LON|...
+    // ==========================================================================
+    function generarLinkGoogleMaps(oLat, oLon, dLat, dLon, latLngs) {
+        const gmapsDiv = document.getElementById('gmaps-link');
+        const anchor   = document.getElementById('gmaps-anchor');
+
+        // Tomar hasta 8 puntos intermedios (limitación de la URL sin API key)
+        const intermediate = latLngs.slice(1, -1);
+        const step = Math.max(1, Math.floor(intermediate.length / 8));
+        const waypoints = intermediate
+            .filter((_, i) => i % step === 0)
+            .slice(0, 8)
+            .map(p => `${p[0].toFixed(6)},${p[1].toFixed(6)}`)
+            .join('|');
+
+        let url = `https://www.google.com/maps/dir/?api=1`
+                + `&origin=${oLat.toFixed(6)},${oLon.toFixed(6)}`
+                + `&destination=${dLat.toFixed(6)},${dLon.toFixed(6)}`;
+
+        if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
+
+        anchor.href = url;
+        gmapsDiv.style.display = 'block';
+    }
+
+    // ==========================================================================
+    // Helpers de UI
+    // ==========================================================================
+    function mostrarResultado(exito, mensaje) {
+        const div = document.getElementById('resultado');
+        div.innerHTML = mensaje;
+        div.className = exito ? 'resultado-ok' : 'resultado-error';
+        div.style.display = 'block';
+    }
+
+    function ocultarResultado() {
+        document.getElementById('resultado').style.display = 'none';
+        document.getElementById('gmaps-link').style.display = 'none';
+    }
+
+    function limpiarMapa() {
+        if (markerOrigen)  map.removeLayer(markerOrigen);
+        if (markerDestino) map.removeLayer(markerDestino);
+        if (polylineRuta)  map.removeLayer(polylineRuta);
+        markerOrigen = markerDestino = polylineRuta = null;
+        clickStep = 0;
+        ['origin-lat','origin-lon','dest-lat','dest-lon'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        ocultarResultado();
+    }
+</script>
+
+</body>
+</html>
