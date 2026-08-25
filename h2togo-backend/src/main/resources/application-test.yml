@@ -1,0 +1,9 @@
+# Perfil de pruebas.
+# Los tests de integración (desde F1) levantan PostgreSQL+PostGIS con Testcontainers
+# y sobrescriben el datasource dinámicamente (@ServiceConnection / @DynamicPropertySource).
+# En F0 las pruebas son slices web (@WebMvcTest) que no tocan la BD.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false

@@ -1,0 +1,12 @@
+# Perfil de desarrollo: BD local del docker-compose.yml de esta carpeta.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/h2togo_v6}
+    username: ${DB_USER:h2togo}
+    password: ${DB_PASSWORD:h2togo}
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    com.h2togo.backend: debug

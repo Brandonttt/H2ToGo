@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Spring Boot 4.1.x (§1): soporte durante toda la vida del TT.
+         El módulo de ruteo (hoy 3.2.3/Java 17) se alinea al integrarse en F9. -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.h2togo</groupId>
+    <artifactId>h2togo-backend</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>H2ToGo Backend</name>
+    <description>API REST del sistema H2ToGo — Trabajo Terminal 2026-B176</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <!-- springdoc 3.x es la línea compatible con Spring Boot 4 / Spring Framework 7
+             (la 2.x es para Boot 3). Boot no gestiona esta versión: se fija aquí. -->
+        <springdoc.version>3.1.0</springdoc.version>
+    </properties>
+
+    <dependencies>
+        <!-- Web (REST) + Tomcat embebido -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Persistencia: Spring Data JPA (Hibernate) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- Validación (jakarta.validation en los DTOs) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Seguridad (filtro de token opaco + roles, se afina en F2) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- WebSocket / STOMP (rastreo de pedidos, se usa en F8) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <!-- Driver PostgreSQL -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Lombok: elimina boilerplate -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Documentación de la API (Swagger UI en /swagger-ui.html) -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- ================= Pruebas ================= -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Test-slice de Spring MVC (@WebMvcTest, @AutoConfigureMockMvc, MockMvc).
+             Boot 4 lo separó de spring-boot-starter-test en su propio módulo (§10 #10). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Testcontainers con imagen postgis/postgis (repos y flujos reales, desde F1).
+             Testcontainers 2.0 (gestionado por Boot 4.1) renombró el módulo de
+             'postgresql' a 'testcontainers-postgresql'. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <!-- Surefire (pruebas unitarias): heap chico + SerialGC para no pedir un heap G1
+                 grande. En máquinas con poco archivo de paginación la JVM caía con hs_err_pid
+                 (mismo problema documentado en el módulo de ruteo). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=96m</argLine>
+                </configuration>
+            </plugin>
+
+            <!-- Failsafe (pruebas de integración *IT con Testcontainers): corren en la fase
+                 'verify'. Heap mayor porque levantan el contexto Spring completo + Hibernate.
+                 El propio test se salta si no hay Docker (@Testcontainers disabledWithoutDocker),
+                 así 'mvn verify' queda verde en equipos sin Docker y valida de verdad donde sí lo hay. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <argLine>-Xmx768m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=128m</argLine>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,31 @@
+# ---- Build / compilados ----
+target/
+build/
+*.class
+
+# ---- Crashes de la JVM ----
+hs_err_pid*.log
+replay_pid*.log
+
+# ---- Credenciales / configuración local ----
+# (no versionar secretos: usar variables de entorno o application-local.yml)
+*.env
+.env
+application-local.yml
+application-local.yaml
+secrets.properties
+
+# ---- IDE ----
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# ---- Sistema operativo ----
+.DS_Store
+Thumbs.db
+
+# ---- Logs ----
+*.log

@@ -1,0 +1,86 @@
+### Colección de evidencia — F2 Seguridad y autenticación (CU-001/002/003)
+### Compatible con el REST Client de VS Code / IntelliJ HTTP Client.
+### Requiere la app arriba (mvn spring-boot:run) y la BD v6 (docker compose up -d).
+### El OTP en perfil dev se imprime en el log: buscar "[SMS-DEV] Código de verificación".
+
+@host = http://localhost:8080
+@correo = demo.cliente@test.mx
+@telefono = 5551234567
+@password = password123
+
+### 1. CU-001 — Registro de cliente (201). Cuenta inactiva hasta verificar el teléfono.
+POST {{host}}/api/v1/auth/registro
+Content-Type: application/json
+
+{
+  "nombre": "Demo",
+  "apellidos": "Cliente",
+  "correo": "{{correo}}",
+  "password": "{{password}}",
+  "telefono": "{{telefono}}",
+  "rol": "cliente"
+}
+
+### 1b. CU-001 — Registro de repartidor con negocio nuevo (queda como dueño, RN-024).
+POST {{host}}/api/v1/auth/registro
+Content-Type: application/json
+
+{
+  "nombre": "Demo",
+  "apellidos": "Dueño",
+  "correo": "demo.dueno@test.mx",
+  "password": "{{password}}",
+  "telefono": "5559876543",
+  "rol": "repartidor",
+  "negocio": { "nombreComercial": "Purificadora Demo" }
+}
+
+### 2. CU-001 — Reenviar OTP (204).
+POST {{host}}/api/v1/auth/verificacion-telefono/reenviar
+Content-Type: application/json
+
+{ "correo": "{{correo}}" }
+
+### 3. CU-001 — Verificar teléfono con el OTP (204). Sustituye el código por el del log.
+POST {{host}}/api/v1/auth/verificacion-telefono
+Content-Type: application/json
+
+{ "correo": "{{correo}}", "codigo": "123456" }
+
+### 4. CU-002 — Login (200). Devuelve el token de sesión; cópialo a @token.
+POST {{host}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "correo": "{{correo}}", "password": "{{password}}", "tokenFcm": "fcm-demo", "forzar": false }
+
+@token = PEGAR_TOKEN_DE_LA_RESPUESTA_ANTERIOR
+
+### 5. CU-002 — Segundo login sin forzar → 409 (sesión única, RN-018).
+POST {{host}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "correo": "{{correo}}", "password": "{{password}}", "forzar": false }
+
+### 5b. CU-002 — Login con forzar=true → 200 (cierra la sesión anterior, CU-002 S1).
+POST {{host}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "correo": "{{correo}}", "password": "{{password}}", "forzar": true }
+
+### 6. Acceso sin token a un recurso protegido → 401.
+GET {{host}}/api/v1/admin/pedidos
+
+### 7. Acceso con token de CLIENTE a recurso de ADMIN → 403 (RNF-008).
+GET {{host}}/api/v1/admin/pedidos
+Authorization: Bearer {{token}}
+
+### 8. CU-003 — Logout (204). Invalida el token en el servidor (RN-018).
+POST {{host}}/api/v1/auth/logout
+Authorization: Bearer {{token}}
+
+### 9. Reusar el token ya invalidado → 401.
+POST {{host}}/api/v1/auth/logout
+Authorization: Bearer {{token}}
+
+### Healthcheck (público) — sanity.
+GET {{host}}/api/v1/health

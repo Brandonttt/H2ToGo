@@ -1,0 +1,30 @@
+# PostgreSQL 16 + PostGIS 3 local para desarrollo del backend H2ToGo.
+#
+#   docker compose up -d        → levanta la BD y ejecuta el esquema v6 al inicializar
+#   docker compose down         → detiene y borra el contenedor (conserva el volumen)
+#   docker compose down -v      → borra también el volumen (reinicializa el esquema)
+#
+# El esquema v6 vive en la RAÍZ del repo; se monta en docker-entrypoint-initdb.d,
+# que postgis/postgis ejecuta contra POSTGRES_DB (= h2togo_v6) la PRIMERA vez que
+# se crea el volumen. El script ya hace `CREATE EXTENSION IF NOT EXISTS postgis`.
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: h2togo-db
+    environment:
+      POSTGRES_DB: h2togo_v6
+      POSTGRES_USER: h2togo
+      POSTGRES_PASSWORD: h2togo
+    ports:
+      - "5432:5432"
+    volumes:
+      - h2togo_pgdata:/var/lib/postgresql/data
+      - ../H2ToGo_v6_postgresql.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U h2togo -d h2togo_v6"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  h2togo_pgdata:

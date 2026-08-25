@@ -1,0 +1,46 @@
+# Configuración base del backend H2ToGo.
+# El esquema v6 manda: Hibernate SOLO valida (ddl-auto: validate), nunca genera DDL.
+spring:
+  application:
+    name: h2togo-backend
+  profiles:
+    default: dev
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/h2togo_v6}
+    username: ${DB_USER:h2togo}
+    password: ${DB_PASSWORD:h2togo}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        # Los tipos ENUM nativos de PostgreSQL se mapean en F1 con
+        # @JdbcTypeCode(SqlTypes.NAMED_ENUM); ninguna entidad todavía en F0.
+        format_sql: true
+
+server:
+  port: 8080
+
+# springdoc / Swagger UI en /swagger-ui.html
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+# Orígenes permitidos por CORS (panel web de administración).
+# Sobrescribir en despliegue con H2TOGO_CORS_ALLOWED_ORIGINS.
+h2togo:
+  cors:
+    allowed-origins: ${H2TOGO_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+  auth:
+    # Sesión: token opaco. Expiración por INACTIVIDAD (RNF-004, §10 #15):
+    # el filtro extiende a token-dias cuando quedan menos de token-refresco-dias.
+    token-dias: 30
+    token-refresco-dias: 7
+    # OTP de verificación de teléfono (RN-002, §10 #17).
+    otp-longitud: 6
+    otp-vigencia-minutos: 10
+
+logging:
+  level:
+    org.hibernate.SQL: info
