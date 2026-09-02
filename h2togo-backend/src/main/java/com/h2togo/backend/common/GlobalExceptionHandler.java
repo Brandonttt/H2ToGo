@@ -1,8 +1,11 @@
 package com.h2togo.backend.common;
 
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -15,6 +18,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(NotFoundException ex) {
@@ -41,6 +46,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "ACCESO_DENEGADO", "No tiene permiso para esta operación.");
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleNotReadable(HttpMessageNotReadableException ex) {
+        return build(HttpStatus.BAD_REQUEST, "CUERPO_INVALIDO",
+                "El cuerpo de la petición no se pudo leer o está mal formado.");
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
         List<String> detalles = ex.getBindingResult().getFieldErrors().stream()
@@ -53,7 +64,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(Exception ex) {
-        // No se filtra el detalle interno al cliente (RN-016).
+        // Se registra para diagnóstico, pero no se filtra el detalle al cliente (RN-016).
+        log.error("Error inesperado no controlado", ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "ERROR_INTERNO",
                 "Ocurrió un error inesperado.");
     }

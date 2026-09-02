@@ -24,8 +24,8 @@ No se reescribe: se integra tal cual en la fase F9. También están en la raíz 
 | F0 | Andamiaje del proyecto | — | S | En curso (código listo + `mvn verify` verde; falta smoke test runtime) |
 | F1 | Modelo de datos (entidades + repositorios) | F0 | M | **Hecha** (`mvn verify` verde con Testcontainers: validate + ciclo diferido, 2026-08-22) |
 | F2 | Seguridad y autenticación | F1 | M | **Hecha** (`mvn verify` verde con Docker: 10 unit + 7 IT, 2026-08-22) |
-| F3 | Perfil y direcciones del cliente | F2 | S | Pendiente |
-| F4 | Negocios, catálogo y horarios | F2 | M | Pendiente |
+| F3 | Perfil y direcciones del cliente | F2 | S | **Hecha** (`mvn verify` verde con Docker: 10 unit + 13 IT; polígono real de OSM cargado) |
+| F4 | Negocios, catálogo y horarios | F2 | M | **Hecha** (`mvn verify` verde con Docker: 10 unit + 20 IT) |
 | F5 | Inventario y jornada del repartidor | F4 | M | Pendiente |
 | F6 | Pedidos (creación, cancelación, historiales) | F3, F4, F5 | L | Pendiente |
 | F7 | Asignación y entrega | F6 | L | Pendiente |
@@ -266,32 +266,42 @@ con la colección `.http`; tests verdes.
 
 ### F3 — Perfil y direcciones del cliente (S) — soporte de CU-004/006
 
-- [ ] `GET /usuarios/me` (datos comunes + los del subtipo según rol).
-- [ ] `PATCH /usuarios/me` (nombre, foto; el cliente edita directo — los cambios del negocio
+- [x] `GET /usuarios/me` (datos comunes + los del subtipo según rol).
+- [x] `PATCH /usuarios/me` (nombre, foto; el cliente edita directo — los cambios del negocio
       del dueño van por solicitudes, F10).
-- [ ] CRUD de direcciones del cliente: `GET/POST/PUT/DELETE /clientes/me/direcciones[/{id}]`.
+- [x] CRUD de direcciones del cliente: `GET/POST/PUT/DELETE /clientes/me/direcciones[/{id}]`.
       El INSERT/UPDATE usa query nativa con `ST_SetSRID(ST_MakePoint(:lon,:lat),4326)::geography`;
       el trigger de BD calcula `en_zona_cobertura`; la respuesta lo informa y si es `false`
       la app avisa que está fuera de cobertura. DELETE = `activo=false` si la dirección ya
       fue usada en pedidos (conserva histórico, RN-013).
-- [ ] Cargar el polígono real de la Alcaldía Benito Juárez en `zonas_cobertura`
-      (script `sql/zona_benito_juarez.sql` exportado de OSM; documentar cómo se obtuvo).
+- [x] Cargar el polígono **real** de la Alcaldía Benito Juárez en `zonas_cobertura`
+      (`sql/zona_benito_juarez.sql`): contorno de OSM (relación R5605589, boundary=administrative
+      admin_level 8), traído por Nominatim y cargado con `ST_GeomFromGeoJSON`+`ST_Multi`. §10 #20.
 
 **Aceptación:** dirección dentro/fuera de la alcaldía se clasifica correctamente; tests de
 ownership (un cliente no ve/edita direcciones de otro → 403/404).
 
+> **Confirmado (2026-09-01):** `mvn verify` **BUILD SUCCESS** con Docker — unit 10/10 e IT 13/13
+> (`DireccionesFlowIT` 6/6: clasificación de cobertura, ownership 404, CRUD, perfil, repartidor→403).
+> Polígono **real de OSM** cargado y validado (§10 #20 cerrado). Bug real corregido en §10 #21. **F3 = Hecha.**
+
 ### F4 — Negocios, catálogo y horarios (M) — CU-022, CU-023 (parte inmediata)
 
-- [ ] `GET /negocios/{id}/perfil` (público autenticado, CU-022): datos del negocio, horario
+- [x] `GET /negocios/{id}/perfil` (público autenticado, CU-022): datos del negocio, horario
       semanal, productos activos con precio, precio de envase y stock disponible agregado
-      (suma de lotes activos de la base), ubicación de la base para el mapa.
-- [ ] `GET /negocios?cerca=lat,lon&limite=n`: negocios activos ordenados por distancia
-      (KNN `<->`, query nativa) — apoya la elección de purificadora del cliente.
-- [ ] Dueño (RN-021 en todos): `GET /negocios/me`, `PUT /negocios/me/horarios` (7 filas,
-      valida CHECKs de consistencia), `PUT /negocios/me/productos/{id}/precio`
-      (cambio inmediato, RF-028). Alta de producto nuevo NO va aquí: va por solicitudes (F10).
-- [ ] `GET /marcas` (catálogo global).
-- [ ] Tests: perfil público completo; horario inconsistente → 422; no-dueño intenta editar → 403.
+      (suma de lotes activos de la base), ubicación de la base para el mapa. Indicador
+      abierto/cerrado calculado en hora local (RN-004, §10 #22).
+- [x] `GET /negocios?cerca=lat,lon&limite=n`: negocios activos EN COBERTURA ordenados por
+      distancia (KNN `<->`, query nativa) — apoya la elección de purificadora del cliente.
+- [x] Dueño (RN-021): `GET /negocios/me` (cualquier repartidor del negocio lo consulta),
+      `PUT /negocios/me/horarios` (7 filas, valida consistencia → 422), `PUT /negocios/me/productos/{id}/precio`
+      (cambio inmediato, RF-028). Ediciones solo del DUEÑO (403 si no). Alta de producto nuevo va por solicitudes (F10).
+- [x] `GET /marcas` (catálogo global).
+- [x] Tests: perfil público con stock; horario inconsistente → 422; no-dueño intenta editar → 403;
+      cercanía KNN; precio inmediato; cliente no accede a `/negocios/me` (403). `NegociosFlowIT` (7).
+
+> **Confirmado (2026-09-01):** `mvn verify` **BUILD SUCCESS** con Docker — unit 10/10 e IT 20/20
+> (`NegociosFlowIT` 7/7). Colección `http/negocios.http`. **F4 = Hecha.** (§10 #23: gotcha JPA+nativa.)
 
 ### F5 — Inventario y jornada (M) — CU-018, CU-019, CU-008
 
@@ -691,3 +701,9 @@ BajaRequest            { motivo, idNuevoDueno? }               // transferencia 
 | 15 | **Expiración del token: por INACTIVIDAD, deslizante (F2, RNF-004).** RNF-004 textual: *"Si la aplicación… permanece… sin abrirse por más de 30 días, el token caducará…"* → deslizante. **Decidido (Rubén, 2026-08-22):** el `TokenAuthFilter`, si al validar una request quedan **<7 días** de vigencia, extiende `sesion_fecha_expiracion` a now()+30d (una sola escritura). Un usuario activo al menos cada ~23 días nunca caduca; inactivo >30 días, sí. Minimiza escrituras a BD | Decidido |
 | 16 | **Login SÍ revisa suspensión (F2).** El plan lo pedía; el TT acota RN-006 a "nuevos pedidos" y no lo cita en CU-002. **Decidido (Rubén, 2026-08-22): revisar también en login.** El login de un cliente suspendido **NO se bloquea**; se informa la fecha (`suspendidoHasta` en `SesionResponse`), coherente con "informa fecha" del plan. El bloqueo efectivo de pedidos sigue en F6 | Decidido |
 | 17 | **OTP 6 dígitos / 10 min (F2).** El TT no fija longitud ni caducidad (solo "SMS en <2 min"). **Decidido (Rubén, 2026-08-22):** OTP numérico de 6 dígitos, caducidad 10 min, reenvío permitido (cabe en `codigo_verificacion` VARCHAR(10)). Password mínimo 8 caracteres SÍ lo fija el TT (CU-001) → se valida | Decidido |
+| 18 | **Cobertura: clasificar al guardar, bloquear al pedir (F3, RN-001).** RN-001 restringe direcciones/entregas a la Alcaldía Benito Juárez. Interpretación (coherente con la ficha CU-004 S1 y con la propia aceptación de F3 "clasifica correctamente"): al guardar una dirección NO se rechaza; el trigger `trg_direcciones_zona` calcula `en_zona_cobertura` y la respuesta lo informa. El bloqueo efectivo ocurre al crear el pedido (F6, CU-004 S1). El esquema v6 no cambia | Decidido (clasificar) |
+| 19 | **`referencias` obligatorio (F3, RN-003).** RN-003 (y CU-004: "coordenadas y referencias") exige que la dirección tenga descripción para facilitar la entrega. El plan (§8) lo tenía opcional; **gana la ficha:** `referencias` se valida como requerido en `DireccionRequest`. La columna sigue siendo `TEXT` nullable en v6 (no se toca el esquema; la obligatoriedad la impone el backend) | Decidido (requerido) |
+| 20 | **Polígono de Benito Juárez (F3, resuelto).** Se cargó el contorno **real** de OSM: relación R5605589 (boundary=administrative, admin_level 8), obtenida por Nominatim `/lookup?polygon_geojson=1` (© OpenStreetMap, ODbL). `sql/zona_benito_juarez.sql` lo inserta con `ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(...),4326))::geography` (idempotente por `ON CONFLICT`). Validado por `DireccionesFlowIT`. Para actualizarlo: repetir la consulta a Nominatim y regenerar el archivo | Cerrado |
+| 23 | **JPA write + lectura nativa: flush explícito (F4, patrón).** Una escritura con `save()` (JPA) NO es visible para una query NATIVA (JdbcTemplate) en la misma transacción hasta sincronizar a la BD (Hibernate auto-flushea antes de queries JPQL, no antes de JDBC crudo). Lo destapó `actualizarPrecio` (devolvía el precio viejo). **Regla:** cuando un servicio escribe por JPA y luego lee por query nativa en la misma transacción, usar `saveAndFlush(...)` (o `EntityManager.flush()`) antes de la lectura nativa | Cerrado |
+| 22 | **Horario = edición directa, no solicitud (F4).** La tabla de RF pone RF-031 (definir horario) bajo CU-020 (solicitar cambio), pero **RN-019** —la lista autoritativa de cambios que requieren aprobación del admin— **no incluye el horario** (sí foto, vehículos, nombre, dirección base, producto nuevo). El plan F4 lo trata como edición directa del dueño (`PUT /negocios/me/horarios`, inmediato). **Decidido:** horario se edita directo (dueño), sin pasar por solicitudes. El indicador abierto/cerrado (RN-004) se calcula en zona horaria `America/Mexico_City` | Decidido (revisar si el TT insiste en aprobación) |
+| 21 | **Bug de deserialización de booleanos primitivos (corregido en F3).** Boot 4 activa `FAIL_ON_NULL_FOR_PRIMITIVES`: un `boolean` primitivo en un DTO (record) truena con **500** si el cliente OMITE el campo. Lo destapó `DireccionesFlowIT` al mandar login sin `forzar`. **Corregido:** `LoginRequest.forzar` pasó a `Boolean` opcional (default false vía `forzarSesion()`), y se añadió handler `HttpMessageNotReadableException → 400`. Guía para el resto de fases: los campos booleanos opcionales de DTOs van como `Boolean`, no `boolean` | Cerrado |

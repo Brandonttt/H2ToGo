@@ -198,7 +198,7 @@ public class AuthService {
         boolean sesionVigente = u.getTokenSesion() != null
                 && u.getSesionFechaExpiracion() != null
                 && u.getSesionFechaExpiracion().isAfter(ahora);
-        if (sesionVigente && !req.forzar()) {
+        if (sesionVigente && !req.forzarSesion()) {
             throw new ConflictException("SESION_ACTIVA_EN_OTRO_DISPOSITIVO",
                     "Ya hay una sesión activa en otro dispositivo. Reintenta con forzar=true para cerrarla.");
         }

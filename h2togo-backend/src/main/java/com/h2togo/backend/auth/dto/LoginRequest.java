@@ -11,6 +11,13 @@ public record LoginRequest(
         @NotBlank @Email String correo,
         @NotBlank String password,
         String tokenFcm,
-        boolean forzar
+        // Boxed y opcional: el cliente puede omitirlo (se interpreta como false).
+        // Un boolean primitivo rompería con FAIL_ON_NULL_FOR_PRIMITIVES si se omite.
+        Boolean forzar
 ) {
+
+    /** {@code true} solo si el cliente lo pidió explícitamente. */
+    public boolean forzarSesion() {
+        return Boolean.TRUE.equals(forzar);
+    }
 }

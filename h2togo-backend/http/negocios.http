@@ -1,0 +1,47 @@
+### Colección de evidencia — F4 Negocios, catálogo y horarios (CU-022/023)
+### Requiere la app arriba. @tokenDueno = token de un repartidor DUEÑO; @tokenCliente = cliente.
+### La dirección de la base del negocio se registra vía solicitud (F10); en pruebas se siembra por SQL.
+
+@host = http://localhost:8080
+@tokenDueno = PEGAR_TOKEN_DUENO
+@tokenCliente = PEGAR_TOKEN_CLIENTE
+@idNegocio = 1
+@idProducto = 1
+
+### CU-022 — Perfil público de una purificadora (nombre, dirección+mapa, horario, productos con stock, abierto/cerrado).
+GET {{host}}/api/v1/negocios/{{idNegocio}}/perfil
+Authorization: Bearer {{tokenCliente}}
+
+### Negocios cercanos a una ubicación (KNN, solo en cobertura). cerca=lat,lon
+GET {{host}}/api/v1/negocios?cerca=19.372,-99.178&limite=5
+Authorization: Bearer {{tokenCliente}}
+
+### Catálogo global de marcas.
+GET {{host}}/api/v1/marcas
+Authorization: Bearer {{tokenCliente}}
+
+### Mi negocio (repartidor). Cliente → 403.
+GET {{host}}/api/v1/negocios/me
+Authorization: Bearer {{tokenDueno}}
+
+### CU-023 — Definir horario semanal (7 días; cerrado sin horas). Solo dueño.
+PUT {{host}}/api/v1/negocios/me/horarios
+Authorization: Bearer {{tokenDueno}}
+Content-Type: application/json
+
+[
+  {"diaSemana":1,"cerrado":false,"horaApertura":"08:00:00","horaCierre":"18:00:00"},
+  {"diaSemana":2,"cerrado":false,"horaApertura":"08:00:00","horaCierre":"18:00:00"},
+  {"diaSemana":3,"cerrado":false,"horaApertura":"08:00:00","horaCierre":"18:00:00"},
+  {"diaSemana":4,"cerrado":false,"horaApertura":"08:00:00","horaCierre":"18:00:00"},
+  {"diaSemana":5,"cerrado":false,"horaApertura":"08:00:00","horaCierre":"18:00:00"},
+  {"diaSemana":6,"cerrado":false,"horaApertura":"09:00:00","horaCierre":"14:00:00"},
+  {"diaSemana":7,"cerrado":true}
+]
+
+### CU-023 — Cambiar precio de un producto (inmediato, RF-028). Solo dueño.
+PUT {{host}}/api/v1/negocios/me/productos/{{idProducto}}/precio
+Authorization: Bearer {{tokenDueno}}
+Content-Type: application/json
+
+{ "precio": 28.00, "precioEnvase": 35.00 }

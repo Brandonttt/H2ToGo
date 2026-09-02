@@ -1,0 +1,73 @@
+### Colección de evidencia — F3 Perfil y direcciones del cliente (soporte CU-004)
+### Requiere la app arriba y un token de CLIENTE (ver auth.http, paso 4).
+
+@host = http://localhost:8080
+@token = PEGAR_TOKEN_DE_CLIENTE
+
+### Perfil propio (común + bloque de cliente).
+GET {{host}}/api/v1/usuarios/me
+Authorization: Bearer {{token}}
+
+### Editar perfil (nombre / foto). Campos nulos no se tocan.
+PATCH {{host}}/api/v1/usuarios/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombre": "Nombre nuevo", "urlFotoPerfil": "https://cdn/ejemplo.jpg" }
+
+### Alta de dirección DENTRO de Benito Juárez → enZonaCobertura: true.
+POST {{host}}/api/v1/clientes/me/direcciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "alias": "Casa",
+  "calle": "Av. Insurgentes Sur",
+  "numeroExterior": "1234",
+  "numeroInterior": "4B",
+  "colonia": "Del Valle",
+  "codigoPostal": "03100",
+  "referencias": "Portón azul, frente al parque",
+  "lat": 19.372,
+  "lon": -99.178
+}
+
+### Alta de dirección FUERA de la alcaldía → enZonaCobertura: false (el pedido se bloquea en F6).
+POST {{host}}/api/v1/clientes/me/direcciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "alias": "Lejos",
+  "calle": "Otra calle",
+  "numeroExterior": "9",
+  "colonia": "Fuera",
+  "codigoPostal": "00000",
+  "referencias": "Fuera de cobertura",
+  "lat": 19.500,
+  "lon": -99.000
+}
+
+### Listar mis direcciones.
+GET {{host}}/api/v1/clientes/me/direcciones
+Authorization: Bearer {{token}}
+
+### Actualizar una dirección (sustituye {id}).
+PUT {{host}}/api/v1/clientes/me/direcciones/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "alias": "Casa (editada)",
+  "calle": "Av. Insurgentes Sur",
+  "numeroExterior": "1234",
+  "colonia": "Del Valle",
+  "codigoPostal": "03100",
+  "referencias": "Nueva referencia",
+  "lat": 19.373,
+  "lon": -99.179
+}
+
+### Eliminar una dirección (baja lógica si ya se usó en un pedido; si no, borrado real).
+DELETE {{host}}/api/v1/clientes/me/direcciones/1
+Authorization: Bearer {{token}}

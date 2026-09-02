@@ -48,6 +48,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/clientes/**").hasRole("CLIENTE")
+                        .requestMatchers("/api/v1/negocios/me/**").hasRole("REPARTIDOR")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint)
