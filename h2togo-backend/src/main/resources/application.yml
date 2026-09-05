@@ -40,6 +40,14 @@ h2togo:
     # OTP de verificación de teléfono (RN-002, §10 #17).
     otp-longitud: 6
     otp-vigencia-minutos: 10
+  pedidos:
+    # Suspensión por ausencias (RN-006, §10 #1): umbral y duración.
+    ausencias-umbral: 2
+    suspension-dias: 3
+    # Radio de entrega (RF-014/RN-011): el repartidor debe estar a ≤ este radio.
+    entrega-radio-m: 50
+    # Radio de aviso de proximidad al cliente (RF-005/RN-010).
+    proximidad-radio-m: 500
 
 logging:
   level:

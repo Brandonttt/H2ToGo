@@ -1,12 +1,14 @@
-# PostgreSQL 16 + PostGIS 3 local para desarrollo del backend H2ToGo.
+# Entorno completo del backend H2ToGo en Docker. Con Docker instalado NO hace falta
+# JDK ni Maven en la máquina: la imagen del backend se construye y ejecuta en contenedor.
 #
-#   docker compose up -d        → levanta la BD y ejecuta el esquema v6 al inicializar
-#   docker compose down         → detiene y borra el contenedor (conserva el volumen)
-#   docker compose down -v      → borra también el volumen (reinicializa el esquema)
+#   docker compose up -d --build   → BD (con datos demo) + backend en http://localhost:8080
+#   docker compose up -d db        → SOLO la base de datos (p. ej. para correr el backend a mano)
+#   docker compose logs -f app     → ver el arranque del backend (incluye el OTP en dev: [SMS-DEV])
+#   docker compose down            → detiene (conserva el volumen de datos)
+#   docker compose down -v         → borra también el volumen (reinicializa esquema + datos demo)
 #
-# El esquema v6 vive en la RAÍZ del repo; se monta en docker-entrypoint-initdb.d,
-# que postgis/postgis ejecuta contra POSTGRES_DB (= h2togo_v6) la PRIMERA vez que
-# se crea el volumen. El script ya hace `CREATE EXTENSION IF NOT EXISTS postgis`.
+# La BD ejecuta, la PRIMERA vez que se crea el volumen, los scripts de
+# docker-entrypoint-initdb.d en orden: esquema v6, polígono de cobertura y datos demo.
 services:
   db:
     image: postgis/postgis:16-3.4
@@ -16,16 +18,38 @@ services:
       POSTGRES_USER: h2togo
       POSTGRES_PASSWORD: h2togo
     ports:
-      - "5432:5432"
+      # Puerto del host configurable (DB_PORT); dentro de la red sigue siendo 5432.
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - h2togo_pgdata:/var/lib/postgresql/data
       - ../H2ToGo_v6_postgresql.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
       - ./sql/zona_benito_juarez.sql:/docker-entrypoint-initdb.d/02_zona.sql:ro
+      - ../data-demo.sql:/docker-entrypoint-initdb.d/03_demo.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U h2togo -d h2togo_v6"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  app:
+    build:
+      context: .
+    image: h2togo-backend:latest
+    container_name: h2togo-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      # Dentro de la red de compose la BD es el host "db", no localhost.
+      DB_URL: jdbc:postgresql://db:5432/h2togo_v6
+      DB_USER: h2togo
+      DB_PASSWORD: h2togo
+    ports:
+      # Puerto del host configurable (APP_PORT) por si el 8080 está ocupado.
+      - "${APP_PORT:-8080}:8080"
+    # Si el backend arranca antes de que la BD termine de sembrar, reintenta hasta lograrlo.
+    restart: on-failure
 
 volumes:
   h2togo_pgdata:

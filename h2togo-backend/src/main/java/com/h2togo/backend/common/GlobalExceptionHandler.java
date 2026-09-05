@@ -11,6 +11,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Traduce las excepciones a {@link ApiError} con el status de §3.3:
@@ -50,6 +51,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleNotReadable(HttpMessageNotReadableException ex) {
         return build(HttpStatus.BAD_REQUEST, "CUERPO_INVALIDO",
                 "El cuerpo de la petición no se pudo leer o está mal formado.");
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleNoResource(NoResourceFoundException ex) {
+        // Recurso estático o ruta inexistente → 404 limpio (no 500 por el handler genérico).
+        return build(HttpStatus.NOT_FOUND, "NO_ENCONTRADO", "El recurso solicitado no existe.");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

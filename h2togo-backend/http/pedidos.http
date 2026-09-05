@@ -1,0 +1,67 @@
+### Colección de evidencia — F6 Pedidos (CU-004/005/007/013)
+### @tokenCliente = cliente con dirección en zona; @idNegocio/@idMarca de una purificadora abierta.
+
+@host = http://localhost:8080
+@tokenCliente = PEGAR_TOKEN_CLIENTE
+@tokenRepartidor = PEGAR_TOKEN_REPARTIDOR
+@idNegocio = 1
+@idMarca = 1
+@idDireccion = 1
+@idPedido = 1
+
+### CU-004 — Pedido DIRECTO (elige purificadora). Valida horario/cobertura; snapshot de precios.
+POST {{host}}/api/v1/pedidos
+Authorization: Bearer {{tokenCliente}}
+Content-Type: application/json
+
+{
+  "tipoSolicitud": "directa",
+  "idNegocio": {{idNegocio}},
+  "idDireccionEntrega": {{idDireccion}},
+  "indicaciones": "Tocar el timbre 2 veces",
+  "detalles": [ { "idMarca": {{idMarca}}, "cantidad": 2, "tieneEnvase": false } ]
+}
+
+### CU-004 — Pedido ABIERTO (precio máximo por garrafón). Requiere purificadora que cumpla (RN-028).
+POST {{host}}/api/v1/pedidos
+Authorization: Bearer {{tokenCliente}}
+Content-Type: application/json
+
+{
+  "tipoSolicitud": "abierta",
+  "precioMaximoGarrafon": 30.00,
+  "idDireccionEntrega": {{idDireccion}},
+  "detalles": [ { "idMarca": {{idMarca}}, "cantidad": 3, "tieneEnvase": true } ]
+}
+
+### CU-004 — Pedido PROGRAMADO (fecha futura dentro del horario) → pendiente_programado.
+POST {{host}}/api/v1/pedidos
+Authorization: Bearer {{tokenCliente}}
+Content-Type: application/json
+
+{
+  "tipoSolicitud": "directa",
+  "idNegocio": {{idNegocio}},
+  "idDireccionEntrega": {{idDireccion}},
+  "programado": { "fechaProgramada": "2027-02-01T10:00:00-06:00" },
+  "detalles": [ { "idMarca": {{idMarca}}, "cantidad": 1, "tieneEnvase": false } ]
+}
+
+### CU-007 — Detalle de un pedido (cliente dueño / repartidor asignado / admin).
+GET {{host}}/api/v1/pedidos/{{idPedido}}
+Authorization: Bearer {{tokenCliente}}
+
+### CU-005 — Cancelar (solo pendiente / pendiente_programado).
+POST {{host}}/api/v1/pedidos/{{idPedido}}/cancelacion
+Authorization: Bearer {{tokenCliente}}
+Content-Type: application/json
+
+{ "motivo": "Ya no lo necesito" }
+
+### CU-007 — Historial del cliente (paginado, más reciente primero).
+GET {{host}}/api/v1/clientes/me/pedidos?page=0&size=20
+Authorization: Bearer {{tokenCliente}}
+
+### CU-013 — Entregas del repartidor (paginado).
+GET {{host}}/api/v1/repartidores/me/entregas?page=0&size=20
+Authorization: Bearer {{tokenRepartidor}}

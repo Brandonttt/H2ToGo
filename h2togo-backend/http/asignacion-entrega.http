@@ -1,0 +1,54 @@
+### Colección de evidencia — F7 Asignación y entrega (CU-010/012)
+### @tokenRepartidor = repartidor en jornada con carga; @idPedido = pedido pendiente compatible.
+
+@host = http://localhost:8080
+@tokenRepartidor = PEGAR_TOKEN_REPARTIDOR
+@idPedido = 1
+@idDetalle = 1
+
+### CU-010 — Pedidos disponibles para el repartidor (compatibles, en zona, por distancia).
+GET {{host}}/api/v1/repartidores/me/pedidos-disponibles
+Authorization: Bearer {{tokenRepartidor}}
+
+### CU-010 — Aceptar pedido (concurrencia RF-019: solo uno gana; aparta desde el vehículo).
+POST {{host}}/api/v1/pedidos/{{idPedido}}/aceptacion
+Authorization: Bearer {{tokenRepartidor}}
+
+### Ponerse en camino (registra ubicación en el historial).
+POST {{host}}/api/v1/pedidos/{{idPedido}}/en-camino
+Authorization: Bearer {{tokenRepartidor}}
+Content-Type: application/json
+
+{ "lat": 19.372, "lon": -99.178 }
+
+### CU-012 — Entregado (≤50 m). Cantidades por línea (parciales RN-032); recalcula total (RN-033).
+POST {{host}}/api/v1/pedidos/{{idPedido}}/resultado
+Authorization: Bearer {{tokenRepartidor}}
+Content-Type: application/json
+
+{
+  "resultado": "ENTREGADO",
+  "lat": 19.372, "lon": -99.178,
+  "lineas": [ { "idDetalle": {{idDetalle}}, "cantidadEntregada": 2, "agregadaEnSitio": false } ]
+}
+
+### CU-012 — Entregado con línea AGREGADA EN SITIO (cliente paga envase nuevo, RN-032).
+POST {{host}}/api/v1/pedidos/{{idPedido}}/resultado
+Authorization: Bearer {{tokenRepartidor}}
+Content-Type: application/json
+
+{
+  "resultado": "ENTREGADO",
+  "lat": 19.372, "lon": -99.178,
+  "lineas": [
+    { "idDetalle": {{idDetalle}}, "cantidadEntregada": 1, "agregadaEnSitio": false },
+    { "idMarca": 1, "cantidadEntregada": 1, "agregadaEnSitio": true }
+  ]
+}
+
+### CU-012 — No entregado (motivo obligatorio). Libera apartados; suma ausencia (RN-006).
+POST {{host}}/api/v1/pedidos/{{idPedido}}/resultado
+Authorization: Bearer {{tokenRepartidor}}
+Content-Type: application/json
+
+{ "resultado": "NO_ENTREGADO", "lat": 19.372, "lon": -99.178, "motivoNoEntrega": "cliente_ausente" }

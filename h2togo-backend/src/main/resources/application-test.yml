@@ -7,3 +7,12 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+
+# En pruebas no se precarga el grafo OSM (~5.4 MB) al arrancar cada contexto;
+# se carga lazy solo cuando un test pide una ruta (RutaFlowIT).
+h2togo:
+  routing:
+    precargar: false
+  scheduling:
+    # En pruebas los jobs no se disparan solos; se invocan manualmente (deterministas).
+    enabled: false

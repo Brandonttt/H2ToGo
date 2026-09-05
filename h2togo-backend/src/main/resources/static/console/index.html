@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>H2ToGo · Consola de pruebas</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <style>
+    :root{
+      --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --line:#334155;
+      --txt:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --accent2:#0ea5e9;
+      --ok:#22c55e; --err:#ef4444; --warn:#f59e0b; --mono:'SFMono-Regular',Consolas,'Liberation Mono',monospace;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt)}
+    header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#0b1220;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:1000}
+    header h1{font-size:16px;margin:0;letter-spacing:.5px}
+    header .badge{font-size:12px;color:var(--muted)}
+    header .spacer{flex:1}
+    .pill{font:12px var(--mono);padding:3px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--line)}
+    .pill.on{border-color:var(--ok);color:var(--ok)}
+    .pill.off{border-color:var(--line);color:var(--muted)}
+    main{display:grid;grid-template-columns:1fr 420px;gap:0;height:calc(100vh - 49px)}
+    .left{overflow:auto;padding:14px 16px}
+    .right{border-left:1px solid var(--line);display:flex;flex-direction:column;background:#0b1220}
+    nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+    nav button{background:var(--panel);color:var(--muted);border:1px solid var(--line);padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px}
+    nav button.active{background:var(--accent2);color:#03121c;border-color:var(--accent);font-weight:600}
+    .tab{display:none} .tab.active{display:block}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+    .card h2{margin:0 0 10px;font-size:14px;color:var(--accent)}
+    .card h3{margin:14px 0 6px;font-size:13px;color:var(--muted);font-weight:600}
+    label{display:block;font-size:12px;color:var(--muted);margin:8px 0 3px}
+    input,select,textarea{width:100%;background:#0b1220;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px;font-family:inherit}
+    textarea{font-family:var(--mono);font-size:12px;min-height:96px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    button.act{background:var(--accent2);color:#03121c;border:none;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;font-size:13px;margin-top:10px}
+    button.act:hover{background:var(--accent)}
+    button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;margin:4px 6px 0 0}
+    button.ghost:hover{border-color:var(--accent)}
+    .hint{font-size:12px;color:var(--muted);margin:2px 0 0}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    #map{height:420px;border-radius:12px;border:1px solid var(--line)}
+    .mapmeta{font:13px var(--mono);color:var(--muted);margin-top:8px}
+    .mapmeta b{color:var(--txt)}
+    .logbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);color:var(--muted);font-size:12px}
+    .logbar .spacer{flex:1}
+    #log{flex:1;overflow:auto;padding:8px 12px;font-family:var(--mono);font-size:12px}
+    .entry{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;overflow:hidden}
+    .entry .head{display:flex;gap:8px;align-items:center;padding:6px 9px;background:var(--panel2);cursor:pointer}
+    .entry .method{font-weight:700}
+    .entry .status{margin-left:auto;font-weight:700}
+    .entry .status.ok{color:var(--ok)} .entry .status.err{color:var(--err)}
+    .entry pre{margin:0;padding:9px;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow:auto;color:#cbd5e1}
+    .kbd{font:11px var(--mono);background:#0b1220;border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--muted)}
+    a{color:var(--accent)}
+    table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+    th,td{border:1px solid var(--line);padding:5px 7px;text-align:left}
+    th{color:var(--muted);font-weight:600}
+    .chips button{margin:0 6px 6px 0}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>H2ToGo</h1><span class="badge">Consola de pruebas</span>
+    <div class="spacer"></div>
+    <span class="pill off" id="pillSes">sin sesión</span>
+    <span class="pill" id="pillWs">WS ●</span>
+  </header>
+
+  <main>
+    <section class="left">
+      <nav>
+        <button data-tab="ses" class="active">Sesión</button>
+        <button data-tab="ruteo">Ruteo A*</button>
+        <button data-tab="cliente">Cliente</button>
+        <button data-tab="repartidor">Repartidor</button>
+        <button data-tab="tracking">Tracking</button>
+        <button data-tab="admin">Admin</button>
+      </nav>
+
+      <!-- ============ SESIÓN ============ -->
+      <div class="tab active" id="tab-ses">
+        <div class="card">
+          <h2>Conexión</h2>
+          <label>Base URL de la API (vacío = mismo origen)</label>
+          <input id="base" placeholder="http://localhost:8080">
+          <p class="hint">La consola se sirve desde el propio backend, así que normalmente puedes dejarlo vacío.</p>
+        </div>
+        <div class="card">
+          <h2>Registro rápido</h2>
+          <p class="hint">Crea un usuario. El OTP no llega por SMS en dev: se imprime en la consola del backend (busca <span class="kbd">[SMS-DEV]</span>). En datos demo los usuarios ya vienen verificados.</p>
+          <div class="row">
+            <div><label>Rol</label>
+              <select id="regRol"><option value="cliente">cliente</option><option value="repartidor">repartidor (dueño)</option></select>
+            </div>
+            <div><label>Nombre comercial (si repartidor)</label><input id="regNegocio" placeholder="Purificadora Demo"></div>
+          </div>
+          <div class="row">
+            <div><label>Correo</label><input id="regCorreo" placeholder="demo@correo.mx"></div>
+            <div><label>Teléfono (10 díg.)</label><input id="regTel" placeholder="5551234567"></div>
+          </div>
+          <div class="row">
+            <div><label>Nombre</label><input id="regNombre" value="Demo"></div>
+            <div><label>Apellidos</label><input id="regApe" value="Prueba"></div>
+          </div>
+          <label>Password (mín. 8)</label><input id="regPass" value="Demo1234">
+          <button class="act" onclick="registrar()">Registrar</button>
+          <div class="chips" style="margin-top:10px">
+            <button class="ghost" onclick="verificar()">Verificar OTP…</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Login</h2>
+          <div class="row">
+            <div><label>Correo</label><input id="logCorreo" placeholder="cliente@demo.mx"></div>
+            <div><label>Password</label><input id="logPass" type="password" value="Demo1234"></div>
+          </div>
+          <button class="act" onclick="login()">Iniciar sesión</button>
+          <button class="ghost" onclick="logout()">Logout</button>
+          <p class="hint" id="sesInfo" style="margin-top:10px"></p>
+        </div>
+      </div>
+
+      <!-- ============ RUTEO ============ -->
+      <div class="tab" id="tab-ruteo">
+        <div class="card">
+          <h2>Motor de ruteo A* · <span class="hint">requiere token ADMIN</span></h2>
+          <p class="hint">Haz clic en el mapa para fijar <b style="color:var(--ok)">origen</b> y luego <b style="color:var(--warn)">destino</b>, o escribe las coordenadas. El grafo es la Alcaldía Benito Juárez.</p>
+          <div class="row">
+            <div><label>Origen lat</label><input id="oLat" value="19.376692"></div>
+            <div><label>Origen lon</label><input id="oLon" value="-99.165057"></div>
+          </div>
+          <div class="row">
+            <div><label>Destino lat</label><input id="dLat" value="19.377934"></div>
+            <div><label>Destino lon</label><input id="dLon" value="-99.171138"></div>
+          </div>
+          <button class="act" onclick="calcularRuta()">Calcular ruta</button>
+          <button class="ghost" onclick="limpiarMapa()">Limpiar</button>
+          <button class="ghost" onclick="setClick('o')">Fijar origen con clic</button>
+          <button class="ghost" onclick="setClick('d')">Fijar destino con clic</button>
+          <div class="mapmeta" id="rutaMeta">Sin ruta calculada.</div>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <!-- ============ CLIENTE ============ -->
+      <div class="tab" id="tab-cliente">
+        <div class="card">
+          <h2>Direcciones</h2>
+          <label>POST /api/v1/clientes/me/direcciones</label>
+          <textarea id="bodyDir">{
+  "alias": "Casa",
+  "calle": "Av. Universidad",
+  "numeroExterior": "1000",
+  "colonia": "Nápoles",
+  "codigoPostal": "03810",
+  "referencias": "Portón azul",
+  "lat": 19.377934,
+  "lon": -99.171138
+}</textarea>
+          <button class="act" onclick="crearDireccion()">Crear dirección</button>
+          <button class="ghost" onclick="api('GET','/api/v1/clientes/me/direcciones')">Listar direcciones</button>
+          <p class="hint">La respuesta trae el <span class="kbd">id</span>; cópialo al cuerpo del pedido.</p>
+        </div>
+        <div class="card">
+          <h2>Negocios cercanos</h2>
+          <div class="row">
+            <div><label>lat</label><input id="cercaLat" value="19.372"></div>
+            <div><label>lon</label><input id="cercaLon" value="-99.178"></div>
+          </div>
+          <button class="act" onclick="cercanos()">GET /api/v1/negocios/cercanos</button>
+        </div>
+        <div class="card">
+          <h2>Crear pedido</h2>
+          <label>Modalidad</label>
+          <select id="pedTipo" onchange="plantillaPedido()">
+            <option value="directa">Directa (a un negocio)</option>
+            <option value="abierta">Abierta (a todos)</option>
+            <option value="programada">Programada</option>
+          </select>
+          <label>POST /api/v1/pedidos</label>
+          <textarea id="bodyPed"></textarea>
+          <button class="act" onclick="crearPedido()">Crear pedido</button>
+          <button class="ghost" onclick="api('GET','/api/v1/clientes/me/pedidos?page=0&size=20')">Mis pedidos</button>
+          <div class="row" style="margin-top:8px">
+            <div><label>Id pedido</label><input id="pedId" placeholder="1"></div>
+            <div style="align-self:end">
+              <button class="ghost" onclick="apiId('GET','/api/v1/pedidos/{id}')">Ver (incluye historial)</button>
+              <button class="ghost" onclick="apiId('POST','/api/v1/pedidos/{id}/cancelacion')">Cancelar</button>
+            </div>
+          </div>
+          <p class="hint">El detalle del pedido ya trae <span class="kbd">historial</span> y <span class="kbd">detalles[].id</span> (idDetalle para la entrega).</p>
+        </div>
+      </div>
+
+      <!-- ============ REPARTIDOR ============ -->
+      <div class="tab" id="tab-repartidor">
+        <div class="card">
+          <h2>Catálogo, horario e inventario (dueño)</h2>
+          <p class="hint">Las marcas, productos y vehículos se crean por semilla (<span class="kbd">data-demo.sql</span>) o vía solicitud aprobada por el admin — no hay alta directa por HTTP. Aquí se opera lo que sí es directo.</p>
+          <div class="chips">
+            <button class="ghost" onclick="api('GET','/api/v1/negocios/me')">Ver mi negocio (incluye productos)</button>
+            <button class="ghost" onclick="api('GET','/api/v1/inventario/base')">Ver inventario base</button>
+          </div>
+          <h3>Actualizar precio — PUT /api/v1/negocios/me/productos/{id}/precio</h3>
+          <div class="row"><div><label>Id producto</label><input id="prodId" value="1"></div><div></div></div>
+          <textarea id="bodyPrecio">{ "precio": 28.00, "precioEnvase": 35.00 }</textarea>
+          <button class="act" onclick="apiIdBody('PUT','/api/v1/negocios/me/productos/{id}/precio','prodId','bodyPrecio')">Actualizar precio</button>
+          <h3>Horario abierto (L–D 00:00–23:59) — PUT /api/v1/negocios/me/horarios</h3>
+          <button class="act" onclick="horarioAbierto()">Fijar horario abierto</button>
+          <h3>Registrar lote — POST /api/v1/inventario/lotes</h3>
+          <p class="hint">La caducidad debe ser &gt; hoy+7 días (RN-030).</p>
+          <textarea id="bodyLote">{
+  "idMarca": 1,
+  "cantidad": 100,
+  "fechaCaducidad": "2027-01-31"
+}</textarea>
+          <button class="act" onclick="api('POST','/api/v1/inventario/lotes', json('bodyLote'))">Registrar lote</button>
+        </div>
+        <div class="card">
+          <h2>Jornada y vehículo</h2>
+          <h3>Iniciar jornada — POST /api/v1/repartidores/me/jornada</h3>
+          <textarea id="bodyJornada">{
+  "idVehiculo": 1,
+  "cargaInicial": [ { "idMarca": 1, "cantidad": 20 } ]
+}</textarea>
+          <button class="act" onclick="api('POST','/api/v1/repartidores/me/jornada', json('bodyJornada'))">Iniciar jornada</button>
+          <div class="chips" style="margin-top:8px">
+            <button class="ghost" onclick="api('GET','/api/v1/inventario/vehiculo')">Ver carga del vehículo</button>
+            <button class="ghost" onclick="api('POST','/api/v1/inventario/devolucion')">Devolver todo (fin de jornada)</button>
+          </div>
+          <h3>Cargar más stock — POST /api/v1/inventario/carga-vehiculo</h3>
+          <textarea id="bodyCarga">{ "cargas": [ { "idMarca": 1, "cantidad": 10 } ] }</textarea>
+          <button class="act" onclick="api('POST','/api/v1/inventario/carga-vehiculo', json('bodyCarga'))">Cargar</button>
+        </div>
+        <div class="card">
+          <h2>Atender pedidos</h2>
+          <div class="chips">
+            <button class="ghost" onclick="api('GET','/api/v1/repartidores/me/pedidos-disponibles')">Ver disponibles</button>
+            <button class="ghost" onclick="api('GET','/api/v1/repartidores/me/entregas?page=0&size=20')">Mis entregas</button>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <div><label>Id pedido</label><input id="repPedId" placeholder="1"></div>
+            <div style="align-self:end">
+              <button class="ghost" onclick="apiId('POST','/api/v1/pedidos/{id}/aceptacion','repPedId')">Aceptar</button>
+              <button class="ghost" onclick="verRutaPedido()">Ver ruta en mapa</button>
+            </div>
+          </div>
+          <h3>En camino — POST /api/v1/pedidos/{id}/en-camino</h3>
+          <textarea id="bodyEnCamino">{ "lat": 19.376692, "lon": -99.165057 }</textarea>
+          <button class="act" onclick="apiIdBody('POST','/api/v1/pedidos/{id}/en-camino','repPedId','bodyEnCamino')">Marcar en camino</button>
+          <h3>Reportar ubicación — PUT /api/v1/repartidores/me/ubicacion</h3>
+          <textarea id="bodyUbic">{ "lat": 19.376692, "lon": -99.165057 }</textarea>
+          <button class="act" onclick="api('PUT','/api/v1/repartidores/me/ubicacion', json('bodyUbic'))">Enviar ubicación</button>
+          <p class="hint">Reporta la ubicación antes de pedir la ruta (si no, 422 SIN_UBICACION).</p>
+          <h3>Entregar — POST /api/v1/pedidos/{id}/resultado</h3>
+          <textarea id="bodyEntrega">{
+  "resultado": "ENTREGADO",
+  "lat": 19.377934,
+  "lon": -99.171138,
+  "lineas": [ { "idDetalle": 1, "cantidadEntregada": 2, "agregadaEnSitio": false } ]
+}</textarea>
+          <button class="act" onclick="apiIdBody('POST','/api/v1/pedidos/{id}/resultado','repPedId','bodyEntrega')">Registrar resultado</button>
+        </div>
+      </div>
+
+      <!-- ============ TRACKING ============ -->
+      <div class="tab" id="tab-tracking">
+        <div class="card">
+          <h2>Rastreo en vivo (WebSocket STOMP)</h2>
+          <p class="hint">Un cliente <b>se suscribe</b> a su pedido; el repartidor <b>publica</b> su ubicación. Usa dos pestañas del navegador (una logueada como cliente, otra como repartidor) para verlo en vivo.</p>
+          <label>Id pedido</label><input id="trkPedId" placeholder="1">
+          <div class="chips" style="margin-top:8px">
+            <button class="ghost" onclick="wsConnect()">Conectar WS</button>
+            <button class="ghost" onclick="wsSubscribe()">Suscribirse (cliente)</button>
+            <button class="ghost" onclick="wsDisconnect()">Desconectar</button>
+          </div>
+          <h3>Publicar ubicación (repartidor)</h3>
+          <div class="row3">
+            <div><label>lat</label><input id="trkLat" value="19.3745"></div>
+            <div><label>lon</label><input id="trkLon" value="-99.1700"></div>
+            <div style="align-self:end"><button class="act" style="width:100%" onclick="wsPublish()">Publicar</button></div>
+          </div>
+          <div class="mapmeta" id="trkMeta">Sin conexión.</div>
+        </div>
+      </div>
+
+      <!-- ============ ADMIN ============ -->
+      <div class="tab" id="tab-admin">
+        <div class="card">
+          <h2>Panel admin</h2>
+          <div class="chips">
+            <button class="ghost" onclick="api('GET','/api/v1/admin/usuarios')">Usuarios</button>
+            <button class="ghost" onclick="api('GET','/api/v1/admin/pedidos')">Pedidos</button>
+            <button class="ghost" onclick="api('GET','/api/v1/admin/solicitudes')">Solicitudes</button>
+          </div>
+          <p class="hint">Estos endpoints exigen rol ADMIN. Inicia sesión con el admin de datos demo.</p>
+        </div>
+        <div class="card">
+          <h2>Petición libre</h2>
+          <div class="row">
+            <div><label>Método</label><select id="rawM"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></div>
+            <div><label>Ruta</label><input id="rawP" placeholder="/api/v1/..."></div>
+          </div>
+          <label>Body (JSON, opcional)</label><textarea id="rawB"></textarea>
+          <button class="act" onclick="rawReq()">Enviar</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="logbar"><b>Registro de peticiones</b><div class="spacer"></div><button class="ghost" onclick="document.getElementById('log').innerHTML=''">Limpiar</button></div>
+      <div id="log"></div>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+  <script>
+  const S = { base:'', token:null, rol:null, userId:null };
+
+  // ---------- helpers ----------
+  const $ = id => document.getElementById(id);
+  function baseUrl(){ return ($('base').value || '').replace(/\/$/,''); }
+  function json(id){ try{ return JSON.parse($(id).value); }catch(e){ alert('JSON inválido en '+id+': '+e.message); throw e; } }
+  function setSession(tok, rol, uid){
+    S.token=tok; S.rol=rol; S.userId=uid;
+    const p=$('pillSes');
+    if(tok){ p.className='pill on'; p.textContent=(rol||'sesión')+(uid?(' #'+uid):''); }
+    else { p.className='pill off'; p.textContent='sin sesión'; }
+  }
+  function logEntry(method, path, status, data){
+    const div=document.createElement('div'); div.className='entry';
+    const ok = status>=200 && status<300;
+    const body = (typeof data==='string')?data:JSON.stringify(data,null,2);
+    div.innerHTML=`<div class="head"><span class="method">${method}</span><span>${path}</span>
+      <span class="status ${ok?'ok':'err'}">${status}</span></div><pre></pre>`;
+    div.querySelector('pre').textContent=body;
+    div.querySelector('.head').onclick=()=>{const pre=div.querySelector('pre');pre.style.display=pre.style.display==='none'?'block':'none';};
+    $('log').prepend(div);
+    return {ok,status,data};
+  }
+  async function api(method, path, body){
+    S.base=baseUrl();
+    const headers={};
+    if(body!==undefined) headers['Content-Type']='application/json';
+    if(S.token) headers['Authorization']='Bearer '+S.token;
+    let res, text, data;
+    try{
+      res = await fetch(S.base+path, {method, headers, body: body!==undefined?JSON.stringify(body):undefined});
+      text = await res.text();
+      try{ data = text?JSON.parse(text):''; }catch(_){ data=text; }
+      return logEntry(method, path, res.status, data);
+    }catch(e){
+      return logEntry(method, path, 0, 'ERROR DE RED: '+e.message+'\n(¿base URL correcta? ¿backend arriba?)');
+    }
+  }
+  function apiId(method, tpl, inputId){
+    const id=$(inputId||'pedId').value.trim(); if(!id){alert('Escribe el id del pedido');return;}
+    return api(method, tpl.replace('{id}', id));
+  }
+
+  // ---------- tabs ----------
+  document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); $('tab-'+b.dataset.tab).classList.add('active');
+    if(b.dataset.tab==='ruteo') setTimeout(()=>{ initMap(); map.invalidateSize(); }, 60);
+  });
+
+  // ---------- sesión ----------
+  async function registrar(){
+    const rol=$('regRol').value;
+    const b={ nombre:$('regNombre').value, apellidos:$('regApe').value, correo:$('regCorreo').value,
+      password:$('regPass').value, telefono:$('regTel').value, rol };
+    if(rol==='repartidor') b.negocio={ nombreComercial:$('regNegocio').value||'Negocio Demo' };
+    const r=await api('POST','/api/v1/auth/registro', b);
+    if(r.ok){ $('logCorreo').value=$('regCorreo').value; $('logPass').value=$('regPass').value; }
+  }
+  async function verificar(){
+    const correo=$('regCorreo').value||prompt('Correo a verificar:');
+    const codigo=prompt('Código OTP (míralo en la consola del backend: [SMS-DEV]):');
+    if(!codigo) return;
+    await api('POST','/api/v1/auth/verificacion-telefono', {correo, codigo});
+  }
+  async function login(){
+    const r=await api('POST','/api/v1/auth/login', {correo:$('logCorreo').value, password:$('logPass').value});
+    if(r.ok && r.data){
+      const tok=r.data.token||r.data.tokenSesion||r.data.accessToken;
+      const rol=r.data.rol||r.data.role; const uid=r.data.idUsuario||r.data.id||r.data.userId;
+      setSession(tok, rol, uid);
+      $('sesInfo').textContent='Sesión iniciada. Token guardado. Rol: '+(rol||'?');
+    } else { $('sesInfo').textContent='No se pudo iniciar sesión (revisa el registro/verificación).'; }
+  }
+  async function logout(){ await api('POST','/api/v1/auth/logout'); setSession(null); $('sesInfo').textContent=''; }
+
+  // ---------- cliente ----------
+  const crearDireccion=()=>api('POST','/api/v1/clientes/me/direcciones', json('bodyDir'));
+  const cercanos=()=>api('GET',`/api/v1/negocios?cerca=${$('cercaLat').value},${$('cercaLon').value}&limite=5`);
+  const crearPedido=()=>api('POST','/api/v1/pedidos', json('bodyPed'));
+  function plantillaPedido(){
+    const t=$('pedTipo').value;
+    const linea='{ "idMarca": 1, "cantidad": 2, "tieneEnvase": true }';
+    let b;
+    if(t==='directa') b=`{
+  "tipoSolicitud": "directa",
+  "idNegocio": 1,
+  "idDireccionEntrega": 1,
+  "detalles": [ ${linea} ]
+}`;
+    else if(t==='abierta') b=`{
+  "tipoSolicitud": "abierta",
+  "idDireccionEntrega": 1,
+  "precioMaximoGarrafon": 30.00,
+  "detalles": [ ${linea} ]
+}`;
+    else b=`{
+  "tipoSolicitud": "directa",
+  "idNegocio": 1,
+  "idDireccionEntrega": 1,
+  "programado": { "fechaProgramada": "${new Date(Date.now()+3600e3).toISOString()}" },
+  "detalles": [ ${linea} ]
+}`;
+    $('bodyPed').value=b;
+  }
+
+  // ---------- repartidor ----------
+  function horarioAbierto(){
+    const h=[]; for(let d=1;d<=7;d++) h.push({diaSemana:d, cerrado:false, horaApertura:'00:00:00', horaCierre:'23:59:59'});
+    return api('PUT','/api/v1/negocios/me/horarios', h);
+  }
+  function entregar(){ apiIdBody('POST','/api/v1/repartidores/me/pedidos/{id}/entregar','repPedId','bodyEntrega'); }
+  function apiIdBody(method, tpl, inputId, bodyId){
+    const id=$(inputId).value.trim(); if(!id){alert('Escribe el id del pedido');return;}
+    return api(method, tpl.replace('{id}', id), json(bodyId));
+  }
+
+  // ---------- mapa / ruteo ----------
+  let map, oMarker, dMarker, routeLine, clickMode=null;
+  const BJ=[19.3726,-99.1596];
+  function initMap(){
+    if(map) return;
+    map=L.map('map').setView(BJ,13);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+    map.on('click', e=>{
+      const {lat,lng}=e.latlng;
+      if(clickMode==='o'){ $('oLat').value=lat.toFixed(6); $('oLon').value=lng.toFixed(6); drawMarkers(); }
+      else if(clickMode==='d'){ $('dLat').value=lat.toFixed(6); $('dLon').value=lng.toFixed(6); drawMarkers(); }
+      clickMode=null;
+    });
+    drawMarkers();
+  }
+  function setClick(m){ clickMode=m; }
+  function drawMarkers(){
+    if(!map) return;
+    const o=[+$('oLat').value,+$('oLon').value], d=[+$('dLat').value,+$('dLon').value];
+    if(oMarker) oMarker.setLatLng(o); else oMarker=L.circleMarker(o,{radius:8,color:'#22c55e',fillOpacity:.9}).addTo(map).bindTooltip('Origen');
+    if(dMarker) dMarker.setLatLng(d); else dMarker=L.circleMarker(d,{radius:8,color:'#f59e0b',fillOpacity:.9}).addTo(map).bindTooltip('Destino');
+  }
+  function limpiarMapa(){ if(routeLine){map.removeLayer(routeLine);routeLine=null;} $('rutaMeta').textContent='Sin ruta calculada.'; }
+  async function calcularRuta(){
+    initMap(); drawMarkers();
+    const b={ origenLat:+$('oLat').value, origenLon:+$('oLon').value, destinoLat:+$('dLat').value, destinoLon:+$('dLon').value };
+    const r=await api('POST','/api/v1/admin/routing/route', b);
+    pintarRuta(r.data);
+  }
+  function pintarRuta(data){
+    if(!data || !data.coordenadas || !data.coordenadas.length){ $('rutaMeta').textContent='Sin ruta (¿fuera del grafo o 422?).'; return; }
+    initMap();
+    const pts=data.coordenadas.map(c=>[c.lat,c.lon]);
+    if(routeLine) map.removeLayer(routeLine);
+    routeLine=L.polyline(pts,{color:'#38bdf8',weight:5,opacity:.85}).addTo(map);
+    map.fitBounds(routeLine.getBounds(),{padding:[30,30]});
+    $('rutaMeta').innerHTML=`Ruta: <b>${(data.distanciaTotalKm??0).toFixed?data.distanciaTotalKm.toFixed(3):data.distanciaTotalKm} km</b> · ${pts.length} vértices`;
+  }
+  async function verRutaPedido(){
+    const id=$('repPedId').value.trim(); if(!id){alert('Escribe el id del pedido');return;}
+    document.querySelector('nav button[data-tab="ruteo"]').click();
+    const r=await api('GET',`/api/v1/pedidos/${id}/ruta`);
+    pintarRuta(r.data);
+  }
+
+  // ---------- tracking (STOMP) ----------
+  let stomp=null;
+  function wsUrl(){
+    const b=baseUrl();
+    if(b){ return b.replace(/^http/,'ws')+'/ws'; }
+    return (location.protocol==='https:'?'wss:':'ws:')+'//'+location.host+'/ws';
+  }
+  function setWsPill(on){ const p=$('pillWs'); p.className='pill '+(on?'on':'off'); }
+  function wsConnect(){
+    if(!S.token){ alert('Inicia sesión primero.'); return; }
+    stomp=new StompJs.Client({ brokerURL:wsUrl(), connectHeaders:{ token:'Bearer '+S.token },
+      reconnectDelay:0, onConnect:()=>{ setWsPill(true); $('trkMeta').textContent='WS conectado.'; },
+      onStompError:f=>{ $('trkMeta').textContent='Error STOMP: '+(f.headers&&f.headers.message||''); },
+      onWebSocketClose:()=>{ setWsPill(false); } });
+    stomp.activate();
+  }
+  function wsSubscribe(){
+    const id=$('trkPedId').value.trim(); if(!id){alert('Id de pedido');return;}
+    if(!stomp||!stomp.connected){alert('Conecta el WS primero');return;}
+    stomp.subscribe('/topic/pedidos/'+id+'/ubicacion', m=>{
+      const u=JSON.parse(m.body); $('trkMeta').innerHTML='Ubicación recibida: <b>'+u.lat+', '+u.lon+'</b>';
+      logEntry('WS ◀','/topic/pedidos/'+id+'/ubicacion',200,u);
+    });
+    $('trkMeta').textContent='Suscrito a pedido '+id;
+  }
+  function wsPublish(){
+    const id=$('trkPedId').value.trim(); if(!id){alert('Id de pedido');return;}
+    if(!stomp||!stomp.connected){alert('Conecta el WS primero');return;}
+    const body={ lat:+$('trkLat').value, lon:+$('trkLon').value };
+    stomp.publish({ destination:'/app/pedidos/'+id+'/ubicacion', body:JSON.stringify(body) });
+    logEntry('WS ▶','/app/pedidos/'+id+'/ubicacion',200,body);
+  }
+  function wsDisconnect(){ if(stomp){stomp.deactivate();setWsPill(false);$('trkMeta').textContent='Desconectado.';} }
+
+  // ---------- admin ----------
+  function rawReq(){ const b=$('rawB').value.trim(); api($('rawM').value, $('rawP').value, b?JSON.parse(b):undefined); }
+
+  // init
+  plantillaPedido();
+  </script>
+</body>
+</html>

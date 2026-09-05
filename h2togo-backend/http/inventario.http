@@ -1,0 +1,41 @@
+### Colección de evidencia — F5 Inventario y jornada (CU-018/019/008)
+### @tokenDueno = repartidor DUEÑO del negocio; requiere marca/producto/vehículo ya configurados.
+
+@host = http://localhost:8080
+@tokenDueno = PEGAR_TOKEN_DUENO
+@idMarca = 1
+@idVehiculo = 1
+
+### CU-018 — Registrar entrada de proveedor a la base. Caducidad > hoy+7 días (RN-030) o 422.
+POST {{host}}/api/v1/inventario/lotes
+Authorization: Bearer {{tokenDueno}}
+Content-Type: application/json
+
+{ "idMarca": {{idMarca}}, "cantidad": 100, "fechaCaducidad": "2027-01-31",
+  "costoUnitario": 18.50, "proveedor": "Distribuidora X", "notas": "Lote de prueba" }
+
+### Inventario de la base (por lote, próximos a caducar primero).
+GET {{host}}/api/v1/inventario/base
+Authorization: Bearer {{tokenDueno}}
+
+### CU-008 — Iniciar jornada: elige vehículo y carga inicial (FIFO). estado → disponible.
+POST {{host}}/api/v1/repartidores/me/jornada
+Authorization: Bearer {{tokenDueno}}
+Content-Type: application/json
+
+{ "idVehiculo": {{idVehiculo}}, "cargaInicial": [ { "idMarca": {{idMarca}}, "cantidad": 20 } ] }
+
+### CU-019 — Cargar más al vehículo desde la base (FIFO por caducidad, valida capacidad).
+POST {{host}}/api/v1/inventario/carga-vehiculo
+Authorization: Bearer {{tokenDueno}}
+Content-Type: application/json
+
+{ "cargas": [ { "idMarca": {{idMarca}}, "cantidad": 10 } ] }
+
+### Inventario del vehículo.
+GET {{host}}/api/v1/inventario/vehiculo
+Authorization: Bearer {{tokenDueno}}
+
+### Fin de jornada: devuelve todo a la base y cierra la jornada.
+POST {{host}}/api/v1/inventario/devolucion
+Authorization: Bearer {{tokenDueno}}

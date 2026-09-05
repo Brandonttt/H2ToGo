@@ -1,0 +1,20 @@
+### Colección de evidencia — F9 Ruta de entrega (CU-011)
+### El motor A* corre sobre el grafo OSM real de Benito Juárez (sample_map.json).
+
+@host = http://localhost:8080
+@tokenRepartidor = PEGAR_TOKEN_REPARTIDOR
+@tokenAdmin = PEGAR_TOKEN_ADMIN
+@idPedido = 1
+
+### CU-011 — Ruta del pedido (solo el repartidor asignado, con ubicación reportada).
+### origen = ubicación actual del repartidor; destino = dirección de entrega.
+### 200 { encontrada, distanciaTotalKm, coordenadas[] }  ·  422 si no hay ruta o sin GPS.
+GET {{host}}/api/v1/pedidos/{{idPedido}}/ruta
+Authorization: Bearer {{tokenRepartidor}}
+
+### Endpoint de pruebas del motor (solo ADMIN): calcula ruta entre dos coordenadas arbitrarias.
+POST {{host}}/api/v1/admin/routing/route
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{ "origenLat": 19.376692, "origenLon": -99.165057, "destinoLat": 19.377934, "destinoLon": -99.171138 }

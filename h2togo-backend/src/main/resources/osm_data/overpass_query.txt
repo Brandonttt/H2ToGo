@@ -1,0 +1,44 @@
+/*
+  ============================================================
+  QUERY OVERPASS TURBO — H2ToGo Routing Engine (B176)
+  ============================================================
+
+  Uso:
+    1. Ve a https://overpass-turbo.eu/
+    2. Pega esta query en el editor
+    3. Ajusta el bounding box (south,west,north,east) a tu zona
+       de entrega. Ejemplo: Colonia Narvarte, CDMX.
+    4. Haz clic en "Ejecutar"
+    5. Exporta → Download as GeoJSON → guarda como sample_map.json
+       en src/main/resources/osm_data/
+
+  IMPORTANTE: después de exportar, el JSON estará en formato
+  GeoJSON, NO en formato Overpass. Para obtener el formato
+  Overpass (que espera OsmGraphLoader) usa:
+    Exportar → Raw data → "Download directly from Overpass API"
+  ============================================================
+*/
+
+// ============================================================
+// Bounding box usado actualmente (Delegación Benito Juárez):
+//   sur=19.3475, oeste=-99.1960, norte=19.4100, este=-99.1250
+//
+// Datos descargados: ~27,278 nodos | ~8,555 vías | 5 MB
+// ============================================================
+
+[out:json][timeout:120];
+(
+  // Nodos dentro del bounding box
+  node["highway"](19.3475,-99.1960,19.4100,-99.1250);
+
+  // Vías de todos los tipos transitables por un repartidor de garrafones
+  way["highway"~"^(motorway|trunk|primary|secondary|tertiary|residential|service|unclassified|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"]
+     (19.3475,-99.1960,19.4100,-99.1250);
+
+  // Incluir los nodos referenciados por las vías seleccionadas
+  >;
+);
+out body;
+
+// Para actualizar el mapa a otra zona, cambia el bounding box y
+// re-descarga con: Invoke-WebRequest en PowerShell o Overpass Turbo.

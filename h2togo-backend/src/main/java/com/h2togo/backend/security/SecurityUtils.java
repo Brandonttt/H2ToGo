@@ -1,6 +1,8 @@
 package com.h2togo.backend.security;
 
 import com.h2togo.backend.common.UnauthorizedException;
+import com.h2togo.backend.common.enums.RolUsuario;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -23,5 +25,14 @@ public final class SecurityUtils {
 
     public static Integer idActual() {
         return actual().id();
+    }
+
+    /** Exige que el actor tenga el rol dado (RNF-008); devuelve su id o lanza 403. */
+    public static int exigirRol(RolUsuario rol) {
+        UsuarioPrincipal p = actual();
+        if (p.rol() != rol) {
+            throw new AccessDeniedException("Operación permitida solo para el rol " + rol + ".");
+        }
+        return p.id();
     }
 }

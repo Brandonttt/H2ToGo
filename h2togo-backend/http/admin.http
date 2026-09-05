@@ -1,0 +1,30 @@
+### Colección de evidencia — F10 Administración (CU-014/015/016)
+### @tokenAdmin = token de un usuario con rol admin (se siembra fuera de la app).
+
+@host = http://localhost:8080
+@tokenAdmin = PEGAR_TOKEN_ADMIN
+@idUsuario = 2
+@idNuevoDueno = 3
+
+### CU-014 — Alta manual de usuario (queda pre-verificado; puede iniciar sesión de inmediato).
+POST {{host}}/api/v1/admin/usuarios
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{ "nombre": "Nuevo", "apellidos": "Repartidor", "correo": "nuevo@rep.mx", "password": "password123",
+  "telefono": "5551112233", "rol": "repartidor", "negocio": { "nombreComercial": "Purificadora Nueva" } }
+
+### CU-015 — Baja lógica. Con idNuevoDueno transfiere; sin él, el negocio queda inactivo. Bloquea si hay pedidos en camino.
+POST {{host}}/api/v1/admin/usuarios/{{idUsuario}}/baja
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{ "motivo": "incumplimiento", "idNuevoDueno": {{idNuevoDueno}} }
+
+### CU-015 — Reactivación.
+POST {{host}}/api/v1/admin/usuarios/{{idUsuario}}/reactivacion
+Authorization: Bearer {{tokenAdmin}}
+
+### CU-016 — Historial global con filtros combinables (fecha/estado/cliente/repartidor/negocio) + paginación.
+GET {{host}}/api/v1/admin/pedidos?estado=entregado&idNegocio=1&page=0&size=20
+Authorization: Bearer {{tokenAdmin}}

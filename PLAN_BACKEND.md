@@ -26,14 +26,15 @@ No se reescribe: se integra tal cual en la fase F9. También están en la raíz 
 | F2 | Seguridad y autenticación | F1 | M | **Hecha** (`mvn verify` verde con Docker: 10 unit + 7 IT, 2026-08-22) |
 | F3 | Perfil y direcciones del cliente | F2 | S | **Hecha** (`mvn verify` verde con Docker: 10 unit + 13 IT; polígono real de OSM cargado) |
 | F4 | Negocios, catálogo y horarios | F2 | M | **Hecha** (`mvn verify` verde con Docker: 10 unit + 20 IT) |
-| F5 | Inventario y jornada del repartidor | F4 | M | Pendiente |
-| F6 | Pedidos (creación, cancelación, historiales) | F3, F4, F5 | L | Pendiente |
-| F7 | Asignación y entrega | F6 | L | Pendiente |
-| F8 | Rastreo y notificaciones | F7 | M | Pendiente |
-| F9 | Integración del motor de ruteo A* | F0 (código), F7 (endpoint) | S | Pendiente |
-| F10 | Administración | F2 (mín.), F6/F7 (completa) | M | Pendiente |
-| F11 | Tareas programadas | F6 | S | Pendiente |
-| F12 | Pruebas transversales y endurecimiento | todas | M | Pendiente |
+| F5 | Inventario y jornada del repartidor | F4 | M | **Hecha** (`mvn verify` verde con Docker: 10 unit + 25 IT, incl. concurrencia) |
+| F6 | Pedidos (creación, cancelación, historiales) | F3, F4, F5 | L | **Hecha** (`mvn verify` verde con Docker: 10 unit + 33 IT) |
+| F7 | Asignación y entrega | F6 | L | **Hecha** (`mvn verify` verde con Docker: 10 unit + 39 IT, incl. concurrencia RF-019 y suspensión RN-006) |
+| F8 | Rastreo y notificaciones | F7 | M | **Hecha** (`mvn verify` verde con Docker: 12 unit + 41 IT, incl. WebSocket STOMP real) |
+| F9 | Integración del motor de ruteo A* | F0 (código), F7 (endpoint) | S | **Hecha** (`mvn verify` verde con Docker: 14 unit + 42 IT; A* sobre grafo real de BJ) |
+| F10 | Administración | F2 (mín.), F6/F7 (completa) | M | **Hecha** (`mvn verify` verde con Docker: 14 unit + 49 IT) |
+| F11 | Tareas programadas | F6 | S | Hecha |
+| F12 | Pruebas transversales y endurecimiento | todas | M | **Hecha** (`mvn verify` verde: 14 unit + 59 IT; prueba de 100 concurrentes diferida por Rubén) |
+| F13 | Consola web de pruebas (admin) | F9, F12 | M | **Hecha** (consola en `/console/`, ruteo validado en vivo; `mvn verify` verde) |
 
 ---
 
@@ -305,138 +306,178 @@ ownership (un cliente no ve/edita direcciones de otro → 403/404).
 
 ### F5 — Inventario y jornada (M) — CU-018, CU-019, CU-008
 
-- [ ] `POST /inventario/lotes` (CU-018, solo dueño RN-021): valida caducidad > hoy+7 días
+- [x] `POST /inventario/lotes` (CU-018, solo dueño RN-021): valida caducidad > hoy+7 días
       (RN-030), capacidad máxima del producto en base, crea lote + movimiento
       `entrada_proveedor` (RN-013) en una transacción.
-- [ ] `GET /inventario/base` y `GET /inventario/vehiculo` (por negocio del repartidor):
+- [x] `GET /inventario/base` y `GET /inventario/vehiculo` (por negocio del repartidor):
       existencias por marca y lote, próximos a caducar primero.
-- [ ] `POST /repartidores/me/jornada` (CU-008): selecciona vehículo del negocio propio
-      (la FK compuesta de BD lo garantiza; el servicio da error claro), carga inicial
-      → delega en carga FIFO; al confirmar, `estado_operativo=true`.
-- [ ] `POST /inventario/carga-vehiculo` (CU-019): FIFO por `fecha_caducidad` con
-      `SELECT … FOR UPDATE` sobre lotes (§7-Q2), valida capacidad del vehículo
-      (`capacidad_garrafones`), descuenta base / incrementa vehículo, movimiento
-      `traspaso_a_vehiculo` (una fila, ambas ubicaciones). Todo transaccional (RF-022).
-- [ ] `POST /inventario/devolucion` (fin de jornada): vehículo→base, movimiento
+- [x] `POST /repartidores/me/jornada` (CU-008): selecciona vehículo del negocio propio
+      (RN-014; el servicio valida negocio+activo), carga inicial → delega en carga FIFO;
+      al confirmar, `estado_operativo=true`.
+- [x] `POST /inventario/carga-vehiculo` (CU-019): FIFO por `fecha_caducidad` (lotes vigentes)
+      con `SELECT … FOR UPDATE` sobre lotes, valida capacidad del vehículo
+      (`capacidad_garrafones`, RN-008), descuenta base / incrementa vehículo, movimiento
+      `traspaso_a_vehiculo` (una fila, ambas ubicaciones). Todo transaccional (RF-022/RNF-014).
+- [x] `POST /inventario/devolucion` (fin de jornada): vehículo→base, movimiento
       `devolucion_a_base`; `estado_operativo=false`, `id_vehiculo_actual=null`.
-- [ ] Tests: FIFO respeta caducidades; caducidad a 5 días → 422 `RN-030…`; carga que excede
+- [x] Tests: FIFO respeta caducidades; caducidad a 5 días → 422 `RN-030…`; carga que excede
       capacidad → 422; concurrencia de dos cargas sobre el mismo lote (Testcontainers).
+
+> **Confirmado (2026-09-01):** `mvn verify` **BUILD SUCCESS** con Docker — unit 10/10 e IT 25/25
+> (`InventarioFlowIT` 5/5, incluida la prueba real de concurrencia: dos cargas simultáneas sobre
+> el mismo lote → exactamente una gana, lote 10→4). Colección `http/inventario.http`. **F5 = Hecha.** (§10 #24.)
 
 ### F6 — Pedidos: creación, cancelación e historiales (L) — CU-004, CU-005, CU-007, CU-013
 
-- [ ] `POST /pedidos` (CU-004): modalidad `directa` (valida negocio activo + horario RF-011;
-      si está cerrado responde 422 con los horarios para que la app ofrezca programar) o
-      `abierta` (requiere `precio_maximo_garrafon`). Valida dirección propia y en zona.
-      Calcula `total_pagar` estimado con snapshot de precios (RN-025) y envase (RN-031).
-      Pedido programado: `es_programado=true` + `fecha_programada` futura dentro del horario
-      → estado `pendiente_programado` (lo activa F11).
-- [ ] Apartado de inventario (`ApartadoService`): al crear pedido directo se apartan
-      existencias (base y/o vehículo) con `cantidad_apartada` — mismas filas bloqueadas
-      `FOR UPDATE`; en modalidad abierta el apartado ocurre al aceptar (F7).
-- [ ] `POST /pedidos/{id}/cancelacion` (CU-005): solo dueño del pedido y estado
-      `pendiente|pendiente_programado|asignado` (RF-013); libera apartados; historial.
-- [ ] `GET /clientes/me/pedidos` (CU-007) y `GET /repartidores/me/entregas` (CU-013):
+- [x] `POST /pedidos` (CU-004): modalidad `directa` (valida negocio activo + horario RF-011;
+      si está cerrado responde 422 `NEGOCIO_CERRADO`) o `abierta` (requiere `precio_maximo_garrafon`;
+      valida que exista purificadora que cumpla, RN-028). Valida dirección propia y en zona (RN-001),
+      y suspensión (RN-006). Calcula `total_pagar` con snapshot de precios (RN-025/031) en directa;
+      estimado con `precio_maximo` en abierta (§10 #27). Programado → estado `pendiente_programado` (activa F11).
+- [ ] Apartado de inventario: **movido a F7** — RN-022 aparta al ACEPTAR, no al crear (§10 #25).
+      La creación en F6 no aparta ni valida stock. La liberación (RN-023) queda cableada en la cancelación
+      (no-op mientras no haya apartados).
+- [x] `POST /pedidos/{id}/cancelacion` (CU-005): solo dueño del pedido y estado
+      `pendiente|pendiente_programado` (ficha CU-005, §10 #26; `asignado`/`en_camino` → 422); historial.
+- [x] `GET /clientes/me/pedidos` (CU-007) y `GET /repartidores/me/entregas` (CU-013):
       paginados, más reciente primero, con detalle al entrar (`GET /pedidos/{id}` con
       ownership: cliente dueño, repartidor asignado o admin, RN-016).
-- [ ] Tests: horario cerrado; abierta sin precio máximo → 400; snapshot de precios no cambia
-      si el dueño cambia el precio después; cancelar en `en_camino` → 422; apartados liberados.
+- [x] Tests: horario cerrado (422); abierta sin precio máximo (422) y sin purificadora (422);
+      snapshot de precios no cambia si el dueño cambia el precio después; cancelar ya cancelado → 422;
+      fuera de cobertura (422); ownership (otro cliente → 403). `PedidosFlowIT` (8).
+
+> **Confirmado (2026-09-05):** `mvn verify` **BUILD SUCCESS** con Docker — unit 10/10 e IT 33/33
+> (`PedidosFlowIT` 8/8). Colección `http/pedidos.http`. **F6 = Hecha.** (§10 #25–#27.)
 
 ### F7 — Asignación y entrega (L) — CU-010, CU-012
 
-- [ ] `GET /repartidores/me/pedidos-disponibles` (CU-010/RF-008): pedidos `pendiente`
-      compatibles → modalidad directa de su negocio, o abierta con
-      `precio_maximo_garrafon >= precio` del negocio para esa marca; con dirección en zona;
-      ordenados por distancia a la ubicación actual (§7-Q3); incluye distancia en metros.
-- [ ] `POST /pedidos/{id}/aceptacion`: **concurrencia RF-019** con UPDATE condicional
-      (§7-Q4): si `filas==0` → `409 PEDIDO_YA_ASIGNADO`. Valida stock RF-012 (vehículo +
-      base alcanzan, y cabe en el vehículo al cargar) antes del UPDATE; aparta inventario
-      en la misma transacción. Estado → `asignado`, snapshot `id_vehiculo_utilizado`.
-- [ ] `POST /pedidos/{id}/en-camino`: estado + historial con ubicación.
-- [ ] `POST /pedidos/{id}/resultado` (CU-012): `entregado` exige ubicación reportada a
+- [x] `GET /repartidores/me/pedidos-disponibles` (CU-010/RF-008): pedidos `pendiente`
+      compatibles → modalidad directa de su negocio, o abierta cuyo catálogo cumpla el
+      `precio_maximo_garrafon` en TODAS las marcas; con dirección en zona;
+      ordenados por distancia a la ubicación actual (§7-Q3, NULLS LAST); incluye distancia.
+- [x] `POST /pedidos/{id}/aceptacion`: **concurrencia RF-019** con UPDATE condicional
+      (§7-Q4): si `filas==0` → `409 PEDIDO_YA_ASIGNADO`. Valida carga del vehículo (RN-008,
+      §10 #28) antes del UPDATE; aparta desde el vehículo en la misma transacción. Estado →
+      `asignado`, snapshot `id_vehiculo_utilizado`; en abierta fija precios reales del negocio.
+- [x] `POST /pedidos/{id}/en-camino`: estado + historial con ubicación.
+- [x] `POST /pedidos/{id}/resultado` (CU-012): `entregado` exige ubicación reportada a
       ≤ 50 m de la dirección (RF-014, `ST_DWithin`); registra `cantidad_entregada` por
       línea (parciales RN-032), líneas `agregada_en_sitio` con snapshot de precio vigente,
       recalcula `total_pagar` definitivo (RN-033), descuenta inventario del vehículo con
-      movimiento `salida_pedido`, libera apartados. `no_entregado` exige nota (motivo) y
-      dispara RN-006: `ausencias_consecutivas+1` del cliente y, al llegar al umbral que
-      define el TT (**el agente debe leer RN-006 y confirmar umbral y duración**),
-      fija `suspendido_hasta`. Entrega exitosa reinicia el contador.
-- [ ] Tests: dos repartidores aceptan a la vez → uno gana (test de concurrencia real);
-      entrega a 200 m → 422; parcial recalcula total; no_entregado acumula y suspende.
+      movimiento `salida_pedido`, libera apartados (§10 #29). `no_entregado` exige motivo y
+      dispara RN-006: `ausencias_consecutivas+1` y, al llegar al **umbral 2**, fija
+      `suspendido_hasta = now()+3 días` (§10 #1). Entrega exitosa reinicia el contador.
+- [x] Tests: dos repartidores aceptan a la vez → uno gana (concurrencia real);
+      entrega fuera de rango → 422; parcial recalcula total; carga insuficiente → 422;
+      no_entregado ×2 suspende y bloquea nuevo pedido. `AsignacionEntregaFlowIT` (6).
+
+> **Confirmado (2026-09-05):** `mvn verify` **BUILD SUCCESS** con Docker — unit 10/10 e IT 39/39
+> (`AsignacionEntregaFlowIT` 6/6). Colección `http/asignacion-entrega.http`. **F7 = Hecha.** (§10 #1,#28,#29.)
 
 ### F8 — Rastreo y notificaciones (M) — CU-006, RF-005, RF-006
 
-- [ ] WebSocket STOMP: endpoint `/ws` (token en el CONNECT); el repartidor publica en
-      `/app/pedidos/{id}/ubicacion` (cada ~10 s, CU-017); el backend rebota a
+- [x] WebSocket STOMP: endpoint `/ws` (token en el CONNECT, `StompAuthChannelInterceptor`);
+      el repartidor publica en `/app/pedidos/{id}/ubicacion`; el backend rebota a
       `/topic/pedidos/{id}/ubicacion` para el cliente suscrito y persiste
-      `repartidores.ubicacion_actual` (query nativa, §7-Q5) con *throttle* (máx. 1 escritura
-      cada 5 s por repartidor).
-- [ ] Fallback REST `PUT /repartidores/me/ubicacion` (misma lógica) para redes que bloquean WS.
-- [ ] `ProximidadService` (RF-005): con cada ubicación de un pedido `en_camino`, si
-      `ST_DWithin(direccion, ubicacion, 500)` y aún no se notificó → push FCM al cliente.
-      El flag anti-duplicado es en memoria (`ConcurrentHashMap<pedidoId>`) — suficiente
-      para una instancia; ver §10 si se quisiera persistir.
-- [ ] `PushService` (FCM real con `token_fcm`) + eventos push existentes: pedido asignado,
-      en camino, proximidad, entregado/no entregado, solicitud resuelta (F10).
-- [ ] Tests: unitarios de proximidad (dentro/fuera/duplicado); integración WS con cliente STOMP de prueba.
+      `repartidores.ubicacion_actual` (query nativa §7-Q5) con *throttle* (máx. 1 escritura / 5 s).
+- [x] Fallback REST `PUT /repartidores/me/ubicacion` (misma lógica) para redes que bloquean WS.
+- [x] `ProximidadService` (RF-005): con cada ubicación de un pedido `en_camino`, si
+      `ST_DWithin(direccion, ubicacion, 500)` y aún no se notificó → push al cliente.
+      Flag anti-duplicado en memoria (`ConcurrentHashMap<pedidoId>`, §10 #2).
+- [x] `PushService` interfaz + `DevPushService` (log); eventos cableados: pedido asignado,
+      en camino, proximidad, entregado/no entregado. FCM real pendiente de credenciales (§10 #4);
+      la solicitud resuelta se cablea en F10.
+- [x] Tests: unitarios de proximidad (dentro/fuera/duplicado); integración WS con cliente STOMP real.
+
+> **Confirmado (2026-09-05):** `mvn verify` **BUILD SUCCESS** con Docker — unit 12/12 e IT 41/41
+> (`TrackingFlowIT` 2/2: proximidad por REST + relay WebSocket STOMP real). **F8 = Hecha.**
+> Pendiente solo la impl FCM real (§10 #4) — la interfaz y el evento ya están.
 
 ### F9 — Integración del motor de ruteo A* (S) — CU-011
 
-- [ ] Traer el código del prototipo `../h2togo-routing` al paquete `routing/` del backend
+- [x] Traer el código del prototipo `../h2togo-routing` al paquete `routing/` del backend
       (mismos `Grafo`, `Nodo`, `Arista`, `AEstrella`, `OsmGraphLoader`, patrón Strategy
-      intacto), actualizando a Java 21 / Boot 4.1 (cambios esperados: ninguno de código,
-      solo pom).
-- [ ] Copiar `osm_data/sample_map.json` del prototipo — **ya contiene el export real de la
-      zona (~5.6 MB)**, no hace falta regenerar — y decidir si se conserva el cliente
-      Leaflet de pruebas (`static/index.html`).
-- [ ] Dimensionar memoria: el prototipo corre con heap recortado (`-Xmx384m` en su pom y
-      `.mvn/jvm.config`) y en su carpeta hay `hs_err_pid*.log` de caídas previas de JVM.
-      El backend completo (JPA + WebSocket + grafo en memoria) debe medir y fijar su propio
-      `-Xmx`, documentando el valor elegido y el tiempo de carga del grafo al arranque.
-- [ ] `GET /pedidos/{id}/ruta` (CU-011, solo el repartidor asignado): origen = ubicación
+      intacto), renombrando paquete a `com.h2togo.backend.routing`. Sin cambios de algoritmo.
+- [x] Copiar `osm_data/sample_map.json` (5.4 MB, export real de BJ) a los resources del backend.
+      El cliente Leaflet de pruebas NO se trae (decisión: no aporta al backend).
+- [x] Memoria: `OsmGraphLoader` carga **lazy** (primer `getGrafo()`) + warm-up al arranque
+      (`RoutingWarmup`, desactivable con `h2togo.routing.precargar=false` en pruebas).
+      Grafo real: **27278 nodos, 42239 aristas, ~340 ms de carga**. Los tests usan failsafe
+      `-Xmx1024m`; la app en dev corre holgada con `-Xmx512m` (el grafo ocupa ~50 MB).
+- [x] `GET /pedidos/{id}/ruta` (CU-011, solo el repartidor asignado): origen = ubicación
       actual del repartidor, destino = dirección de entrega; responde la polilínea de
-      coordenadas y distancia total (mismo `RouteResponse` del módulo).
-- [ ] Mantener `POST /api/route` interno/de pruebas (deshabilitado en prod o solo ADMIN).
-- [ ] Tests: los del módulo original portados + endpoint con ownership.
+      coordenadas y distancia total (mismo `RouteResponse` del módulo). 422 si no hay ruta o sin GPS.
+- [x] `POST /api/v1/admin/routing/route` (endpoint de pruebas del motor, solo ADMIN).
+- [x] Tests: `AEstrellaTest` (algoritmo portado, grafo mínimo) + `RutaFlowIT` (endpoint con
+      ownership y ruta real sobre el grafo OSM).
+
+> **Confirmado (2026-09-05):** `mvn verify` **BUILD SUCCESS** con Docker — unit 14/14 e IT 42/42
+> (`AEstrellaTest` 2/2, `RutaFlowIT` 1/1: A* sobre el grafo real de BJ). Colección `http/ruta.http`. **F9 = Hecha.**
 
 ### F10 — Administración (M) — CU-014, CU-015, CU-016, CU-020, CU-021
 
-- [ ] `POST /admin/usuarios` (CU-014): alta manual con rol y, si es repartidor, negocio;
-      marca `telefono_verificado` según flujo del TT.
-- [ ] `POST /admin/usuarios/{id}/baja` (CU-015): baja lógica (`cuenta_activa=false`,
-      motivo, fecha), invalida token, bloquea si tiene pedidos `en_camino` (S1), y si es
-      dueño único exige `idNuevoDueno` (transferencia) o baja del negocio (RN-024).
+- [x] `POST /admin/usuarios` (CU-014): alta manual con rol y, si es repartidor, negocio;
+      queda `telefono_verificado=true` (pre-verificado, §10 #30) → login inmediato.
+- [x] `POST /admin/usuarios/{id}/baja` (CU-015): baja lógica (`cuenta_activa=false`,
+      motivo, fecha), invalida token, bloquea si tiene pedidos `en_camino` (422), y si es
+      dueño de un negocio: con `idNuevoDueno` transfiere, sin él lo desactiva (RN-024, §10 #30).
       Reactivación: `POST /admin/usuarios/{id}/reactivacion`.
-- [ ] `GET /admin/pedidos` (CU-016): filtros combinables fecha/estado/cliente/repartidor/
-      negocio con `Specification`, paginado (RN-016: solo ADMIN).
-- [ ] Solicitudes (RN-019, RN-021): dueño crea `POST /solicitudes` (tipos del enum:
-      vehículos CU-009, foto, nombre, dirección de base, producto nuevo CU-023) y lista
+- [x] `GET /admin/pedidos` (CU-016): filtros combinables fecha/estado/cliente/repartidor/
+      negocio (query nativa dinámica), paginado (RN-016: solo ADMIN).
+- [x] Solicitudes (RN-019, RN-021): dueño crea `POST /solicitudes` (los 7 tipos del enum) y lista
       las suyas; admin `GET /admin/solicitudes?estado=pendiente` y
       `POST /admin/solicitudes/{id}/resolucion` (CU-021): aprobar **aplica el cambio** al
-      negocio/vehículo/producto en la misma transacción; rechazar exige comentario. Push al dueño.
-- [ ] Tests: baja de dueño único sin transferencia → 422; aprobación aplica el cambio real;
-      filtros del historial global.
+      negocio/vehículo/producto en la misma transacción; rechazar exige comentario. **Push al dueño**
+      (cierra el pendiente de F8).
+- [x] Tests: baja con/sin transferencia; alta+login; historial con filtro; aprobación aplica el
+      cambio real (nombre negocio); rechazo exige comentario; no-dueño → 403. `AdministracionFlowIT` (7).
+
+> **Confirmado (2026-09-05):** `mvn verify` **BUILD SUCCESS** con Docker — unit 14/14 e IT 49/49
+> (`AdministracionFlowIT` 7/7). Colecciones `http/admin.http`, `http/solicitudes.http`. **F10 = Hecha.** (§10 #30.)
 
 ### F11 — Tareas programadas (S) — RF-025 y mantenimiento
 
-- [ ] `PedidosProgramadosJob` (`@Scheduled` cada minuto): activa `pendiente_programado`
+- [x] `PedidosProgramadosJob` (`@Scheduled` cada minuto): activa `pendiente_programado`
       cuya `fecha_programada` llegó → `pendiente` + `notificado_programado=true` (evita
       doble proceso) con `FOR UPDATE SKIP LOCKED`; notifica a repartidores compatibles (push).
-- [ ] `SesionesExpiradasJob` (diario): limpia tokens vencidos (RNF-004).
-- [ ] `LotesPorCaducarJob` (diario): marca lotes vencidos `activo=false` (movimiento
+- [x] `SesionesExpiradasJob` (diario): limpia tokens vencidos (RNF-004).
+- [x] `LotesPorCaducarJob` (diario): marca lotes vencidos `activo=false` (movimiento
       `salida_manual` por merma) y avisa al dueño de lotes a ≤7 días.
-- [ ] Tests con reloj inyectable (`Clock`): activación exacta, no doble notificación.
+- [x] Tests con reloj inyectable (`Clock`): activación exacta, no doble notificación.
 
 ### F12 — Pruebas transversales y endurecimiento (M)
 
-- [ ] Colección `.http`/Postman por CU completo (evidencia para el TT).
-- [ ] Suite de integración E2E del flujo feliz: registro→login→dirección→pedido→aceptar→
-      en camino→ruta→entrega, y del flujo abierto con programado.
-- [ ] Datos semilla de demo (`data-demo.sql`) coherentes con `pruebas_v6.sql`.
-- [ ] Revisión RNF-007: pool Hikari dimensionado, prueba de 100 transacciones concurrentes
-      (script JMeter o Gatling sencillo) documentada.
-- [ ] Revisión de seguridad: ningún endpoint sin rol, ningún id de usuario aceptado del
-      cliente, mensajes de error sin filtración de datos (RN-016).
-- [ ] Swagger revisado y exportado (OpenAPI JSON al repo como evidencia).
+- [x] Colección `.http`/Postman por CU completo (evidencia para el TT) — 10 archivos en `http/`.
+- [x] Suite de integración E2E del flujo feliz: registro→login→dirección→pedido→aceptar→
+      en camino→ruta→entrega, y del flujo abierto con programado (`e2e/E2EFlujoFelizIT`).
+- [x] Datos semilla de demo (`data-demo.sql`) coherentes con `pruebas_v6.sql` (validados en PostGIS).
+- [ ] ~~Revisión RNF-007: pool Hikari dimensionado, prueba de 100 transacciones concurrentes~~
+      **Diferido (Rubén, 2026-09-05):** la prueba de carga de 100 concurrentes se hará después.
+- [x] Revisión de seguridad: ningún endpoint sin rol (401 sin token, 403 rol equivocado),
+      ningún id de usuario aceptado del cliente (siempre del token, RN-016), errores sin
+      filtración (`e2e/SeguridadIT`). Se endureció `NoResourceFoundException → 404`.
+- [x] Swagger revisado y exportado (`docs/openapi.json`, generado por `e2e/OpenApiExportIT`).
+
+### F13 — Consola web de pruebas para el admin (M) — apoyo al TT
+
+Página web estática (servida por el propio backend en `/console/`, sin build aparte) que
+consume la API REST + WebSocket para **demostrar y probar el sistema end-to-end** sin la app
+Android: login, alta de pedidos (directa/abierta/programada), aceptación/entrega por el
+repartidor, seguimiento en vivo y **visualización del motor de ruteo A\* sobre un mapa** (Leaflet).
+
+- [x] `static/console/index.html` + JS vanilla (sin framework): login que guarda el token,
+      registro rápido, y paneles por flujo. Servida en `/`, `/console` y `/console/`.
+- [x] Panel **Ruteo**: formulario origen/destino (o clic en el mapa) → `POST /admin/routing/route`
+      → dibuja la polilínea y muestra la distancia. Mapa Leaflet centrado en Benito Juárez.
+      **Validado en vivo** (ruta de 0.653 km, 11 vértices, sobre el grafo real).
+- [x] Panel **Cliente**: crear dirección, negocios cercanos, crear pedido (directo/abierto/
+      programado), listar, ver detalle+historial, cancelar.
+- [x] Panel **Repartidor**: precio, horario, lote, jornada, carga; disponibles, aceptar, en
+      camino, enviar ubicación, ver ruta del pedido en el mapa, registrar resultado.
+- [x] Panel **Tracking**: STOMP a `/topic/pedidos/{id}/ubicacion` (publicar/suscribir en vivo).
+- [x] Whitelist de seguridad para `/`, `/console/**` (la página es pública; las llamadas a
+      la API siguen exigiendo token/rol). `WebMvcConfig` resuelve el directorio a `index.html`.
+- [x] Documentado en `PRUEBAS.md` (cómo levantar todo en Docker, correr las pruebas y el guion de demo).
 
 ---
 
@@ -684,7 +725,10 @@ BajaRequest            { motivo, idNuevoDueno? }               // transferencia 
 
 | # | Tema | Estado |
 |---|---|---|
-| 1 | **Umbral y duración de la suspensión RN-006** (n ausencias → días de suspensión): tomar los valores exactos de la ficha del TT antes de F7 | Abierto |
+| 1 | **Umbral y duración de la suspensión RN-006.** El TT fija el umbral (**2 ausencias consecutivas**, RN-006/CU-012) pero NO la duración. **Decidido (Rubén, 2026-09-05): 3 días naturales** (`suspendido_hasta = now() + 3 días`). Una entrega exitosa reinicia el contador; al suspender, el contador se reinicia a 0. Configurable en `h2togo.pedidos.*` | Decidido |
+| 28 | **Apartado desde el vehículo al aceptar (F7, reconciliación RN-022/RN-008).** RN-022 dice "apartar primero del vehículo y si falta, de la base", pero un apartado sobre la base es incompatible con el FIFO de carga (CU-019), que solo mueve stock disponible (no apartado). **Decidido:** al aceptar (CU-010) se aparta SOLO del vehículo; si el vehículo no alcanza, el aceptar se rechaza con `CARGA_INSUFICIENTE` pidiendo cargar más desde la base — exactamente lo que indica RN-008 ("debe cargar más antes de salir"). La entrega consume del vehículo | Decidido |
+| 30 | **Decisiones de administración (F10).** (a) **Alta por admin** (CU-014): el usuario queda `telefono_verificado=true` (pre-verificado; la ficha permite login inmediato, sin OTP). (b) **Baja** (CU-015): si el repartidor tiene pedidos `en_camino` → 422 (el "forzar/reasignar" de S1 se difiere; se puede añadir después). Si es dueño de un negocio: con `idNuevoDueno` (repartidor activo del mismo negocio) se transfiere `id_dueno`; sin él, el negocio queda `activo=false` (RN-024). La baja anula el token de sesión. (c) **Solicitudes** (CU-020/021): `valor_nuevo` viaja como JSON; al aprobar se aplica el cambio del tipo correspondiente (los 7 del enum) en la misma transacción (RN-019); rechazar exige comentario. Al resolver se notifica al dueño (push "solicitud resuelta", cierra el pendiente de F8) | Decidido |
+| 29 | **Entrega consume del vehículo; libera lo no entregado (F7).** Al `entregado`, por cada línea se consume `cantidad_entregada` del vehículo (movimiento `salida_pedido`) y se liberan los apartados de lo no entregado (RN-023, RN-032 parciales); las líneas agregadas en sitio (RN-032) consumen del vehículo con snapshot del precio de envase vigente. Total definitivo RN-033. Al `no_entregado`: libera todos los apartados (garrafones vuelven al vehículo), total 0, ausencia +1 (suspende al llegar al umbral, RN-006) | Decidido |
 | 2 | **Flag de proximidad 500 m**: en memoria (decisión actual, válido con una sola instancia). Si se quisiera sobrevivir reinicios: columna `pedidos.notificado_proximidad` en una v6.1 | Decidido (memoria) |
 | 3 | **Proveedor SMS real** para el OTP (RN-002): la interfaz lo aísla; en demo puede mostrarse el código en logs/pantalla del admin | Abierto |
 | 4 | **Credenciales FCM** (proyecto Firebase del equipo) necesarias desde F8 | Abierto |
@@ -704,6 +748,13 @@ BajaRequest            { motivo, idNuevoDueno? }               // transferencia 
 | 18 | **Cobertura: clasificar al guardar, bloquear al pedir (F3, RN-001).** RN-001 restringe direcciones/entregas a la Alcaldía Benito Juárez. Interpretación (coherente con la ficha CU-004 S1 y con la propia aceptación de F3 "clasifica correctamente"): al guardar una dirección NO se rechaza; el trigger `trg_direcciones_zona` calcula `en_zona_cobertura` y la respuesta lo informa. El bloqueo efectivo ocurre al crear el pedido (F6, CU-004 S1). El esquema v6 no cambia | Decidido (clasificar) |
 | 19 | **`referencias` obligatorio (F3, RN-003).** RN-003 (y CU-004: "coordenadas y referencias") exige que la dirección tenga descripción para facilitar la entrega. El plan (§8) lo tenía opcional; **gana la ficha:** `referencias` se valida como requerido en `DireccionRequest`. La columna sigue siendo `TEXT` nullable en v6 (no se toca el esquema; la obligatoriedad la impone el backend) | Decidido (requerido) |
 | 20 | **Polígono de Benito Juárez (F3, resuelto).** Se cargó el contorno **real** de OSM: relación R5605589 (boundary=administrative, admin_level 8), obtenida por Nominatim `/lookup?polygon_geojson=1` (© OpenStreetMap, ODbL). `sql/zona_benito_juarez.sql` lo inserta con `ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(...),4326))::geography` (idempotente por `ON CONFLICT`). Validado por `DireccionesFlowIT`. Para actualizarlo: repetir la consulta a Nominatim y regenerar el archivo | Cerrado |
+| 27 | **Precio estimado en modalidad abierta (F6).** Al crear un pedido abierto no se conoce el negocio, así que no hay precios reales que capturar. **Decidido:** `detalles.precio_unitario = precio_maximo_garrafon` (estimado), `precio_envase_unitario = 0` como placeholder cuando la línea no trae envase (el CHECK de v6 exige NOT NULL), y `total_pagar` estimado = garrafones × precio_max. El precio/total DEFINITIVO se fija al aceptar/cerrar (F7, RN-025/RN-033). En modalidad directa sí se capturan los precios reales del negocio al crear (RN-025) | Decidido |
+| 33 | **Consola web de pruebas servida por el backend (F13).** Página estática (`static/console/index.html`, JS vanilla + Leaflet + STOMP por CDN) que consume la API para demostrar el sistema end-to-end sin la app Android: login, alta de pedidos, atención del repartidor, tracking en vivo y **visualización del motor de ruteo A\* en un mapa**. Se sirve en `/`, `/console` y `/console/` — un `WebMvcConfig` reenvía esas rutas a `index.html` porque el manejador de estáticos no resuelve un directorio a su índice. La página es pública (whitelist), pero cada llamada a la API sigue exigiendo token/rol. Validada en vivo contra el backend real (login admin + ruta de 0.653 km dibujada). No toca el esquema v6 | Decidido |
+| 32 | **Endurecimiento F12 y export de OpenAPI.** (a) `NoResourceFoundException → 404` limpio en `GlobalExceptionHandler` (antes lo tomaba el handler genérico como 500). (b) La revisión de seguridad se fija como prueba viva (`SeguridadIT`): 401 sin token, 403 con rol equivocado, y errores con `codigo`/`mensaje` sin trazas ni clases Java (RN-016); los DTOs no aceptan id de usuario del cliente (siempre de `SecurityUtils`). (c) `OpenApiExportIT` escribe `docs/openapi.json` en cada `mvn verify` con Docker (evidencia versionada). (d) **Diferido (Rubén, 2026-09-05):** la prueba de carga de 100 transacciones concurrentes (RNF-007) se hará después | Decidido |
+| 31 | **Reloj inyectable y jobs conmutables (F11, RF-025).** Los tres jobs (`PedidosProgramadosJob`, `SesionesExpiradasJob`, `LotesPorCaducarJob`) reciben un `Clock` (`ClockConfig` → `Clock.systemDefaultZone()`) en vez de llamar a `now()` estático, para que los tests sean deterministas. `@EnableScheduling` vive en `SchedulingConfig` con `@ConditionalOnProperty(h2togo.scheduling.enabled, matchIfMissing=true)`; el perfil `test` lo pone en `false`, así los jobs NO se autodisparan y `SchedulingFlowIT` los invoca a mano tras sembrar datos (adelanta `fecha_programada`/`sesion_fecha_expiracion`/`fecha_caducidad` por query nativa, ya que las validaciones de alta impiden crear registros «vencidos» directamente). La activación de programados usa `FOR UPDATE SKIP LOCKED` (Q7) y `notificado_programado` evita doble proceso; la merma de caducados inserta `salida_manual`. No se tocó el esquema v6 | Decidido |
+| 26 | **Cancelación solo en Pendiente (F6).** La ficha CU-005 dice explícitamente "solo se puede cancelar en estado Pendiente; una vez Asignado la opción se oculta", contradiciendo la tabla RN-005 ("Pendiente o Asignado") y al plan F6 ("pendiente\|programado\|asignado"). **Gana la ficha CU-005:** cancelable en `pendiente` y `pendiente_programado` (variantes no asignadas); en `asignado`/`en_camino` → 422. Coherente con que el apartado (y por tanto la liberación, RN-023) vive en F7 | Decidido (revisar si prefieren permitir cancelar asignado) |
+| 25 | **Apartado al ACEPTAR, no al crear (F6).** RN-022 ("Al aceptar un pedido, el sistema aparta…") y las postcondiciones de CU-004 (no mencionan apartado) mueven TODO el apartado de inventario y la validación de stock (RF-012/RN-008) a **F7** (aceptación). El plan F6 preveía apartar al crear el pedido directo; **gana la ficha.** La creación en F6 solo valida cobertura, horario, precio (abierta) y suspensión, y captura snapshot de precios (directa) | Decidido |
+| 24 | **FIFO y movimientos de carga (F5).** (a) **RN-030 por operación:** el umbral "caducidad > hoy+7d" aplica al REGISTRAR lote (CU-018) y al ENTREGAR (F7); la CARGA al vehículo (CU-019) usa lotes **vigentes = no vencidos** (`fecha_caducidad >= hoy`), como dice la precondición de la ficha. (b) **Orden FIFO determinista:** `ORDER BY fecha_caducidad, id_lote` (a igual caducidad gana el lote más antiguo). (c) **Movimiento traspaso/devolución = UNA fila** con `id_lote_base` + `id_inventario_vehiculo` (lo exige el CHECK de v6), reconciliando el "par de movimientos enlazados" que menciona el TT — decisión ya prevista en el plan. (d) Concurrencia por `SELECT … FOR UPDATE` sobre los lotes (RF-022/RNF-014) | Decidido |
 | 23 | **JPA write + lectura nativa: flush explícito (F4, patrón).** Una escritura con `save()` (JPA) NO es visible para una query NATIVA (JdbcTemplate) en la misma transacción hasta sincronizar a la BD (Hibernate auto-flushea antes de queries JPQL, no antes de JDBC crudo). Lo destapó `actualizarPrecio` (devolvía el precio viejo). **Regla:** cuando un servicio escribe por JPA y luego lee por query nativa en la misma transacción, usar `saveAndFlush(...)` (o `EntityManager.flush()`) antes de la lectura nativa | Cerrado |
 | 22 | **Horario = edición directa, no solicitud (F4).** La tabla de RF pone RF-031 (definir horario) bajo CU-020 (solicitar cambio), pero **RN-019** —la lista autoritativa de cambios que requieren aprobación del admin— **no incluye el horario** (sí foto, vehículos, nombre, dirección base, producto nuevo). El plan F4 lo trata como edición directa del dueño (`PUT /negocios/me/horarios`, inmediato). **Decidido:** horario se edita directo (dueño), sin pasar por solicitudes. El indicador abierto/cerrado (RN-004) se calcula en zona horaria `America/Mexico_City` | Decidido (revisar si el TT insiste en aprobación) |
 | 21 | **Bug de deserialización de booleanos primitivos (corregido en F3).** Boot 4 activa `FAIL_ON_NULL_FOR_PRIMITIVES`: un `boolean` primitivo en un DTO (record) truena con **500** si el cliente OMITE el campo. Lo destapó `DireccionesFlowIT` al mandar login sin `forzar`. **Corregido:** `LoginRequest.forzar` pasó a `Boolean` opcional (default false vía `forzarSesion()`), y se añadió handler `HttpMessageNotReadableException → 400`. Guía para el resto de fases: los campos booleanos opcionales de DTOs van como `Boolean`, no `boolean` | Cerrado |

@@ -151,7 +151,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <argLine>-Xmx768m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=128m</argLine>
+                    <!-- Heap holgado: el IT de ruta (F9) carga el grafo OSM (~5.4 MB) en memoria. -->
+                    <argLine>-Xmx1024m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=128m</argLine>
                 </configuration>
                 <executions>
                     <execution>

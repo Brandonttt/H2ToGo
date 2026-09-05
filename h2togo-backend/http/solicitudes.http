@@ -1,0 +1,52 @@
+### Colección de evidencia — F10 Solicitudes de cambio (CU-020/021)
+### @tokenDueno = repartidor DUEÑO del negocio; @tokenAdmin = administrador.
+
+@host = http://localhost:8080
+@tokenDueno = PEGAR_TOKEN_DUENO
+@tokenAdmin = PEGAR_TOKEN_ADMIN
+@idSolicitud = 1
+
+### CU-020 — Cambiar nombre comercial (requiere aprobación).
+POST {{host}}/api/v1/solicitudes
+Authorization: Bearer {{tokenDueno}}
+Content-Type: application/json
+
+{ "codigoCambio": "NOMBRE_NEGOCIO", "valorNuevo": { "nombreComercial": "Agua Cristalina S.A." } }
+
+### CU-020 — Agregar producto al catálogo (requiere aprobación).
+POST {{host}}/api/v1/solicitudes
+Authorization: Bearer {{tokenDueno}}
+Content-Type: application/json
+
+{ "codigoCambio": "AGREGAR_PRODUCTO",
+  "valorNuevo": { "idMarca": 1, "precio": 28.00, "precioEnvase": 35.00, "capacidadMaxima": 500 } }
+
+### CU-020 — Agregar vehículo (requiere aprobación).
+POST {{host}}/api/v1/solicitudes
+Authorization: Bearer {{tokenDueno}}
+Content-Type: application/json
+
+{ "codigoCambio": "AGREGAR_VEHICULO",
+  "valorNuevo": { "tipoVehiculo": "automovil", "marca": "Nissan", "color": "Blanco", "capacidadGarrafones": 80 } }
+
+### CU-020 — Mis solicitudes.
+GET {{host}}/api/v1/solicitudes
+Authorization: Bearer {{tokenDueno}}
+
+### CU-021 — Admin lista pendientes.
+GET {{host}}/api/v1/admin/solicitudes?estado=pendiente
+Authorization: Bearer {{tokenAdmin}}
+
+### CU-021 — Aprobar (aplica el cambio en la misma transacción).
+POST {{host}}/api/v1/admin/solicitudes/{{idSolicitud}}/resolucion
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{ "decision": "APROBADO" }
+
+### CU-021 — Rechazar (comentario obligatorio).
+POST {{host}}/api/v1/admin/solicitudes/{{idSolicitud}}/resolucion
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{ "decision": "RECHAZADO", "comentario": "El nombre no cumple las políticas." }

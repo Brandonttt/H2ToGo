@@ -1,0 +1,9 @@
+# Lo que NO debe entrar al contexto de build (más rápido y ligero).
+target/
+*.log
+hs_err_pid*.log
+replay_pid*.log
+.idea/
+.vscode/
+*.iml
+.git/

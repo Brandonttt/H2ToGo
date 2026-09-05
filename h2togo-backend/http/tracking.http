@@ -1,0 +1,18 @@
+### Colección de evidencia — F8 Rastreo (CU-006)
+### Fallback REST de ubicación. El canal en vivo es WebSocket STOMP (ver más abajo).
+
+@host = http://localhost:8080
+@tokenRepartidor = PEGAR_TOKEN_REPARTIDOR
+
+### Reportar ubicación del repartidor (persiste y evalúa proximidad a 500 m → push al cliente).
+PUT {{host}}/api/v1/repartidores/me/ubicacion
+Authorization: Bearer {{tokenRepartidor}}
+Content-Type: application/json
+
+{ "lat": 19.372, "lon": -99.178 }
+
+### --- Canal WebSocket STOMP (no es HTTP; referencia) ---
+### Handshake:   ws://{{host}}/ws
+### CONNECT:     cabecera nativa  token: <token de sesión>
+### Publicar:    SEND  /app/pedidos/{idPedido}/ubicacion   body { "lat":..., "lon":... }   (repartidor, cada ~10 s)
+### Suscribir:   SUB   /topic/pedidos/{idPedido}/ubicacion  → { lat, lon, timestamp }        (cliente)

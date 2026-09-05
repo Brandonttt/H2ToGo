@@ -45,11 +45,19 @@ public class SecurityConfig {
                                 "/ws/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/v3/api-docs/**")
+                                "/v3/api-docs/**",
+                                // Consola de pruebas (F13): la página estática es pública;
+                                // las llamadas a la API que hace siguen exigiendo token/rol.
+                                "/",
+                                "/console",
+                                "/console/**")
                         .permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/clientes/**").hasRole("CLIENTE")
                         .requestMatchers("/api/v1/negocios/me/**").hasRole("REPARTIDOR")
+                        .requestMatchers("/api/v1/inventario/**").hasRole("REPARTIDOR")
+                        .requestMatchers("/api/v1/repartidores/**").hasRole("REPARTIDOR")
+                        .requestMatchers("/api/v1/solicitudes/**").hasRole("REPARTIDOR")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint)
