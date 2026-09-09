@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 14 Home Repartidor</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  .content{flex:1;overflow:auto;}
+
+  /* Hero */
+  .hero{
+    background:linear-gradient(180deg,var(--primary-dark) 0%,var(--primary) 100%);
+    color:#fff;padding:18px 20px 22px;
+  }
+  .hero-row{display:flex;align-items:center;gap:10px;}
+  .avatar{
+    width:48px;height:48px;border-radius:50%;
+    background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:18px;color:#fff;flex:0 0 auto;
+  }
+  .hero-info{flex:1;min-width:0;}
+  .hero-info .hi{font-size:20px;font-weight:700;margin:0;}
+  .hero-info .sub{
+    display:flex;align-items:center;gap:4px;
+    color:var(--primary-soft);font-size:13px;font-weight:500;margin-top:1px;
+  }
+  .hero-info .sub .material-icons{font-size:14px;}
+  .hero-info .date{
+    color:rgba(202,240,248,.85);font-size:12px;margin-top:1px;
+  }
+  .role-pill{
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(255,255,255,.18);color:#fff;
+    padding:6px 10px;border-radius:99px;
+    font-size:11px;font-weight:600;
+  }
+  .role-pill .material-icons{font-size:14px;}
+  .icon-btn-circle{
+    width:40px;height:40px;border-radius:50%;border:0;background:transparent;
+    color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+
+  /* Status card en hero */
+  .online-card{
+    background:#fff;border-radius:16px;margin-top:20px;padding:16px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--s-entregado);flex:0 0 auto;}
+  .online-info{flex:1;min-width:0;}
+  .online-info .t{font-size:15px;font-weight:600;color:var(--text);}
+  .online-info .s{font-size:12px;color:var(--text-2);margin-top:1px;}
+  .switch{
+    position:relative;width:48px;height:28px;border-radius:99px;
+    background:var(--primary);flex:0 0 auto;cursor:pointer;
+  }
+  .switch::after{
+    content:'';position:absolute;top:3px;right:3px;
+    width:22px;height:22px;border-radius:50%;background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.2);
+  }
+
+  /* Section title */
+  .section-title{
+    font-size:16px;font-weight:500;color:var(--text);
+    padding:0 20px;margin:20px 0 8px;
+  }
+  .section-sub{
+    font-size:12px;color:var(--text-2);
+    padding:0 20px;margin:2px 0 4px;
+  }
+
+  /* Stat cards */
+  .stat-row{
+    display:flex;gap:12px;padding:0 20px;margin-bottom:12px;
+  }
+  .stat-card{
+    flex:1;background:#fff;border-radius:16px;padding:14px;
+    height:110px;display:flex;flex-direction:column;justify-content:space-between;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .stat-card.empty{background:transparent;box-shadow:none;}
+  .stat-head{display:flex;align-items:center;gap:8px;}
+  .stat-icon{
+    width:28px;height:28px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .stat-icon .material-icons{font-size:16px;}
+  .stat-label{font-size:12px;color:var(--text-2);}
+  .stat-value{display:flex;align-items:flex-end;gap:4px;}
+  .stat-big{font-size:22px;font-weight:700;color:var(--text);line-height:1;}
+  .stat-small{font-size:12px;color:var(--text-2);padding-bottom:3px;}
+
+  .ic-emerald{background:rgba(16,185,129,.14);color:var(--s-entregado);}
+  .ic-primary{background:rgba(0,119,182,.14);color:var(--primary);}
+  .ic-purple {background:rgba(139,92,246,.14);color:var(--accent-purple);}
+  .ic-amber  {background:rgba(245,158,11,.14);color:var(--s-asignado);}
+  .ic-dark   {background:rgba(3,4,94,.14);color:var(--primary-dark);}
+
+  /* Próxima entrega card */
+  .next-card{
+    background:#fff;border-radius:16px;margin:0 20px;padding:16px;
+    box-shadow:0 4px 14px rgba(15,23,42,.10);
+  }
+  .next-head{display:flex;align-items:center;gap:12px;}
+  .avatar-soft{
+    width:44px;height:44px;border-radius:50%;
+    background:var(--primary-soft);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .avatar-soft .material-icons{font-size:24px;}
+  .next-info{flex:1;min-width:0;}
+  .next-info .t{font-size:15px;font-weight:600;color:var(--text);}
+  .next-info .s{font-size:13px;color:var(--text-2);margin-top:1px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;
+    border-radius:99px;font-size:11px;font-weight:600;}
+  .chip-asignado{background:rgba(245,158,11,.15);color:var(--s-asignado);}
+  .chip::before{content:'';width:6px;height:6px;border-radius:99px;background:currentColor;}
+  .next-line{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:4px;}
+  .next-line .material-icons{font-size:16px;}
+  .next-line.amber{color:var(--text);font-weight:600;margin-top:12px;}
+  .next-line.amber .material-icons{color:var(--s-asignado);}
+  .next-line.muted{color:var(--text-2);}
+  .next-line.muted .material-icons{color:var(--text-2);}
+  .next-line.green{color:var(--s-entregado);font-weight:600;}
+  .next-line.green .material-icons{color:var(--s-entregado);}
+  .btn-primary{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    width:100%;height:48px;border-radius:24px;border:0;cursor:pointer;
+    background:var(--primary);color:#fff;font:600 14px 'Roboto',sans-serif;
+    margin-top:14px;box-shadow:0 6px 16px rgba(0,119,182,.3);
+  }
+  .btn-primary .material-icons{font-size:18px;}
+
+  /* Cola items */
+  .cola-card{
+    background:#fff;border-radius:14px;margin:4px 20px;padding:12px;
+    display:flex;align-items:center;gap:8px;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .cola-info{flex:1;min-width:0;}
+  .cola-head{display:flex;align-items:center;gap:8px;}
+  .cola-id{font-size:13px;font-weight:600;color:var(--text);}
+  .cola-line{font-size:12px;color:var(--text-2);margin-top:1px;}
+  .cola-monto{font-size:16px;font-weight:700;color:var(--primary-dark);}
+
+  .spacer-bottom{height:20px;}
+
+  /* BottomBar */
+  .bottombar{
+    background:#fff;border-top:1px solid var(--outline);
+    display:flex;height:72px;padding:6px 0 10px;flex:0 0 auto;
+  }
+  .tab{
+    flex:1;border:0;background:transparent;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;cursor:pointer;
+    color:var(--text-3);font:500 11px 'Roboto',sans-serif;
+  }
+  .tab .material-icons{font-size:22px;padding:4px 16px;border-radius:99px;}
+  .tab.active{color:var(--primary);}
+  .tab.active .material-icons{background:var(--primary-soft);}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <div class="content">
+        <div class="hero">
+          <div class="hero-row">
+            <div class="avatar">C</div>
+            <div class="hero-info">
+              <div class="hi">Hola, Carlos</div>
+              <div class="sub">
+                <span class="material-icons">storefront</span>
+                <span>Purificadora Aqua Pura</span>
+              </div>
+              <div class="date">Lunes 26 de abril</div>
+            </div>
+            <div class="role-pill">
+              <span class="material-icons">swap_horiz</span>
+              <span>Rol</span>
+            </div>
+            <button class="icon-btn-circle" aria-label="Notificaciones">
+              <span class="material-icons">notifications</span>
+            </button>
+          </div>
+
+          <div class="online-card">
+            <span class="dot"></span>
+            <div class="online-info">
+              <div class="t">En línea</div>
+              <div class="s">Recibiendo pedidos</div>
+            </div>
+            <div class="switch" aria-label="Toggle online"></div>
+          </div>
+        </div>
+
+        <div class="section-title">Tu jornada de hoy</div>
+
+        <div class="stat-row">
+          <div class="stat-card">
+            <div class="stat-head">
+              <div class="stat-icon ic-emerald"><span class="material-icons">check_circle</span></div>
+              <div class="stat-label">Entregas</div>
+            </div>
+            <div class="stat-value">
+              <span class="stat-big">8</span>
+              <span class="stat-small">/ 14</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-head">
+              <div class="stat-icon ic-primary"><span class="material-icons">directions_car</span></div>
+              <div class="stat-label">En tu vehículo</div>
+            </div>
+            <div class="stat-value">
+              <span class="stat-big">22</span>
+              <span class="stat-small">garrafones</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-card">
+            <div class="stat-head">
+              <div class="stat-icon ic-purple"><span class="material-icons">warehouse</span></div>
+              <div class="stat-label">En base</div>
+            </div>
+            <div class="stat-value">
+              <span class="stat-big">38</span>
+              <span class="stat-small">garrafones</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-head">
+              <div class="stat-icon ic-amber"><span class="material-icons">payments</span></div>
+              <div class="stat-label">Ingresos</div>
+            </div>
+            <div class="stat-value">
+              <span class="stat-big">$1,260</span>
+              <span class="stat-small">MXN</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-card">
+            <div class="stat-head">
+              <div class="stat-icon ic-dark"><span class="material-icons">schedule</span></div>
+              <div class="stat-label">En ruta</div>
+            </div>
+            <div class="stat-value">
+              <span class="stat-big">4h 12m</span>
+              <span class="stat-small">trabajadas</span>
+            </div>
+          </div>
+          <div class="stat-card empty"></div>
+        </div>
+
+        <div class="section-title">Próxima entrega</div>
+        <div class="next-card">
+          <div class="next-head">
+            <div class="avatar-soft"><span class="material-icons">water_drop</span></div>
+            <div class="next-info">
+              <div class="t">Pedido #HG-1287</div>
+              <div class="s">Gael M. · 3 garrafones</div>
+            </div>
+            <span class="chip chip-asignado">Asignado</span>
+          </div>
+          <div class="next-line amber">
+            <span class="material-icons">schedule</span>
+            <span>Agendado 11:30 am · en ~45 min</span>
+          </div>
+          <div class="next-line muted">
+            <span class="material-icons">map</span>
+            <span>Av. Insurgentes Sur 1234, Del Valle</span>
+          </div>
+          <div class="next-line green">
+            <span class="material-icons">attach_money</span>
+            <span>Cobrarás $120 MXN en este pedido</span>
+          </div>
+          <button class="btn-primary">
+            <span class="material-icons">play_arrow</span>
+            <span>Iniciar ruta</span>
+          </button>
+        </div>
+
+        <div class="section-title">Pedidos apartados aceptados (3)</div>
+        <div class="section-sub">Pedidos programados que ya te apartaste</div>
+
+        <div class="cola-card">
+          <div class="cola-info">
+            <div class="cola-head">
+              <span class="cola-id">#HG-1290</span>
+              <span class="chip chip-asignado">Asignado</span>
+            </div>
+            <div class="cola-line">María L. · Col. Nápoles</div>
+            <div class="cola-line">5 garrafones</div>
+          </div>
+          <div class="cola-monto">$200</div>
+        </div>
+
+        <div class="cola-card">
+          <div class="cola-info">
+            <div class="cola-head">
+              <span class="cola-id">#HG-1292</span>
+              <span class="chip chip-asignado">Asignado</span>
+            </div>
+            <div class="cola-line">Roberto V. · Col. Narvarte</div>
+            <div class="cola-line">2 garrafones</div>
+          </div>
+          <div class="cola-monto">$80</div>
+        </div>
+
+        <div class="cola-card">
+          <div class="cola-info">
+            <div class="cola-head">
+              <span class="cola-id">#HG-1295</span>
+              <span class="chip chip-asignado">Asignado</span>
+            </div>
+            <div class="cola-line">Lucía F. · Col. Del Valle</div>
+            <div class="cola-line">4 garrafones</div>
+          </div>
+          <div class="cola-monto">$160</div>
+        </div>
+
+        <div class="spacer-bottom"></div>
+      </div>
+
+      <div class="bottombar">
+        <button class="tab active"><span class="material-icons">storefront</span><span>Inicio</span></button>
+        <button class="tab"><span class="material-icons">inventory_2</span><span>Mi negocio</span></button>
+        <button class="tab"><span class="material-icons">payments</span><span>Ingresos</span></button>
+        <button class="tab"><span class="material-icons">person</span><span>Perfil</span></button>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

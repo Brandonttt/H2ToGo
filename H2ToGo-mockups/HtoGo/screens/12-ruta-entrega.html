@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 12 Ruta de entrega</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --success:#10B981; --warning:#F59E0B; --danger:#EF4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;gap:32px;flex-wrap:wrap;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;background:#0f172a;z-index:10;}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;}
+
+  /* Map */
+  .map{position:absolute;inset:32px 0 0;background:#dde7ee;}
+  .map-svg{position:absolute;inset:0;width:100%;height:100%;}
+
+  /* Floating top */
+  .top-float{
+    position:absolute;top:44px;left:12px;right:12px;z-index:5;
+    display:flex;align-items:center;gap:8px;
+  }
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;background:#fff;border:0;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);color:var(--text);
+  }
+  .step-pill{
+    flex:1;background:#fff;border-radius:99px;padding:8px 14px;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;gap:8px;
+  }
+  .step-pill .step-num{
+    width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
+  }
+  .step-pill .step-text{font-size:12px;color:var(--text);}
+  .step-pill .step-text b{font-weight:700;}
+
+  /* Map pins */
+  .pin{position:absolute;transform:translate(-50%,-100%);}
+  .pin-me{
+    width:36px;height:36px;border-radius:50%;background:var(--primary);
+    border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.3);
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    transform:translate(-50%,-50%);
+  }
+  .pin-me::before{
+    content:"";position:absolute;inset:-8px;border:2px solid var(--primary);
+    border-radius:50%;animation:pulse 2s infinite;
+  }
+  @keyframes pulse{0%{opacity:.7;transform:scale(1);}100%{opacity:0;transform:scale(1.6);}}
+  .pin-dest{
+    width:34px;height:46px;background:transparent;
+    transform:translate(-50%,-100%);
+  }
+  .pin-dest .body{
+    width:34px;height:34px;border-radius:50%;background:var(--success);
+    border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.25);
+    display:flex;align-items:center;justify-content:center;color:#fff;
+  }
+  .pin-dest::after{
+    content:"";position:absolute;left:50%;bottom:0;width:4px;height:14px;
+    background:var(--success);transform:translate(-50%,0);
+  }
+
+  /* Map controls */
+  .map-controls{
+    position:absolute;right:12px;top:120px;z-index:5;display:flex;flex-direction:column;gap:6px;
+  }
+  .map-ctrl{
+    width:40px;height:40px;border-radius:12px;background:#fff;border:0;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);color:var(--text);
+  }
+
+  /* Bottom sheet */
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;background:#fff;
+    border-radius:24px 24px 0 0;box-shadow:0 -4px 20px rgba(15,23,42,.15);
+    z-index:6;max-height:62%;overflow-y:auto;
+  }
+  .sheet::-webkit-scrollbar{display:none}
+  .sheet-handle{width:40px;height:4px;border-radius:2px;background:var(--outline);margin:8px auto 0;}
+  .sheet-pad{padding:14px 18px 18px;}
+
+  .order-head{display:flex;align-items:center;gap:12px;}
+  .order-id{font-size:12px;color:var(--text-2);}
+  .order-title{font-size:17px;font-weight:600;margin-top:1px;}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;padding:5px 10px;
+    border-radius:99px;font-size:11px;font-weight:600;background:rgba(0,119,182,.12);color:var(--primary);
+  }
+  .chip .dot{width:6px;height:6px;border-radius:3px;background:var(--primary);
+    animation:blink 1.4s infinite;}
+  @keyframes blink{50%{opacity:.3;}}
+
+  .km-banner{
+    background:linear-gradient(135deg,var(--primary-soft),#e0f4f9);
+    border-radius:14px;padding:12px 14px;margin-top:12px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .km-banner .ico{
+    width:42px;height:42px;border-radius:12px;background:#fff;color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .km-banner .info{flex:1;}
+  .km-banner .km{font-size:18px;font-weight:700;color:var(--primary-dark);}
+  .km-banner .lbl{font-size:11px;color:var(--text-2);}
+  .km-banner .nav-btn{
+    background:var(--primary);color:#fff;border:0;border-radius:10px;
+    padding:8px 12px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;gap:4px;
+  }
+  .km-banner .nav-btn .material-icons{font-size:14px;}
+
+  /* Client card */
+  .client-card{
+    margin-top:12px;background:var(--bg);border-radius:14px;padding:12px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .client-avatar{
+    width:42px;height:42px;border-radius:50%;background:var(--primary);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;
+  }
+  .client-info{flex:1;}
+  .client-name{font-size:14px;font-weight:600;}
+  .client-rating{font-size:12px;color:var(--text-2);}
+  .call-btn{
+    width:42px;height:42px;border-radius:50%;background:var(--success);color:#fff;
+    border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+
+  /* Detail rows */
+  .detail-list{margin-top:12px;}
+  .detail-row{
+    display:flex;align-items:flex-start;gap:10px;padding:8px 0;
+    border-bottom:1px solid var(--outline);
+  }
+  .detail-row:last-child{border-bottom:0;}
+  .detail-row .ico{
+    width:32px;height:32px;border-radius:10px;background:var(--primary-soft);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .detail-row .ico .material-icons{font-size:16px;}
+  .detail-row .body{flex:1;min-width:0;}
+  .detail-row .lbl{font-size:11px;color:var(--text-2);}
+  .detail-row .val{font-size:13px;color:var(--text);font-weight:500;margin-top:1px;}
+
+  /* Pay summary */
+  .pay-box{
+    background:#10B98114;border:1px solid #10B98140;border-radius:14px;padding:12px 14px;
+    margin-top:12px;display:flex;align-items:center;gap:12px;
+  }
+  .pay-box .ico{
+    width:42px;height:42px;border-radius:12px;background:var(--success);color:#fff;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .pay-box .info{flex:1;}
+  .pay-box .l{font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:.3px;}
+  .pay-box .v{font-size:20px;font-weight:700;color:var(--success);margin-top:1px;}
+  .pay-box .s{font-size:11px;color:var(--text-2);margin-top:2px;}
+
+  /* CTA */
+  .cta-arrived{
+    width:100%;height:54px;border-radius:27px;border:0;cursor:pointer;
+    background:var(--primary);color:#fff;font-family:inherit;font-size:15px;font-weight:600;
+    margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px;
+    box-shadow:0 4px 12px rgba(0,119,182,.3);
+  }
+  .cta-arrived .material-icons{font-size:20px;}
+
+  /* Timer */
+  .timer-box{
+    margin-top:10px;background:#FEF3C7;border:1px solid #FCD34D;border-radius:14px;
+    padding:12px 14px;display:flex;align-items:center;gap:12px;
+  }
+  .timer-icon{
+    width:42px;height:42px;border-radius:12px;background:var(--warning);color:#fff;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .timer-info{flex:1;min-width:0;}
+  .timer-label{font-size:12px;font-weight:600;color:#78350F;}
+  .timer-sub{font-size:11px;color:#92400E;margin-top:2px;}
+  .timer-sub b{font-weight:700;}
+  .timer-count{
+    font-size:22px;font-weight:700;color:var(--warning);
+    font-variant-numeric:tabular-nums;letter-spacing:.5px;
+  }
+  .timer-bar{
+    height:4px;background:#FEF3C7;border-radius:2px;overflow:hidden;margin-top:6px;
+  }
+  .timer-bar-fill{
+    height:100%;background:var(--warning);border-radius:2px;transition:width 1s linear;
+  }
+  .timer-hint{
+    text-align:center;font-size:11px;color:var(--warning);font-weight:500;margin-top:8px;
+  }
+
+  /* Two-action mode (after "llegué") */
+  .two-actions{display:flex;gap:8px;margin-top:14px;}
+  .btn-not-delivered:disabled{
+    opacity:.5;cursor:not-allowed;border-color:var(--text-3);color:var(--text-3);
+  }
+  .btn-not-delivered{
+    flex:1;height:54px;border-radius:27px;border:1.5px solid var(--danger);
+    background:#fff;color:var(--danger);font-family:inherit;font-size:14px;font-weight:600;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .btn-not-delivered .material-icons{font-size:18px;}
+  .btn-delivered{
+    flex:1.5;height:54px;border-radius:27px;border:0;background:var(--success);
+    color:#fff;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    box-shadow:0 4px 12px rgba(16,185,129,.3);
+  }
+  .btn-delivered .material-icons{font-size:18px;}
+
+  /* Modal */
+  .modal-backdrop{
+    position:absolute;inset:0;background:#0f172abb;z-index:20;
+    display:flex;align-items:flex-end;
+  }
+  .modal{
+    background:#fff;width:100%;border-radius:24px 24px 0 0;padding:18px 18px 24px;
+    max-height:85%;overflow-y:auto;
+  }
+  .modal-handle{width:40px;height:4px;border-radius:2px;background:var(--outline);margin:0 auto 12px;}
+  .modal h3{margin:0 0 4px;font-size:18px;font-weight:600;}
+  .modal-sub{font-size:13px;color:var(--text-2);margin-bottom:16px;}
+
+  .reason-row{
+    display:flex;align-items:center;gap:12px;padding:12px;border:1.5px solid var(--outline);
+    border-radius:12px;margin-bottom:8px;cursor:pointer;
+  }
+  .reason-row.sel{border-color:var(--danger);background:#EF444408;}
+  .reason-row .ico{
+    width:38px;height:38px;border-radius:10px;background:var(--bg);color:var(--text);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .reason-row.sel .ico{background:var(--danger);color:#fff;}
+  .reason-row .body{flex:1;}
+  .reason-row .t{font-size:14px;font-weight:600;}
+  .reason-row .s{font-size:12px;color:var(--text-2);margin-top:1px;}
+  .reason-row .check{
+    width:22px;height:22px;border-radius:50%;border:2px solid var(--outline);flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .reason-row.sel .check{border-color:var(--danger);background:var(--danger);color:#fff;}
+  .reason-row .check .material-icons{font-size:14px;display:none;}
+  .reason-row.sel .check .material-icons{display:block;}
+
+  .note-field{
+    background:var(--bg);border:1px solid var(--outline);border-radius:12px;padding:12px;
+    margin-top:8px;
+  }
+  .note-field .lbl{font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:.3px;}
+  .note-field textarea{
+    width:100%;border:0;background:transparent;font-family:inherit;font-size:14px;
+    color:var(--text);resize:none;outline:0;margin-top:4px;min-height:60px;
+  }
+
+  .modal-footer{display:flex;gap:8px;margin-top:14px;}
+  .modal-footer button{
+    flex:1;height:48px;border-radius:24px;border:0;cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:600;
+  }
+  .btn-cancel{background:var(--bg);color:var(--text-2);}
+  .btn-confirm-red{background:var(--danger);color:#fff;}
+  .btn-confirm-green{background:var(--success);color:#fff;}
+
+  /* Photo placeholder for delivered confirm */
+  .photo-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;
+  }
+  .photo-slot{
+    aspect-ratio:1;background:var(--bg);border:1.5px dashed var(--outline);border-radius:12px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    color:var(--text-3);cursor:pointer;font-size:11px;font-weight:500;
+  }
+  .photo-slot .material-icons{font-size:24px;}
+  .photo-slot.taken{
+    background:linear-gradient(135deg,#3b82f6,#1e40af);color:#fff;border:0;
+  }
+
+  .change-row{
+    display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:12px;
+    padding:12px;margin-top:8px;
+  }
+  .change-row .l{font-size:13px;color:var(--text-2);flex:1;}
+  .change-row .v{font-size:18px;font-weight:700;color:var(--text);}
+
+  .label-tag{
+    text-align:center;color:#ffffff99;font-size:13px;margin-top:8px;font-weight:500;
+  }
+
+  /* Reusable map svg helpers */
+  .street{stroke:#fff;stroke-width:18;fill:none;}
+  .street-line{stroke:#cbd5e1;stroke-width:1;stroke-dasharray:4 4;fill:none;}
+  .route{stroke:var(--primary);stroke-width:5;fill:none;stroke-dasharray:0;}
+  .route-dash{stroke:var(--primary);stroke-width:5;fill:none;stroke-dasharray:8 6;}
+</style>
+</head>
+<body>
+
+  <!-- Device 1: En ruta -->
+  <div>
+    <div class="device">
+      <div class="screen">
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <span class="material-icons" style="font-size:14px;">network_cell</span>
+            <span class="material-icons" style="font-size:14px;">wifi</span>
+            <span class="material-icons" style="font-size:14px;">battery_full</span>
+          </span>
+        </div>
+
+        <div class="map">
+          <svg class="map-svg" viewBox="0 0 412 600" preserveAspectRatio="xMidYMid slice">
+            <rect width="412" height="600" fill="#dde7ee"/>
+            <rect x="40" y="40" width="120" height="80" fill="#cfd8df"/>
+            <rect x="220" y="40" width="160" height="60" fill="#cfd8df"/>
+            <rect x="40" y="180" width="80" height="100" fill="#cfd8df"/>
+            <rect x="200" y="160" width="60" height="60" fill="#86efac" opacity=".5"/>
+            <rect x="280" y="180" width="100" height="120" fill="#cfd8df"/>
+            <rect x="40" y="340" width="140" height="70" fill="#cfd8df"/>
+            <rect x="220" y="320" width="160" height="100" fill="#cfd8df"/>
+            <rect x="40" y="450" width="80" height="100" fill="#cfd8df"/>
+            <rect x="240" y="460" width="140" height="80" fill="#cfd8df"/>
+
+            <path class="street" d="M 0 140 L 412 140"/>
+            <path class="street" d="M 0 300 L 412 300"/>
+            <path class="street" d="M 0 430 L 412 430"/>
+            <path class="street" d="M 180 0 L 180 600"/>
+            <path class="street" d="M 380 0 L 380 600"/>
+
+            <path class="street-line" d="M 0 140 L 412 140"/>
+            <path class="street-line" d="M 0 300 L 412 300"/>
+            <path class="street-line" d="M 180 0 L 180 600"/>
+
+            <!-- route from me (220,300) → dest (180,140) → up -->
+            <path class="route" d="M 60 510 L 60 430"/>
+            <path class="route" d="M 60 430 L 180 430"/>
+            <path class="route" d="M 180 430 L 180 300"/>
+            <path class="route-dash" d="M 180 300 L 180 140"/>
+          </svg>
+
+          <div class="pin pin-me" style="left:43.7%;top:51%;">
+            <span class="material-icons" style="font-size:18px;">two_wheeler</span>
+          </div>
+          <div class="pin pin-dest" style="left:43.7%;top:24%;">
+            <div class="body"><span class="material-icons" style="font-size:18px;">place</span></div>
+          </div>
+        </div>
+
+        <div class="top-float">
+          <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+          <div class="step-pill">
+            <div class="step-num">1</div>
+            <div class="step-text">Entrega <b>1 de 3</b> · #HG-1287</div>
+          </div>
+          <button class="icon-btn"><span class="material-icons">more_vert</span></button>
+        </div>
+
+        <div class="map-controls">
+          <button class="map-ctrl"><span class="material-icons">my_location</span></button>
+          <button class="map-ctrl"><span class="material-icons">add</span></button>
+          <button class="map-ctrl"><span class="material-icons">remove</span></button>
+        </div>
+
+        <div class="sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-pad">
+            <div class="order-head">
+              <div style="flex:1;">
+                <div class="order-id">Pedido #HG-1287</div>
+                <div class="order-title">3 × Ciel 20 L</div>
+              </div>
+              <div class="chip"><span class="dot"></span>En ruta</div>
+            </div>
+
+            <div class="km-banner">
+              <div class="ico"><span class="material-icons">directions</span></div>
+              <div class="info">
+                <div class="km">1.2 km restantes</div>
+                <div class="lbl">Av. Insurgentes Sur 1234</div>
+              </div>
+              <button class="nav-btn">
+                <span class="material-icons">navigation</span>Navegar
+              </button>
+            </div>
+
+            <div class="client-card">
+              <div class="client-avatar">A</div>
+              <div class="client-info">
+                <div class="client-name">Andrea Martínez</div>
+                <div class="client-rating">Cliente</div>
+              </div>
+              <button class="call-btn"><span class="material-icons">call</span></button>
+            </div>
+
+            <div class="detail-list">
+              <div class="detail-row">
+                <div class="ico"><span class="material-icons">place</span></div>
+                <div class="body">
+                  <div class="lbl">Dirección de entrega</div>
+                  <div class="val">Insurgentes Sur 1234, Int. 4B · Del Valle, Benito Juárez</div>
+                </div>
+              </div>
+              <div class="detail-row">
+                <div class="ico"><span class="material-icons">notes</span></div>
+                <div class="body">
+                  <div class="lbl">Notas del cliente</div>
+                  <div class="val">Edificio azul, frente al parque. Tocar timbre 4B.</div>
+                </div>
+              </div>
+              <div class="detail-row">
+                <div class="ico"><span class="material-icons">water_drop</span></div>
+                <div class="body">
+                  <div class="lbl">Producto</div>
+                  <div class="val">3 × Ciel 20 L</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pay-box">
+              <div class="ico"><span class="material-icons">payments</span></div>
+              <div class="info">
+                <div class="l">Cobrarás en efectivo</div>
+                <div class="v">$135 MXN</div>
+              </div>
+            </div>
+
+            <button class="cta-arrived">
+              <span class="material-icons">flag</span>Llegué al destino
+            </button>
+          </div>
+        </div>
+
+        <div class="nav-pill"></div>
+      </div>
+    </div>
+    <div class="label-tag">En ruta · Mapa con navegación</div>
+  </div>
+
+  <!-- Device 2: Llegado al destino (2 botones) -->
+  <div>
+    <div class="device">
+      <div class="screen">
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <span class="material-icons" style="font-size:14px;">network_cell</span>
+            <span class="material-icons" style="font-size:14px;">wifi</span>
+            <span class="material-icons" style="font-size:14px;">battery_full</span>
+          </span>
+        </div>
+
+        <div class="map">
+          <svg class="map-svg" viewBox="0 0 412 600" preserveAspectRatio="xMidYMid slice">
+            <rect width="412" height="600" fill="#dde7ee"/>
+            <rect x="40" y="40" width="120" height="80" fill="#cfd8df"/>
+            <rect x="220" y="40" width="160" height="60" fill="#cfd8df"/>
+            <rect x="40" y="180" width="80" height="100" fill="#cfd8df"/>
+            <rect x="200" y="160" width="60" height="60" fill="#86efac" opacity=".5"/>
+            <rect x="280" y="180" width="100" height="120" fill="#cfd8df"/>
+            <path class="street" d="M 0 140 L 412 140"/>
+            <path class="street" d="M 0 300 L 412 300"/>
+            <path class="street" d="M 180 0 L 180 600"/>
+            <path class="street" d="M 380 0 L 380 600"/>
+          </svg>
+
+          <div class="pin pin-me" style="left:43.7%;top:24%;background:var(--success);">
+            <span class="material-icons" style="font-size:18px;">two_wheeler</span>
+          </div>
+        </div>
+
+        <div class="top-float">
+          <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+          <div class="step-pill" style="background:#10B981;color:#fff;">
+            <div class="step-num" style="background:#fff;color:var(--success);">
+              <span class="material-icons" style="font-size:14px;">flag</span>
+            </div>
+            <div class="step-text" style="color:#fff;">Llegaste al destino</div>
+          </div>
+          <button class="icon-btn"><span class="material-icons">more_vert</span></button>
+        </div>
+
+        <div class="sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-pad">
+            <div class="order-head">
+              <div style="flex:1;">
+                <div class="order-id">Pedido #HG-1287</div>
+                <div class="order-title">3 × Ciel 20 L · Andrea M.</div>
+              </div>
+              <div class="chip" style="background:#10B98119;color:var(--success);">
+                <span class="dot" style="background:var(--success);"></span>Llegaste
+              </div>
+            </div>
+
+            <div class="km-banner" style="background:linear-gradient(135deg,#10B98119,#10B98108);">
+              <div class="ico" style="color:var(--success);">
+                <span class="material-icons">place</span>
+              </div>
+              <div class="info">
+                <div class="km" style="color:var(--success);">¡Llegaste!</div>
+                <div class="lbl">Espera al cliente o marca como entregado</div>
+              </div>
+            </div>
+
+            <div class="timer-box">
+              <div class="timer-icon"><span class="material-icons">timer</span></div>
+              <div class="timer-info">
+                <div class="timer-label">Tiempo de espera obligatorio</div>
+                <div class="timer-sub">Podrás marcar como <b>no entregado</b> cuando termine</div>
+              </div>
+              <div class="timer-count">07:23</div>
+            </div>
+            <div class="timer-bar"><div class="timer-bar-fill" style="width:26%;"></div></div>
+
+            <div class="client-card">
+              <div class="client-avatar">A</div>
+              <div class="client-info">
+                <div class="client-name">Andrea Martínez</div>
+                <div class="client-rating">Insurgentes Sur 1234, 4B</div>
+              </div>
+              <button class="call-btn"><span class="material-icons">call</span></button>
+            </div>
+
+            <div class="pay-box">
+              <div class="ico"><span class="material-icons">payments</span></div>
+              <div class="info">
+                <div class="l">A cobrar en efectivo</div>
+                <div class="v">$135 MXN</div>
+                <div class="s">3 × Ciel 20 L</div>
+              </div>
+            </div>
+
+            <div class="two-actions">
+              <button class="btn-not-delivered" disabled>
+                <span class="material-icons">lock</span>No entregado
+              </button>
+              <button class="btn-delivered">
+                <span class="material-icons">check_circle</span>Marcar entregado
+              </button>
+            </div>
+            <div class="timer-hint">🔒 Disponible en 7:23 min</div>
+          </div>
+        </div>
+
+        <div class="nav-pill"></div>
+      </div>
+    </div>
+    <div class="label-tag">Llegaste · Confirmar entrega</div>
+  </div>
+
+  <!-- Device 3: Modal No entregado -->
+  <div>
+    <div class="device">
+      <div class="screen">
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <span class="material-icons" style="font-size:14px;">network_cell</span>
+            <span class="material-icons" style="font-size:14px;">wifi</span>
+            <span class="material-icons" style="font-size:14px;">battery_full</span>
+          </span>
+        </div>
+
+        <div class="map" style="filter:blur(2px);opacity:.6;">
+          <svg class="map-svg" viewBox="0 0 412 600" preserveAspectRatio="xMidYMid slice">
+            <rect width="412" height="600" fill="#dde7ee"/>
+            <path class="street" d="M 0 300 L 412 300"/>
+            <path class="street" d="M 180 0 L 180 600"/>
+          </svg>
+        </div>
+
+        <div class="modal-backdrop">
+          <div class="modal">
+            <div class="modal-handle"></div>
+            <h3>¿Por qué no se entregó?</h3>
+            <div class="modal-sub">Selecciona el motivo. Esta información se reportará al cliente.</div>
+
+            <div class="reason-row sel">
+              <div class="ico"><span class="material-icons">person_off</span></div>
+              <div class="body">
+                <div class="t">Cliente no se encontraba</div>
+                <div class="s">Toqué el timbre y nadie respondió</div>
+              </div>
+              <div class="check"><span class="material-icons">check</span></div>
+            </div>
+            <div class="reason-row">
+              <div class="ico"><span class="material-icons">wrong_location</span></div>
+              <div class="body">
+                <div class="t">Dirección incorrecta</div>
+                <div class="s">No pude localizar la ubicación</div>
+              </div>
+              <div class="check"><span class="material-icons">check</span></div>
+            </div>
+            <div class="reason-row">
+              <div class="ico"><span class="material-icons">block</span></div>
+              <div class="body">
+                <div class="t">Cliente rechazó el pedido</div>
+                <div class="s">No quiso recibir los garrafones</div>
+              </div>
+              <div class="check"><span class="material-icons">check</span></div>
+            </div>
+            <div class="reason-row">
+              <div class="ico"><span class="material-icons">money_off</span></div>
+              <div class="body">
+                <div class="t">No tenía dinero</div>
+                <div class="s">Cliente no pudo pagar el pedido</div>
+              </div>
+              <div class="check"><span class="material-icons">check</span></div>
+            </div>
+            <div class="reason-row">
+              <div class="ico"><span class="material-icons">more_horiz</span></div>
+              <div class="body">
+                <div class="t">Otro motivo</div>
+                <div class="s">Especificar en notas</div>
+              </div>
+              <div class="check"><span class="material-icons">check</span></div>
+            </div>
+
+            <div class="note-field">
+              <div class="lbl">Notas adicionales (opcional)</div>
+              <textarea placeholder="Detalla lo que pasó..."></textarea>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn-cancel">Cancelar</button>
+              <button class="btn-confirm-red">
+                <span class="material-icons" style="font-size:18px;vertical-align:-4px;margin-right:4px;">cancel</span>
+                Reportar no entrega
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-pill"></div>
+      </div>
+    </div>
+    <div class="label-tag">Modal · Motivo no entregado</div>
+  </div>
+
+  <!-- Device 4: Modal Entregado (confirmación + foto + cambio) -->
+  <div>
+    <div class="device">
+      <div class="screen">
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <span class="material-icons" style="font-size:14px;">network_cell</span>
+            <span class="material-icons" style="font-size:14px;">wifi</span>
+            <span class="material-icons" style="font-size:14px;">battery_full</span>
+          </span>
+        </div>
+
+        <div class="map" style="filter:blur(2px);opacity:.6;">
+          <svg class="map-svg" viewBox="0 0 412 600" preserveAspectRatio="xMidYMid slice">
+            <rect width="412" height="600" fill="#dde7ee"/>
+            <path class="street" d="M 0 300 L 412 300"/>
+            <path class="street" d="M 180 0 L 180 600"/>
+          </svg>
+        </div>
+
+        <div class="modal-backdrop">
+          <div class="modal">
+            <div class="modal-handle"></div>
+            <h3>Confirmar entrega</h3>
+            <div class="modal-sub">Verifica el cobro y agrega evidencia (opcional).</div>
+
+            <div class="pay-box">
+              <div class="ico"><span class="material-icons">payments</span></div>
+              <div class="info">
+                <div class="l">Total cobrado en efectivo</div>
+                <div class="v">$135 MXN</div>
+                <div class="s">3 × Ciel 20 L · Andrea M.</div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn-cancel">Cancelar</button>
+              <button class="btn-confirm-green">
+                <span class="material-icons" style="font-size:18px;vertical-align:-4px;margin-right:4px;">check_circle</span>
+                Confirmar entrega
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-pill"></div>
+      </div>
+    </div>
+    <div class="label-tag">Modal · Confirmar entrega</div>
+  </div>
+
+</body>
+</html>

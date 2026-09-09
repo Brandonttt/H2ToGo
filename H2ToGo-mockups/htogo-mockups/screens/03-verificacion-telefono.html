@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 03 Verificación de teléfono</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  /* Frame Android 412x868 */
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* Top bar */
+  .topbar{
+    height:56px;display:flex;align-items:center;padding:0 8px;
+    background:var(--bg);flex:0 0 auto;
+  }
+  .topbar .icon-btn{
+    width:40px;height:40px;border-radius:50%;border:0;background:transparent;
+    color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+
+  /* Contenido */
+  .body{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    padding:8px 24px 24px;
+  }
+  .icon-circle{
+    width:72px;height:72px;border-radius:50%;background:var(--primary-soft);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .icon-circle .material-icons{color:var(--primary);font-size:36px;}
+  .body h1{margin:20px 0 0;font-size:24px;font-weight:600;color:var(--text);}
+  .body .desc{
+    margin:8px 0 0;font-size:16px;color:var(--text-2);
+    text-align:center;line-height:1.4;
+  }
+  .body .phone{margin:2px 0 0;font-size:16px;font-weight:500;color:var(--text);}
+  .btn-link{
+    border:0;background:transparent;color:var(--primary);
+    font:600 14px 'Roboto',sans-serif;padding:10px 12px;cursor:pointer;
+  }
+
+  /* OTP */
+  .otp{display:flex;gap:10px;margin-top:24px;}
+  .otp-cell{
+    width:46px;height:56px;border-radius:12px;background:#fff;
+    border:1.5px solid var(--outline);
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;font-weight:600;color:var(--text);
+  }
+  .otp-cell.filled{
+    background:var(--primary-soft);border:2px solid var(--primary);
+  }
+  .otp-cell.focused{
+    border:2px solid var(--primary);
+  }
+
+  .resend{
+    margin-top:24px;font-size:14px;color:var(--text-2);
+  }
+
+  .spacer{flex:1;}
+
+  .btn-primary{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;height:56px;border-radius:28px;border:0;cursor:pointer;
+    background:var(--primary);color:#fff;font:600 14px/1 'Roboto',sans-serif;
+    letter-spacing:.2px;box-shadow:0 6px 16px rgba(0,119,182,.3);
+  }
+  .btn-primary[disabled]{background:var(--outline);color:var(--text-3);box-shadow:none;}
+  .bottom-pad{height:24px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar (Android) -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <!-- Top bar -->
+      <div class="topbar">
+        <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+      </div>
+
+      <!-- Contenido -->
+      <div class="body">
+        <div class="icon-circle"><span class="material-icons">sms</span></div>
+        <h1>Verifica tu teléfono</h1>
+        <div class="desc">Te enviamos un código de 6 dígitos por SMS al</div>
+        <div class="phone">+52 55 1234 5678</div>
+        <button class="btn-link">Cambiar número</button>
+
+        <!-- OTP boxes (2 dígitos rellenados como ejemplo) -->
+        <div class="otp">
+          <div class="otp-cell filled">1</div>
+          <div class="otp-cell filled">2</div>
+          <div class="otp-cell focused"></div>
+          <div class="otp-cell"></div>
+          <div class="otp-cell"></div>
+          <div class="otp-cell"></div>
+        </div>
+
+        <div class="resend">Reenviar código en 45s</div>
+
+        <div class="spacer"></div>
+
+        <button class="btn-primary" disabled>Verificar</button>
+        <div class="bottom-pad"></div>
+      </div>
+
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

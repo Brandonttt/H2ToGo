@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 17 Inventario y vehículo</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  /* Frame Android 412x868 */
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;
+    flex:0 0 auto;background:var(--primary-dark);
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* Top header gradient */
+  .header{
+    background:linear-gradient(180deg,var(--primary-dark) 0%,var(--primary) 100%);
+    color:#fff;padding:6px 12px 16px;flex:0 0 auto;
+  }
+  .appbar{display:flex;align-items:center;height:48px;}
+  .appbar .icon-btn{
+    width:40px;height:40px;border-radius:50%;border:0;background:transparent;
+    color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .appbar h1{margin:0 0 0 4px;font-size:18px;font-weight:600;flex:1;}
+
+  /* Tabs pill */
+  .tabs-pill{
+    background:rgba(255,255,255,.12);border-radius:12px;
+    display:flex;padding:4px;margin-top:4px;
+  }
+  .tab-pill{
+    flex:1;display:flex;align-items:center;justify-content:center;gap:4px;
+    padding:8px 4px;border-radius:8px;cursor:pointer;
+    color:#fff;font-size:11px;font-weight:500;
+  }
+  .tab-pill .material-icons{font-size:14px;}
+  .tab-pill.active{
+    background:#fff;color:var(--primary-dark);font-weight:600;
+  }
+
+  /* Content scroll */
+  .content{
+    flex:1;overflow:auto;padding:16px;
+    display:flex;flex-direction:column;gap:12px;
+  }
+
+  /* Resumen card hero */
+  .resumen{
+    border-radius:18px;padding:18px;color:#fff;
+    background:linear-gradient(135deg,var(--primary-dark) 0%,var(--primary) 100%);
+    box-shadow:0 6px 18px rgba(3,4,94,.25);
+  }
+  .resumen-row{display:flex;align-items:center;gap:14px;}
+  .resumen-icon{
+    width:48px;height:48px;border-radius:14px;
+    background:rgba(255,255,255,.15);
+    display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
+  }
+  .resumen-icon .material-icons{color:#fff;}
+  .resumen-label{font-size:12px;color:rgba(255,255,255,.8);}
+  .resumen-big{font-size:26px;font-weight:700;color:#fff;line-height:1.1;margin:2px 0;}
+  .resumen-sub{font-size:12px;color:rgba(255,255,255,.85);}
+  .resumen-divider{
+    height:1px;background:rgba(255,255,255,.18);margin:14px 0 12px;
+  }
+  .resumen-stats{display:flex;justify-content:space-between;}
+  .stat .v{font-size:18px;font-weight:700;color:#fff;}
+  .stat .l{font-size:11px;color:rgba(255,255,255,.75);}
+
+  /* Productos y precios shortcut */
+  .shortcut{
+    background:#fff;border-radius:14px;padding:14px;
+    border:1px solid var(--outline);
+    display:flex;align-items:center;gap:12px;cursor:pointer;
+  }
+  .shortcut-icon{
+    width:40px;height:40px;border-radius:12px;background:var(--primary-soft);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
+  }
+  .shortcut-icon .material-icons{font-size:22px;}
+  .shortcut-info{flex:1;min-width:0;}
+  .shortcut-title{font-size:14px;font-weight:600;color:var(--text);}
+  .shortcut-sub{font-size:11px;color:var(--text-2);margin-top:1px;}
+  .shortcut .material-icons.arrow{color:var(--text-3);}
+
+  /* Section title (uppercase) */
+  .section-title{
+    font-size:12px;font-weight:600;color:var(--text-2);
+    text-transform:uppercase;padding:4px 4px 0;letter-spacing:.3px;
+  }
+
+  /* Marca card */
+  .marca{
+    background:#fff;border-radius:14px;padding:14px;
+    border:1px solid var(--outline);
+  }
+  .marca-row{display:flex;align-items:center;gap:12px;}
+  .marca-badge{
+    width:52px;height:52px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:700;flex:0 0 auto;
+  }
+  .marca-info{flex:1;min-width:0;}
+  .marca-name{font-size:15px;font-weight:600;color:var(--text);}
+  .marca-meta{font-size:12px;color:var(--text-2);margin-top:1px;}
+  .marca-qty{text-align:right;}
+  .marca-qty .v{font-size:22px;font-weight:700;}
+  .marca-qty .l{font-size:11px;color:var(--text-2);}
+
+  /* Progress bar */
+  .progress{
+    height:6px;border-radius:99px;background:var(--bg);overflow:hidden;
+    margin-top:10px;
+  }
+  .progress > span{display:block;height:100%;border-radius:99px;}
+
+  /* Footer of card: capacity + estado */
+  .marca-foot{
+    display:flex;align-items:center;margin-top:6px;
+  }
+  .marca-foot .cap{font-size:11px;color:var(--text-3);flex:1;}
+  .marca-foot .estado{
+    display:inline-flex;align-items:center;gap:4px;
+    font-size:11px;font-weight:600;
+  }
+  .marca-foot .estado .material-icons{font-size:12px;}
+
+  /* Lotes resumen box */
+  .lotes-box{
+    margin-top:10px;background:var(--bg);border-radius:10px;
+    padding:8px 10px;
+  }
+  .lotes-head{display:flex;align-items:center;gap:6px;}
+  .lotes-head .material-icons{font-size:14px;color:var(--primary);}
+  .lotes-title{
+    flex:1;font-size:11px;font-weight:600;color:var(--text-2);
+  }
+  .badge-lote{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:3px 8px;border-radius:99px;
+    font-size:10px;font-weight:600;
+  }
+  .badge-lote .material-icons{font-size:11px;}
+  .badge-rose{background:rgba(239,68,68,.12);color:var(--accent-rose);}
+  .badge-amber{background:rgba(245,158,11,.14);color:var(--accent-amber);}
+  .badge-emerald{background:rgba(16,185,129,.12);color:var(--accent-emerald);}
+  .lotes-detail{font-size:10px;color:var(--text-3);margin-top:4px;}
+
+  /* Action buttons */
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;height:54px;border-radius:14px;
+    font:600 14px 'Roboto',sans-serif;cursor:pointer;border:0;
+  }
+  .btn-primary{background:var(--primary);color:#fff;}
+  .btn-outline-rose{
+    background:#fff;color:var(--accent-rose);
+    border:1.5px solid var(--accent-rose);
+  }
+  .btn .material-icons{font-size:20px;}
+
+  .hint{
+    font-size:11px;color:var(--text-3);padding:0 4px;
+  }
+
+  /* BottomBar */
+  .bottombar{
+    background:#fff;border-top:1px solid var(--outline);
+    display:flex;height:72px;padding:6px 0 10px;flex:0 0 auto;
+  }
+  .tab{
+    flex:1;border:0;background:transparent;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;cursor:pointer;
+    color:var(--text-3);font:500 11px 'Roboto',sans-serif;
+  }
+  .tab .material-icons{font-size:22px;padding:4px 16px;border-radius:99px;}
+  .tab.active{color:var(--primary);}
+  .tab.active .material-icons{background:var(--primary-soft);}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <!-- Header con TopAppBar y tabs -->
+      <div class="header">
+        <div class="appbar">
+          <button class="icon-btn" aria-label="Volver">
+            <span class="material-icons">arrow_back</span>
+          </button>
+          <h1>Mi negocio</h1>
+          <button class="icon-btn" aria-label="Ayuda">
+            <span class="material-icons">help_outline</span>
+          </button>
+        </div>
+        <div class="tabs-pill">
+          <div class="tab-pill active">
+            <span class="material-icons">warehouse</span>
+            <span>En base</span>
+          </div>
+          <div class="tab-pill">
+            <span class="material-icons">local_shipping</span>
+            <span>En mi vehículo</span>
+          </div>
+          <div class="tab-pill">
+            <span class="material-icons">directions_car</span>
+            <span>Vehículo</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenido -->
+      <div class="content">
+        <!-- Resumen base -->
+        <div class="resumen">
+          <div class="resumen-row">
+            <div class="resumen-icon"><span class="material-icons">warehouse</span></div>
+            <div>
+              <div class="resumen-label">Stock en base · compartido</div>
+              <div class="resumen-big">38 garrafones</div>
+              <div class="resumen-sub">3 marcas · capacidad 50</div>
+            </div>
+          </div>
+          <div class="resumen-divider"></div>
+          <div class="resumen-stats">
+            <div class="stat"><div class="v">76%</div><div class="l">Capacidad ocupada</div></div>
+            <div class="stat"><div class="v">12</div><div class="l">Entradas hoy</div></div>
+            <div class="stat"><div class="v">8</div><div class="l">Cargados a vehículos</div></div>
+          </div>
+        </div>
+
+        <!-- Shortcut productos y precios -->
+        <div class="shortcut">
+          <div class="shortcut-icon"><span class="material-icons">attach_money</span></div>
+          <div class="shortcut-info">
+            <div class="shortcut-title">Productos y precios</div>
+            <div class="shortcut-sub">Gestiona el catálogo del negocio · CU-23</div>
+          </div>
+          <span class="material-icons arrow">chevron_right</span>
+        </div>
+
+        <div class="section-title">Marcas en base · 3</div>
+
+        <!-- Marca A: Disponible (verde) -->
+        <div class="marca">
+          <div class="marca-row">
+            <div class="marca-badge" style="background:rgba(0,119,182,.12);color:var(--primary);">CIE</div>
+            <div class="marca-info">
+              <div class="marca-name">Marca A · 20 L</div>
+              <div class="marca-meta">$45 / pieza · Proveedor 1</div>
+            </div>
+            <div class="marca-qty">
+              <div class="v">18</div>
+              <div class="l">en base</div>
+            </div>
+          </div>
+          <div class="progress"><span style="width:36%;background:var(--accent-emerald);"></span></div>
+          <div class="marca-foot">
+            <div class="cap">18 / 50 capacidad de la base</div>
+            <div class="estado" style="color:var(--accent-emerald);">
+              <span class="material-icons">check_circle</span>
+              <span>Disponible</span>
+            </div>
+          </div>
+          <div class="lotes-box">
+            <div class="lotes-head">
+              <span class="material-icons">event_available</span>
+              <span class="lotes-title">2 lotes activos</span>
+              <span class="badge-lote badge-emerald">
+                <span class="material-icons">hourglass_bottom</span>
+                <span>Caducidad OK</span>
+              </span>
+            </div>
+            <div class="lotes-detail">Próximo: L-2026-04-12 · vence 12 oct 2026 (159 d) · 6 pzas</div>
+          </div>
+        </div>
+
+        <!-- Marca B: Disponible pero con un lote próximo -->
+        <div class="marca">
+          <div class="marca-row">
+            <div class="marca-badge" style="background:rgba(16,185,129,.12);color:var(--accent-emerald);">BON</div>
+            <div class="marca-info">
+              <div class="marca-name">Marca B · 20 L</div>
+              <div class="marca-meta">$48 / pieza · Proveedor 2</div>
+            </div>
+            <div class="marca-qty">
+              <div class="v">12</div>
+              <div class="l">en base</div>
+            </div>
+          </div>
+          <div class="progress"><span style="width:24%;background:var(--accent-amber);"></span></div>
+          <div class="marca-foot">
+            <div class="cap">12 / 50 capacidad de la base</div>
+            <div class="estado" style="color:var(--accent-amber);">
+              <span class="material-icons">warning</span>
+              <span>Stock medio</span>
+            </div>
+          </div>
+          <div class="lotes-box">
+            <div class="lotes-head">
+              <span class="material-icons">event_available</span>
+              <span class="lotes-title">2 lotes activos</span>
+              <span class="badge-lote badge-amber">
+                <span class="material-icons">hourglass_bottom</span>
+                <span>Caducidad cercana</span>
+              </span>
+            </div>
+            <div class="lotes-detail">Próximo: L-2026-03-30 · vence 30 may 2026 (24 d) · 4 pzas</div>
+          </div>
+        </div>
+
+        <!-- Marca C: Stock bajo + lote próximo a caducar -->
+        <div class="marca">
+          <div class="marca-row">
+            <div class="marca-badge" style="background:rgba(245,158,11,.14);color:var(--accent-amber);">EPU</div>
+            <div class="marca-info">
+              <div class="marca-name">Marca C · 20 L</div>
+              <div class="marca-meta">$42 / pieza · Proveedor 3</div>
+            </div>
+            <div class="marca-qty">
+              <div class="v">8</div>
+              <div class="l">en base</div>
+            </div>
+          </div>
+          <div class="progress"><span style="width:16%;background:var(--accent-rose);"></span></div>
+          <div class="marca-foot">
+            <div class="cap">8 / 50 capacidad de la base</div>
+            <div class="estado" style="color:var(--accent-rose);">
+              <span class="material-icons">error</span>
+              <span>Stock bajo</span>
+            </div>
+          </div>
+          <div class="lotes-box">
+            <div class="lotes-head">
+              <span class="material-icons">event_available</span>
+              <span class="lotes-title">1 lote activo</span>
+              <span class="badge-lote badge-rose">
+                <span class="material-icons">hourglass_bottom</span>
+                <span>Próximo a caducar</span>
+              </span>
+            </div>
+            <div class="lotes-detail">Próximo: L-2026-04-05 · vence 20 may 2026 (14 d) · 8 pzas</div>
+          </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <button class="btn btn-primary">
+          <span class="material-icons">add</span>
+          <span>Registrar entrada</span>
+        </button>
+        <button class="btn btn-outline-rose">
+          <span class="material-icons">logout</span>
+          <span>Registrar salida manual</span>
+        </button>
+        <div class="hint">Usa salida manual para mermas, roturas o entregas que no pasaron por la app.</div>
+      </div>
+
+      <!-- BottomBar Repartidor (Mi negocio activo) -->
+      <div class="bottombar">
+        <button class="tab"><span class="material-icons">storefront</span><span>Inicio</span></button>
+        <button class="tab active"><span class="material-icons">inventory_2</span><span>Mi negocio</span></button>
+        <button class="tab"><span class="material-icons">payments</span><span>Ingresos</span></button>
+        <button class="tab"><span class="material-icons">person</span><span>Perfil</span></button>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

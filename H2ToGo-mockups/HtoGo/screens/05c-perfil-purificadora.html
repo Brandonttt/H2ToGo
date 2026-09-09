@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 05c Perfil purificadora</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --success:#10B981; --warning:#F59E0B; --danger:#EF4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;
+    background:var(--primary-dark);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;}
+
+  .scroll{flex:1;overflow-y:auto;padding-bottom:96px;}
+  .scroll::-webkit-scrollbar{display:none}
+
+  /* Header */
+  .header{
+    background:linear-gradient(180deg,var(--primary-dark),var(--primary));
+    padding:14px 16px 22px;color:#fff;position:relative;
+  }
+  .header-top{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .icon-btn{
+    width:38px;height:38px;border-radius:50%;background:#ffffff1f;border:0;color:#fff;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+  }
+  .header-top .title{font-size:14px;font-weight:500;color:#ffffffcc;flex:1;}
+
+  .biz-row{display:flex;align-items:center;gap:14px;}
+  .biz-avatar{
+    width:64px;height:64px;border-radius:18px;background:#ffffff;color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    box-shadow:0 4px 12px rgba(0,0,0,.15);
+  }
+  .biz-avatar .material-icons{font-size:34px;}
+  .biz-info{flex:1;min-width:0;}
+  .biz-name{font-size:22px;font-weight:700;line-height:1.15;}
+  .biz-meta{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:12.5px;color:var(--primary-soft);}
+  .biz-meta span{display:flex;align-items:center;gap:4px;}
+  .biz-meta .material-icons{font-size:14px;}
+
+  .biz-status{
+    display:inline-flex;align-items:center;gap:6px;background:#10B98119;
+    border:1px solid #10B98140;border-radius:99px;padding:5px 12px;margin-top:12px;
+    font-size:12px;font-weight:600;color:#A7F3D0;
+  }
+  .biz-status .dot{width:8px;height:8px;border-radius:4px;background:var(--success);
+    box-shadow:0 0 0 3px #10B98140;}
+
+  /* Mini map */
+  .map-card{
+    margin:-14px 16px 0;background:#dde7ee;border-radius:16px;height:140px;
+    position:relative;overflow:hidden;box-shadow:0 4px 12px rgba(15,23,42,.08);
+  }
+  .map-card svg{position:absolute;inset:0;width:100%;height:100%;}
+  .map-pin{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);
+    display:flex;flex-direction:column;align-items:center;
+  }
+  .map-pin .body{
+    width:38px;height:38px;border-radius:50%;background:var(--primary);color:#fff;
+    border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.3);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .map-pin .stick{width:3px;height:14px;background:var(--primary);}
+  .map-pin::before{
+    content:"";position:absolute;width:54px;height:54px;border-radius:50%;
+    background:var(--primary);opacity:.18;animation:pulse 2s infinite;
+    top:-8px;left:50%;transform:translate(-50%,0);
+  }
+  @keyframes pulse{0%{opacity:.25;transform:translate(-50%,0) scale(0.8);}100%{opacity:0;transform:translate(-50%,0) scale(1.4);}}
+  .map-zoom{
+    position:absolute;right:8px;top:8px;background:#fff;width:32px;height:32px;
+    border-radius:8px;display:flex;align-items:center;justify-content:center;
+    color:var(--text);box-shadow:0 2px 6px rgba(0,0,0,.15);
+  }
+  .map-zoom .material-icons{font-size:18px;}
+
+  /* Sections */
+  .section{padding:18px 16px 0;}
+  .section h2{font-size:15px;font-weight:700;margin:0 0 10px;color:var(--text);
+    display:flex;align-items:center;gap:6px;}
+  .section h2 .material-icons{font-size:18px;color:var(--primary);}
+
+  /* Info card */
+  .info-card{
+    background:#fff;border-radius:14px;padding:4px 14px;
+    box-shadow:0 2px 6px rgba(15,23,42,.04);
+  }
+  .info-row{
+    display:flex;align-items:flex-start;gap:12px;padding:12px 0;
+    border-bottom:1px solid var(--outline);
+  }
+  .info-row:last-child{border-bottom:0;}
+  .info-row .ico{
+    width:34px;height:34px;border-radius:10px;background:var(--primary-soft);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .info-row .ico .material-icons{font-size:18px;}
+  .info-row .body{flex:1;min-width:0;}
+  .info-row .lbl{font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;}
+  .info-row .val{font-size:13.5px;color:var(--text);font-weight:500;margin-top:2px;line-height:1.4;}
+  .info-row .sub{font-size:12px;color:var(--text-2);margin-top:2px;}
+
+  /* Productos */
+  .prod-list{
+    background:#fff;border-radius:14px;overflow:hidden;
+    box-shadow:0 2px 6px rgba(15,23,42,.04);
+  }
+  .prod-row{
+    display:flex;align-items:center;gap:12px;padding:12px 14px;
+    border-bottom:1px solid var(--outline);
+  }
+  .prod-row:last-child{border-bottom:0;}
+  .prod-row.agotado{opacity:.55;}
+  .prod-icon{
+    width:42px;height:42px;border-radius:12px;
+    background:linear-gradient(135deg,var(--primary-light),var(--primary));
+    color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .prod-icon .material-icons{font-size:22px;}
+  .prod-info{flex:1;min-width:0;}
+  .prod-name{font-size:14px;font-weight:600;color:var(--text);}
+  .prod-stock{font-size:11.5px;margin-top:2px;display:flex;align-items:center;gap:4px;}
+  .prod-stock .dot{width:6px;height:6px;border-radius:3px;}
+  .prod-stock.ok{color:var(--success);} .prod-stock.ok .dot{background:var(--success);}
+  .prod-stock.warn{color:var(--warning);} .prod-stock.warn .dot{background:var(--warning);}
+  .prod-stock.out{color:var(--text-3);} .prod-stock.out .dot{background:var(--text-3);}
+  .prod-price{font-size:15px;font-weight:700;color:var(--primary);text-align:right;}
+  .prod-price .each{font-size:10.5px;font-weight:500;color:var(--text-2);display:block;}
+
+  /* Vehículos scroll */
+  .veh-scroll{
+    display:flex;gap:10px;overflow-x:auto;padding:0 16px 4px;
+    margin:0 -16px;scroll-snap-type:x mandatory;
+  }
+  .veh-scroll::-webkit-scrollbar{display:none}
+  .veh-card{
+    flex:0 0 168px;background:#fff;border-radius:14px;padding:14px;
+    box-shadow:0 2px 6px rgba(15,23,42,.04);scroll-snap-align:start;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .veh-icon{
+    width:48px;height:48px;border-radius:12px;background:var(--primary-soft);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .veh-icon .material-icons{font-size:26px;}
+  .veh-type{font-size:13.5px;font-weight:600;color:var(--text);line-height:1.2;}
+  .veh-cap{font-size:11.5px;color:var(--text-2);display:flex;align-items:center;gap:4px;}
+  .veh-cap .material-icons{font-size:13px;}
+
+  /* CTA fija */
+  .cta-bar{
+    position:absolute;left:0;right:0;bottom:0;background:#fff;
+    padding:12px 16px 18px;box-shadow:0 -4px 16px rgba(15,23,42,.08);
+    z-index:10;
+  }
+  .cta-btn{
+    width:100%;height:52px;border-radius:26px;border:0;cursor:pointer;
+    background:var(--primary);color:#fff;font-family:inherit;font-size:15px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    box-shadow:0 6px 16px rgba(0,119,182,.35);
+  }
+  .cta-btn .material-icons{font-size:20px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons" style="font-size:14px;">network_cell</span>
+          <span class="material-icons" style="font-size:14px;">wifi</span>
+          <span class="material-icons" style="font-size:14px;">battery_full</span>
+        </span>
+      </div>
+
+      <div class="scroll">
+        <!-- Header -->
+        <div class="header">
+          <div class="header-top">
+            <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+            <div class="title">Perfil de purificadora</div>
+            <button class="icon-btn"><span class="material-icons">favorite_border</span></button>
+            <button class="icon-btn"><span class="material-icons">share</span></button>
+          </div>
+
+          <div class="biz-row">
+            <div class="biz-avatar"><span class="material-icons">storefront</span></div>
+            <div class="biz-info">
+              <div class="biz-name">Aguas Del Valle</div>
+              <div class="biz-meta">
+                <span><span class="material-icons">near_me</span>0.8 km</span>
+                <span><span class="material-icons">schedule</span>~12 min</span>
+              </div>
+              <div class="biz-status"><span class="dot"></span>Abierto ahora</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mini mapa -->
+        <div class="map-card">
+          <svg viewBox="0 0 412 140" preserveAspectRatio="xMidYMid slice">
+            <rect width="412" height="140" fill="#dde7ee"/>
+            <rect x="20" y="14" width="100" height="42" fill="#cfd8df"/>
+            <rect x="160" y="10" width="120" height="38" fill="#cfd8df"/>
+            <rect x="320" y="20" width="80" height="44" fill="#cfd8df"/>
+            <rect x="20" y="92" width="80" height="40" fill="#cfd8df"/>
+            <rect x="140" y="88" width="80" height="44" fill="#cfd8df"/>
+            <rect x="260" y="92" width="140" height="42" fill="#cfd8df"/>
+            <path d="M 0 76 L 412 76" stroke="#fff" stroke-width="14" fill="none"/>
+            <path d="M 130 0 L 130 140" stroke="#fff" stroke-width="14" fill="none"/>
+            <path d="M 250 0 L 250 140" stroke="#fff" stroke-width="14" fill="none"/>
+            <path d="M 0 76 L 412 76" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4 4" fill="none"/>
+            <path d="M 130 0 L 130 140" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4 4" fill="none"/>
+          </svg>
+          <div class="map-pin">
+            <div class="body"><span class="material-icons" style="font-size:20px;">storefront</span></div>
+            <div class="stick"></div>
+          </div>
+          <div class="map-zoom"><span class="material-icons">open_in_full</span></div>
+        </div>
+
+        <!-- Datos del negocio -->
+        <div class="section">
+          <h2><span class="material-icons">info</span>Datos del negocio</h2>
+          <div class="info-card">
+            <div class="info-row">
+              <div class="ico"><span class="material-icons">place</span></div>
+              <div class="body">
+                <div class="lbl">Dirección de la base</div>
+                <div class="val">Av. División del Norte 845, Col. Del Valle, Benito Juárez</div>
+              </div>
+            </div>
+            <div class="info-row">
+              <div class="ico"><span class="material-icons">schedule</span></div>
+              <div class="body">
+                <div class="lbl">Horario de atención</div>
+                <div class="val">Lun – Sáb · 8:00 AM – 7:00 PM</div>
+                <div class="sub">Cerrado los domingos</div>
+              </div>
+            </div>
+            <div class="info-row">
+              <div class="ico"><span class="material-icons">verified</span></div>
+              <div class="body">
+                <div class="lbl">En la plataforma</div>
+                <div class="val">8 meses con HToGo</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Productos disponibles -->
+        <div class="section">
+          <h2><span class="material-icons">water_drop</span>Productos disponibles</h2>
+          <div class="prod-list">
+            <div class="prod-row">
+              <div class="prod-icon"><span class="material-icons">water_drop</span></div>
+              <div class="prod-info">
+                <div class="prod-name">Ciel · 20 L</div>
+                <div class="prod-stock ok"><span class="dot"></span>Disponible</div>
+              </div>
+              <div class="prod-price">$45<span class="each">c/u</span></div>
+            </div>
+            <div class="prod-row">
+              <div class="prod-icon" style="background:linear-gradient(135deg,#60A5FA,#1D4ED8);">
+                <span class="material-icons">water_drop</span>
+              </div>
+              <div class="prod-info">
+                <div class="prod-name">Bonafont · 20 L</div>
+                <div class="prod-stock ok"><span class="dot"></span>Disponible</div>
+              </div>
+              <div class="prod-price">$48<span class="each">c/u</span></div>
+            </div>
+            <div class="prod-row">
+              <div class="prod-icon" style="background:linear-gradient(135deg,#34D399,#059669);">
+                <span class="material-icons">water_drop</span>
+              </div>
+              <div class="prod-info">
+                <div class="prod-name">e-Pura · 20 L</div>
+                <div class="prod-stock warn"><span class="dot"></span>Pocas unidades</div>
+              </div>
+              <div class="prod-price">$42<span class="each">c/u</span></div>
+            </div>
+            <div class="prod-row agotado">
+              <div class="prod-icon" style="background:#cbd5e1;">
+                <span class="material-icons">water_drop</span>
+              </div>
+              <div class="prod-info">
+                <div class="prod-name">Santorini · 20 L</div>
+                <div class="prod-stock out"><span class="dot"></span>Agotado</div>
+              </div>
+              <div class="prod-price" style="color:var(--text-3);">$40<span class="each">c/u</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CTA fija -->
+      <div class="cta-bar">
+        <button class="cta-btn">
+          <span class="material-icons">water_drop</span>Pedir a esta purificadora
+        </button>
+      </div>
+
+      <div class="nav-pill"></div>
+    </div>
+  </div>
+</body>
+</html>

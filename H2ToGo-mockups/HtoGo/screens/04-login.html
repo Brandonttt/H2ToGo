@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 04 Inicio de sesión</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0; --error:#EF4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:linear-gradient(180deg,var(--primary-soft) 0%,var(--bg) 50%);
+    position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;}
+  .body{flex:1;display:flex;flex-direction:column;align-items:center;padding:32px 24px 24px;}
+  .brand-mark{
+    width:72px;height:72px;border-radius:50%;background:var(--primary);
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    box-shadow:0 12px 30px rgba(0,119,182,.32);
+  }
+  .brand-mark .material-icons{font-size:36px}
+  .h-title{font-size:24px;font-weight:600;margin-top:16px;text-align:center;}
+  .h-sub{font-size:15px;color:var(--text-2);margin-top:4px;text-align:center;}
+  .form{width:100%;margin-top:32px;}
+  .field{position:relative;margin-bottom:12px;}
+  .field-inner{
+    display:flex;align-items:center;background:var(--surface);
+    border:1.5px solid var(--outline);border-radius:14px;padding:0 14px;
+    height:56px;transition:.15s;
+  }
+  .field-inner.focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(0,119,182,.08);}
+  .field-inner .lead{color:var(--text-2);margin-right:10px;}
+  .field-inner.focus .lead{color:var(--primary)}
+  .field-inner input{
+    flex:1;border:0;outline:0;background:transparent;
+    font-family:inherit;font-size:15px;color:var(--text);height:100%;
+  }
+  .field-inner .trail{color:var(--text-2);cursor:pointer;}
+  .field-label{
+    position:absolute;left:42px;top:50%;transform:translateY(-50%);
+    color:var(--text-2);font-size:15px;pointer-events:none;transition:.15s;
+  }
+  .row{display:flex;align-items:center;width:100%;margin:8px 0 4px;}
+  .checkbox-wrap{display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .checkbox{
+    width:20px;height:20px;border:2px solid var(--outline);border-radius:4px;
+    display:flex;align-items:center;justify-content:center;background:var(--surface);
+  }
+  .checkbox.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .checkbox .material-icons{font-size:14px;display:none}
+  .checkbox.on .material-icons{display:block}
+  .row .label{font-size:14px;color:var(--text-2);}
+  .row .forgot{
+    margin-left:auto;border:0;background:transparent;color:var(--primary);
+    font-weight:600;font-family:inherit;font-size:14px;cursor:pointer;
+  }
+  .btn{width:100%;height:56px;border-radius:28px;border:0;cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.2px;
+    background:var(--primary);color:#fff;margin-top:16px;
+    box-shadow:0 6px 16px rgba(0,119,182,.3);transition:.15s;}
+  .btn:disabled{background:var(--outline);color:var(--text-3);box-shadow:none;cursor:not-allowed;}
+  .btn:active:not(:disabled){transform:scale(.98)}
+  .divider{display:flex;align-items:center;width:100%;margin:24px 0 16px;color:var(--text-3);font-size:12px;}
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--outline);}
+  .divider span{padding:0 12px;}
+  .social{
+    width:100%;height:52px;border-radius:26px;border:1.5px solid var(--outline);
+    background:#fff;display:flex;align-items:center;justify-content:center;gap:10px;
+    font-family:inherit;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;
+  }
+  .social svg{width:20px;height:20px;}
+  .spacer{flex:1;}
+  .signup{display:flex;align-items:center;gap:4px;font-size:14px;color:var(--text-2);}
+  .signup button{border:0;background:transparent;color:var(--primary);font-weight:600;
+    font-family:inherit;font-size:14px;cursor:pointer;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons" style="font-size:14px;">network_cell</span>
+          <span class="material-icons" style="font-size:14px;">wifi</span>
+          <span class="material-icons" style="font-size:14px;">battery_full</span>
+        </span>
+      </div>
+
+      <div class="body">
+        <div class="brand-mark"><span class="material-icons">water_drop</span></div>
+        <div class="h-title">Bienvenido de vuelta</div>
+        <div class="h-sub">Inicia sesión para continuar</div>
+
+        <div class="form">
+          <div class="field" data-field="correo">
+            <div class="field-inner">
+              <span class="material-icons lead">alternate_email</span>
+              <input type="email" />
+            </div>
+            <label class="field-label">Correo electrónico</label>
+          </div>
+
+          <div class="field" data-field="password">
+            <div class="field-inner">
+              <span class="material-icons lead">lock</span>
+              <input type="password" />
+              <span class="material-icons trail" data-toggle>visibility_off</span>
+            </div>
+            <label class="field-label">Contraseña</label>
+          </div>
+
+          <div class="row">
+            <div class="checkbox-wrap" id="rememberWrap">
+              <div class="checkbox on" id="checkbox"><span class="material-icons">check</span></div>
+              <span class="label">Recordarme</span>
+            </div>
+            <button class="forgot">¿Olvidaste tu contraseña?</button>
+          </div>
+
+          <button class="btn" id="loginBtn" disabled>Iniciar sesión</button>
+
+          <div class="divider"><span>o continúa con</span></div>
+          <button class="social">
+            <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3a12 12 0 1 1-3.4-13.4l5.7-5.7A20 20 0 1 0 44 24c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8A12 12 0 0 1 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7A20 20 0 0 0 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 10-2 13.6-5.2l-6.3-5.3a12 12 0 0 1-18-6.4l-6.5 5A20 20 0 0 0 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3a12 12 0 0 1-4 5.5l6.3 5.3A19.9 19.9 0 0 0 44 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
+            Continuar con Google
+          </button>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="signup">
+          <span>¿Aún no tienes cuenta?</span>
+          <button>Regístrate</button>
+        </div>
+      </div>
+
+      <div class="nav-pill"></div>
+    </div>
+  </div>
+
+<script>
+  document.querySelectorAll('.field').forEach(field=>{
+    const inner=field.querySelector('.field-inner');
+    const input=field.querySelector('input');
+    const label=field.querySelector('.field-label');
+    function reposition(focused){
+      const float = focused || input.value.length>0;
+      label.style.top = float?'0':'50%';
+      label.style.left = float?'36px':'42px';
+      label.style.fontSize = float?'11px':'15px';
+      label.style.padding = float?'0 6px':'0';
+      label.style.background = float?'var(--bg)':'transparent';
+      label.style.color = focused?'var(--primary)':'var(--text-2)';
+      label.style.transform='translateY(-50%)';
+    }
+    input.addEventListener('focus',()=>{inner.classList.add('focus');reposition(true);});
+    input.addEventListener('blur',()=>{inner.classList.remove('focus');reposition(false);});
+    input.addEventListener('input',validate);
+  });
+  document.querySelector('[data-toggle]').addEventListener('click',function(){
+    const inp=this.parentElement.querySelector('input');
+    if(inp.type==='password'){inp.type='text';this.textContent='visibility';}
+    else {inp.type='password';this.textContent='visibility_off';}
+  });
+  const cb=document.getElementById('checkbox');
+  document.getElementById('rememberWrap').addEventListener('click',()=>cb.classList.toggle('on'));
+  const btn=document.getElementById('loginBtn');
+  function validate(){
+    const c=document.querySelector('[data-field="correo"] input').value;
+    const p=document.querySelector('[data-field="password"] input').value;
+    btn.disabled = !(c.includes('@') && p.length>=8);
+  }
+</script>
+</body>
+</html>

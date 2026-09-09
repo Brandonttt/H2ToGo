@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 01 Splash / Onboarding</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  /* Frame Android 412x868 */
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* Splash / Onboarding */
+  .splash-bg{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    padding:32px 24px;
+    background:linear-gradient(180deg,var(--primary-soft) 0%,var(--bg) 100%);
+  }
+  .brand{display:flex;align-items:center;gap:8px;margin-top:8px;}
+  .brand .logo{
+    width:36px;height:36px;border-radius:50%;background:var(--primary);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .brand .logo .material-icons{color:#fff;font-size:20px;}
+  .brand .name{color:var(--primary-dark);font-weight:700;font-size:22px;letter-spacing:.2px;}
+
+  .pager{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;width:100%;margin-top:40px;
+  }
+  .illus{
+    width:200px;height:200px;border-radius:48px;background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 24px rgba(15,23,42,.08);
+  }
+  .illus .material-icons{color:var(--primary);font-size:96px;}
+  .pager h2{
+    margin:40px 0 0;font-size:24px;font-weight:600;color:var(--text);
+    text-align:center;
+  }
+  .pager p{
+    margin:12px 16px 0;font-size:16px;color:var(--text-2);
+    text-align:center;line-height:1.4;
+  }
+
+  .dots{display:flex;gap:8px;margin:24px 0;}
+  .dots .dot{height:8px;width:8px;border-radius:99px;background:var(--outline);}
+  .dots .dot.active{width:24px;background:var(--primary);}
+
+  .cta{width:100%;display:flex;flex-direction:column;align-items:center;}
+  .btn-primary{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;height:56px;border-radius:28px;border:0;cursor:pointer;
+    background:var(--primary);color:#fff;font:600 14px/1 'Roboto',sans-serif;
+    letter-spacing:.2px;box-shadow:0 6px 16px rgba(0,119,182,.3);
+  }
+  .btn-text{
+    width:100%;height:48px;margin-top:8px;border:0;background:transparent;
+    color:var(--primary);font:600 14px/1 'Roboto',sans-serif;cursor:pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar (Android) -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <!-- Contenido -->
+      <div class="splash-bg">
+        <div class="brand">
+          <div class="logo"><span class="material-icons">water_drop</span></div>
+          <span class="name">HToGo</span>
+        </div>
+
+        <div class="pager">
+          <div class="illus"><span class="material-icons">water_drop</span></div>
+          <h2>Agua a un toque</h2>
+          <p>Pide tus garrafones de agua potable sin llamadas ni esperas innecesarias.</p>
+        </div>
+
+        <div class="dots">
+          <span class="dot active"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+
+        <div class="cta">
+          <button class="btn-primary">Siguiente</button>
+          <button class="btn-text">Ya tengo cuenta · Iniciar sesión</button>
+        </div>
+      </div>
+
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

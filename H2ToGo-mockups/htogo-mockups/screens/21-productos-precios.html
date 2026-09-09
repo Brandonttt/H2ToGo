@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 21 Productos y precios</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* Top bar */
+  .topbar{
+    background:linear-gradient(180deg,var(--primary-dark) 0%,var(--primary) 100%);
+    color:#fff;flex:0 0 auto;
+  }
+  .topbar-row{
+    display:flex;align-items:center;padding:10px 16px 4px 8px;
+  }
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;border:0;background:transparent;
+    color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .topbar h1{margin:0;flex:1;font-size:18px;font-weight:600;color:#fff;padding-left:4px;}
+  .subbar{
+    display:flex;align-items:center;gap:6px;
+    padding:6px 16px 14px;color:var(--primary-soft);font-size:12px;
+  }
+  .subbar .material-icons{font-size:14px;}
+
+  /* Content */
+  .content{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+
+  /* Reglas card */
+  .rules{
+    background:#fff;border:1px solid var(--outline);border-radius:16px;
+    padding:14px;
+  }
+  .rules-head{display:flex;align-items:center;gap:10px;}
+  .rules-head .ico{
+    width:36px;height:36px;border-radius:10px;
+    background:var(--primary-soft);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .rules-head .ico .material-icons{font-size:20px;}
+  .rules-head h3{margin:0;font-size:14px;font-weight:600;color:var(--text);}
+  .rules-list{margin-top:10px;display:flex;flex-direction:column;gap:8px;}
+  .rule{display:flex;align-items:flex-start;gap:10px;}
+  .rule .badge-ico{
+    width:28px;height:28px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .rule .badge-ico .material-icons{font-size:15px;}
+  .rule .badge-ico.green{background:rgba(16,185,129,.14);color:var(--accent-emerald);}
+  .rule .badge-ico.amber{background:rgba(245,158,11,.14);color:var(--accent-amber);}
+  .rule-body{flex:1;min-width:0;}
+  .rule-title{font-size:13px;font-weight:600;color:var(--text);}
+  .rule-detail{font-size:11px;color:var(--text-2);line-height:14px;margin-top:1px;}
+
+  /* Section title */
+  .section-title{
+    font-size:12px;font-weight:600;color:var(--text-2);
+    text-transform:uppercase;letter-spacing:.5px;
+    padding:4px 0 0 4px;margin-top:4px;
+  }
+
+  /* Producto card */
+  .producto{
+    background:#fff;border:1px solid var(--outline);border-radius:14px;
+    padding:14px;
+  }
+  .producto-row{display:flex;align-items:center;gap:12px;}
+  .producto-code{
+    width:48px;height:48px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:13px;flex:0 0 auto;
+  }
+  .producto-code.cie{background:rgba(0,119,182,.14);color:var(--primary);}
+  .producto-code.bon{background:rgba(16,185,129,.14);color:var(--accent-emerald);}
+  .producto-code.epu{background:rgba(245,158,11,.14);color:var(--accent-amber);}
+  .producto-code.aqu{background:rgba(139,92,246,.14);color:var(--accent-purple);}
+  .producto-info{flex:1;min-width:0;}
+  .producto-name{font-size:15px;font-weight:600;color:var(--text);}
+  .producto-prov{font-size:11px;color:var(--text-2);margin-top:1px;}
+  .producto-precio{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 auto;}
+  .producto-precio .v{font-size:22px;font-weight:700;color:var(--primary);line-height:1;}
+  .producto-precio .u{font-size:10px;color:var(--text-3);margin-top:2px;}
+
+  .producto-foot{
+    display:flex;align-items:center;justify-content:space-between;margin-top:12px;
+  }
+  .chip-activo{
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(16,185,129,.14);color:var(--accent-emerald);
+    padding:3px 8px;border-radius:99px;
+    font-size:10px;font-weight:600;
+  }
+  .chip-activo .material-icons{font-size:11px;}
+  .btn-edit{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--primary-soft);color:var(--primary);
+    padding:8px 12px;border-radius:10px;border:0;cursor:pointer;
+    font:600 12px 'Roboto',sans-serif;
+  }
+  .btn-edit .material-icons{font-size:14px;}
+
+  /* Agregar producto */
+  .agregar{
+    background:#fff;border:1.5px solid var(--primary);border-radius:14px;
+    padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;
+  }
+  .agregar .add-ico{
+    width:36px;height:36px;border-radius:10px;background:var(--primary-soft);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .agregar .add-ico .material-icons{font-size:20px;}
+  .agregar-info{flex:1;min-width:0;}
+  .agregar-title{font-size:14px;font-weight:600;color:var(--primary);}
+  .agregar-sub{font-size:11px;color:var(--text-2);margin-top:1px;}
+  .agregar > .material-icons{color:var(--accent-amber);font-size:18px;}
+
+  /* Pendiente */
+  .pendiente{
+    background:rgba(245,158,11,.08);
+    border:1px solid rgba(245,158,11,.4);
+    border-radius:14px;padding:14px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .pendiente-ico{
+    width:40px;height:40px;border-radius:12px;
+    background:rgba(245,158,11,.18);color:var(--accent-amber);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .pendiente-ico .material-icons{font-size:20px;}
+  .pendiente-body{flex:1;min-width:0;}
+  .pendiente-head{display:flex;align-items:center;gap:6px;}
+  .pendiente-tipo{font-size:13px;font-weight:600;color:var(--text);}
+  .pendiente-id{font-size:10px;color:var(--text-3);}
+  .pendiente-desc{font-size:12px;color:var(--text-2);line-height:15px;margin-top:1px;}
+  .pendiente-fecha{font-size:10px;color:var(--accent-amber);font-weight:600;margin-top:2px;}
+  .btn-cancel{
+    background:transparent;border:0;cursor:pointer;
+    color:var(--accent-rose);font:600 12px 'Roboto',sans-serif;
+    padding:8px 4px;
+  }
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <!-- Top bar -->
+      <div class="topbar">
+        <div class="topbar-row">
+          <button class="icon-btn" aria-label="Volver">
+            <span class="material-icons">arrow_back</span>
+          </button>
+          <h1>Productos y precios</h1>
+        </div>
+        <div class="subbar">
+          <span class="material-icons">storefront</span>
+          <span>Aguas Del Valle · CU-23</span>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <!-- Reglas -->
+        <div class="rules">
+          <div class="rules-head">
+            <div class="ico"><span class="material-icons">info</span></div>
+            <h3>Cómo funciona</h3>
+          </div>
+          <div class="rules-list">
+            <div class="rule">
+              <div class="badge-ico green"><span class="material-icons">bolt</span></div>
+              <div class="rule-body">
+                <div class="rule-title">Cambiar precio</div>
+                <div class="rule-detail">Inmediato — se actualiza para los clientes en cuanto confirmas.</div>
+              </div>
+            </div>
+            <div class="rule">
+              <div class="badge-ico amber"><span class="material-icons">hourglass_top</span></div>
+              <div class="rule-body">
+                <div class="rule-title">Agregar nuevo producto</div>
+                <div class="rule-detail">Requiere aprobación del admin (RN-020). Verás la solicitud abajo hasta que se apruebe.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">Catálogo activo · 4 productos</div>
+
+        <!-- Producto: Garrafón 19L -->
+        <div class="producto">
+          <div class="producto-row">
+            <div class="producto-code cie">CIE</div>
+            <div class="producto-info">
+              <div class="producto-name">Garrafón 19 L</div>
+              <div class="producto-prov">Distribuidor MX</div>
+            </div>
+            <div class="producto-precio">
+              <div class="v">$35</div>
+              <div class="u">/ pieza</div>
+            </div>
+          </div>
+          <div class="producto-foot">
+            <span class="chip-activo">
+              <span class="material-icons">check_circle</span>
+              Activo
+            </span>
+            <button class="btn-edit">
+              <span class="material-icons">edit</span>
+              Cambiar precio
+            </button>
+          </div>
+        </div>
+
+        <!-- Producto: Garrafón 10L -->
+        <div class="producto">
+          <div class="producto-row">
+            <div class="producto-code bon">BON</div>
+            <div class="producto-info">
+              <div class="producto-name">Garrafón 10 L</div>
+              <div class="producto-prov">Bonafont SA</div>
+            </div>
+            <div class="producto-precio">
+              <div class="v">$22</div>
+              <div class="u">/ pieza</div>
+            </div>
+          </div>
+          <div class="producto-foot">
+            <span class="chip-activo">
+              <span class="material-icons">check_circle</span>
+              Activo
+            </span>
+            <button class="btn-edit">
+              <span class="material-icons">edit</span>
+              Cambiar precio
+            </button>
+          </div>
+        </div>
+
+        <!-- Producto: Botella 1.5L -->
+        <div class="producto">
+          <div class="producto-row">
+            <div class="producto-code epu">EPU</div>
+            <div class="producto-info">
+              <div class="producto-name">Botella 1.5 L</div>
+              <div class="producto-prov">Epura Distrib.</div>
+            </div>
+            <div class="producto-precio">
+              <div class="v">$12</div>
+              <div class="u">/ pieza</div>
+            </div>
+          </div>
+          <div class="producto-foot">
+            <span class="chip-activo">
+              <span class="material-icons">check_circle</span>
+              Activo
+            </span>
+            <button class="btn-edit">
+              <span class="material-icons">edit</span>
+              Cambiar precio
+            </button>
+          </div>
+        </div>
+
+        <!-- Producto: Hielo 5kg -->
+        <div class="producto">
+          <div class="producto-row">
+            <div class="producto-code aqu">HIE</div>
+            <div class="producto-info">
+              <div class="producto-name">Hielo 5 kg</div>
+              <div class="producto-prov">Hielo Polar</div>
+            </div>
+            <div class="producto-precio">
+              <div class="v">$40</div>
+              <div class="u">/ pieza</div>
+            </div>
+          </div>
+          <div class="producto-foot">
+            <span class="chip-activo">
+              <span class="material-icons">check_circle</span>
+              Activo
+            </span>
+            <button class="btn-edit">
+              <span class="material-icons">edit</span>
+              Cambiar precio
+            </button>
+          </div>
+        </div>
+
+        <!-- Agregar -->
+        <div class="agregar">
+          <div class="add-ico"><span class="material-icons">add</span></div>
+          <div class="agregar-info">
+            <div class="agregar-title">Agregar producto al catálogo</div>
+            <div class="agregar-sub">Sujeto a aprobación del admin</div>
+          </div>
+          <span class="material-icons">hourglass_top</span>
+        </div>
+
+        <div class="section-title">Esperando aprobación · 1</div>
+
+        <!-- Pendiente -->
+        <div class="pendiente">
+          <div class="pendiente-ico"><span class="material-icons">pending_actions</span></div>
+          <div class="pendiente-body">
+            <div class="pendiente-head">
+              <span class="pendiente-tipo">Agregar producto</span>
+              <span class="pendiente-id">#SOL-0119</span>
+            </div>
+            <div class="pendiente-desc">Santorini · 20 L · $40 — Proveedor Aqua MX</div>
+            <div class="pendiente-fecha">Hace 2 días · esperando admin</div>
+          </div>
+          <button class="btn-cancel">Cancelar</button>
+        </div>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

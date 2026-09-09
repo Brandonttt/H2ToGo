@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 05 Home Cliente</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  /* Frame Android 412x868 */
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* Scroll content */
+  .content{
+    flex:1;overflow:auto;position:relative;
+    padding-bottom:8px;
+  }
+
+  /* Hero gradient */
+  .hero{
+    background:linear-gradient(180deg,var(--primary-dark) 0%,var(--primary) 100%);
+    color:#fff;padding:18px 20px 22px;
+  }
+  .hero-row{display:flex;align-items:center;}
+  .hero-greet{flex:1;}
+  .hero-greet .hi{font-size:22px;font-weight:700;margin:0;}
+  .hero-greet .sub{
+    display:flex;align-items:center;gap:4px;
+    font-size:13px;color:var(--primary-soft);margin-top:2px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .hero-greet .sub .material-icons{font-size:14px;}
+  .icon-btn-circle{
+    width:40px;height:40px;border-radius:50%;border:0;background:transparent;
+    color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .role-pill{
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(255,255,255,.15);color:#fff;
+    padding:5px 10px;border-radius:99px;
+    font-size:11px;font-weight:600;margin-top:10px;
+  }
+  .role-pill .material-icons{font-size:14px;}
+  .search-card{
+    background:#fff;border-radius:14px;margin-top:16px;
+    display:flex;align-items:center;gap:10px;padding:14px;
+  }
+  .search-card .material-icons{color:var(--text-3);font-size:20px;}
+  .search-card .placeholder{color:var(--text-2);font-size:14px;}
+
+  /* Section title */
+  .section-title{
+    font-size:16px;font-weight:600;color:var(--text);
+    padding:0 20px;margin:20px 0 8px;
+  }
+
+  /* Pedido activo */
+  .pedido-card{
+    background:#fff;border-radius:16px;margin:0 20px;padding:16px;
+    box-shadow:0 4px 14px rgba(15,23,42,.08);
+  }
+  .pedido-head{display:flex;align-items:center;gap:12px;}
+  .avatar-soft{
+    width:44px;height:44px;border-radius:50%;
+    background:var(--primary-soft);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .avatar-soft .material-icons{font-size:24px;}
+  .pedido-info{flex:1;min-width:0;}
+  .pedido-info .t{font-size:16px;font-weight:600;color:var(--text);}
+  .pedido-info .s{font-size:13px;color:var(--text-2);margin-top:2px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;
+    border-radius:99px;font-size:11px;font-weight:600;}
+  .chip-encamino{background:rgba(0,119,182,.12);color:var(--s-encamino);}
+  .chip::before{content:'';width:6px;height:6px;border-radius:99px;background:currentColor;}
+  .progress{display:flex;gap:4px;margin-top:14px;}
+  .progress .seg{flex:1;height:6px;border-radius:3px;background:var(--outline);}
+  .progress .seg.on{background:var(--primary);}
+  .pedido-eta{
+    display:flex;align-items:center;gap:4px;margin-top:8px;
+    font-size:13px;color:var(--text-2);
+  }
+  .pedido-eta .material-icons{font-size:14px;}
+
+  /* Quick actions */
+  .qa-grid{
+    padding:0 20px;display:flex;flex-direction:column;gap:12px;
+  }
+  .qa-row{display:flex;gap:12px;}
+  .qa-tile{
+    flex:1;background:#fff;border-radius:16px;padding:14px;
+    height:108px;display:flex;flex-direction:column;justify-content:space-between;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .qa-icon{
+    width:36px;height:36px;border-radius:10px;background:var(--primary-soft);
+    display:flex;align-items:center;justify-content:center;color:var(--primary);
+  }
+  .qa-icon .material-icons{font-size:20px;}
+  .qa-title{font-size:14px;font-weight:600;color:var(--text);}
+  .qa-sub{font-size:12px;color:var(--text-2);margin-top:2px;}
+
+  /* Purificadora mini */
+  .pur-list{padding:0 20px;display:flex;flex-direction:column;gap:8px;}
+  .pur-card{
+    background:#fff;border-radius:14px;padding:12px;
+    display:flex;align-items:center;gap:12px;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .pur-icon{
+    width:40px;height:40px;border-radius:50%;background:var(--primary-soft);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
+  }
+  .pur-icon .material-icons{font-size:20px;}
+  .pur-info{flex:1;min-width:0;}
+  .pur-name{font-size:14px;font-weight:600;color:var(--text);}
+  .pur-dist{font-size:12px;color:var(--text-2);margin-top:2px;}
+  .pur-btn{
+    background:var(--primary-soft);color:var(--primary);
+    border:0;border-radius:99px;padding:6px 12px;
+    font:600 12px 'Roboto',sans-serif;cursor:pointer;
+  }
+
+  .spacer-bottom{height:120px;}
+
+  /* FAB */
+  .fab{
+    position:absolute;bottom:88px;right:16px;z-index:5;
+    display:flex;align-items:center;gap:8px;
+    height:56px;padding:0 20px;border-radius:28px;border:0;cursor:pointer;
+    background:var(--primary);color:#fff;font:600 14px 'Roboto',sans-serif;
+    box-shadow:0 8px 22px rgba(0,119,182,.45);
+  }
+  .fab .material-icons{font-size:22px;}
+
+  /* BottomBar */
+  .bottombar{
+    background:#fff;border-top:1px solid var(--outline);
+    display:flex;height:72px;padding:6px 0 10px;flex:0 0 auto;
+  }
+  .tab{
+    flex:1;border:0;background:transparent;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;cursor:pointer;
+    color:var(--text-3);font:500 11px 'Roboto',sans-serif;
+  }
+  .tab .material-icons{font-size:22px;padding:4px 16px;border-radius:99px;}
+  .tab.active{color:var(--primary);}
+  .tab.active .material-icons{background:var(--primary-soft);}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <!-- Scrollable content -->
+      <div class="content">
+        <!-- Hero -->
+        <div class="hero">
+          <div class="hero-row">
+            <div class="hero-greet">
+              <div class="hi">Hola, Gael</div>
+              <div class="sub">
+                <span class="material-icons">location_on</span>
+                <span>Av. Insurgentes Sur 1234, Col. Del Valle</span>
+              </div>
+            </div>
+            <button class="icon-btn-circle" aria-label="Notificaciones">
+              <span class="material-icons">notifications</span>
+            </button>
+          </div>
+          <div class="role-pill">
+            <span class="material-icons">swap_horiz</span>
+            <span>Vista Repartidor</span>
+          </div>
+          <div class="search-card">
+            <span class="material-icons">search</span>
+            <span class="placeholder">¿Buscas una purificadora cerca?</span>
+          </div>
+        </div>
+
+        <!-- Pedido en curso -->
+        <div class="section-title">Pedido en curso</div>
+        <div class="pedido-card">
+          <div class="pedido-head">
+            <div class="avatar-soft"><span class="material-icons">water_drop</span></div>
+            <div class="pedido-info">
+              <div class="t">Pedido #HG-1287</div>
+              <div class="s">3 garrafones · Aguas Del Valle</div>
+            </div>
+            <span class="chip chip-encamino">En camino</span>
+          </div>
+          <div class="progress">
+            <div class="seg on"></div>
+            <div class="seg on"></div>
+            <div class="seg on"></div>
+            <div class="seg"></div>
+          </div>
+          <div class="pedido-eta">
+            <span class="material-icons">schedule</span>
+            <span>Llega en ~8 min</span>
+          </div>
+        </div>
+
+        <!-- Acciones rápidas -->
+        <div class="section-title">Acciones rápidas</div>
+        <div class="qa-grid">
+          <div class="qa-row">
+            <div class="qa-tile">
+              <div class="qa-icon"><span class="material-icons">storefront</span></div>
+              <div>
+                <div class="qa-title">Elegir purificadora</div>
+                <div class="qa-sub">Pide a un negocio específico</div>
+              </div>
+            </div>
+            <div class="qa-tile">
+              <div class="qa-icon"><span class="material-icons">attach_money</span></div>
+              <div>
+                <div class="qa-title">Pedir con precio máximo</div>
+                <div class="qa-sub">Te asignamos el primero disponible</div>
+              </div>
+            </div>
+          </div>
+          <div class="qa-row">
+            <div class="qa-tile">
+              <div class="qa-icon"><span class="material-icons">history</span></div>
+              <div>
+                <div class="qa-title">Repetir último</div>
+                <div class="qa-sub">5 garrafones</div>
+              </div>
+            </div>
+            <div class="qa-tile">
+              <div class="qa-icon"><span class="material-icons">schedule</span></div>
+              <div>
+                <div class="qa-title">Programar</div>
+                <div class="qa-sub">Pedido recurrente</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Purificadoras cerca -->
+        <div class="section-title">Purificadoras cerca de ti</div>
+        <div class="pur-list">
+          <div class="pur-card">
+            <div class="pur-icon"><span class="material-icons">storefront</span></div>
+            <div class="pur-info">
+              <div class="pur-name">Aguas Del Valle</div>
+              <div class="pur-dist">0.8 km</div>
+            </div>
+            <button class="pur-btn">Pedir</button>
+          </div>
+          <div class="pur-card">
+            <div class="pur-icon"><span class="material-icons">storefront</span></div>
+            <div class="pur-info">
+              <div class="pur-name">HidroExpress BJ</div>
+              <div class="pur-dist">1.4 km</div>
+            </div>
+            <button class="pur-btn">Pedir</button>
+          </div>
+          <div class="pur-card">
+            <div class="pur-icon"><span class="material-icons">storefront</span></div>
+            <div class="pur-info">
+              <div class="pur-name">AquaPura Nápoles</div>
+              <div class="pur-dist">2.1 km</div>
+            </div>
+            <button class="pur-btn">Pedir</button>
+          </div>
+        </div>
+
+        <div class="spacer-bottom"></div>
+      </div>
+
+      <!-- FAB -->
+      <button class="fab">
+        <span class="material-icons">add</span>
+        <span>Pedir agua</span>
+      </button>
+
+      <!-- BottomBar -->
+      <div class="bottombar">
+        <button class="tab active"><span class="material-icons">home</span><span>Inicio</span></button>
+        <button class="tab"><span class="material-icons">history</span><span>Pedidos</span></button>
+        <button class="tab"><span class="material-icons">person</span><span>Perfil</span></button>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

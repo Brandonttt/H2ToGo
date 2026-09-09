@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 11 Seguimiento del pedido</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  /* Frame Android 412x868 */
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;z-index:20;position:relative;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* Map */
+  .map{
+    position:absolute;top:0;left:0;right:0;bottom:0;
+    background:linear-gradient(135deg,#DCEEF7 0%,#E8F5FA 50%,#D6EAF4 100%);
+    overflow:hidden;
+  }
+  .map svg{position:absolute;inset:0;width:100%;height:100%;}
+
+  /* Floating top bar */
+  .floating-top{
+    position:absolute;top:32px;left:0;right:0;z-index:15;
+    padding:12px 16px;display:flex;align-items:center;gap:10px;
+  }
+  .pill-back{
+    width:40px;height:40px;border-radius:50%;background:#fff;
+    box-shadow:0 4px 14px rgba(15,23,42,.12);
+    display:flex;align-items:center;justify-content:center;
+    border:0;cursor:pointer;flex:0 0 auto;
+  }
+  .pill-back .material-icons{color:var(--text);font-size:22px;}
+  .pill-order{
+    flex:1;background:#fff;border-radius:99px;padding:10px 14px;
+    box-shadow:0 4px 14px rgba(15,23,42,.12);
+    display:flex;align-items:center;
+  }
+  .pill-order .ti{font-size:15px;font-weight:600;color:var(--text);}
+  .pill-order .id{font-size:13px;color:var(--text-2);margin-left:2px;}
+
+  /* Status pill on map */
+  .status-pill{
+    position:absolute;top:140px;left:50%;transform:translateX(-50%);
+    background:#fff;border-radius:99px;padding:8px 14px;
+    box-shadow:0 6px 18px rgba(15,23,42,.15);
+    display:flex;align-items:center;gap:6px;z-index:14;white-space:nowrap;
+  }
+  .status-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--s-encamino);}
+  .status-pill .material-icons{font-size:14px;color:var(--s-encamino);}
+  .status-pill .pur{font-size:13px;font-weight:600;color:var(--text);}
+  .status-pill .sub{font-size:13px;color:var(--text-2);}
+
+  /* Map FAB */
+  .map-fab{
+    position:absolute;top:170px;right:14px;z-index:14;
+    width:42px;height:42px;border-radius:12px;background:#fff;
+    box-shadow:0 4px 14px rgba(15,23,42,.18);
+    display:flex;align-items:center;justify-content:center;border:0;cursor:pointer;
+  }
+  .map-fab .material-icons{color:var(--text);font-size:20px;}
+
+  /* Driver marker on map */
+  .driver-marker{
+    position:absolute;left:30%;top:280px;z-index:13;
+    transform:translate(-50%,-100%);
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+  }
+  .driver-marker .name{
+    background:#fff;border-radius:99px;padding:4px 10px;
+    font-size:11px;font-weight:600;color:var(--text);
+    box-shadow:0 4px 10px rgba(15,23,42,.18);
+  }
+  .driver-marker .pin{
+    width:46px;height:46px;border-radius:50%;background:var(--primary);
+    border:3px solid #fff;
+    box-shadow:0 8px 18px rgba(0,119,182,.45);
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+  }
+  .driver-marker .pin .material-icons{color:#fff;font-size:24px;}
+  .driver-marker .pulse{
+    position:absolute;inset:-12px;border-radius:50%;
+    background:rgba(0,119,182,.25);
+    animation:pulse 2.2s linear infinite;
+  }
+  @keyframes pulse{
+    0%{transform:scale(1);opacity:.7;}
+    100%{transform:scale(2.2);opacity:0;}
+  }
+
+  /* Destination marker (teardrop) */
+  .dest-marker{
+    position:absolute;left:72%;top:215px;z-index:13;
+    width:36px;height:36px;
+    background:var(--s-entregado);
+    border:3px solid #fff;
+    border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg);
+    box-shadow:0 6px 16px rgba(16,185,129,.4);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .dest-marker::after{
+    content:'';width:14px;height:14px;border-radius:50%;
+    background:#fff;transform:rotate(45deg);
+  }
+
+  /* Bottom sheet */
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;
+    background:#fff;border-radius:24px 24px 0 0;
+    box-shadow:0 -8px 24px rgba(15,23,42,.16);
+    padding:14px 18px 22px;
+    height:62%;
+    display:flex;flex-direction:column;
+    z-index:16;
+  }
+  .grabber{
+    width:44px;height:4px;border-radius:2px;background:var(--outline);
+    margin:0 auto 12px;
+  }
+  .sheet-scroll{flex:1;overflow:auto;}
+
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;
+    border-radius:99px;font-size:12px;font-weight:600;}
+  .chip-encamino{background:rgba(0,119,182,.14);color:var(--s-encamino);}
+  .chip::before{content:'';width:6px;height:6px;border-radius:99px;background:currentColor;}
+
+  /* Driver card */
+  .driver-card{
+    background:var(--bg);border-radius:16px;padding:14px;margin-top:14px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .avatar{
+    width:52px;height:52px;border-radius:50%;background:var(--primary-soft);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;
+    font-size:18px;font-weight:700;flex:0 0 auto;
+  }
+  .driver-info{flex:1;min-width:0;}
+  .driver-info .top{font-size:13px;font-weight:600;color:var(--text-2);}
+  .driver-info .name{font-size:15px;font-weight:600;color:var(--text);margin-top:1px;}
+  .driver-info .pur{
+    display:flex;align-items:center;gap:4px;
+    font-size:12px;font-weight:600;color:var(--primary);margin-top:2px;
+  }
+  .driver-info .pur .material-icons{font-size:13px;}
+  .driver-info .veh{font-size:11px;color:var(--text-3);margin-top:2px;}
+  .call-btn{
+    width:42px;height:42px;border-radius:50%;background:var(--primary);
+    display:flex;align-items:center;justify-content:center;border:0;cursor:pointer;
+    flex:0 0 auto;box-shadow:0 4px 12px rgba(0,119,182,.3);
+  }
+  .call-btn .material-icons{color:#fff;font-size:20px;}
+
+  /* Timeline */
+  .timeline{
+    background:var(--bg);border-radius:16px;padding:14px 16px;margin-top:14px;
+  }
+  .step{display:flex;}
+  .step-col{width:20px;display:flex;flex-direction:column;align-items:center;flex:0 0 auto;}
+  .dot{
+    width:18px;height:18px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .dot-done{background:var(--s-entregado);}
+  .dot-done .material-icons{color:#fff;font-size:11px;}
+  .dot-active{
+    background:var(--s-encamino);
+    box-shadow:0 0 0 3px rgba(0,119,182,.25);
+  }
+  .dot-pending{background:var(--outline);}
+  .step-line{width:2px;height:28px;}
+  .step-line.done{background:var(--s-entregado);}
+  .step-line.pending{background:var(--outline);}
+  .step-body{padding-left:12px;padding-bottom:14px;}
+  .step:last-child .step-body{padding-bottom:0;}
+  .step-title{font-size:13px;font-weight:600;color:var(--text);}
+  .step-title.pending{color:var(--text-3);}
+  .step-time{font-size:11px;color:var(--text-2);margin-top:2px;}
+  .step-time.active{color:var(--s-encamino);font-weight:600;}
+
+  /* Order rows */
+  .order-rows{margin-top:14px;}
+  .order-row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:6px 0;font-size:13px;
+  }
+  .order-row .lbl{color:var(--text-2);}
+  .order-row .val{color:var(--text);font-weight:500;}
+  .order-row.total .val{color:var(--primary);font-weight:700;}
+  .divider{height:1px;background:var(--outline);margin:8px 0;}
+
+  /* Cancel button (disabled, since en camino) */
+  .btn-cancel{
+    width:100%;height:46px;border-radius:12px;
+    background:var(--bg);border:1.5px solid var(--outline);
+    color:var(--text-3);font:600 13px 'Roboto',sans-serif;
+    cursor:not-allowed;margin-top:10px;
+  }
+  .lock-msg{
+    display:flex;align-items:center;justify-content:center;gap:4px;
+    margin-top:6px;font-size:11px;color:var(--text-3);
+  }
+  .lock-msg .material-icons{font-size:13px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Map background -->
+      <div class="map">
+        <svg viewBox="0 0 412 868" preserveAspectRatio="none">
+          <!-- Streets -->
+          <line x1="-50" y1="170" x2="462" y2="200" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
+          <line x1="-50" y1="350" x2="462" y2="420" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+          <line x1="74" y1="-30" x2="124" y2="900" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+          <line x1="206" y1="-30" x2="272" y2="900" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
+          <!-- Building block -->
+          <rect x="227" y="100" width="91" height="56" rx="10" ry="10" fill="#BFE3CB"/>
+          <!-- Route shadow -->
+          <path d="M 124 340 Q 198 285 227 230 Q 256 195 297 185"
+                stroke="rgba(0,119,182,.25)" stroke-width="12"
+                stroke-linecap="round" fill="none"/>
+          <!-- Route dashed -->
+          <path d="M 124 340 Q 198 285 227 230 Q 256 195 297 185"
+                stroke="#0077B6" stroke-width="6"
+                stroke-linecap="round" fill="none"
+                stroke-dasharray="2 14"/>
+        </svg>
+      </div>
+
+      <!-- Status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <!-- Floating top bar -->
+      <div class="floating-top">
+        <button class="pill-back" aria-label="Atrás">
+          <span class="material-icons">arrow_back</span>
+        </button>
+        <div class="pill-order">
+          <span class="ti">Tu pedido&nbsp;</span>
+          <span class="id">#HG-1287</span>
+        </div>
+      </div>
+
+      <!-- Status pill -->
+      <div class="status-pill">
+        <span class="dot"></span>
+        <span class="material-icons">storefront</span>
+        <span class="pur">Aguas Del Valle</span>
+        <span class="sub">· Carlos viene en camino</span>
+      </div>
+
+      <!-- Map FAB -->
+      <button class="map-fab" aria-label="Mi ubicación">
+        <span class="material-icons">my_location</span>
+      </button>
+
+      <!-- Destination teardrop marker -->
+      <div class="dest-marker"></div>
+
+      <!-- Driver marker with pulse -->
+      <div class="driver-marker">
+        <div class="name">Carlos M.</div>
+        <div class="pin">
+          <div class="pulse"></div>
+          <span class="material-icons">local_shipping</span>
+        </div>
+      </div>
+
+      <!-- Bottom sheet -->
+      <div class="sheet">
+        <div class="grabber"></div>
+        <div class="sheet-scroll">
+          <div>
+            <span class="chip chip-encamino">En camino</span>
+          </div>
+
+          <!-- Driver card -->
+          <div class="driver-card">
+            <div class="avatar">CM</div>
+            <div class="driver-info">
+              <div class="top">Aguas Del Valle · Carlos M.</div>
+              <div class="name">Carlos Mendoza</div>
+              <div class="pur">
+                <span class="material-icons">storefront</span>
+                <span>Aguas Del Valle</span>
+              </div>
+              <div class="veh">Bicicleta de carga · Placa BJ-238</div>
+            </div>
+            <button class="call-btn" aria-label="Llamar">
+              <span class="material-icons">call</span>
+            </button>
+          </div>
+
+          <!-- Timeline -->
+          <div class="timeline">
+            <div class="step">
+              <div class="step-col">
+                <div class="dot dot-done"><span class="material-icons">check</span></div>
+                <div class="step-line done"></div>
+              </div>
+              <div class="step-body">
+                <div class="step-title">Pedido recibido</div>
+                <div class="step-time">9:32 AM · Aguas Del Valle confirmó</div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-col">
+                <div class="dot dot-done"><span class="material-icons">check</span></div>
+                <div class="step-line done"></div>
+              </div>
+              <div class="step-body">
+                <div class="step-title">Repartidor asignado</div>
+                <div class="step-time">9:35 AM · Carlos cargó 3 garrafones</div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-col">
+                <div class="dot dot-active"></div>
+                <div class="step-line pending"></div>
+              </div>
+              <div class="step-body">
+                <div class="step-title">En camino a tu domicilio</div>
+                <div class="step-time active">En curso</div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-col">
+                <div class="dot dot-pending"></div>
+              </div>
+              <div class="step-body">
+                <div class="step-title pending">Entregado</div>
+                <div class="step-time">Pendiente</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order rows -->
+          <div class="order-rows">
+            <div class="order-row">
+              <span class="lbl">Pedido</span>
+              <span class="val">3 × Ciel 20 L</span>
+            </div>
+            <div class="order-row">
+              <span class="lbl">Domicilio</span>
+              <span class="val">Casa · Insurgentes Sur 1234</span>
+            </div>
+            <div class="divider"></div>
+            <div class="order-row total">
+              <span class="lbl">Total a pagar</span>
+              <span class="val">$125 MXN</span>
+            </div>
+          </div>
+
+          <button class="btn-cancel">Cancelar pedido</button>
+          <div class="lock-msg">
+            <span class="material-icons">lock</span>
+            <span>Ya no puedes cancelar: tu pedido está en camino</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

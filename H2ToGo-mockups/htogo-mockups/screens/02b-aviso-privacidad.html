@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 02b Aviso de Privacidad</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  /* Frame Android 412x868 */
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* Top bar con título */
+  .topbar{
+    height:56px;display:flex;align-items:center;gap:4px;padding:0 8px;
+    background:var(--bg);flex:0 0 auto;
+    border-bottom:1px solid var(--outline);
+  }
+  .topbar .icon-btn{
+    width:40px;height:40px;border-radius:50%;border:0;background:transparent;
+    color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .topbar h1{
+    margin:0;font-size:17px;font-weight:600;color:var(--text);
+  }
+
+  /* Scroll container */
+  .scroll{
+    flex:1;overflow:auto;padding:16px 22px 24px;
+  }
+
+  /* Cabecera del aviso */
+  .doc-head{
+    margin-bottom:18px;
+  }
+  .doc-head .doc-title{
+    margin:0;font-size:18px;font-weight:700;color:var(--text);
+    letter-spacing:.2px;
+  }
+  .doc-head .doc-sub{
+    margin-top:4px;font-size:12px;color:var(--text-2);line-height:1.5;
+  }
+
+  /* Secciones */
+  .sec{margin-bottom:16px;}
+  .sec h2{
+    margin:0 0 6px;font-size:14px;font-weight:700;color:var(--primary-dark);
+    letter-spacing:.1px;
+  }
+  .sec p,
+  .sec .lead{
+    margin:0 0 8px;font-size:13px;color:var(--text-2);line-height:1.6;
+  }
+  .sec .lead{margin-bottom:6px;}
+
+  /* "Listas" sin ul/li */
+  .bullets{display:flex;flex-direction:column;gap:6px;margin:4px 0 6px;}
+  .bullet{
+    display:flex;gap:8px;align-items:flex-start;
+    font-size:13px;color:var(--text-2);line-height:1.6;
+  }
+  .bullet .dot{
+    color:var(--primary);font-weight:700;line-height:1.4;flex:0 0 auto;
+    font-size:14px;
+  }
+
+  /* Card de dato sensible */
+  .sensitive{
+    background:var(--primary-wash);
+    border-left:3px solid var(--primary);
+    padding:10px;border-radius:8px;
+    margin:8px 0 4px;
+  }
+  .sensitive .label{
+    display:flex;align-items:center;gap:6px;
+    font-size:12px;font-weight:700;color:var(--primary-dark);
+    margin-bottom:4px;
+  }
+  .sensitive .label .material-icons{font-size:14px;color:var(--primary);}
+  .sensitive .body{
+    margin:0;font-size:12px;color:var(--text);line-height:1.55;
+  }
+
+  /* Nota final */
+  .legal-note{
+    margin-top:18px;padding-top:12px;
+    border-top:1px solid var(--outline);
+    font-size:11px;color:var(--text-3);font-style:italic;line-height:1.5;
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar (Android) -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <!-- Top bar -->
+      <div class="topbar">
+        <button class="icon-btn" onclick="window.close()"><span class="material-icons">arrow_back</span></button>
+        <h1>Aviso de Privacidad</h1>
+      </div>
+
+      <!-- Contenido scrollable -->
+      <div class="scroll">
+
+        <div class="doc-head">
+          <h2 class="doc-title">AVISO DE PRIVACIDAD</h2>
+          <div class="doc-sub">Boceto para prototipo académico — sujeto a revisión legal antes de producción</div>
+        </div>
+
+        <section class="sec">
+          <h2>1. Identidad y domicilio del responsable</h2>
+          <p>El responsable del tratamiento de sus datos personales es el equipo desarrollador del proyecto H2ToGo, prototipo académico desarrollado en el Instituto Politécnico Nacional (IPN), Escuela Superior de Cómputo (ESCOM). Para cualquier asunto relacionado con este Aviso, puede contactarnos a través del correo electrónico gmarquezr1900@alumno.ipn.mx o btrejoh1900@alumno.ipn.mx.</p>
+        </section>
+
+        <section class="sec">
+          <h2>2. Datos personales que recabamos</h2>
+          <p class="lead">H2ToGo recaba los siguientes datos personales para la prestación del servicio de gestión y entrega de agua potable:</p>
+          <div class="bullets">
+            <div class="bullet"><span class="dot">·</span><span>Nombre completo, correo electrónico y número de teléfono (registro y contacto).</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Domicilio de entrega e indicaciones adicionales (coordenadas GPS del punto de entrega).</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Ubicación geográfica en tiempo real del repartidor durante el estado activo de una entrega.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Historial de pedidos, cantidades y precios acordados.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Contraseña, almacenada exclusivamente en formato de hash cifrado; nunca en texto plano.</span></div>
+          </div>
+          <div class="sensitive">
+            <div class="label"><span class="material-icons">location_on</span>Dato sensible</div>
+            <p class="body">La ubicación GPS en tiempo real del repartidor constituye un dato de geolocalización continua. Su tratamiento requiere de su consentimiento expreso, el cual se solicita de forma separada al momento de otorgar el permiso de ubicación en su dispositivo.</p>
+          </div>
+        </section>
+
+        <section class="sec">
+          <h2>3. Finalidades del tratamiento</h2>
+          <p class="lead">Sus datos se utilizan exclusivamente para las siguientes finalidades:</p>
+          <div class="bullets">
+            <div class="bullet"><span class="dot">·</span><span>Crear y gestionar su cuenta de usuario dentro de la aplicación.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Procesar, asignar y rastrear pedidos de garrafones de agua a domicilio.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Notificarle sobre el estado de su pedido y la proximidad del repartidor.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Calcular la ruta óptima de entrega para el repartidor.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Mantener un historial de pedidos para consulta del propio usuario.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Prevenir fraudes mediante verificación OTP y penalización por ausencias reiteradas.</span></div>
+          </div>
+        </section>
+
+        <section class="sec">
+          <h2>4. Transferencias de datos</h2>
+          <p class="lead">H2ToGo no vende, cede ni comercializa sus datos personales a terceros con fines de mercadotecnia. Los únicos casos de transferencia son:</p>
+          <div class="bullets">
+            <div class="bullet"><span class="dot">·</span><span><b>Infraestructura en la nube:</b> los datos se alojan en servidores de Microsoft Azure, quien actúa como encargado del tratamiento bajo acuerdo de confidencialidad. Azure no utiliza sus datos para fines propios.</span></div>
+            <div class="bullet"><span class="dot">·</span><span><b>Entre actores del servicio:</b> la ubicación GPS del repartidor es visible para el cliente cuyo pedido está activo, y el domicilio del cliente es visible para el repartidor asignado. Esta transferencia es estrictamente necesaria para la operación del servicio.</span></div>
+          </div>
+        </section>
+
+        <section class="sec">
+          <h2>5. Derechos ARCO</h2>
+          <p>Usted tiene derecho a Acceder, Rectificar, Cancelar u Oponerse al tratamiento de sus datos personales (derechos ARCO), conforme a los Arts. 22–25 de la LFPDPPP. Para ejercerlos:</p>
+          <div class="bullets">
+            <div class="bullet"><span class="dot">·</span><span>Envíe una solicitud al correo de contacto (gmarquezr1900@alumno.ipn.mx o btrejoh1900@alumno.ipn.mx).</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Indique el derecho que desea ejercer y los datos a los que se refiere.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Recibirá una respuesta en un plazo máximo de 20 días hábiles.</span></div>
+          </div>
+          <p><b>Nota:</b> el historial de pedidos se conserva de forma inmutable por integridad operativa y no puede ser eliminado individualmente. Esta limitación se informa expresamente al momento de la aceptación de este aviso.</p>
+        </section>
+
+        <section class="sec">
+          <h2>6. Revocación del consentimiento</h2>
+          <p>Usted puede revocar su consentimiento para el tratamiento de sus datos en cualquier momento, salvo en los casos en que el tratamiento sea necesario para el cumplimiento de una obligación legal. La revocación implica la desactivación de su cuenta y la imposibilidad de utilizar el servicio. Para solicitarla, utilice el mismo canal indicado en la sección de Derechos ARCO.</p>
+        </section>
+
+        <section class="sec">
+          <h2>7. Medidas de seguridad</h2>
+          <p class="lead">H2ToGo implementa las siguientes medidas técnicas para proteger sus datos:</p>
+          <div class="bullets">
+            <div class="bullet"><span class="dot">·</span><span>Cifrado bcrypt de contraseñas; nunca se almacenan en texto plano.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Transmisión de datos bajo protocolo HTTPS/TLS.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Control de acceso por roles: cada usuario solo puede ver los datos que le corresponden.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Sesión única activa por cuenta para prevenir suplantaciones.</span></div>
+            <div class="bullet"><span class="dot">·</span><span>Registro inmutable de cambios de estado con marca de tiempo.</span></div>
+          </div>
+        </section>
+
+        <section class="sec">
+          <h2>8. Cambios a este Aviso de Privacidad</h2>
+          <p>Cualquier modificación a este aviso será notificada a través de la aplicación. El uso continuado del servicio tras la notificación implica la aceptación de los cambios.</p>
+        </section>
+
+        <div class="legal-note">Boceto académico — IPN ESCOM 2025. Sujeto a revisión legal antes de producción.</div>
+
+      </div>
+
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

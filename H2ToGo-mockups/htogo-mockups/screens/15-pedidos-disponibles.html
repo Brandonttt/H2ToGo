@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 15 Pedidos disponibles</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* App bar */
+  .appbar{
+    background:var(--primary-dark);color:#fff;
+    padding:10px 8px;display:flex;align-items:center;gap:4px;
+    flex:0 0 auto;
+  }
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;border:0;background:transparent;
+    color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .appbar .titles{flex:1;min-width:0;}
+  .appbar .t{font-size:16px;font-weight:600;}
+  .appbar .s{font-size:12px;color:rgba(255,255,255,.8);margin-top:1px;}
+
+  /* Lista */
+  .content{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
+
+  .pedido-card{
+    background:#fff;border:1px solid var(--outline);
+    border-radius:14px;padding:14px;
+  }
+  .pedido-card.priority{border:2px solid var(--accent-amber);}
+
+  .badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .badge{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:3px 8px;border-radius:99px;font-size:10px;font-weight:700;
+  }
+  .badge .material-icons{font-size:12px;}
+  .badge-priority{background:rgba(245,158,11,.15);color:var(--accent-amber);}
+  .badge-precio{background:rgba(245,158,11,.18);color:var(--accent-amber);}
+
+  .pedido-head{display:flex;align-items:flex-start;gap:8px;margin-top:8px;}
+  .pedido-head.no-margin{margin-top:0;}
+  .pedido-info{flex:1;min-width:0;}
+  .pedido-id{font-size:11px;color:var(--text-2);}
+  .pedido-cliente{font-size:15px;font-weight:600;color:var(--text);margin-top:1px;}
+  .pedido-direccion{font-size:12px;color:var(--text-2);margin-top:1px;}
+  .pedido-monto{font-size:18px;font-weight:700;color:var(--s-entregado);}
+  .pedido-abierto{display:flex;flex-direction:column;align-items:flex-end;}
+  .pedido-abierto .a{font-size:11px;color:var(--accent-amber);font-weight:600;}
+  .pedido-abierto .b{font-size:11px;color:var(--text-2);}
+
+  .productos-box{
+    background:#F1F5F9;border-radius:10px;padding:10px;
+    display:flex;align-items:center;gap:6px;margin-top:10px;
+  }
+  .productos-box .material-icons{font-size:16px;color:var(--primary);}
+  .productos-box span:last-child{
+    font-size:13px;font-weight:500;color:var(--text);
+  }
+
+  .meta-row{
+    display:flex;align-items:center;gap:12px;margin-top:10px;
+  }
+  .meta-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text);font-weight:500;}
+  .meta-item .material-icons{font-size:16px;color:var(--primary);}
+
+  .btn-aceptar{
+    width:100%;height:46px;border-radius:23px;border:0;cursor:pointer;
+    background:var(--primary);color:#fff;font:600 14px 'Roboto',sans-serif;
+    display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;
+    box-shadow:0 6px 16px rgba(0,119,182,.3);
+  }
+  .btn-aceptar .material-icons{font-size:18px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <div class="appbar">
+        <button class="icon-btn" aria-label="Volver">
+          <span class="material-icons">arrow_back</span>
+        </button>
+        <div class="titles">
+          <div class="t">Pedidos disponibles</div>
+          <div class="s">4 cerca de ti</div>
+        </div>
+        <button class="icon-btn" aria-label="Filtrar">
+          <span class="material-icons">filter_list</span>
+        </button>
+      </div>
+
+      <div class="content">
+        <!-- Pedido prioritario directo -->
+        <div class="pedido-card priority">
+          <div class="badges">
+            <span class="badge badge-priority">
+              <span class="material-icons">bolt</span>
+              <span>PRIORITARIO</span>
+            </span>
+          </div>
+          <div class="pedido-head">
+            <div class="pedido-info">
+              <div class="pedido-id">#HG-1287</div>
+              <div class="pedido-cliente">Andrea Martínez</div>
+              <div class="pedido-direccion">Insurgentes Sur 1234, 4B · Del Valle</div>
+            </div>
+            <div class="pedido-monto">$135</div>
+          </div>
+          <div class="productos-box">
+            <span class="material-icons">water_drop</span>
+            <span>3 × Ciel 20 L</span>
+          </div>
+          <div class="meta-row">
+            <div class="meta-item">
+              <span class="material-icons">location_on</span>
+              <span>1.2 km</span>
+            </div>
+            <div class="meta-item">
+              <span class="material-icons">schedule</span>
+              <span>~8 min</span>
+            </div>
+          </div>
+          <button class="btn-aceptar">
+            <span class="material-icons">check</span>
+            <span>Aceptar pedido</span>
+          </button>
+        </div>
+
+        <!-- Pedido abierto -->
+        <div class="pedido-card">
+          <div class="badges">
+            <span class="badge badge-precio">
+              <span class="material-icons">price_check</span>
+              <span>Precio máx $60</span>
+            </span>
+          </div>
+          <div class="pedido-head">
+            <div class="pedido-info">
+              <div class="pedido-id">#HG-1286</div>
+              <div class="pedido-cliente">Restaurante La Esquina</div>
+              <div class="pedido-direccion">Av. Cuauhtémoc 89 · Roma Norte</div>
+            </div>
+            <div class="pedido-abierto">
+              <span class="a">Abierto</span>
+              <span class="b">Tú propones</span>
+            </div>
+          </div>
+          <div class="productos-box">
+            <span class="material-icons">water_drop</span>
+            <span>5 × Ciel 20 L</span>
+          </div>
+          <div class="meta-row">
+            <div class="meta-item">
+              <span class="material-icons">location_on</span>
+              <span>2.4 km</span>
+            </div>
+            <div class="meta-item">
+              <span class="material-icons">schedule</span>
+              <span>~12 min</span>
+            </div>
+          </div>
+          <button class="btn-aceptar">
+            <span class="material-icons">check</span>
+            <span>Aceptar pedido</span>
+          </button>
+        </div>
+
+        <!-- Pedido directo simple -->
+        <div class="pedido-card">
+          <div class="pedido-head no-margin">
+            <div class="pedido-info">
+              <div class="pedido-id">#HG-1285</div>
+              <div class="pedido-cliente">Laura Hernández</div>
+              <div class="pedido-direccion">Calle Coahuila 23 · Roma Sur</div>
+            </div>
+            <div class="pedido-monto">$90</div>
+          </div>
+          <div class="productos-box">
+            <span class="material-icons">water_drop</span>
+            <span>2 × Ciel 20 L</span>
+          </div>
+          <div class="meta-row">
+            <div class="meta-item">
+              <span class="material-icons">location_on</span>
+              <span>0.8 km</span>
+            </div>
+            <div class="meta-item">
+              <span class="material-icons">schedule</span>
+              <span>~5 min</span>
+            </div>
+          </div>
+          <button class="btn-aceptar">
+            <span class="material-icons">check</span>
+            <span>Aceptar pedido</span>
+          </button>
+        </div>
+
+        <!-- Pedido abierto Roberto -->
+        <div class="pedido-card">
+          <div class="badges">
+            <span class="badge badge-precio">
+              <span class="material-icons">price_check</span>
+              <span>Precio máx $60</span>
+            </span>
+          </div>
+          <div class="pedido-head">
+            <div class="pedido-info">
+              <div class="pedido-id">#HG-1284</div>
+              <div class="pedido-cliente">Roberto Silva</div>
+              <div class="pedido-direccion">Av. Universidad 456 · Narvarte</div>
+            </div>
+            <div class="pedido-abierto">
+              <span class="a">Abierto</span>
+              <span class="b">Tú propones</span>
+            </div>
+          </div>
+          <div class="productos-box">
+            <span class="material-icons">water_drop</span>
+            <span>4 × Ciel 20 L</span>
+          </div>
+          <div class="meta-row">
+            <div class="meta-item">
+              <span class="material-icons">location_on</span>
+              <span>3.1 km</span>
+            </div>
+            <div class="meta-item">
+              <span class="material-icons">schedule</span>
+              <span>~15 min</span>
+            </div>
+          </div>
+          <button class="btn-aceptar">
+            <span class="material-icons">check</span>
+            <span>Aceptar pedido</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

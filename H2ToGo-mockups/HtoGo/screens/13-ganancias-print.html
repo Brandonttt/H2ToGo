@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 13 Ingresos (Print)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --success:#10B981; --warning:#F59E0B; --danger:#EF4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#fff;font-family:'Roboto',sans-serif;color:var(--text);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{display:flex;align-items:center;justify-content:center;padding:24px;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;background:var(--primary-dark);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;}
+
+  .header-a{
+    background:linear-gradient(135deg,var(--primary-dark),var(--primary));
+    color:#fff;padding:14px 18px 16px;
+  }
+  .header-row{display:flex;align-items:center;justify-content:space-between;}
+  .header-title{font-size:13px;color:#ffffffaa;}
+  .header-name{font-size:18px;font-weight:600;margin-top:1px;}
+
+  .tabs{
+    display:flex;background:#ffffff20;border-radius:99px;padding:4px;margin-top:14px;
+  }
+  .tab{
+    flex:1;text-align:center;font-size:12px;font-weight:600;padding:8px 0;border-radius:99px;
+    color:#ffffffcc;
+  }
+  .tab.active{background:#fff;color:var(--primary-dark);}
+
+  .hero-trend{
+    display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;
+    color:var(--success);background:#10B98114;padding:4px 8px;border-radius:99px;
+  }
+  .hero-trend .material-icons{font-size:14px;}
+
+  .section{padding:18px;}
+  .section-head{
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;
+  }
+  .section-head h3{margin:0;font-size:15px;font-weight:600;}
+  .section-head a{font-size:12px;color:var(--primary);font-weight:600;text-decoration:none;}
+
+  .chart-card{
+    background:#fff;border-radius:14px;padding:14px;border:1px solid var(--outline);
+  }
+  .chart-head{display:flex;align-items:center;justify-content:space-between;}
+  .chart-title{font-size:13px;font-weight:600;}
+  .chart-week{font-size:11px;color:var(--text-2);}
+  .chart-svg{width:100%;height:140px;margin-top:10px;}
+  .chart-x{display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:4px;}
+
+  .bottombar{
+    background:#fff;border-top:1px solid var(--outline);
+    display:grid;grid-template-columns:repeat(4,1fr);padding:6px 0 18px;
+  }
+  .bb-item{display:flex;flex-direction:column;align-items:center;gap:2px;
+    color:var(--text-3);font-size:10px;font-weight:500;}
+  .bb-item.active{color:var(--primary);}
+  .bb-item .material-icons{font-size:22px;}
+
+  .scroll-area{flex:1;overflow:hidden;}
+
+  .big-card{
+    margin:18px;background:linear-gradient(135deg,var(--primary),var(--primary-light));
+    border-radius:20px;color:#fff;padding:20px;position:relative;overflow:hidden;
+  }
+  .big-card::before{
+    content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;
+    border-radius:50%;background:#ffffff15;
+  }
+  .big-card::after{
+    content:"";position:absolute;right:30px;bottom:-50px;width:120px;height:120px;
+    border-radius:50%;background:#ffffff10;
+  }
+  .big-label{font-size:12px;color:#ffffffcc;text-transform:uppercase;letter-spacing:.4px;
+    position:relative;z-index:1;}
+  .big-amount{
+    font-size:48px;font-weight:700;margin-top:6px;letter-spacing:-1.5px;
+    font-variant-numeric:tabular-nums;position:relative;z-index:1;
+  }
+  .big-amount .currency{font-size:22px;opacity:.8;font-weight:500;margin-right:4px;vertical-align:8px;}
+  .big-row{display:flex;gap:14px;margin-top:14px;position:relative;z-index:1;}
+  .big-row .item{flex:1;}
+  .big-row .item .l{font-size:11px;color:#ffffffaa;text-transform:uppercase;letter-spacing:.3px;}
+  .big-row .item .v{font-size:18px;font-weight:700;margin-top:2px;}
+
+  .breakdown{
+    background:#fff;border-radius:14px;padding:14px;border:1px solid var(--outline);
+  }
+  .bd-row{
+    display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--outline);
+  }
+  .bd-row:last-child{border-bottom:0;padding-bottom:2px;}
+  .bd-row .ico{
+    width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .bd-row .label{font-size:13px;color:var(--text);flex:1;}
+  .bd-row .label .sub{font-size:11px;color:var(--text-2);margin-top:1px;}
+  .bd-row .amount{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;}
+  .bd-row.total{border-top:2px solid var(--text);margin-top:6px;padding-top:12px;border-bottom:0;}
+  .bd-row.total .label{font-weight:700;font-size:14px;}
+  .bd-row.total .amount{font-size:20px;font-weight:700;color:var(--primary);}
+
+  .rating-card{
+    background:#fff;border-radius:14px;padding:14px;border:1px solid var(--outline);
+    display:flex;align-items:center;gap:14px;
+  }
+  .rating-big{
+    font-size:38px;font-weight:700;color:var(--warning);font-variant-numeric:tabular-nums;
+    line-height:1;
+  }
+  .rating-info{flex:1;}
+  .rating-stars{color:var(--warning);font-size:16px;letter-spacing:1px;}
+  .rating-count{font-size:12px;color:var(--text-2);margin-top:2px;}
+  .rating-trend{font-size:11px;color:var(--success);font-weight:500;margin-top:4px;}
+
+  @page{ size: portrait; margin: 0.5cm; }
+  @media print{
+    html,body{background:#fff;}
+    body{padding:0;display:block;}
+    .device{
+      box-shadow:none;
+      margin:0 auto;
+      page-break-inside:avoid;
+      break-inside:avoid;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons" style="font-size:14px;">network_cell</span>
+          <span class="material-icons" style="font-size:14px;">wifi</span>
+          <span class="material-icons" style="font-size:14px;">battery_full</span>
+        </span>
+      </div>
+
+      <div class="header-a">
+        <div class="header-row">
+          <div>
+            <div class="header-title">¡Buenos días!</div>
+            <div class="header-name">Carlos Mendoza</div>
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab active">Hoy</div>
+          <div class="tab">Semana</div>
+          <div class="tab">Mes</div>
+          <div class="tab">Historial</div>
+        </div>
+      </div>
+
+      <div class="scroll-area">
+        <div class="big-card">
+          <div class="big-label">Ingresos del día</div>
+          <div class="big-amount"><span class="currency">$</span>1,350</div>
+          <div class="big-row">
+            <div class="item">
+              <div class="l">Entregas</div>
+              <div class="v">11 / 13</div>
+            </div>
+            <div class="item">
+              <div class="l">Garrafones</div>
+              <div class="v">28</div>
+            </div>
+            <div class="item">
+              <div class="l">Tasa entrega</div>
+              <div class="v">92%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <h3>Desglose de hoy</h3>
+          </div>
+          <div class="breakdown">
+            <div class="bd-row">
+              <div class="ico" style="background:#0077B619;color:var(--primary);">
+                <span class="material-icons">water_drop</span>
+              </div>
+              <div class="label">
+                Venta de garrafones
+                <div class="sub">28 garrafones · 11 entregas</div>
+              </div>
+              <div class="amount">$1,350</div>
+            </div>
+            <div class="bd-row">
+              <div class="ico" style="background:#EF444419;color:var(--danger);">
+                <span class="material-icons">cancel</span>
+              </div>
+              <div class="label">
+                Entregas no concretadas
+                <div class="sub">2 pedidos sin entregar</div>
+              </div>
+              <div class="amount" style="color:var(--text-3);">$0</div>
+            </div>
+            <div class="bd-row total">
+              <div class="label">Total recibido en efectivo</div>
+              <div class="amount">$1,350</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text-2);margin-top:10px;line-height:1.5;padding:0 2px;">
+            Este monto es lo que <b>cobraste</b>, no tu ganancia neta. Incluye lo que pagas a tu proveedor por cada garrafón.
+          </div>
+        </div>
+
+        <div class="section" style="padding-top:0;">
+          <div class="section-head">
+            <h3>Esta semana</h3>
+            <a href="#">Ver semana</a>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head">
+              <div>
+                <div class="chart-title">$8,420</div>
+                <div class="chart-week">Lun 14 - Dom 20 oct · 67 entregas</div>
+              </div>
+              <span class="hero-trend">
+                <span class="material-icons">trending_up</span>+8%
+              </span>
+            </div>
+            <svg class="chart-svg" viewBox="0 0 320 140" preserveAspectRatio="none">
+              <line x1="0" y1="40" x2="320" y2="40" stroke="#E2E8F0" stroke-dasharray="3 3"/>
+              <line x1="0" y1="80" x2="320" y2="80" stroke="#E2E8F0" stroke-dasharray="3 3"/>
+              <line x1="0" y1="120" x2="320" y2="120" stroke="#E2E8F0" stroke-dasharray="3 3"/>
+              <rect x="14" y="70" width="28" height="55" rx="4" fill="#0077B6" opacity=".3"/>
+              <rect x="58" y="55" width="28" height="70" rx="4" fill="#0077B6" opacity=".4"/>
+              <rect x="102" y="65" width="28" height="60" rx="4" fill="#0077B6" opacity=".4"/>
+              <rect x="146" y="40" width="28" height="85" rx="4" fill="#0077B6" opacity=".5"/>
+              <rect x="190" y="50" width="28" height="75" rx="4" fill="#0077B6" opacity=".5"/>
+              <rect x="234" y="25" width="28" height="100" rx="4" fill="#0077B6"/>
+              <rect x="278" y="60" width="28" height="65" rx="4" fill="#0077B6" opacity=".3"/>
+            </svg>
+            <div class="chart-x">
+              <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span>
+              <span>Vie</span><span style="color:var(--primary);font-weight:700;">Sáb</span><span>Dom</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="bottombar">
+        <div class="bb-item"><span class="material-icons">home</span>Inicio</div>
+        <div class="bb-item"><span class="material-icons">list_alt</span>Pedidos</div>
+        <div class="bb-item active"><span class="material-icons">bar_chart</span>Ingresos</div>
+        <div class="bb-item"><span class="material-icons">person_outline</span>Perfil</div>
+      </div>
+
+      <div class="nav-pill"></div>
+    </div>
+  </div>
+
+<script>
+  (async () => {
+    try { if (document.fonts && document.fonts.ready) { await document.fonts.ready; } } catch(e){}
+    setTimeout(() => { window.print(); }, 500);
+  })();
+</script>
+
+</body>
+</html>

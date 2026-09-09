@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 19 Perfil repartidor</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  .content{flex:1;overflow:auto;}
+
+  /* Header gradient */
+  .header{
+    background:linear-gradient(180deg,var(--primary-dark) 0%,var(--primary) 100%);
+    color:#fff;padding:8px 18px 72px 8px;
+  }
+  .header-row{display:flex;align-items:center;}
+  .header-row h1{flex:1;margin:0;font-size:18px;font-weight:600;padding-left:4px;color:#fff;}
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;border:0;background:transparent;
+    color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+
+  /* Profile card */
+  .profile-wrap{padding:0 18px;margin-top:-56px;}
+  .profile-card{
+    background:#fff;border-radius:18px;padding:16px;
+    box-shadow:0 6px 18px rgba(15,23,42,.12);
+  }
+  .profile-head{display:flex;align-items:center;}
+  .avatar{
+    width:72px;height:72px;border-radius:18px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    font-size:26px;font-weight:700;letter-spacing:1px;
+  }
+  .profile-info{flex:1;min-width:0;margin-left:14px;}
+  .profile-name{font-size:17px;font-weight:600;color:var(--text);}
+  .profile-business{
+    display:flex;align-items:center;gap:4px;margin-top:2px;
+    font-size:13px;color:var(--primary);font-weight:500;
+  }
+  .profile-business .material-icons{font-size:14px;}
+
+  .online-banner{
+    margin-top:12px;
+    background:rgba(16,185,129,.12);
+    border:1px solid rgba(16,185,129,.25);
+    border-radius:12px;padding:10px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .online-dot{width:8px;height:8px;border-radius:50%;background:var(--accent-emerald);flex:0 0 auto;}
+  .online-text{flex:1;font-size:13px;color:var(--text);}
+  .switch{
+    position:relative;width:44px;height:24px;border-radius:99px;
+    background:var(--primary);flex:0 0 auto;cursor:pointer;
+  }
+  .switch::after{
+    content:'';position:absolute;top:2px;right:2px;width:20px;height:20px;
+    border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);
+  }
+  .switch.off{background:#cbd5e1;}
+  .switch.off::after{right:auto;left:2px;}
+
+  .divider{height:1px;background:var(--outline);margin:14px 0 12px;}
+  .stats{display:flex;align-items:center;justify-content:space-evenly;}
+  .stat{display:flex;flex-direction:column;align-items:center;}
+  .stat .v{font-size:18px;font-weight:700;color:var(--text);}
+  .stat .l{font-size:10px;color:var(--text-2);letter-spacing:.5px;margin-top:2px;}
+  .stat-divider{width:1px;height:32px;background:var(--outline);}
+
+  /* Sections */
+  .section-title{
+    font-size:13px;font-weight:600;color:var(--text-2);
+    letter-spacing:.5px;
+    padding:0 18px;margin:18px 4px 8px;text-transform:uppercase;
+  }
+  .card-section{
+    margin:0 18px;background:#fff;border:1px solid var(--outline);
+    border-radius:14px;overflow:hidden;
+  }
+  .row{display:flex;align-items:center;padding:14px;}
+  .row + .row{border-top:1px solid var(--outline);}
+  .row-icon{
+    width:36px;height:36px;border-radius:10px;
+    background:var(--primary-soft);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .row-icon .material-icons{font-size:18px;}
+  .row-icon.neutral{background:var(--bg);color:var(--text-2);}
+  .row-icon.danger{background:rgba(239,68,68,.12);color:var(--accent-rose);}
+  .row-body{flex:1;min-width:0;margin-left:12px;}
+  .row-label{font-size:11px;color:var(--text-2);}
+  .row-value{font-size:14px;font-weight:500;color:var(--text);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .row-title{font-size:14px;font-weight:500;color:var(--text);}
+  .row-sub{font-size:11px;color:var(--text-2);margin-top:2px;}
+  .row .material-icons.chev{color:var(--text-3);font-size:22px;}
+  .row.danger .row-title{color:var(--accent-rose);}
+
+  .version{
+    text-align:center;font-size:11px;color:var(--text-3);
+    padding:20px 0 24px;
+  }
+
+  /* BottomBar */
+  .bottombar{
+    background:#fff;border-top:1px solid var(--outline);
+    display:flex;height:72px;padding:6px 0 10px;flex:0 0 auto;
+  }
+  .tab{
+    flex:1;border:0;background:transparent;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;cursor:pointer;
+    color:var(--text-3);font:500 11px 'Roboto',sans-serif;
+  }
+  .tab .material-icons{font-size:22px;padding:4px 16px;border-radius:99px;}
+  .tab.active{color:var(--primary);}
+  .tab.active .material-icons{background:var(--primary-soft);}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <div class="content">
+        <!-- Header -->
+        <div class="header">
+          <div class="header-row">
+            <button class="icon-btn" aria-label="Volver">
+              <span class="material-icons">arrow_back</span>
+            </button>
+            <h1>Mi perfil</h1>
+            <button class="icon-btn" aria-label="Notificaciones">
+              <span class="material-icons">notifications_none</span>
+            </button>
+            <button class="icon-btn" aria-label="Ajustes">
+              <span class="material-icons">settings</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Profile card -->
+        <div class="profile-wrap">
+          <div class="profile-card">
+            <div class="profile-head">
+              <div class="avatar">CM</div>
+              <div class="profile-info">
+                <div class="profile-name">Carlos Mendoza</div>
+                <div class="profile-business">
+                  <span class="material-icons">storefront</span>
+                  <span>Aguas Del Valle</span>
+                </div>
+              </div>
+            </div>
+            <div class="online-banner">
+              <div class="online-dot"></div>
+              <div class="online-text">Estás en línea · Recibiendo pedidos</div>
+              <div class="switch" role="switch" aria-checked="true"></div>
+            </div>
+            <div class="divider"></div>
+            <div class="stats">
+              <div class="stat">
+                <div class="v">1284</div>
+                <div class="l">ENTREGAS</div>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat">
+                <div class="v">8 mes</div>
+                <div class="l">ANTIGÜEDAD</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mi cuenta -->
+        <div class="section-title">Mi cuenta</div>
+        <div class="card-section">
+          <div class="row">
+            <div class="row-icon"><span class="material-icons">person</span></div>
+            <div class="row-body">
+              <div class="row-label">Nombre</div>
+              <div class="row-value">Carlos Mendoza Ramírez</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-icon"><span class="material-icons">phone</span></div>
+            <div class="row-body">
+              <div class="row-label">Teléfono</div>
+              <div class="row-value">+52 55 1234 5678</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-icon"><span class="material-icons">mail_outline</span></div>
+            <div class="row-body">
+              <div class="row-label">Correo</div>
+              <div class="row-value">carlos.mendoza@aguasdelvalle.mx</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notificaciones -->
+        <div class="section-title">Notificaciones</div>
+        <div class="card-section">
+          <div class="row">
+            <div class="row-icon neutral"><span class="material-icons">notifications_active</span></div>
+            <div class="row-body">
+              <div class="row-title">Notificaciones push</div>
+              <div class="row-sub">Nuevos pedidos y mensajes</div>
+            </div>
+            <div class="switch" role="switch" aria-checked="true"></div>
+          </div>
+          <div class="row">
+            <div class="row-icon neutral"><span class="material-icons">mail_outline</span></div>
+            <div class="row-body">
+              <div class="row-title">Notificaciones por correo</div>
+              <div class="row-sub">Resúmenes y novedades</div>
+            </div>
+            <div class="switch off" role="switch" aria-checked="false"></div>
+          </div>
+          <div class="row">
+            <div class="row-icon neutral"><span class="material-icons">campaign</span></div>
+            <div class="row-body">
+              <div class="row-title">Novedades</div>
+              <div class="row-sub">Tips para hacer crecer tu negocio</div>
+            </div>
+            <div class="switch" role="switch" aria-checked="true"></div>
+          </div>
+        </div>
+
+        <!-- Cuenta -->
+        <div class="section-title">Cuenta</div>
+        <div class="card-section">
+          <div class="row">
+            <div class="row-icon neutral"><span class="material-icons">lock</span></div>
+            <div class="row-body">
+              <div class="row-title">Cambiar contraseña</div>
+            </div>
+            <span class="material-icons chev">chevron_right</span>
+          </div>
+          <div class="row danger">
+            <div class="row-icon danger"><span class="material-icons">logout</span></div>
+            <div class="row-body">
+              <div class="row-title">Cerrar sesión</div>
+            </div>
+            <span class="material-icons chev">chevron_right</span>
+          </div>
+        </div>
+
+        <div class="version">HToGo · v1.0.0</div>
+      </div>
+
+      <!-- BottomBar Repartidor -->
+      <div class="bottombar">
+        <button class="tab"><span class="material-icons">storefront</span><span>Inicio</span></button>
+        <button class="tab"><span class="material-icons">inventory_2</span><span>Mi negocio</span></button>
+        <button class="tab"><span class="material-icons">payments</span><span>Ingresos</span></button>
+        <button class="tab active"><span class="material-icons">person</span><span>Perfil</span></button>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

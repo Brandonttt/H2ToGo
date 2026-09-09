@@ -1,0 +1,29 @@
+# Entorno de desarrollo (Android Studio / IntelliJ)
+.idea/
+*.iml
+*.iws
+.gradle/
+local.properties
+
+# Archivos de compilación
+build/
+app/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# Logs y archivos basura del sistema
+*.log
+hs_err_pid*.log
+replay_pid*.log
+.DS_Store
+Thumbs.db
+
+# Archivos de pruebas
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+../../.idea/

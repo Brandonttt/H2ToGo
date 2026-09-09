@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 08 Solicitud de pedido programado</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  /* Frame Android 412x868 */
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* Scroll content */
+  .content{flex:1;overflow:auto;}
+
+  /* Header gradient */
+  .header{
+    background:linear-gradient(135deg,var(--primary-dark) 0%,var(--primary) 100%);
+    color:#fff;padding:8px 18px 20px 8px;
+  }
+  .header-row{display:flex;align-items:center;}
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;border:0;background:transparent;
+    color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .header h1{
+    margin:0 0 0 4px;font-size:18px;font-weight:600;flex:1;color:#fff;
+  }
+  .badge-aceptado{
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(16,185,129,.9);color:#fff;
+    padding:4px 10px;border-radius:99px;
+    font:600 11px 'Roboto',sans-serif;margin:8px 0 0 12px;
+  }
+  .badge-aceptado .material-icons{font-size:13px;}
+
+  /* Card pedido */
+  .pedido-card{
+    background:#fff;border-radius:16px;padding:16px;
+    margin:16px 16px 0;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .pedido-head{display:flex;align-items:center;gap:12px;}
+  .avatar-soft{
+    width:44px;height:44px;border-radius:50%;
+    background:var(--primary-soft);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .avatar-soft .material-icons{font-size:22px;}
+  .pedido-head .info{flex:1;min-width:0;}
+  .pedido-head .info .id{font-size:12px;color:var(--text-2);}
+  .pedido-head .info .t{
+    font-size:16px;font-weight:600;color:var(--text);margin-top:2px;
+  }
+  .programado-box{
+    margin-top:14px;background:var(--primary-wash);
+    border-radius:12px;padding:12px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .programado-box .material-icons{color:var(--primary);font-size:22px;}
+  .programado-box .l1{
+    font-size:11px;color:var(--text-2);font-weight:600;
+  }
+  .programado-box .l2{
+    font-size:14px;color:var(--primary-dark);font-weight:700;margin-top:2px;
+  }
+
+  /* Section */
+  .section-title{
+    font-size:12px;font-weight:600;color:var(--text-2);
+    text-transform:uppercase;letter-spacing:.4px;
+    padding:14px 22px 8px 22px;
+  }
+
+  /* Info rows */
+  .info-row{
+    background:#fff;border:1px solid var(--outline);border-radius:14px;
+    margin:0 16px 8px;padding:14px;
+    display:flex;align-items:flex-start;gap:12px;
+  }
+  .info-icon{
+    width:36px;height:36px;border-radius:10px;background:var(--primary-soft);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
+  }
+  .info-icon .material-icons{font-size:18px;}
+  .info-text .lbl{font-size:11px;color:var(--text-2);}
+  .info-text .val{
+    font-size:14px;color:var(--text);margin-top:2px;line-height:1.35;
+    white-space:pre-line;
+  }
+
+  /* Cobro */
+  .cobro-card{
+    background:rgba(16,185,129,.08);
+    border:1px solid rgba(16,185,129,.25);
+    border-radius:16px;
+    margin:0 16px;padding:16px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .cobro-card .material-icons{
+    color:var(--accent-emerald);font-size:28px;
+  }
+  .cobro-card .lbl{font-size:12px;color:var(--text-2);}
+  .cobro-card .val{
+    font-size:24px;font-weight:700;color:var(--accent-emerald);
+  }
+
+  /* Bottom CTA */
+  .cta-bar{
+    background:#fff;padding:12px 16px 16px;flex:0 0 auto;
+    box-shadow:0 -4px 14px rgba(15,23,42,.06);
+  }
+  .btn-iniciar{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    width:100%;height:54px;border-radius:27px;border:0;cursor:pointer;
+    background:var(--primary);color:#fff;
+    font:600 15px 'Roboto',sans-serif;
+    box-shadow:0 6px 16px rgba(0,119,182,.3);
+  }
+  .btn-iniciar .material-icons{font-size:20px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <!-- Scroll content -->
+      <div class="content">
+        <!-- Header -->
+        <div class="header">
+          <div class="header-row">
+            <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+            <h1>Pedido apartado</h1>
+          </div>
+          <div class="badge-aceptado">
+            <span class="material-icons">check_circle</span>
+            <span>Aceptado · Te lo apartaste</span>
+          </div>
+        </div>
+
+        <!-- Card pedido -->
+        <div class="pedido-card">
+          <div class="pedido-head">
+            <div class="avatar-soft"><span class="material-icons">water_drop</span></div>
+            <div class="info">
+              <div class="id">Pedido #HG-1290</div>
+              <div class="t">5 × Ciel · 20 L</div>
+            </div>
+          </div>
+          <div class="programado-box">
+            <span class="material-icons">schedule</span>
+            <div>
+              <div class="l1">Programado para</div>
+              <div class="l2">15 May 2026 · 8:00 AM</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detalle del cliente -->
+        <div class="section-title">Detalle del cliente</div>
+        <div class="info-row">
+          <div class="info-icon"><span class="material-icons">person</span></div>
+          <div class="info-text">
+            <div class="lbl">Cliente</div>
+            <div class="val">Gael Márquez</div>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-icon"><span class="material-icons">location_on</span></div>
+          <div class="info-text">
+            <div class="lbl">Domicilio</div>
+            <div class="val">Av. Insurgentes Sur 1234, Int. 4B
+Col. Del Valle, Benito Juárez</div>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-icon"><span class="material-icons">notes</span></div>
+          <div class="info-text">
+            <div class="lbl">Notas del cliente</div>
+            <div class="val">Edificio blanco, dejar en recepción si no contesto. Tocar timbre 4B.</div>
+          </div>
+        </div>
+
+        <!-- Cobro -->
+        <div class="section-title">Cobro</div>
+        <div class="cobro-card">
+          <span class="material-icons">attach_money</span>
+          <div>
+            <div class="lbl">Cobrarás en efectivo</div>
+            <div class="val">$175 MXN</div>
+          </div>
+        </div>
+
+        <div style="height:24px;"></div>
+      </div>
+
+      <!-- CTA -->
+      <div class="cta-bar">
+        <button class="btn-iniciar">
+          <span class="material-icons">play_arrow</span>
+          <span>Iniciar ruta</span>
+        </button>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

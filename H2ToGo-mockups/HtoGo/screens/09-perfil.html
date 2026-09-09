@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 09 Perfil</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --danger:#EF4444; --success:#10B981;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;background:var(--primary-dark);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;}
+
+  .header{
+    background:var(--primary-dark);color:#fff;padding:8px 16px 32px;position:relative;
+  }
+  .header-row{display:flex;align-items:center;gap:8px;}
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;background:#ffffff1a;border:0;color:#fff;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .header h1{margin:0;flex:1;font-size:18px;font-weight:600;}
+
+  .scroll{flex:1;overflow-y:auto;padding-bottom:90px;}
+  .scroll::-webkit-scrollbar{display:none}
+
+  /* Profile card */
+  .profile-card{
+    background:#fff;border-radius:18px;margin:-20px 16px 0;padding:16px;
+    box-shadow:0 4px 14px rgba(15,23,42,.06);display:flex;align-items:center;gap:14px;
+    position:relative;
+  }
+  .avatar{
+    width:64px;height:64px;border-radius:50%;
+    background:linear-gradient(135deg,var(--primary-light),var(--primary));
+    color:#fff;font-size:24px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    border:3px solid #fff;box-shadow:0 0 0 1px var(--outline);
+  }
+  .profile-info{flex:1;min-width:0;}
+  .profile-info h2{margin:0;font-size:17px;font-weight:600;}
+  .profile-info p{margin:2px 0 0;font-size:13px;color:var(--text-2);}
+  .verify-badge{
+    display:inline-flex;align-items:center;gap:4px;background:#10B98119;color:var(--success);
+    padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600;margin-top:6px;
+  }
+  .verify-badge .material-icons{font-size:13px;}
+  .edit-btn{
+    width:36px;height:36px;border-radius:10px;background:var(--primary-soft);
+    color:var(--primary);border:0;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex-shrink:0;
+  }
+  .edit-btn .material-icons{font-size:18px;}
+
+  /* Stats row */
+  .stats{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--outline);
+    margin:0 16px;border-radius:14px;overflow:hidden;border:1px solid var(--outline);
+    margin-top:12px;
+  }
+  .stat{background:#fff;padding:14px 8px;text-align:center;}
+  .stat .num{font-size:18px;font-weight:700;color:var(--text);}
+  .stat .lbl{font-size:11px;color:var(--text-2);margin-top:2px;}
+
+  /* Section */
+  .section-title{
+    font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;
+    padding:18px 16px 8px;
+  }
+
+  /* Data list */
+  .data-list{background:#fff;margin:0 16px;border-radius:14px;overflow:hidden;}
+  .data-row{
+    display:flex;align-items:center;gap:12px;padding:14px 16px;
+    border-bottom:1px solid var(--outline);
+  }
+  .data-row:last-child{border-bottom:0;}
+  .data-row .ico{
+    width:36px;height:36px;border-radius:10px;background:var(--primary-soft);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .data-row .ico .material-icons{font-size:18px;}
+  .data-row .body{flex:1;min-width:0;}
+  .data-row .lbl{font-size:11px;color:var(--text-2);}
+  .data-row .val{font-size:14px;color:var(--text);font-weight:500;margin-top:1px;}
+  .data-row .chev{color:var(--text-3);}
+
+  /* Address card */
+  .addr-card{
+    background:#fff;border-radius:14px;padding:14px;margin-bottom:8px;
+    border:1px solid var(--outline);position:relative;
+  }
+  .addr-card.default{border:2px solid var(--primary);}
+  .addr-row{display:flex;align-items:flex-start;gap:12px;}
+  .addr-icon{
+    width:42px;height:42px;border-radius:12px;background:var(--primary-soft);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .addr-info{flex:1;min-width:0;}
+  .addr-name-row{display:flex;align-items:center;gap:8px;}
+  .addr-name{font-size:14px;font-weight:600;color:var(--text);}
+  .default-chip{
+    background:var(--primary);color:#fff;font-size:10px;font-weight:600;
+    padding:2px 6px;border-radius:99px;letter-spacing:.3px;
+  }
+  .addr-text{font-size:12px;color:var(--text-2);margin-top:3px;line-height:1.4;}
+  .addr-meta{font-size:11px;color:var(--text-3);margin-top:4px;}
+  .addr-actions{
+    display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--outline);
+  }
+  .addr-actions button{
+    flex:1;background:transparent;border:0;font-family:inherit;font-size:12px;font-weight:500;
+    padding:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;
+    border-radius:8px;
+  }
+  .addr-actions .material-icons{font-size:14px;}
+  .btn-default{color:var(--primary);}
+  .btn-default:hover{background:var(--primary-soft);}
+  .btn-edit{color:var(--text-2);}
+  .btn-edit:hover{background:var(--bg);}
+  .btn-delete{color:var(--danger);}
+  .btn-delete:hover{background:#EF444414;}
+
+  .add-addr-btn{
+    margin:0 16px;background:#fff;border:1.5px dashed var(--primary);
+    color:var(--primary);border-radius:14px;padding:14px;width:calc(100% - 32px);
+    font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .add-addr-btn .material-icons{font-size:20px;}
+
+  /* Settings list */
+  .settings-list{background:#fff;margin:0 16px;border-radius:14px;overflow:hidden;}
+  .setting-row{
+    display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;
+    border-bottom:1px solid var(--outline);
+  }
+  .setting-row:last-child{border-bottom:0;}
+  .setting-row .ico{
+    width:36px;height:36px;border-radius:10px;background:var(--bg);
+    color:var(--text);display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .setting-row .ico .material-icons{font-size:18px;}
+  .setting-row .lbl{flex:1;font-size:14px;color:var(--text);}
+  .setting-row.danger .ico{background:#EF444414;color:var(--danger);}
+  .setting-row.danger .lbl{color:var(--danger);}
+  .setting-row .chev{color:var(--text-3);}
+
+  /* Switch */
+  .switch{
+    width:38px;height:22px;border-radius:99px;background:var(--primary);position:relative;
+    cursor:pointer;
+  }
+  .switch::after{
+    content:"";position:absolute;top:2px;left:18px;width:18px;height:18px;
+    border-radius:50%;background:#fff;transition:.2s;
+  }
+  .switch.off{background:var(--outline);}
+  .switch.off::after{left:2px;}
+
+  .version{
+    text-align:center;font-size:11px;color:var(--text-3);padding:18px 0 24px;
+  }
+
+  /* Bottombar */
+  .bottombar{
+    position:absolute;bottom:0;left:0;right:0;height:72px;background:#fff;
+    display:flex;align-items:center;justify-content:space-around;
+    box-shadow:0 -2px 12px rgba(15,23,42,.06);padding-bottom:8px;z-index:5;
+  }
+  .nav-item{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    color:var(--text-3);cursor:pointer;font-size:11px;font-weight:500;
+    padding:6px 16px;border-radius:99px;
+  }
+  .nav-item.active{color:var(--primary);background:var(--primary-soft);}
+  .nav-item .material-icons{font-size:22px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons" style="font-size:14px;">network_cell</span>
+          <span class="material-icons" style="font-size:14px;">wifi</span>
+          <span class="material-icons" style="font-size:14px;">battery_full</span>
+        </span>
+      </div>
+
+      <div class="header">
+        <div class="header-row">
+          <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+          <h1>Mi perfil</h1>
+          <button class="icon-btn"><span class="material-icons">settings</span></button>
+        </div>
+      </div>
+
+      <div class="scroll">
+
+        <!-- Profile card -->
+        <div class="profile-card">
+          <div class="avatar">DG</div>
+          <div class="profile-info">
+            <h2>Daniel González</h2>
+            <p>+52 55 1234 5678</p>
+            <span class="verify-badge"><span class="material-icons">verified</span>Verificado</span>
+          </div>
+          <button class="edit-btn"><span class="material-icons">edit</span></button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats" style="grid-template-columns:1fr;">
+          <div class="stat">
+            <div class="num">14</div>
+            <div class="lbl">Pedidos</div>
+          </div>
+        </div>
+
+        <!-- Datos personales -->
+        <div class="section-title">Datos personales</div>
+        <div class="data-list">
+          <div class="data-row">
+            <div class="ico"><span class="material-icons">person</span></div>
+            <div class="body">
+              <div class="lbl">Nombre completo</div>
+              <div class="val">Daniel González Pérez</div>
+            </div>
+            <span class="material-icons chev">chevron_right</span>
+          </div>
+          <div class="data-row">
+            <div class="ico"><span class="material-icons">mail</span></div>
+            <div class="body">
+              <div class="lbl">Correo electrónico</div>
+              <div class="val">daniel.g@neuroplus.mx</div>
+            </div>
+            <span class="material-icons chev">chevron_right</span>
+          </div>
+          <div class="data-row">
+            <div class="ico"><span class="material-icons">phone</span></div>
+            <div class="body">
+              <div class="lbl">Teléfono</div>
+              <div class="val">+52 55 1234 5678</div>
+            </div>
+            <span class="material-icons chev">chevron_right</span>
+          </div>
+          <div class="data-row">
+            <div class="ico"><span class="material-icons">cake</span></div>
+            <div class="body">
+              <div class="lbl">Fecha de nacimiento</div>
+              <div class="val">15 de marzo, 1995</div>
+            </div>
+            <span class="material-icons chev">chevron_right</span>
+          </div>
+        </div>
+
+        <!-- Direcciones -->
+        <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>Mis direcciones · 3</span>
+        </div>
+        <div style="padding:0 16px;">
+
+          <div class="addr-card default">
+            <div class="addr-row">
+              <div class="addr-icon"><span class="material-icons">home</span></div>
+              <div class="addr-info">
+                <div class="addr-name-row">
+                  <span class="addr-name">Casa</span>
+                  <span class="default-chip">PREDETERMINADA</span>
+                </div>
+                <div class="addr-text">Insurgentes Sur 1234, Int. 4B<br/>Del Valle, Benito Juárez, 03100</div>
+                <div class="addr-meta">CDMX · Notas: Edificio azul, frente al parque</div>
+              </div>
+            </div>
+            <div class="addr-actions">
+              <button class="btn-edit"><span class="material-icons">edit</span>Editar</button>
+              <button class="btn-delete"><span class="material-icons">delete_outline</span>Eliminar</button>
+            </div>
+          </div>
+
+          <div class="addr-card">
+            <div class="addr-row">
+              <div class="addr-icon"><span class="material-icons">work</span></div>
+              <div class="addr-info">
+                <div class="addr-name-row">
+                  <span class="addr-name">Oficina</span>
+                </div>
+                <div class="addr-text">Av. Universidad 567, Piso 8<br/>Narvarte, Benito Juárez, 03020</div>
+                <div class="addr-meta">CDMX · Notas: Recepción a la izquierda</div>
+              </div>
+            </div>
+            <div class="addr-actions">
+              <button class="btn-default"><span class="material-icons">star_outline</span>Predeterminar</button>
+              <button class="btn-edit"><span class="material-icons">edit</span>Editar</button>
+              <button class="btn-delete"><span class="material-icons">delete_outline</span>Eliminar</button>
+            </div>
+          </div>
+
+          <div class="addr-card">
+            <div class="addr-row">
+              <div class="addr-icon"><span class="material-icons">favorite</span></div>
+              <div class="addr-info">
+                <div class="addr-name-row">
+                  <span class="addr-name">Casa de mamá</span>
+                </div>
+                <div class="addr-text">Heriberto Frías 890<br/>Narvarte, Benito Juárez, 03020</div>
+                <div class="addr-meta">CDMX · Notas: Casa amarilla con portón blanco</div>
+              </div>
+            </div>
+            <div class="addr-actions">
+              <button class="btn-default"><span class="material-icons">star_outline</span>Predeterminar</button>
+              <button class="btn-edit"><span class="material-icons">edit</span>Editar</button>
+              <button class="btn-delete"><span class="material-icons">delete_outline</span>Eliminar</button>
+            </div>
+          </div>
+
+        </div>
+
+        <button class="add-addr-btn">
+          <span class="material-icons">add_location_alt</span>
+          Agregar nueva dirección
+        </button>
+
+        <!-- Preferencias -->
+        <div class="section-title">Preferencias</div>
+        <div class="settings-list">
+          <div class="setting-row">
+            <div class="ico"><span class="material-icons">notifications</span></div>
+            <div class="lbl">Notificaciones</div>
+            <div class="switch"></div>
+          </div>
+          <div class="setting-row">
+            <div class="ico"><span class="material-icons">help_outline</span></div>
+            <div class="lbl">Ayuda y soporte</div>
+            <span class="material-icons chev">chevron_right</span>
+          </div>
+          <div class="setting-row">
+            <div class="ico"><span class="material-icons">description</span></div>
+            <div class="lbl">Términos y privacidad</div>
+            <span class="material-icons chev">chevron_right</span>
+          </div>
+        </div>
+
+        <!-- Sesión -->
+        <div class="section-title">Sesión</div>
+        <div class="settings-list">
+          <div class="setting-row danger">
+            <div class="ico"><span class="material-icons">logout</span></div>
+            <div class="lbl">Cerrar sesión</div>
+          </div>
+          <div class="setting-row danger">
+            <div class="ico"><span class="material-icons">delete_forever</span></div>
+            <div class="lbl">Eliminar cuenta</div>
+          </div>
+        </div>
+
+        <div class="version">HToGo v1.0.0 · Build 142</div>
+
+      </div>
+
+      <div class="bottombar">
+        <div class="nav-item">
+          <span class="material-icons">home</span>Inicio
+        </div>
+        <div class="nav-item">
+          <span class="material-icons">history</span>Pedidos
+        </div>
+        <div class="nav-item active">
+          <span class="material-icons">person</span>Perfil
+        </div>
+      </div>
+
+      <div class="nav-pill"></div>
+    </div>
+  </div>
+</body>
+</html>

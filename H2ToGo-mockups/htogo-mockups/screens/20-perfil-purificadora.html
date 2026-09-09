@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 20 Perfil purificadora</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  .content{flex:1;overflow:auto;padding-bottom:8px;}
+
+  /* Header */
+  .header{
+    background:linear-gradient(180deg,var(--primary-dark) 0%,var(--primary) 100%);
+    color:#fff;padding:20px 20px 22px 8px;
+  }
+  .header-row{display:flex;align-items:center;}
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;border:0;background:transparent;
+    color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .logo{
+    width:56px;height:56px;border-radius:16px;background:#fff;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+    margin-left:4px;
+  }
+  .logo .material-icons{font-size:30px;color:var(--primary);}
+  .header-info{margin-left:14px;display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .header-info .name{font-size:20px;font-weight:700;color:#fff;}
+  .badge{
+    display:inline-flex;align-items:center;align-self:flex-start;
+    padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.15);
+    font-size:11px;font-weight:600;color:var(--accent-emerald);
+  }
+  .header-distance{
+    margin-top:14px;padding-left:12px;
+    display:flex;align-items:center;gap:4px;
+    font-size:13px;color:var(--primary-soft);
+  }
+  .header-distance .material-icons{font-size:14px;}
+
+  .rating-row{
+    margin-top:10px;padding-left:12px;
+    display:flex;align-items:center;gap:6px;color:#fff;font-size:13px;
+  }
+  .rating-row .stars{color:var(--accent-amber);display:flex;gap:1px;}
+  .rating-row .stars .material-icons{font-size:14px;}
+  .rating-row .count{color:var(--primary-soft);font-size:12px;}
+
+  /* Tabs */
+  .tabs{
+    display:flex;background:#fff;border-bottom:1px solid var(--outline);
+    padding:0 8px;
+  }
+  .tab-pill{
+    flex:1;padding:14px 4px;text-align:center;
+    font:600 13px 'Roboto',sans-serif;color:var(--text-2);
+    border-bottom:2px solid transparent;cursor:pointer;
+  }
+  .tab-pill.active{color:var(--primary);border-bottom-color:var(--primary);}
+
+  /* Mini-mapa */
+  .mini-map{
+    margin:16px 20px 0;height:140px;border-radius:16px;
+    background:#EAF3EE;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+    background-image:
+      linear-gradient(0deg,rgba(255,255,255,.4) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.4) 1px,transparent 1px);
+    background-size:24px 24px;
+    background-color:#EAF3EE;
+  }
+  .map-pin{display:flex;flex-direction:column;align-items:center;}
+  .map-pin .marker{
+    width:40px;height:40px;border-radius:50%;background:var(--primary);
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 12px rgba(0,119,182,.35);
+  }
+  .map-pin .marker .material-icons{font-size:22px;}
+  .map-pin .lbl{margin-top:6px;font-size:11px;color:var(--text-2);}
+
+  /* Datos card */
+  .info-card{
+    margin:20px 20px 0;background:#fff;border-radius:16px;
+    padding:16px;box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .info-row{display:flex;align-items:flex-start;gap:12px;}
+  .info-row + .info-row{margin-top:10px;}
+  .info-icon{
+    width:32px;height:32px;border-radius:10px;
+    background:var(--primary-wash);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .info-icon .material-icons{font-size:18px;}
+  .info-text{flex:1;min-width:0;}
+  .info-label{font-size:11px;font-weight:600;color:var(--text-2);}
+  .info-value{font-size:13px;color:var(--text);line-height:18px;white-space:pre-line;}
+  .open-row{display:flex;align-items:center;gap:6px;margin-top:10px;}
+  .open-dot{width:8px;height:8px;border-radius:50%;background:var(--accent-emerald);}
+  .open-text{font-size:12px;font-weight:600;color:var(--accent-emerald);}
+  .open-since{font-size:12px;color:var(--text-2);}
+
+  /* Section title */
+  .section-title{
+    padding:0 20px;margin:20px 0 8px;
+    font-size:16px;font-weight:600;color:var(--text);
+  }
+
+  /* Productos */
+  .producto{
+    margin:0 20px 8px;background:#fff;border-radius:14px;padding:12px;
+    display:flex;align-items:center;gap:12px;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .producto-icon{
+    width:40px;height:40px;border-radius:10px;background:var(--primary-wash);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
+  }
+  .producto-icon .material-icons{font-size:22px;}
+  .producto-info{flex:1;min-width:0;}
+  .producto-name{font-size:14px;font-weight:600;color:var(--text);}
+  .producto-price{font-size:12px;color:var(--text-2);margin-top:2px;}
+  .stock-chip{
+    padding:4px 10px;border-radius:99px;
+    font-size:11px;font-weight:600;
+  }
+  .stock-disponible{background:rgba(16,185,129,.14);color:var(--accent-emerald);}
+  .stock-pocos    {background:rgba(245,158,11,.14);color:var(--accent-amber);}
+  .stock-agotado  {background:rgba(148,163,184,.14);color:var(--text-3);}
+
+  .spacer-bottom{height:120px;}
+
+  /* CTA bar */
+  .cta-bar{
+    background:#fff;border-top:1px solid var(--outline);
+    padding:12px 20px;flex:0 0 auto;
+  }
+  .btn-primary{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;height:56px;border-radius:28px;border:0;cursor:pointer;
+    background:var(--primary);color:#fff;font:600 14px/1 'Roboto',sans-serif;
+    letter-spacing:.2px;box-shadow:0 6px 16px rgba(0,119,182,.3);
+  }
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <div class="content">
+        <!-- Header -->
+        <div class="header">
+          <div class="header-row">
+            <button class="icon-btn" aria-label="Volver">
+              <span class="material-icons">arrow_back</span>
+            </button>
+            <div class="logo"><span class="material-icons">storefront</span></div>
+            <div class="header-info">
+              <div class="name">Aguas Del Valle</div>
+              <div class="badge">● Abierto</div>
+            </div>
+          </div>
+          <div class="rating-row">
+            <span class="stars">
+              <span class="material-icons">star</span>
+              <span class="material-icons">star</span>
+              <span class="material-icons">star</span>
+              <span class="material-icons">star</span>
+              <span class="material-icons">star_half</span>
+            </span>
+            <span>4.6</span>
+            <span class="count">· 312 reseñas</span>
+          </div>
+          <div class="header-distance">
+            <span class="material-icons">location_on</span>
+            <span>0.8 km</span>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <div class="tab-pill active">Información</div>
+          <div class="tab-pill">Productos</div>
+          <div class="tab-pill">Reseñas</div>
+        </div>
+
+        <!-- Mini mapa -->
+        <div class="mini-map">
+          <div class="map-pin">
+            <div class="marker"><span class="material-icons">storefront</span></div>
+            <div class="lbl">Base de la purificadora</div>
+          </div>
+        </div>
+
+        <!-- Datos -->
+        <div class="info-card">
+          <div class="info-row">
+            <div class="info-icon"><span class="material-icons">location_on</span></div>
+            <div class="info-text">
+              <div class="info-label">Dirección de la base</div>
+              <div class="info-value">Av. Cuauhtémoc 567, Col. Roma Sur</div>
+            </div>
+          </div>
+          <div class="info-row">
+            <div class="info-icon"><span class="material-icons">schedule</span></div>
+            <div class="info-text">
+              <div class="info-label">Horario de atención</div>
+              <div class="info-value">Lun–Sáb · 8:00 AM – 7:00 PM
+Cerrado los domingos</div>
+            </div>
+          </div>
+          <div class="open-row">
+            <div class="open-dot"></div>
+            <div class="open-text">Abierto ahora</div>
+            <div class="open-since">· 8 meses con HToGo</div>
+          </div>
+        </div>
+
+        <!-- Productos destacados -->
+        <div class="section-title">Productos disponibles</div>
+        <div class="producto">
+          <div class="producto-icon"><span class="material-icons">water_drop</span></div>
+          <div class="producto-info">
+            <div class="producto-name">Ciel 20 L</div>
+            <div class="producto-price">$45 c/u</div>
+          </div>
+          <span class="stock-chip stock-disponible">Disponible</span>
+        </div>
+        <div class="producto">
+          <div class="producto-icon"><span class="material-icons">water_drop</span></div>
+          <div class="producto-info">
+            <div class="producto-name">Bonafont 20 L</div>
+            <div class="producto-price">$48 c/u</div>
+          </div>
+          <span class="stock-chip stock-disponible">Disponible</span>
+        </div>
+        <div class="producto">
+          <div class="producto-icon"><span class="material-icons">water_drop</span></div>
+          <div class="producto-info">
+            <div class="producto-name">Epura 20 L</div>
+            <div class="producto-price">$42 c/u</div>
+          </div>
+          <span class="stock-chip stock-pocos">Pocas unidades</span>
+        </div>
+
+        <div class="spacer-bottom"></div>
+      </div>
+
+      <!-- CTA -->
+      <div class="cta-bar">
+        <button class="btn-primary">Pedir a esta purificadora</button>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

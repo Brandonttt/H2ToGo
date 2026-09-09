@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 18 Ingresos</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  /* Frame Android 412x868 */
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;
+    flex:0 0 auto;background:var(--primary-dark);
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* Header */
+  .header{
+    background:linear-gradient(180deg,var(--primary-dark) 0%,var(--primary) 100%);
+    color:#fff;padding:6px 18px 16px 8px;flex:0 0 auto;
+  }
+  .header-row{display:flex;align-items:center;height:48px;}
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;border:0;background:transparent;
+    color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .greet{flex:1;margin-left:2px;}
+  .greet .small{font-size:13px;color:rgba(255,255,255,.7);}
+  .greet .name{font-size:18px;font-weight:600;color:#fff;}
+
+  /* Tabs pill */
+  .tabs-pill{
+    background:rgba(255,255,255,.12);border-radius:99px;
+    display:flex;padding:4px;margin-top:14px;margin-left:8px;margin-right:0;
+  }
+  .tab-pill{
+    flex:1;display:flex;align-items:center;justify-content:center;
+    padding:8px 4px;border-radius:99px;cursor:pointer;
+    color:rgba(255,255,255,.8);font-size:12px;font-weight:600;
+  }
+  .tab-pill.active{
+    background:#fff;color:var(--primary-dark);
+  }
+
+  /* Content scroll */
+  .content{flex:1;overflow:auto;}
+
+  /* Big card */
+  .bigcard{
+    margin:18px;border-radius:20px;color:#fff;padding:22px;
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+    box-shadow:0 8px 22px rgba(3,4,94,.25);
+  }
+  .bigcard .label{
+    font-size:12px;color:rgba(255,255,255,.8);font-weight:500;
+  }
+  .amount-row{display:flex;align-items:flex-end;margin-top:4px;}
+  .amount-row .currency{
+    font-size:22px;color:rgba(255,255,255,.8);
+    margin-right:4px;margin-bottom:8px;
+  }
+  .amount-row .number{
+    font-size:48px;font-weight:700;color:#fff;line-height:1;
+  }
+  .big-stats{
+    display:flex;justify-content:space-between;margin-top:18px;gap:8px;
+  }
+  .big-item .label-up{
+    text-transform:uppercase;color:rgba(255,255,255,.7);
+    font-size:10px;font-weight:500;letter-spacing:.3px;
+  }
+  .big-item .v{font-size:18px;font-weight:700;color:#fff;margin-top:2px;}
+
+  /* Section header */
+  .section-header{
+    display:flex;align-items:center;
+    padding:8px 18px;
+  }
+  .section-header .title{
+    flex:1;font-size:14px;font-weight:600;color:var(--text);
+  }
+  .section-header .action{
+    color:var(--primary);font-size:12px;font-weight:600;cursor:pointer;
+  }
+
+  /* Card (breakdown / chart) */
+  .card{
+    margin:0 18px;background:#fff;border-radius:14px;
+    border:1px solid var(--outline);padding:14px;
+  }
+
+  /* Breakdown rows */
+  .br-row{display:flex;align-items:center;gap:12px;padding:10px 0;}
+  .br-icon{
+    width:36px;height:36px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .br-icon .material-icons{font-size:20px;}
+  .br-info{flex:1;min-width:0;}
+  .br-label{font-size:13px;color:var(--text);}
+  .br-sub{font-size:11px;color:var(--text-2);margin-top:1px;}
+  .br-amount{font-size:15px;font-weight:600;}
+  .br-divider{height:1px;background:var(--outline);}
+  .br-total-divider{height:2px;background:var(--text);margin-top:6px;}
+
+  .br-total{
+    display:flex;align-items:center;padding-top:12px;
+  }
+  .br-total .lbl{
+    flex:1;font-size:14px;font-weight:700;color:var(--text);
+  }
+  .br-total .val{
+    font-size:20px;font-weight:700;color:var(--primary);
+  }
+
+  .br-info-box{
+    margin-top:8px;background:var(--primary-wash);
+    border-radius:10px;padding:10px;display:flex;gap:8px;
+  }
+  .br-info-box .material-icons{
+    color:var(--primary);font-size:16px;flex:0 0 auto;
+  }
+  .br-info-box .text{
+    font-size:11px;color:var(--primary-dark);line-height:1.4;
+  }
+
+  /* Chart card */
+  .chart-head{display:flex;align-items:center;}
+  .chart-head .title{
+    flex:1;font-size:18px;font-weight:700;color:var(--text);
+  }
+  .chart-head .sub{font-size:11px;color:var(--text-2);margin-top:1px;font-weight:400;}
+  .delta-badge{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:4px 8px;border-radius:99px;
+    background:rgba(16,185,129,.12);color:var(--accent-emerald);
+    font-size:12px;font-weight:600;
+  }
+  .delta-badge .material-icons{font-size:14px;}
+  .chart-svg{
+    width:100%;height:140px;display:block;margin-top:12px;
+  }
+  .chart-labels{
+    display:flex;justify-content:space-between;
+    margin-top:6px;
+  }
+  .chart-labels span{
+    font-size:10px;color:var(--text-2);
+  }
+  .chart-labels span.active{
+    color:var(--primary);font-weight:700;
+  }
+
+  .bottom-spacer{height:24px;}
+
+  /* BottomBar */
+  .bottombar{
+    background:#fff;border-top:1px solid var(--outline);
+    display:flex;height:72px;padding:6px 0 10px;flex:0 0 auto;
+  }
+  .tab{
+    flex:1;border:0;background:transparent;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;cursor:pointer;
+    color:var(--text-3);font:500 11px 'Roboto',sans-serif;
+  }
+  .tab .material-icons{font-size:22px;padding:4px 16px;border-radius:99px;}
+  .tab.active{color:var(--primary);}
+  .tab.active .material-icons{background:var(--primary-soft);}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <!-- Header -->
+      <div class="header">
+        <div class="header-row">
+          <button class="icon-btn" aria-label="Volver">
+            <span class="material-icons">arrow_back</span>
+          </button>
+          <div class="greet">
+            <div class="small">¡Buenos días!</div>
+            <div class="name">Carlos Mendoza</div>
+          </div>
+        </div>
+        <div class="tabs-pill">
+          <div class="tab-pill active">Hoy</div>
+          <div class="tab-pill">Semana</div>
+          <div class="tab-pill">Mes</div>
+          <div class="tab-pill">Historial</div>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <!-- Big card: total del día -->
+        <div class="bigcard">
+          <div class="label">Total del día</div>
+          <div class="amount-row">
+            <span class="currency">$</span>
+            <span class="number">1,250</span>
+          </div>
+          <div class="big-stats">
+            <div class="big-item">
+              <div class="label-up">Entregas</div>
+              <div class="v">11 / 13</div>
+            </div>
+            <div class="big-item">
+              <div class="label-up">Garrafones</div>
+              <div class="v">28</div>
+            </div>
+            <div class="big-item">
+              <div class="label-up">Tasa de entrega</div>
+              <div class="v">92%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Desglose -->
+        <div class="section-header">
+          <div class="title">Desglose de hoy</div>
+        </div>
+        <div class="card">
+          <div class="br-row">
+            <div class="br-icon" style="background:rgba(0,119,182,.12);color:var(--primary);">
+              <span class="material-icons">water_drop</span>
+            </div>
+            <div class="br-info">
+              <div class="br-label">Venta de garrafones</div>
+              <div class="br-sub">28 garrafones · 11 entregas</div>
+            </div>
+            <div class="br-amount" style="color:var(--text);">$1,250</div>
+          </div>
+          <div class="br-divider"></div>
+          <div class="br-row">
+            <div class="br-icon" style="background:rgba(239,68,68,.12);color:var(--accent-rose);">
+              <span class="material-icons">cancel</span>
+            </div>
+            <div class="br-info">
+              <div class="br-label">Entregas no concretadas</div>
+              <div class="br-sub">2 pedidos sin entregar</div>
+            </div>
+            <div class="br-amount" style="color:var(--text-3);">$0</div>
+          </div>
+          <div class="br-total-divider"></div>
+          <div class="br-total">
+            <div class="lbl">Total recibido en efectivo</div>
+            <div class="val">$1,250</div>
+          </div>
+          <div class="br-info-box">
+            <span class="material-icons">info</span>
+            <div class="text">Este monto incluye lo que pagas a tu proveedor por cada garrafón.</div>
+          </div>
+        </div>
+
+        <!-- Esta semana -->
+        <div style="height:20px;"></div>
+        <div class="section-header">
+          <div class="title">Esta semana</div>
+          <div class="action">Ver semana</div>
+        </div>
+        <div class="card">
+          <div class="chart-head">
+            <div>
+              <div class="title">$8,450</div>
+              <div class="sub">Lun 4 - Dom 10 may · 67 entregas</div>
+            </div>
+            <div style="flex:1;"></div>
+            <div class="delta-badge">
+              <span class="material-icons">trending_up</span>
+              <span>+8%</span>
+            </div>
+          </div>
+          <!-- Gráfica de barras (SVG) -->
+          <svg class="chart-svg" viewBox="0 0 340 140" preserveAspectRatio="none">
+            <!-- guías horizontales -->
+            <line x1="0" y1="35"  x2="340" y2="35"  stroke="#E2E8F0" stroke-width="1"/>
+            <line x1="0" y1="70"  x2="340" y2="70"  stroke="#E2E8F0" stroke-width="1"/>
+            <line x1="0" y1="105" x2="340" y2="105" stroke="#E2E8F0" stroke-width="1"/>
+            <!-- barras: Lun(820) Mar(1080) Mié(950) Jue(1290) Vie(1180) Sáb(1750) Dom(1350)
+                 max=1750, h*0.85 = 119
+                 barW = 340/7*0.7 = 34, gap = (340-34*7)/6 = 17
+                 alpha por índice -->
+            <rect x="0"   y="62.4" width="34" height="55.6" rx="6" fill="#0077B6" fill-opacity="0.3"/>
+            <rect x="51"  y="44.5" width="34" height="73.5" rx="6" fill="#0077B6" fill-opacity="0.4"/>
+            <rect x="102" y="53.4" width="34" height="64.6" rx="6" fill="#0077B6" fill-opacity="0.4"/>
+            <rect x="153" y="30.2" width="34" height="87.8" rx="6" fill="#0077B6" fill-opacity="0.5"/>
+            <rect x="204" y="37.7" width="34" height="80.3" rx="6" fill="#0077B6" fill-opacity="0.5"/>
+            <rect x="255" y="-1"   width="34" height="119"  rx="6" fill="#0077B6" fill-opacity="1"/>
+            <rect x="306" y="26.1" width="34" height="91.9" rx="6" fill="#0077B6" fill-opacity="0.3"/>
+          </svg>
+          <div class="chart-labels">
+            <span>Lun</span>
+            <span>Mar</span>
+            <span>Mié</span>
+            <span>Jue</span>
+            <span>Vie</span>
+            <span class="active">Sáb</span>
+            <span>Dom</span>
+          </div>
+        </div>
+
+        <div class="bottom-spacer"></div>
+      </div>
+
+      <!-- BottomBar Repartidor (Ingresos activo) -->
+      <div class="bottombar">
+        <button class="tab"><span class="material-icons">storefront</span><span>Inicio</span></button>
+        <button class="tab"><span class="material-icons">inventory_2</span><span>Mi negocio</span></button>
+        <button class="tab active"><span class="material-icons">payments</span><span>Ingresos</span></button>
+        <button class="tab"><span class="material-icons">person</span><span>Perfil</span></button>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

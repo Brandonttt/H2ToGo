@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 14 Perfil repartidor</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --success:#10B981; --warning:#F59E0B; --danger:#EF4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;background:var(--primary-dark);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;}
+
+  .scroll-area{flex:1;overflow-y:auto;}
+  .scroll-area::-webkit-scrollbar{display:none}
+
+  /* Header gradient */
+  .header{
+    background:linear-gradient(135deg,var(--primary-dark),var(--primary));
+    color:#fff;padding:14px 18px 56px;position:relative;
+  }
+  .header-row{display:flex;align-items:center;justify-content:space-between;}
+  .header h1{margin:0;font-size:18px;font-weight:600;}
+  .header-icons{display:flex;gap:8px;}
+  .header-icons button{
+    width:38px;height:38px;border-radius:50%;background:#ffffff20;border:0;color:#fff;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+
+  /* Profile card */
+  .profile-card{
+    margin:-42px 18px 0;background:#fff;border-radius:18px;padding:18px 16px;
+    box-shadow:0 8px 24px rgba(15,23,42,.10);position:relative;
+  }
+  .avatar-row{display:flex;align-items:center;gap:14px;}
+  .avatar{
+    width:72px;height:72px;border-radius:18px;
+    background:linear-gradient(135deg,var(--primary),var(--primary-light));
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    font-size:26px;font-weight:700;flex-shrink:0;position:relative;
+  }
+  .avatar .edit-photo{
+    position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border-radius:50%;
+    background:#fff;border:2px solid var(--bg);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .avatar .edit-photo .material-icons{font-size:14px;}
+  .profile-info{flex:1;min-width:0;}
+  .profile-name{font-size:17px;font-weight:600;color:var(--text);}
+  .profile-business{font-size:13px;color:var(--primary);font-weight:500;margin-top:2px;}
+  .profile-rating{font-size:12px;color:var(--text-2);margin-top:4px;display:flex;align-items:center;gap:4px;}
+  .profile-rating .star{color:var(--warning);}
+
+  /* Status pill */
+  .status-pill{
+    margin-top:12px;background:#10B98119;border:1px solid #10B98140;border-radius:12px;
+    padding:10px 12px;display:flex;align-items:center;gap:10px;
+  }
+  .status-pill .dot{
+    width:8px;height:8px;border-radius:50%;background:var(--success);
+    box-shadow:0 0 0 3px #10B98133;animation:pulse 1.6s infinite;
+  }
+  @keyframes pulse{50%{box-shadow:0 0 0 8px #10B98100;}}
+  .status-pill .lbl{flex:1;font-size:13px;color:var(--text);font-weight:500;}
+  .status-pill .lbl b{color:var(--success);}
+  .status-pill .switch{
+    width:40px;height:22px;background:var(--success);border-radius:99px;position:relative;cursor:pointer;
+  }
+  .status-pill .switch::after{
+    content:"";position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;
+    top:2px;right:2px;
+  }
+
+  /* Stats row */
+  .stats-row{
+    display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;gap:8px;align-items:center;
+    margin-top:14px;padding-top:14px;border-top:1px solid var(--outline);
+  }
+  .stats-row .item{text-align:center;}
+  .stats-row .v{font-size:18px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
+  .stats-row .l{font-size:10px;color:var(--text-2);text-transform:uppercase;letter-spacing:.3px;margin-top:2px;}
+  .stats-row .div{width:1px;height:32px;background:var(--outline);}
+
+  /* Section */
+  .section{padding:18px 18px 0;}
+  .section-head{
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 4px;
+  }
+  .section-head h3{margin:0;font-size:13px;font-weight:600;color:var(--text-2);
+    text-transform:uppercase;letter-spacing:.4px;}
+  .section-head a{font-size:12px;color:var(--primary);font-weight:600;text-decoration:none;}
+
+  .card{
+    background:#fff;border-radius:14px;border:1px solid var(--outline);overflow:hidden;
+  }
+  .row{
+    display:flex;align-items:center;gap:12px;padding:14px 14px;
+    border-bottom:1px solid var(--outline);cursor:pointer;
+  }
+  .row:last-child{border-bottom:0;}
+  .row .ico{
+    width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;background:var(--primary-soft);color:var(--primary);
+  }
+  .row .ico.green{background:#10B98119;color:var(--success);}
+  .row .ico.amber{background:#F59E0B19;color:var(--warning);}
+  .row .ico.red{background:#EF444419;color:var(--danger);}
+  .row .ico.slate{background:var(--bg);color:var(--text-2);}
+  .row .ico .material-icons{font-size:18px;}
+  .row .body{flex:1;min-width:0;}
+  .row .lbl{font-size:11px;color:var(--text-2);}
+  .row .val{font-size:14px;color:var(--text);font-weight:500;margin-top:1px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .row .val.muted{color:var(--text-3);font-weight:400;}
+  .row .chev{color:var(--text-3);}
+
+  /* Vehicle card highlighted */
+  .vehicle-card{
+    background:linear-gradient(135deg,#0077B608,#00B4D810);
+    border:1px solid var(--primary-soft);border-radius:14px;padding:14px;
+  }
+  .vehicle-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+  .vehicle-icon{
+    width:48px;height:48px;border-radius:12px;background:#fff;color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    box-shadow:0 2px 6px rgba(0,119,182,.15);
+  }
+  .vehicle-icon .material-icons{font-size:26px;}
+  .vehicle-info{flex:1;}
+  .vehicle-title{font-size:15px;font-weight:600;}
+  .vehicle-sub{font-size:12px;color:var(--text-2);margin-top:1px;}
+  .vehicle-edit{
+    background:#fff;border:1px solid var(--outline);border-radius:8px;padding:6px 10px;
+    font-size:11px;font-weight:600;color:var(--primary);cursor:pointer;
+    display:flex;align-items:center;gap:4px;
+  }
+  .vehicle-edit .material-icons{font-size:14px;}
+  .vehicle-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;
+    background:#fff;border-radius:10px;padding:10px;
+  }
+  .vh-cell{}
+  .vh-cell .l{font-size:10px;color:var(--text-2);text-transform:uppercase;letter-spacing:.3px;}
+  .vh-cell .v{font-size:13px;font-weight:600;color:var(--text);margin-top:2px;}
+  .vh-plates{
+    grid-column:1/-1;background:#fff;border:2px solid var(--text);border-radius:8px;
+    padding:6px;text-align:center;letter-spacing:3px;font-weight:700;font-size:16px;
+    font-family:'Roboto',monospace;
+  }
+
+  /* Vehicle secondary row */
+  .vehicle-secondary{
+    margin-top:10px;background:#fff;border:1px solid var(--outline);border-radius:14px;
+    padding:12px;display:flex;align-items:center;gap:12px;
+  }
+  .vs-icon{
+    width:42px;height:42px;border-radius:10px;background:var(--primary-soft);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .vs-info{flex:1;min-width:0;}
+  .vs-title{font-size:14px;font-weight:600;}
+  .vs-sub{font-size:11px;color:var(--text-2);margin-top:1px;}
+  .add-vehicle-btn{
+    width:100%;margin-top:10px;padding:14px;border-radius:12px;
+    background:transparent;border:1.5px dashed var(--primary);color:var(--primary);
+    font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .add-vehicle-btn .material-icons{font-size:18px;}
+
+  /* Horario */
+  .schedule-card{
+    background:#fff;border:1px solid var(--outline);border-radius:14px;padding:14px;
+  }
+  .schedule-toggle{
+    display:flex;align-items:center;gap:10px;
+  }
+  .schedule-toggle .ico{
+    width:36px;height:36px;border-radius:10px;background:#10B98119;color:var(--success);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .schedule-toggle .body{flex:1;}
+  .schedule-toggle .t{font-size:14px;font-weight:600;}
+  .schedule-toggle .s{font-size:11px;color:var(--text-2);margin-top:1px;}
+  .switch-toggle{
+    width:42px;height:24px;background:var(--success);border-radius:99px;position:relative;
+    cursor:pointer;flex-shrink:0;
+  }
+  .switch-toggle::after{
+    content:"";position:absolute;width:20px;height:20px;background:#fff;border-radius:50%;
+    top:2px;right:2px;box-shadow:0 1px 3px rgba(0,0,0,.2);
+  }
+  .schedule-times{
+    display:flex;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--outline);
+  }
+  .time-input{
+    flex:1;background:var(--bg);border:1px solid var(--outline);border-radius:10px;
+    padding:8px 12px;cursor:pointer;
+  }
+  .time-input .l{font-size:10px;color:var(--text-2);text-transform:uppercase;letter-spacing:.3px;}
+  .time-input .v{font-size:16px;font-weight:600;color:var(--text);margin-top:2px;
+    font-variant-numeric:tabular-nums;}
+  .schedule-arrow{
+    align-self:center;color:var(--text-3);
+  }
+
+  /* QR section */
+  .qr-card{
+    background:linear-gradient(135deg,var(--primary),var(--primary-light));
+    border-radius:14px;padding:16px;color:#fff;
+    display:flex;align-items:center;gap:14px;
+  }
+  .qr-icon{
+    width:64px;height:64px;border-radius:12px;background:#fff;color:var(--primary);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .qr-icon .material-icons{font-size:36px;}
+  .qr-info{flex:1;}
+  .qr-title{font-size:14px;font-weight:600;}
+  .qr-sub{font-size:11px;color:#ffffffcc;margin-top:2px;line-height:1.4;}
+  .qr-btn{
+    background:#fff;color:var(--primary);border:0;border-radius:8px;padding:6px 12px;
+    font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;
+    margin-top:8px;font-family:inherit;
+  }
+  .qr-btn .material-icons{font-size:14px;}
+
+  /* Reviews preview */
+  .review-row{
+    display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
+    border-bottom:1px solid var(--outline);
+  }
+  .review-row:last-child{border-bottom:0;}
+  .review-avatar{
+    width:36px;height:36px;border-radius:50%;flex-shrink:0;
+    background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;
+  }
+  .review-avatar.b{background:linear-gradient(135deg,#f97316,#fbbf24);}
+  .review-body{flex:1;min-width:0;}
+  .review-head-row{display:flex;align-items:center;gap:6px;}
+  .review-name{font-size:13px;font-weight:600;}
+  .review-stars{color:var(--warning);font-size:11px;}
+  .review-date{font-size:11px;color:var(--text-3);margin-left:auto;}
+  .review-text{font-size:12px;color:var(--text-2);margin-top:2px;line-height:1.4;
+    overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+
+  /* Settings switch row */
+  .switch-row{
+    display:flex;align-items:center;gap:12px;padding:14px;
+    border-bottom:1px solid var(--outline);
+  }
+  .switch-row:last-child{border-bottom:0;}
+  .switch-row .ico{
+    width:36px;height:36px;border-radius:10px;background:var(--bg);color:var(--text-2);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .switch-row .body{flex:1;}
+  .switch-row .t{font-size:14px;font-weight:500;}
+  .switch-row .s{font-size:11px;color:var(--text-2);margin-top:1px;}
+  .switch-mini{
+    width:38px;height:22px;border-radius:99px;position:relative;cursor:pointer;flex-shrink:0;
+  }
+  .switch-mini.on{background:var(--primary);}
+  .switch-mini.off{background:var(--outline);}
+  .switch-mini::after{
+    content:"";position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;
+    top:2px;transition:.2s;
+    box-shadow:0 1px 3px rgba(0,0,0,.2);
+  }
+  .switch-mini.on::after{right:2px;}
+  .switch-mini.off::after{left:2px;}
+
+  /* Logout button */
+  .logout-btn{
+    width:calc(100% - 36px);margin:18px;padding:14px;border-radius:14px;
+    background:#EF444412;border:1px solid #EF444433;color:var(--danger);
+    font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+
+  /* Bottom bar */
+  .bottombar{
+    background:#fff;border-top:1px solid var(--outline);
+    display:grid;grid-template-columns:repeat(4,1fr);padding:6px 0 18px;
+  }
+  .bb-item{display:flex;flex-direction:column;align-items:center;gap:2px;
+    color:var(--text-3);font-size:10px;font-weight:500;cursor:pointer;}
+  .bb-item.active{color:var(--primary);}
+  .bb-item .material-icons{font-size:22px;}
+
+  .label-tag{
+    text-align:center;color:#ffffff99;font-size:13px;margin-top:8px;font-weight:500;
+  }
+  .row-edit-icon{
+    color:var(--primary);
+  }
+
+  /* Owner/Employee badge */
+  .role-badge{
+    display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;
+    padding:3px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.4px;
+    margin-top:4px;
+  }
+  .role-badge.owner{background:#0077B619;color:var(--primary);}
+  .role-badge.employee{background:#F59E0B19;color:var(--warning);}
+  .role-badge .material-icons{font-size:12px;}
+
+  /* Card section header (badge in card) */
+  .card-section-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 14px;background:var(--bg);border-bottom:1px solid var(--outline);
+  }
+  .card-section-head .pill{
+    font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;
+    text-transform:uppercase;letter-spacing:.4px;display:inline-flex;align-items:center;gap:4px;
+  }
+  .card-section-head .pill .material-icons{font-size:12px;}
+  .pill.owner{background:var(--primary);color:#fff;}
+  .pill.employee{background:var(--warning);color:#fff;}
+
+  /* Notice/info banner */
+  .notice{
+    background:#0077B608;border:1px solid var(--primary-soft);border-radius:10px;
+    padding:10px 12px;display:flex;align-items:flex-start;gap:8px;
+    font-size:11px;color:var(--text-2);line-height:1.4;margin-bottom:10px;
+  }
+  .notice .material-icons{font-size:16px;color:var(--primary);flex-shrink:0;margin-top:1px;}
+  .notice b{color:var(--text);font-weight:600;}
+
+  /* Disabled (employee view) state */
+  .row.locked{opacity:.55;cursor:not-allowed;}
+  .row.locked .row-edit-icon{display:none;}
+  .row .lock-ico{color:var(--text-3);}
+
+  /* Change-request cards */
+  .cr-row{
+    display:flex;align-items:flex-start;gap:12px;padding:12px 14px;
+    border-bottom:1px solid var(--outline);
+  }
+  .cr-row:last-child{border-bottom:0;}
+  .cr-ico{
+    width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .cr-ico.pending{background:#F59E0B19;color:var(--warning);}
+  .cr-ico.approved{background:#10B98119;color:var(--success);}
+  .cr-ico.rejected{background:#EF444419;color:var(--danger);}
+  .cr-body{flex:1;min-width:0;}
+  .cr-title{font-size:13px;font-weight:600;color:var(--text);}
+  .cr-meta{font-size:11px;color:var(--text-2);margin-top:2px;}
+  .cr-status{
+    font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;
+    text-transform:uppercase;letter-spacing:.3px;display:inline-block;margin-top:6px;
+  }
+  .cr-status.pending{background:#F59E0B19;color:var(--warning);}
+  .cr-status.approved{background:#10B98119;color:var(--success);}
+  .cr-status.rejected{background:#EF444419;color:var(--danger);}
+  .cr-comment{
+    font-size:11px;color:var(--text-2);background:#EF444408;border-left:2px solid var(--danger);
+    padding:6px 10px;border-radius:4px;margin-top:8px;line-height:1.4;
+  }
+  .cr-comment b{color:var(--danger);}
+
+  /* Products & prices table */
+  .prod-row{
+    display:flex;align-items:center;gap:12px;padding:12px 14px;
+    border-bottom:1px solid var(--outline);
+  }
+  .prod-row:last-child{border-bottom:0;}
+  .prod-thumb{
+    width:38px;height:38px;border-radius:10px;background:var(--primary-soft);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--primary);
+  }
+  .prod-info{flex:1;min-width:0;}
+  .prod-name{font-size:13px;font-weight:600;color:var(--text);}
+  .prod-sub{font-size:11px;color:var(--text-2);margin-top:1px;}
+  .prod-price{
+    text-align:right;font-size:15px;font-weight:700;color:var(--text);
+    font-variant-numeric:tabular-nums;flex-shrink:0;
+  }
+  .prod-price .unit{font-size:10px;color:var(--text-2);font-weight:500;display:block;text-align:right;margin-top:1px;}
+  .prod-edit-btn{
+    background:transparent;border:1px solid var(--outline);border-radius:8px;padding:5px 10px;
+    font-size:11px;font-weight:600;color:var(--primary);cursor:pointer;font-family:inherit;
+    display:flex;align-items:center;gap:4px;
+  }
+  .prod-edit-btn .material-icons{font-size:13px;}
+
+  .add-prod-btn{
+    width:calc(100% - 28px);margin:10px 14px 4px;padding:10px;border-radius:10px;
+    background:transparent;border:1.5px dashed var(--primary);color:var(--primary);
+    font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .add-prod-btn .material-icons{font-size:16px;}
+
+  /* QR caption */
+  .qr-caption{
+    font-size:11px;color:var(--text-2);margin-top:8px;line-height:1.4;padding:0 4px;
+  }
+
+  /* Tweak: hide owner-only sections in employee mode */
+  body[data-role="employee"] .owner-only{display:none;}
+  body[data-role="owner"] .employee-only{display:none;}
+</style>
+</head>
+<body data-role="owner">
+
+  <div>
+    <div class="device">
+      <div class="screen">
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <span class="material-icons" style="font-size:14px;">network_cell</span>
+            <span class="material-icons" style="font-size:14px;">wifi</span>
+            <span class="material-icons" style="font-size:14px;">battery_full</span>
+          </span>
+        </div>
+
+        <div class="scroll-area">
+          <div class="header">
+            <div class="header-row">
+              <h1>Mi perfil</h1>
+              <div class="header-icons">
+                <button><span class="material-icons" style="font-size:20px;">notifications_none</span></button>
+                <button><span class="material-icons" style="font-size:20px;">settings</span></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-card">
+            <div class="avatar-row">
+              <div class="avatar">
+                CM
+                <div class="edit-photo"><span class="material-icons">photo_camera</span></div>
+              </div>
+              <div class="profile-info">
+                <div class="profile-name">Carlos Mendoza</div>
+                <div class="profile-business">Purificadora Aqua Pura</div>
+                <span class="role-badge owner owner-only">
+                  <span class="material-icons">verified</span>Dueño del negocio
+                </span>
+                <span class="role-badge employee employee-only">
+                  <span class="material-icons">badge</span>Repartidor
+                </span>
+              </div>
+            </div>
+
+            <div class="status-pill">
+              <div class="dot"></div>
+              <div class="lbl">Estás <b>en línea</b> · Recibiendo pedidos</div>
+              <div class="switch"></div>
+            </div>
+
+            <div class="stats-row" style="grid-template-columns:1fr 1px 1fr;">
+              <div class="item">
+                <div class="v">1,284</div>
+                <div class="l">Entregas</div>
+              </div>
+              <div class="div"></div>
+              <div class="item">
+                <div class="v">8 mes</div>
+                <div class="l">Antigüedad</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Datos del negocio -->
+          <div class="section">
+            <div class="section-head">
+              <h3>Información del negocio</h3>
+            </div>
+            <div class="card">
+              <div class="card-section-head">
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text);">Aguas Del Valle</div>
+                  <div style="font-size:11px;color:var(--text-2);margin-top:1px;" class="owner-only">Eres el dueño de este negocio</div>
+                  <div style="font-size:11px;color:var(--text-2);margin-top:1px;" class="employee-only">Trabajas como repartidor aquí</div>
+                </div>
+                <span class="pill owner owner-only"><span class="material-icons">verified</span>Dueño</span>
+                <span class="pill employee employee-only"><span class="material-icons">badge</span>Empleado</span>
+              </div>
+              <div class="employee-only" style="padding:10px 14px 4px;">
+                <div class="notice" style="margin:0;">
+                  <span class="material-icons">lock</span>
+                  <div>Solo el <b>dueño del negocio</b> puede modificar estos datos.</div>
+                </div>
+              </div>
+              <div class="row owner-only">
+                <div class="ico"><span class="material-icons">person</span></div>
+                <div class="body">
+                  <div class="lbl">Titular</div>
+                  <div class="val">Carlos Mendoza Ramírez</div>
+                </div>
+                <span class="material-icons row-edit-icon" style="font-size:18px;">edit</span>
+              </div>
+              <div class="row locked employee-only">
+                <div class="ico slate"><span class="material-icons">person</span></div>
+                <div class="body">
+                  <div class="lbl">Titular</div>
+                  <div class="val muted">Carlos Mendoza Ramírez</div>
+                </div>
+                <span class="material-icons lock-ico" style="font-size:16px;">lock</span>
+              </div>
+              <div class="row owner-only">
+                <div class="ico"><span class="material-icons">storefront</span></div>
+                <div class="body">
+                  <div class="lbl">Nombre comercial</div>
+                  <div class="val">Aguas Del Valle</div>
+                </div>
+                <span class="material-icons row-edit-icon" style="font-size:18px;">edit</span>
+              </div>
+              <div class="row locked employee-only">
+                <div class="ico slate"><span class="material-icons">storefront</span></div>
+                <div class="body">
+                  <div class="lbl">Nombre comercial</div>
+                  <div class="val muted">Aguas Del Valle</div>
+                </div>
+                <span class="material-icons lock-ico" style="font-size:16px;">lock</span>
+              </div>
+              <div class="row owner-only">
+                <div class="ico"><span class="material-icons">place</span></div>
+                <div class="body">
+                  <div class="lbl">Dirección de la base</div>
+                  <div class="val">Av. Cuauhtémoc 145, Col. Roma Norte, CDMX</div>
+                </div>
+                <span class="material-icons row-edit-icon" style="font-size:18px;">edit</span>
+              </div>
+              <div class="row locked employee-only">
+                <div class="ico slate"><span class="material-icons">place</span></div>
+                <div class="body">
+                  <div class="lbl">Dirección de la base</div>
+                  <div class="val muted">Av. Cuauhtémoc 145, Col. Roma Norte, CDMX</div>
+                </div>
+                <span class="material-icons lock-ico" style="font-size:16px;">lock</span>
+              </div>
+              <div class="row">
+                <div class="ico"><span class="material-icons">phone</span></div>
+                <div class="body">
+                  <div class="lbl">Teléfono</div>
+                  <div class="val">+52 55 1234 5678</div>
+                </div>
+                <span class="material-icons row-edit-icon" style="font-size:18px;">edit</span>
+              </div>
+              <div class="row">
+                <div class="ico"><span class="material-icons">mail_outline</span></div>
+                <div class="body">
+                  <div class="lbl">Correo electrónico</div>
+                  <div class="val">carlos.mendoza@aguasdelvalle.mx</div>
+                </div>
+                <span class="material-icons row-edit-icon" style="font-size:18px;">edit</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vehículos -->
+          <div class="section">
+            <div class="section-head">
+              <h3>Vehículos del negocio</h3>
+              <a href="#" class="owner-only">+ Agregar</a>
+            </div>
+            <div class="notice">
+              <span class="material-icons">info</span>
+              <div>
+                Los vehículos pertenecen al <b>negocio</b>. Cualquier repartidor puede usarlos para sus rutas.
+                <span class="owner-only"> Los cambios pasan por aprobación del administrador.</span>
+              </div>
+            </div>
+            <div class="vehicle-card" style="position:relative;">
+              <div style="position:absolute;top:10px;right:10px;background:var(--primary);color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.4px;">Principal</div>
+              <div class="vehicle-head">
+                <div class="vehicle-icon">
+                  <span class="material-icons">local_shipping</span>
+                </div>
+                <div class="vehicle-info">
+                  <div class="vehicle-title">Camioneta Pickup</div>
+                  <div class="vehicle-sub">Nissan Frontier 2020 · Capacidad: 30 garrafones</div>
+                </div>
+                <button class="vehicle-edit owner-only">
+                  <span class="material-icons">edit</span>Solicitar cambio
+                </button>
+              </div>
+              <div class="vehicle-grid">
+                <div class="vh-cell">
+                  <div class="l">Tipo</div>
+                  <div class="v">Pickup</div>
+                </div>
+                <div class="vh-cell">
+                  <div class="l">Capacidad</div>
+                  <div class="v">30 garrafones</div>
+                </div>
+                <div class="vh-cell">
+                  <div class="l">Marca</div>
+                  <div class="v">Nissan</div>
+                </div>
+                <div class="vh-cell">
+                  <div class="l">Modelo</div>
+                  <div class="v">Frontier 2020</div>
+                </div>
+                <div class="vh-plates">RPK-285-A</div>
+              </div>
+            </div>
+
+            <div class="vehicle-secondary">
+              <div class="vs-icon"><span class="material-icons">two_wheeler</span></div>
+              <div class="vs-info">
+                <div class="vs-title">Motocicleta</div>
+                <div class="vs-sub">Italika DS150 · 6 garrafones · NMR-78-2</div>
+              </div>
+              <button class="vehicle-edit owner-only"><span class="material-icons">edit</span></button>
+            </div>
+
+            <button class="add-vehicle-btn owner-only">
+              <span class="material-icons">add_circle_outline</span>
+              Solicitar agregar vehículo
+            </button>
+          </div>
+
+          <!-- Productos y precios -->
+          <div class="section owner-only">
+            <div class="section-head">
+              <h3>Mis productos y precios</h3>
+            </div>
+            <div class="notice">
+              <span class="material-icons">price_change</span>
+              <div>
+                Estos son los precios que cobras a tus clientes. <b>Cambiar un precio</b> genera una solicitud que debe aprobar el administrador.
+              </div>
+            </div>
+            <div class="card">
+              <div class="prod-row">
+                <div class="prod-thumb"><span class="material-icons">water_drop</span></div>
+                <div class="prod-info">
+                  <div class="prod-name">Ciel</div>
+                  <div class="prod-sub">Garrafón 20 L</div>
+                </div>
+                <div class="prod-price">$45<span class="unit">por garrafón</span></div>
+                <button class="prod-edit-btn"><span class="material-icons">edit</span>Cambiar</button>
+              </div>
+              <div class="prod-row">
+                <div class="prod-thumb"><span class="material-icons">water_drop</span></div>
+                <div class="prod-info">
+                  <div class="prod-name">Bonafont</div>
+                  <div class="prod-sub">Garrafón 20 L</div>
+                </div>
+                <div class="prod-price">$50<span class="unit">por garrafón</span></div>
+                <button class="prod-edit-btn"><span class="material-icons">edit</span>Cambiar</button>
+              </div>
+              <div class="prod-row">
+                <div class="prod-thumb" style="background:#10B98119;color:var(--success);"><span class="material-icons">water_drop</span></div>
+                <div class="prod-info">
+                  <div class="prod-name">Aguas Del Valle</div>
+                  <div class="prod-sub">Garrafón 20 L · Marca propia</div>
+                </div>
+                <div class="prod-price">$35<span class="unit">por garrafón</span></div>
+                <button class="prod-edit-btn"><span class="material-icons">edit</span>Cambiar</button>
+              </div>
+              <button class="add-prod-btn">
+                <span class="material-icons">add</span>Solicitar agregar producto
+              </button>
+            </div>
+          </div>
+
+          <!-- Solicitudes de cambio -->
+          <div class="section owner-only">
+            <div class="section-head">
+              <h3>Mis solicitudes de cambio</h3>
+              <a href="#">Ver todas (5)</a>
+            </div>
+            <div class="card">
+              <div class="cr-row">
+                <div class="cr-ico pending"><span class="material-icons">schedule</span></div>
+                <div class="cr-body">
+                  <div class="cr-title">Cambiar precio · Ciel 20 L</div>
+                  <div class="cr-meta">$45 → $48 · Solicitado el 26 abr 2026</div>
+                  <span class="cr-status pending">Pendiente</span>
+                </div>
+              </div>
+              <div class="cr-row">
+                <div class="cr-ico approved"><span class="material-icons">check_circle</span></div>
+                <div class="cr-body">
+                  <div class="cr-title">Agregar vehículo · Motocicleta Italika</div>
+                  <div class="cr-meta">Aprobado el 22 abr 2026</div>
+                  <span class="cr-status approved">Aprobado</span>
+                </div>
+              </div>
+              <div class="cr-row">
+                <div class="cr-ico rejected"><span class="material-icons">cancel</span></div>
+                <div class="cr-body">
+                  <div class="cr-title">Cambiar foto de perfil</div>
+                  <div class="cr-meta">Rechazado el 18 abr 2026</div>
+                  <span class="cr-status rejected">Rechazado</span>
+                  <div class="cr-comment">
+                    <b>Comentario admin:</b> La foto debe mostrar el rostro completo y sin lentes oscuros. Por favor sube una nueva.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Horario -->
+          <div class="section">
+            <div class="section-head">
+              <h3>Horario de atención</h3>
+            </div>
+            <div class="schedule-card">
+              <div class="schedule-toggle">
+                <div class="ico"><span class="material-icons">schedule</span></div>
+                <div class="body">
+                  <div class="t">Atención automática activa</div>
+                  <div class="s">Te conectarás y desconectarás automáticamente</div>
+                </div>
+                <div class="switch-toggle"></div>
+              </div>
+              <div class="schedule-times">
+                <div class="time-input">
+                  <div class="l">Hora de inicio</div>
+                  <div class="v">8:00 AM</div>
+                </div>
+                <div class="schedule-arrow">
+                  <span class="material-icons">arrow_forward</span>
+                </div>
+                <div class="time-input">
+                  <div class="l">Hora de fin</div>
+                  <div class="v">7:00 PM</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- QR -->
+          <div class="section owner-only">
+            <div class="section-head">
+              <h3>Comparte tu purificadora</h3>
+            </div>
+            <div class="qr-card">
+              <div class="qr-icon">
+                <span class="material-icons">qr_code_2</span>
+              </div>
+              <div class="qr-info">
+                <div class="qr-title">Tu QR personal</div>
+                <div class="qr-sub">Comparte tu link o QR con tus clientes para que pidan directo a tu purificadora.</div>
+                <button class="qr-btn">
+                  <span class="material-icons">share</span>Compartir
+                </button>
+              </div>
+            </div>
+            <div class="qr-caption">
+              Los clientes que escaneen este QR podrán hacer pedidos directos a tu purificadora.
+            </div>
+          </div>
+
+          <!-- Notificaciones -->
+          <div class="section">
+            <div class="section-head">
+              <h3>Notificaciones</h3>
+            </div>
+            <div class="card">
+              <div class="switch-row">
+                <div class="ico"><span class="material-icons">notifications_active</span></div>
+                <div class="body">
+                  <div class="t">Notificaciones push</div>
+                  <div class="s">Nuevos pedidos y mensajes</div>
+                </div>
+                <div class="switch-mini on"></div>
+              </div>
+              <div class="switch-row">
+                <div class="ico"><span class="material-icons">mail_outline</span></div>
+                <div class="body">
+                  <div class="t">Notificaciones por correo</div>
+                  <div class="s">Resúmenes y novedades</div>
+                </div>
+                <div class="switch-mini off"></div>
+              </div>
+              <div class="switch-row">
+                <div class="ico"><span class="material-icons">campaign</span></div>
+                <div class="body">
+                  <div class="t">Novedades</div>
+                  <div class="s">Tips para hacer crecer tu negocio</div>
+                </div>
+                <div class="switch-mini on"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cuenta -->
+          <div class="section">
+            <div class="section-head">
+              <h3>Cuenta</h3>
+            </div>
+            <div class="card">
+              <div class="row">
+                <div class="ico slate"><span class="material-icons">lock_outline</span></div>
+                <div class="body">
+                  <div class="val">Cambiar contraseña</div>
+                </div>
+                <span class="material-icons chev">chevron_right</span>
+              </div>
+              <div class="row">
+                <div class="ico red"><span class="material-icons">logout</span></div>
+                <div class="body">
+                  <div class="val" style="color:var(--danger);">Cerrar sesión</div>
+                </div>
+                <span class="material-icons chev">chevron_right</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align:center;padding:18px 0 8px;font-size:11px;color:var(--text-3);">
+            HToGo · v1.0.0
+          </div>
+        </div>
+
+        <div class="bottombar">
+          <div class="bb-item"><span class="material-icons">home</span>Inicio</div>
+          <div class="bb-item"><span class="material-icons">list_alt</span>Pedidos</div>
+          <div class="bb-item"><span class="material-icons">bar_chart</span>Ingresos</div>
+          <div class="bb-item active"><span class="material-icons">person_outline</span>Perfil</div>
+        </div>
+
+        <div class="nav-pill"></div>
+      </div>
+    </div>
+    <div class="label-tag">Perfil del repartidor / dueño</div>
+
+    <!-- Role toggle -->
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:14px;">
+      <button onclick="document.body.dataset.role='owner'" style="background:#0077B6;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;">Vista Dueño</button>
+      <button onclick="document.body.dataset.role='employee'" style="background:#ffffff20;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;">Vista Empleado</button>
+    </div>
+  </div>
+
+</body>
+</html>

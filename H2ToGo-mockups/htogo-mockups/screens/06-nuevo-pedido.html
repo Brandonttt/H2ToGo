@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 06 Nuevo pedido</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  /* Frame Android 412x868 */
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+    flex:0 0 auto;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* TopBar */
+  .appbar{
+    background:var(--primary-dark);color:#fff;
+    padding:12px 16px;display:flex;align-items:center;gap:8px;
+    flex:0 0 auto;
+  }
+  .appbar .icon-btn{
+    width:40px;height:40px;border-radius:50%;border:0;
+    background:rgba(255,255,255,.10);color:#fff;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .appbar h1{margin:0;font-size:18px;font-weight:600;flex:1;}
+  .appbar .step-pill{
+    background:rgba(255,255,255,.10);color:#fff;
+    padding:4px 10px;border-radius:99px;
+    font:600 11px 'Roboto',sans-serif;
+  }
+
+  /* Scroll content */
+  .content{flex:1;overflow:auto;padding:18px 0 16px;}
+
+  .section-title{
+    font-size:13px;font-weight:600;color:var(--text-2);
+    letter-spacing:.4px;text-transform:uppercase;
+    padding:0 16px;margin:0 0 10px;
+  }
+  .section-spacer{height:18px;}
+
+  /* Brand row (horizontal scroll) */
+  .brand-row{
+    display:flex;gap:8px;padding:0 16px;overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .brand-row::-webkit-scrollbar{display:none;}
+  .brand-chip{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 14px;border-radius:14px;
+    background:#fff;border:1.5px solid var(--outline);
+    flex:0 0 auto;cursor:pointer;
+  }
+  .brand-chip.active{
+    background:var(--primary-soft);border-color:var(--primary);
+  }
+  .brand-logo{
+    width:32px;height:32px;border-radius:8px;color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;
+  }
+  .brand-name{font-size:13px;font-weight:600;color:var(--text);}
+  .brand-price{font-size:11px;color:var(--text-2);}
+  .brand-chip.active .brand-price{color:var(--primary);font-weight:600;}
+
+  .brand-hint{
+    display:flex;align-items:center;gap:4px;
+    padding:8px 16px 0;font-size:11px;color:var(--text-3);
+  }
+  .brand-hint .material-icons{font-size:13px;}
+
+  /* Quantity card */
+  .qty-wrap{padding:0 16px;}
+  .qty-card{
+    background:#fff;border-radius:18px;padding:18px;
+    display:flex;align-items:center;gap:14px;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .qty-icon{
+    width:56px;height:56px;border-radius:16px;background:var(--primary-soft);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
+  }
+  .qty-icon .material-icons{font-size:28px;}
+  .qty-info{flex:1;min-width:0;}
+  .qty-info .t{font-size:16px;font-weight:600;color:var(--text);}
+  .qty-info .s{font-size:13px;color:var(--text-2);margin-top:2px;}
+  .stepper{
+    display:flex;align-items:center;background:var(--bg);
+    border-radius:99px;padding:4px;
+  }
+  .stepper-btn{
+    width:36px;height:36px;border-radius:50%;border:0;cursor:pointer;
+    background:#fff;color:var(--primary);font:700 18px 'Roboto',sans-serif;
+    box-shadow:0 1px 2px rgba(15,23,42,.06);
+  }
+  .stepper-btn:disabled{
+    background:transparent;color:var(--text-3);box-shadow:none;cursor:default;
+  }
+  .stepper-val{
+    min-width:28px;padding:0 4px;text-align:center;
+    font-size:18px;font-weight:700;color:var(--text);
+  }
+
+  /* Preset row */
+  .preset-row{display:flex;gap:8px;margin-top:12px;}
+  .preset{
+    flex:1;height:40px;border-radius:12px;cursor:pointer;
+    background:#fff;border:1.5px solid var(--outline);
+    font:600 13px 'Roboto',sans-serif;color:var(--text-2);
+  }
+  .preset.active{
+    background:var(--primary-soft);border-color:var(--primary);color:var(--primary);
+  }
+
+  /* Address list */
+  .addr-list{padding:0 16px;display:flex;flex-direction:column;gap:8px;}
+  .addr{
+    background:#fff;border-radius:14px;padding:14px;
+    display:flex;align-items:center;gap:12px;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+    border:1.5px solid transparent;
+  }
+  .addr.selected{border-color:var(--primary);}
+  .addr-icon{
+    width:40px;height:40px;border-radius:12px;background:var(--primary-soft);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
+  }
+  .addr-icon .material-icons{font-size:22px;}
+  .addr-info{flex:1;min-width:0;}
+  .addr-row1{display:flex;align-items:center;gap:6px;}
+  .addr-label{font-size:14px;font-weight:600;color:var(--text);}
+  .addr-default{
+    background:var(--primary-soft);color:var(--primary);
+    padding:2px 6px;border-radius:6px;
+    font:600 10px 'Roboto',sans-serif;
+  }
+  .addr-text{
+    font-size:12px;color:var(--text-2);margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .radio{
+    width:20px;height:20px;border-radius:50%;
+    border:2px solid var(--outline);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .radio.on{border-color:var(--primary);}
+  .radio.on::after{
+    content:'';width:10px;height:10px;border-radius:50%;background:var(--primary);
+  }
+
+  .addr-add{
+    background:transparent;border:1.5px dashed var(--outline);
+    border-radius:14px;padding:14px;
+    display:flex;align-items:center;gap:10px;cursor:pointer;
+    color:var(--primary);font:600 14px 'Roboto',sans-serif;
+  }
+
+  /* Map card */
+  .map-wrap{padding:0 16px;}
+  .map-card{
+    background:#fff;border-radius:18px;overflow:hidden;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .map-area{
+    position:relative;height:170px;
+    background:linear-gradient(135deg,#DCEEF7,#E8F5FA);
+  }
+  .map-pin{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);
+    color:var(--primary);
+  }
+  .map-pin .material-icons{font-size:42px;}
+  .map-fabs{
+    position:absolute;right:10px;bottom:10px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .map-fab{
+    width:36px;height:36px;border-radius:10px;background:#fff;
+    color:var(--text-2);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 6px rgba(15,23,42,.12);
+  }
+  .map-fab .material-icons{font-size:18px;}
+  .map-row{
+    display:flex;align-items:center;gap:10px;padding:12px;
+  }
+  .map-row .material-icons.pin{color:var(--primary);font-size:22px;flex:0 0 auto;}
+  .map-info{flex:1;min-width:0;}
+  .map-info .l1{font-size:13px;color:var(--text);}
+  .map-info .l2{font-size:11px;color:var(--text-2);}
+  .map-adjust{
+    border:0;background:transparent;cursor:pointer;
+    color:var(--primary);font:600 12px 'Roboto',sans-serif;
+  }
+
+  /* Notes */
+  .notes-wrap{padding:0 16px;}
+  .notes{
+    background:#fff;border-radius:14px;padding:12px 14px;
+    display:flex;align-items:center;gap:10px;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .notes .material-icons{color:var(--text-3);font-size:20px;}
+  .notes input{
+    flex:1;border:0;outline:0;background:transparent;
+    font:400 14px 'Roboto',sans-serif;color:var(--text);
+  }
+
+  /* Resumen */
+  .resumen-wrap{padding:0 16px;}
+  .resumen{
+    background:#fff;border-radius:14px;padding:14px;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .res-row{
+    display:flex;justify-content:space-between;
+    padding:4px 0;font-size:13px;color:var(--text-2);
+  }
+  .res-divider{
+    border:0;border-top:1px solid var(--outline);margin:8px 0;
+  }
+  .res-total{
+    display:flex;justify-content:space-between;
+    font-size:15px;font-weight:700;
+  }
+  .res-total .l{color:var(--text);}
+  .res-total .v{color:var(--primary);}
+
+  /* CTA bar */
+  .cta-bar{
+    background:#fff;border-top:1px solid var(--outline);
+    padding:14px 16px;display:flex;align-items:center;gap:12px;
+    flex:0 0 auto;
+    box-shadow:0 -4px 14px rgba(15,23,42,.06);
+  }
+  .total-block .lbl{
+    font-size:11px;color:var(--text-2);letter-spacing:.4px;
+  }
+  .total-block .price{
+    font-size:20px;font-weight:700;color:var(--text);
+  }
+  .total-block .cur{font-size:13px;color:var(--text-2);font-weight:400;}
+  .btn-confirm{
+    flex:1;height:52px;border-radius:14px;border:0;cursor:pointer;
+    background:var(--primary);color:#fff;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    font:600 15px 'Roboto',sans-serif;
+    box-shadow:0 6px 16px rgba(0,119,182,.3);
+  }
+  .btn-confirm .material-icons{font-size:20px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <!-- TopBar -->
+      <div class="appbar">
+        <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+        <h1>Nuevo pedido</h1>
+        <span class="step-pill">Paso 1 de 2</span>
+      </div>
+
+      <!-- Scroll content -->
+      <div class="content">
+        <!-- Marca -->
+        <div class="section-title">Marca de garrafón</div>
+        <div class="brand-row">
+          <div class="brand-chip active">
+            <div class="brand-logo" style="background:#0077B6;">CIE</div>
+            <div>
+              <div class="brand-name">Ciel</div>
+              <div class="brand-price">$35 / 20 L</div>
+            </div>
+          </div>
+          <div class="brand-chip">
+            <div class="brand-logo" style="background:#1E40AF;">BNF</div>
+            <div>
+              <div class="brand-name">Bonafont</div>
+              <div class="brand-price">$38 / 20 L</div>
+            </div>
+          </div>
+          <div class="brand-chip">
+            <div class="brand-logo" style="background:#0EA5E9;">EPU</div>
+            <div>
+              <div class="brand-name">Epura</div>
+              <div class="brand-price">$36 / 20 L</div>
+            </div>
+          </div>
+          <div class="brand-chip">
+            <div class="brand-logo" style="background:#475569;">SAN</div>
+            <div>
+              <div class="brand-name">Santorini</div>
+              <div class="brand-price">$30 / 20 L</div>
+            </div>
+          </div>
+        </div>
+        <div class="brand-hint">
+          <span class="material-icons">storefront</span>
+          <span>Marcas que vende Aguas Del Valle</span>
+        </div>
+
+        <div class="section-spacer"></div>
+
+        <!-- Cantidad -->
+        <div class="section-title">¿Cuántos garrafones?</div>
+        <div class="qty-wrap">
+          <div class="qty-card">
+            <div class="qty-icon"><span class="material-icons">water_drop</span></div>
+            <div class="qty-info">
+              <div class="t">Ciel · Garrafón 20 L</div>
+              <div class="s">$35 c/u</div>
+            </div>
+            <div class="stepper">
+              <button class="stepper-btn">−</button>
+              <span class="stepper-val">3</span>
+              <button class="stepper-btn">+</button>
+            </div>
+          </div>
+          <div class="preset-row">
+            <button class="preset">1</button>
+            <button class="preset active">3</button>
+            <button class="preset">5</button>
+            <button class="preset">10</button>
+          </div>
+        </div>
+
+        <div class="section-spacer"></div>
+
+        <!-- Domicilio -->
+        <div class="section-title">Domicilio de entrega</div>
+        <div class="addr-list">
+          <div class="addr selected">
+            <div class="addr-icon"><span class="material-icons">home</span></div>
+            <div class="addr-info">
+              <div class="addr-row1">
+                <span class="addr-label">Casa</span>
+                <span class="addr-default">Predeterminado</span>
+              </div>
+              <div class="addr-text">Av. Insurgentes Sur 1234, Int. 4B, Col. Del Valle</div>
+            </div>
+            <div class="radio on"></div>
+          </div>
+          <div class="addr">
+            <div class="addr-icon"><span class="material-icons">work</span></div>
+            <div class="addr-info">
+              <div class="addr-row1">
+                <span class="addr-label">Oficina</span>
+              </div>
+              <div class="addr-text">Av. Universidad 567, Piso 8, Col. Narvarte</div>
+            </div>
+            <div class="radio"></div>
+          </div>
+          <div class="addr">
+            <div class="addr-icon"><span class="material-icons">favorite</span></div>
+            <div class="addr-info">
+              <div class="addr-row1">
+                <span class="addr-label">Casa de mamá</span>
+              </div>
+              <div class="addr-text">Calle Heriberto Frías 890, Col. Nápoles</div>
+            </div>
+            <div class="radio"></div>
+          </div>
+          <button class="addr-add">
+            <span class="material-icons">add_location_alt</span>
+            <span>Agregar nueva ubicación</span>
+          </button>
+        </div>
+
+        <div class="section-spacer"></div>
+
+        <!-- Mapa -->
+        <div class="section-title">Confirmar en el mapa</div>
+        <div class="map-wrap">
+          <div class="map-card">
+            <div class="map-area">
+              <div class="map-pin"><span class="material-icons">location_on</span></div>
+              <div class="map-fabs">
+                <div class="map-fab"><span class="material-icons">my_location</span></div>
+                <div class="map-fab"><span class="material-icons">add</span></div>
+              </div>
+            </div>
+            <div class="map-row">
+              <span class="material-icons pin">place</span>
+              <div class="map-info">
+                <div class="l1">Av. Insurgentes Sur 1234</div>
+                <div class="l2">Int. 4B, Col. Del Valle</div>
+              </div>
+              <button class="map-adjust">Ajustar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-spacer"></div>
+
+        <!-- Notas -->
+        <div class="section-title">Indicaciones para el repartidor</div>
+        <div class="notes-wrap">
+          <div class="notes">
+            <span class="material-icons">edit_note</span>
+            <input type="text" value="Tocar timbre 4B, dejar en recepción si no contesto" />
+          </div>
+        </div>
+
+        <div class="section-spacer"></div>
+
+        <!-- Resumen -->
+        <div class="section-title">Resumen</div>
+        <div class="resumen-wrap">
+          <div class="resumen">
+            <div class="res-row"><span>3 × Garrafón 20 L</span><span>$105.00</span></div>
+            <div class="res-row"><span>Envío</span><span>$15.00</span></div>
+            <hr class="res-divider" />
+            <div class="res-total">
+              <span class="l">Total</span>
+              <span class="v">$120.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA bar -->
+      <div class="cta-bar">
+        <div class="total-block">
+          <div class="lbl">TOTAL</div>
+          <div class="price">$120 <span class="cur">MXN</span></div>
+        </div>
+        <button class="btn-confirm">
+          <span>Confirmar pedido</span>
+          <span class="material-icons">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

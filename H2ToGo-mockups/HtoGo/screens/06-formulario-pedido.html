@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 06 Formulario de pedido</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;
+    background:var(--primary-dark);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;}
+
+  /* TopBar */
+  .topbar{
+    background:var(--primary-dark);
+    padding:10px 16px 14px;color:#fff;display:flex;align-items:center;gap:8px;
+  }
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;background:#ffffff1a;border:0;
+    display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;
+  }
+  .topbar h1{margin:0;font-size:18px;font-weight:600;flex:1;}
+  .step-pill{
+    font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;
+    background:#ffffff1a;color:#fff;
+  }
+
+  .scroll{flex:1;overflow-y:auto;padding-bottom:120px;}
+  .scroll::-webkit-scrollbar{display:none}
+
+  .section{padding:18px 16px 0;}
+  .section h2{
+    font-size:13px;font-weight:600;margin:0 0 10px;color:var(--text-2);
+    text-transform:uppercase;letter-spacing:.4px;
+  }
+
+  /* Cantidad / stepper */
+  .qty-card{
+    background:#fff;border-radius:18px;padding:18px;
+    box-shadow:0 2px 6px rgba(15,23,42,.04);
+    display:flex;align-items:center;gap:14px;
+  }
+  .qty-icon{
+    width:56px;height:56px;border-radius:16px;background:var(--primary-soft);
+    display:flex;align-items:center;justify-content:center;color:var(--primary);
+    flex-shrink:0;
+  }
+  .qty-icon .material-icons{font-size:28px;}
+  .qty-info{flex:1;}
+  .qty-info .label{font-size:14px;color:var(--text-2);}
+  .qty-info .name{font-size:16px;font-weight:600;color:var(--text);}
+  .qty-info .price{font-size:13px;color:var(--text-2);margin-top:2px;}
+  .stepper{
+    display:flex;align-items:center;gap:8px;background:var(--bg);
+    border-radius:99px;padding:4px;
+  }
+  .stepper button{
+    width:36px;height:36px;border-radius:50%;border:0;background:#fff;
+    color:var(--primary);font-size:18px;font-weight:700;cursor:pointer;
+    box-shadow:0 1px 3px rgba(15,23,42,.08);display:flex;align-items:center;justify-content:center;
+  }
+  .stepper button:disabled{color:var(--text-3);cursor:not-allowed;box-shadow:none;background:transparent;}
+  .stepper .num{
+    min-width:28px;text-align:center;font-size:18px;font-weight:700;color:var(--text);
+  }
+
+  /* Presets */
+  .preset-row{display:flex;gap:8px;margin-top:12px;}
+  .preset{
+    flex:1;background:#fff;border:1.5px solid var(--outline);border-radius:12px;
+    padding:10px 0;font-size:13px;font-weight:600;color:var(--text-2);
+    cursor:pointer;font-family:inherit;
+  }
+  .preset.active{border-color:var(--primary);color:var(--primary);background:var(--primary-soft);}
+
+  /* Marcas */
+  .brand-row{
+    display:flex;gap:8px;margin-top:12px;overflow-x:auto;padding-bottom:4px;
+    scrollbar-width:none;
+  }
+  .brand-row::-webkit-scrollbar{display:none}
+  .brand{
+    flex:0 0 auto;background:#fff;border:1.5px solid var(--outline);border-radius:14px;
+    padding:10px 14px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:10px;
+    min-width:130px;
+  }
+  .brand.active{border-color:var(--primary);background:var(--primary-soft);}
+  .brand-logo{
+    width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;color:#fff;flex-shrink:0;
+  }
+  .brand-meta{display:flex;flex-direction:column;line-height:1.2;}
+  .brand-meta .b-name{font-size:13px;font-weight:600;color:var(--text);}
+  .brand-meta .b-price{font-size:11px;color:var(--text-2);}
+  .brand.active .brand-meta .b-price{color:var(--primary);font-weight:600;}
+
+  /* Direcciones */
+  .addr-list{display:flex;flex-direction:column;gap:8px;}
+  .addr{
+    background:#fff;border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;
+    box-shadow:0 2px 6px rgba(15,23,42,.04);border:1.5px solid transparent;cursor:pointer;
+  }
+  .addr.selected{border-color:var(--primary);}
+  .addr-icon{
+    width:40px;height:40px;border-radius:12px;background:var(--primary-soft);
+    display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0;
+  }
+  .addr-icon .material-icons{font-size:22px;}
+  .addr-info{flex:1;min-width:0;}
+  .addr-info .titulo{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px;}
+  .addr-info .badge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:6px;
+    background:var(--primary-soft);color:var(--primary);}
+  .addr-info .calle{font-size:12px;color:var(--text-2);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+  .radio{
+    width:20px;height:20px;border-radius:50%;border:2px solid var(--outline);
+    flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  }
+  .addr.selected .radio{border-color:var(--primary);}
+  .addr.selected .radio::after{
+    content:"";width:10px;height:10px;border-radius:50%;background:var(--primary);
+  }
+  .addr-add{
+    background:transparent;border:1.5px dashed var(--outline);border-radius:14px;
+    padding:14px;display:flex;align-items:center;gap:10px;color:var(--primary);
+    font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;width:100%;
+  }
+  .addr-add .material-icons{font-size:20px;}
+
+  /* Mapa */
+  .map-card{
+    background:#fff;border-radius:18px;overflow:hidden;
+    box-shadow:0 2px 6px rgba(15,23,42,.04);
+  }
+  .map{
+    height:170px;position:relative;
+    background:
+      linear-gradient(135deg, #DCEEF7 0%, #E8F5FA 100%);
+    overflow:hidden;
+  }
+  /* fake streets */
+  .map::before, .map::after{
+    content:"";position:absolute;background:#fff;
+  }
+  .map::before{
+    left:-10%;top:55%;width:120%;height:8px;transform:rotate(-8deg);
+    box-shadow:0 60px 0 #fff, 0 -40px 0 #fff;
+  }
+  .map::after{
+    left:30%;top:-20%;width:8px;height:140%;transform:rotate(12deg);
+    box-shadow:90px 0 0 #fff, 180px 0 0 #fff;
+  }
+  .map .park{
+    position:absolute;left:60%;top:18%;width:80px;height:50px;border-radius:8px;
+    background:#BFE3CB;
+  }
+  .map .pin{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);
+    color:var(--primary);z-index:2;
+  }
+  .map .pin .material-icons{font-size:42px;filter:drop-shadow(0 4px 6px rgba(0,0,0,.25));}
+  .map .pulse{
+    position:absolute;left:50%;top:50%;width:60px;height:60px;border-radius:50%;
+    background:rgba(0,119,182,.2);transform:translate(-50%,-50%);
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%{transform:translate(-50%,-50%) scale(0.5);opacity:1;}
+    100%{transform:translate(-50%,-50%) scale(1.4);opacity:0;}
+  }
+  .map-actions{
+    position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px;
+  }
+  .map-fab{
+    width:36px;height:36px;border-radius:10px;background:#fff;border:0;
+    box-shadow:0 2px 6px rgba(15,23,42,.18);color:var(--text-2);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .map-fab .material-icons{font-size:18px;}
+  .map-foot{
+    padding:12px 14px;display:flex;align-items:center;gap:10px;
+    border-top:1px solid var(--outline);
+  }
+  .map-foot .material-icons{color:var(--primary);font-size:20px;}
+  .map-foot .calle-detalle{flex:1;font-size:13px;color:var(--text);}
+  .map-foot .calle-detalle small{display:block;color:var(--text-2);font-size:11px;}
+  .ajustar{
+    color:var(--primary);font-size:12px;font-weight:600;background:transparent;border:0;
+    cursor:pointer;font-family:inherit;
+  }
+
+  /* Notas */
+  .notes{
+    background:#fff;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;
+    box-shadow:0 2px 6px rgba(15,23,42,.04);
+  }
+  .notes .material-icons{color:var(--text-3);font-size:20px;}
+  .notes input{
+    border:0;outline:0;font-family:inherit;font-size:14px;flex:1;color:var(--text);
+    background:transparent;
+  }
+
+  /* Pago */
+  .pago{
+    background:#fff;border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;
+    box-shadow:0 2px 6px rgba(15,23,42,.04);cursor:pointer;
+  }
+  .pago-icon{
+    width:40px;height:40px;border-radius:10px;background:#F1F5F9;color:var(--text);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .pago-info{flex:1;}
+  .pago-info .label{font-size:12px;color:var(--text-2);}
+  .pago-info .name{font-size:14px;font-weight:600;color:var(--text);}
+  .pago > .material-icons{color:var(--text-3);}
+
+  /* Resumen */
+  .resumen-card{
+    background:#fff;border-radius:14px;padding:14px;
+    box-shadow:0 2px 6px rgba(15,23,42,.04);
+  }
+  .resumen-row{
+    display:flex;justify-content:space-between;font-size:13px;color:var(--text-2);
+    padding:4px 0;
+  }
+  .resumen-row.total{
+    border-top:1px dashed var(--outline);margin-top:6px;padding-top:10px;
+    font-size:15px;font-weight:700;color:var(--text);
+  }
+  .resumen-row.total span:last-child{color:var(--primary);}
+
+  /* CTA bar */
+  .cta-bar{
+    position:absolute;bottom:0;left:0;right:0;background:#fff;
+    padding:14px 16px 22px;box-shadow:0 -4px 16px rgba(15,23,42,.08);
+    display:flex;align-items:center;gap:12px;
+  }
+  .cta-total{flex-shrink:0;}
+  .cta-total .lbl{font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;}
+  .cta-total .val{font-size:20px;font-weight:700;color:var(--text);}
+  .cta-btn{
+    flex:1;height:52px;background:var(--primary);color:#fff;border:0;border-radius:14px;
+    font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    box-shadow:0 8px 20px rgba(0,119,182,.32);
+  }
+  .cta-btn .material-icons{font-size:20px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons" style="font-size:14px;">network_cell</span>
+          <span class="material-icons" style="font-size:14px;">wifi</span>
+          <span class="material-icons" style="font-size:14px;">battery_full</span>
+        </span>
+      </div>
+
+      <div class="topbar">
+        <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+        <h1>Nuevo pedido</h1>
+        <div class="step-pill">Paso 1 de 2</div>
+      </div>
+
+      <div class="scroll">
+
+        <!-- Tipo de pedido -->
+        <div class="section">
+          <h2>Tipo de pedido</h2>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="addr selected" id="tipo-directa" style="cursor:pointer;" onclick="setTipo('directa')">
+              <div class="addr-icon"><span class="material-icons">storefront</span></div>
+              <div class="addr-info">
+                <div class="titulo">A una purificadora específica</div>
+                <div class="calle" style="color:var(--primary);">Aguas Del Valle</div>
+              </div>
+              <div class="radio"></div>
+            </div>
+            <div class="addr" id="tipo-abierto" style="cursor:pointer;" onclick="setTipo('abierto')">
+              <div class="addr-icon"><span class="material-icons">attach_money</span></div>
+              <div class="addr-info">
+                <div class="titulo">Con precio máximo</div>
+                <div class="calle">Te asignamos la primera disponible</div>
+              </div>
+              <div class="radio"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Precio máximo (oculto por default; visible en modo abierto) -->
+        <div class="section" id="precio-max-section" style="display:none;">
+          <h2>Precio máximo por garrafón</h2>
+          <div class="qty-card">
+            <div class="qty-icon" style="background:#F59E0B19;color:#F59E0B;">
+              <span class="material-icons">attach_money</span>
+            </div>
+            <div class="qty-info">
+              <div class="label">Pagarás hasta</div>
+              <div class="name">$60 MXN por garrafón</div>
+              <div class="price">Te asignamos la primera purificadora que cumpla</div>
+            </div>
+            <div class="stepper">
+              <button>−</button>
+              <div class="num">$60</div>
+              <button>+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Marca -->
+        <div class="section" id="marca-section">
+          <h2>Marca de garrafón</h2>
+          <div class="brand-row">
+            <div class="brand active">
+              <div class="brand-logo" style="background:#0077B6;">CIE</div>
+              <div class="brand-meta"><span class="b-name">Ciel</span><span class="b-price">$35 / 20 L</span></div>
+            </div>
+            <div class="brand">
+              <div class="brand-logo" style="background:#1E40AF;">BNF</div>
+              <div class="brand-meta"><span class="b-name">Bonafont</span><span class="b-price">$38 / 20 L</span></div>
+            </div>
+            <div class="brand">
+              <div class="brand-logo" style="background:#0EA5E9;">EPU</div>
+              <div class="brand-meta"><span class="b-name">Epura</span><span class="b-price">$36 / 20 L</span></div>
+            </div>
+            <div class="brand">
+              <div class="brand-logo" style="background:#475569;">SAN</div>
+              <div class="brand-meta"><span class="b-name">Santorini</span><span class="b-price">$30 / 20 L</span></div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:8px;display:flex;align-items:center;gap:4px;">
+            <span class="material-icons" style="font-size:13px;">storefront</span>
+            Marcas que vende Aguas Del Valle
+          </div>
+        </div>
+
+        <!-- Cantidad -->
+        <div class="section">
+          <h2>¿Cuántos garrafones?</h2>
+          <div class="qty-card">
+            <div class="qty-icon"><span class="material-icons">water_drop</span></div>
+            <div class="qty-info">
+              <div class="name">Ciel · Garrafón 20 L</div>
+              <div class="price">$35 c/u</div>
+            </div>
+            <div class="stepper">
+              <button>−</button>
+              <div class="num">3</div>
+              <button>+</button>
+            </div>
+          </div>
+          <div class="preset-row">
+            <button class="preset">1</button>
+            <button class="preset active">3</button>
+            <button class="preset">5</button>
+            <button class="preset">10</button>
+          </div>
+        </div>
+
+        <!-- Direcciones -->
+        <div class="section">
+          <h2>Domicilio de entrega</h2>
+          <div class="addr-list">
+            <div class="addr selected">
+              <div class="addr-icon"><span class="material-icons">home</span></div>
+              <div class="addr-info">
+                <div class="titulo">Casa <span class="badge">Predeterminado</span></div>
+                <div class="calle">Av. Insurgentes Sur 1234, Int. 4B, Col. Del Valle</div>
+              </div>
+              <div class="radio"></div>
+            </div>
+            <div class="addr">
+              <div class="addr-icon"><span class="material-icons">work</span></div>
+              <div class="addr-info">
+                <div class="titulo">Oficina</div>
+                <div class="calle">Av. Universidad 567, Piso 8, Col. Narvarte</div>
+              </div>
+              <div class="radio"></div>
+            </div>
+            <div class="addr">
+              <div class="addr-icon"><span class="material-icons">favorite</span></div>
+              <div class="addr-info">
+                <div class="titulo">Casa de mamá</div>
+                <div class="calle">Calle Heriberto Frías 890, Col. Nápoles</div>
+              </div>
+              <div class="radio"></div>
+            </div>
+            <button class="addr-add">
+              <span class="material-icons">add_location_alt</span>
+              Agregar nueva ubicación
+            </button>
+          </div>
+        </div>
+
+        <!-- Mapa de confirmación -->
+        <div class="section">
+          <h2>Confirmar en el mapa</h2>
+          <div class="map-card">
+            <div class="map">
+              <div class="park"></div>
+              <div class="pulse"></div>
+              <div class="pin"><span class="material-icons">location_on</span></div>
+              <div class="map-actions">
+                <button class="map-fab"><span class="material-icons">my_location</span></button>
+                <button class="map-fab"><span class="material-icons">add</span></button>
+              </div>
+            </div>
+            <div class="map-foot">
+              <span class="material-icons">place</span>
+              <div class="calle-detalle">
+                Av. Insurgentes Sur 1234, Int. 4B
+                <small>Col. Del Valle, Benito Juárez, CDMX</small>
+              </div>
+              <button class="ajustar">Ajustar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notas -->
+        <div class="section">
+          <h2>Indicaciones para el repartidor</h2>
+          <div class="notes">
+            <span class="material-icons">edit_note</span>
+            <input value="Tocar timbre 4B, dejar en recepción si no contesto" />
+          </div>
+        </div>
+
+        <!-- Resumen -->
+        <div class="section" style="padding-bottom:16px;">
+          <h2>Resumen</h2>
+          <div class="resumen-card">
+            <div class="resumen-row"><span>3 × Garrafón 20 L</span><span>$105.00</span></div>
+            <div class="resumen-row"><span>Envío</span><span>$15.00</span></div>
+            <div class="resumen-row"><span>Servicio</span><span>$5.00</span></div>
+            <div class="resumen-row total"><span>Total</span><span>$125.00</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="cta-bar">
+        <div class="cta-total">
+          <div class="lbl">Total</div>
+          <div class="val">$125<span style="font-size:13px;color:var(--text-2);font-weight:500;"> MXN</span></div>
+        </div>
+        <button class="cta-btn">
+          Confirmar pedido
+          <span class="material-icons">arrow_forward</span>
+        </button>
+      </div>
+
+      <div class="nav-pill"></div>
+    </div>
+  </div>
+  <script>
+    function setTipo(t){
+      const dir = document.getElementById('tipo-directa');
+      const abi = document.getElementById('tipo-abierto');
+      const marca = document.getElementById('marca-section');
+      const precio = document.getElementById('precio-max-section');
+      if(t==='directa'){
+        dir.classList.add('selected'); abi.classList.remove('selected');
+        marca.style.display=''; precio.style.display='none';
+      } else {
+        abi.classList.add('selected'); dir.classList.remove('selected');
+        marca.style.display='none'; precio.style.display='';
+      }
+    }
+  </script>
+</body>
+</html>

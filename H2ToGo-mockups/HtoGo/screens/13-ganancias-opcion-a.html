@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 13 Ingresos (A)</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --success:#10B981; --warning:#F59E0B; --danger:#EF4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;background:var(--primary-dark);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;}
+
+  /* Header A: gradient */
+  .header-a{
+    background:linear-gradient(135deg,var(--primary-dark),var(--primary));
+    color:#fff;padding:14px 18px 78px;
+  }
+  .header-row{display:flex;align-items:center;justify-content:space-between;}
+  .header-title{font-size:13px;color:#ffffffaa;}
+  .header-name{font-size:18px;font-weight:600;margin-top:1px;}
+  .header-icons{display:flex;gap:8px;}
+  .header-icons button{
+    width:38px;height:38px;border-radius:50%;background:#ffffff20;border:0;color:#fff;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+
+  /* Tabs */
+  .tabs{
+    display:flex;background:#ffffff20;border-radius:99px;padding:4px;margin-top:14px;
+  }
+  .tab{
+    flex:1;text-align:center;font-size:12px;font-weight:600;padding:8px 0;border-radius:99px;
+    cursor:pointer;color:#ffffffcc;
+  }
+  .tab.active{background:#fff;color:var(--primary-dark);}
+
+  /* Hero earnings card (A) */
+  .hero-card{
+    margin:-58px 18px 0;background:#fff;border-radius:20px;
+    box-shadow:0 8px 24px rgba(15,23,42,.12);padding:18px;position:relative;z-index:2;
+  }
+  .hero-label{font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;}
+  .hero-amount{
+    font-size:42px;font-weight:700;color:var(--text);margin-top:4px;letter-spacing:-1px;
+    font-variant-numeric:tabular-nums;
+  }
+  .hero-amount .currency{font-size:20px;color:var(--text-2);font-weight:500;margin-right:4px;vertical-align:6px;}
+  .hero-trend{
+    display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;
+    color:var(--success);background:#10B98114;padding:4px 8px;border-radius:99px;margin-top:6px;
+  }
+  .hero-trend .material-icons{font-size:14px;}
+  .hero-divider{height:1px;background:var(--outline);margin:14px -18px;}
+  .hero-mini-grid{display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;gap:8px;align-items:center;}
+  .hero-mini{text-align:center;}
+  .hero-mini .v{font-size:18px;font-weight:700;color:var(--text);}
+  .hero-mini .l{font-size:10px;color:var(--text-2);margin-top:2px;text-transform:uppercase;letter-spacing:.3px;}
+  .hero-mini-divider{width:1px;height:36px;background:var(--outline);}
+
+  /* Section heading */
+  .section{padding:18px;}
+  .section-head{
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;
+  }
+  .section-head h3{margin:0;font-size:15px;font-weight:600;}
+  .section-head a{font-size:12px;color:var(--primary);font-weight:600;text-decoration:none;}
+
+  /* Stat cards 2x2 */
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stat{
+    background:#fff;border-radius:14px;padding:14px;border:1px solid var(--outline);
+  }
+  .stat .ico-wrap{
+    width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  }
+  .stat .ico-wrap .material-icons{font-size:20px;}
+  .stat .v{font-size:20px;font-weight:700;color:var(--text);margin-top:8px;font-variant-numeric:tabular-nums;}
+  .stat .l{font-size:11px;color:var(--text-2);margin-top:2px;}
+  .stat .delta{font-size:10px;font-weight:600;margin-top:6px;}
+  .stat .delta.up{color:var(--success);}
+  .stat .delta.down{color:var(--danger);}
+
+  /* Chart card */
+  .chart-card{
+    background:#fff;border-radius:14px;padding:14px;border:1px solid var(--outline);
+  }
+  .chart-head{display:flex;align-items:center;justify-content:space-between;}
+  .chart-title{font-size:13px;font-weight:600;}
+  .chart-week{font-size:11px;color:var(--text-2);}
+  .chart-svg{width:100%;height:140px;margin-top:10px;}
+  .chart-x{display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:4px;}
+
+  /* Recent deliveries list */
+  .delivery-row{
+    display:flex;align-items:center;gap:12px;padding:12px 0;
+    border-bottom:1px solid var(--outline);
+  }
+  .delivery-row:last-child{border-bottom:0;}
+  .del-ico{
+    width:38px;height:38px;border-radius:10px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .del-ico.ok{background:#10B98119;color:var(--success);}
+  .del-ico.no{background:#EF444419;color:var(--danger);}
+  .del-body{flex:1;min-width:0;}
+  .del-title{font-size:13px;font-weight:600;color:var(--text);}
+  .del-sub{font-size:11px;color:var(--text-2);margin-top:1px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .del-amount{font-size:14px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
+  .del-amount.neg{color:var(--danger);}
+  .del-amount .tip{font-size:10px;color:var(--success);font-weight:500;display:block;text-align:right;margin-top:2px;}
+
+  /* Bottom bar */
+  .bottombar{
+    background:#fff;border-top:1px solid var(--outline);
+    display:grid;grid-template-columns:repeat(4,1fr);padding:6px 0 18px;
+  }
+  .bb-item{display:flex;flex-direction:column;align-items:center;gap:2px;
+    color:var(--text-3);font-size:10px;font-weight:500;cursor:pointer;}
+  .bb-item.active{color:var(--primary);}
+  .bb-item .material-icons{font-size:22px;}
+
+  .scroll-area{flex:1;overflow-y:auto;}
+  .scroll-area::-webkit-scrollbar{display:none}
+
+  .label-tag{
+    text-align:center;color:#ffffff99;font-size:13px;margin-top:8px;font-weight:500;
+  }
+
+  /* Variant B styles */
+  .header-b{
+    background:#fff;padding:14px 18px;border-bottom:1px solid var(--outline);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .header-b .ttl{font-size:18px;font-weight:600;}
+  .header-b .sub{font-size:12px;color:var(--text-2);}
+  .header-b .icon-circle{
+    width:38px;height:38px;border-radius:50%;background:var(--bg);border:0;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text);
+  }
+
+  .tabs-b{
+    background:#fff;display:flex;padding:0 18px;border-bottom:1px solid var(--outline);
+  }
+  .tab-b{
+    padding:12px 0;margin-right:20px;font-size:13px;font-weight:600;color:var(--text-3);
+    cursor:pointer;border-bottom:2px solid transparent;
+  }
+  .tab-b.active{color:var(--primary);border-bottom-color:var(--primary);}
+
+  /* Big card B */
+  .big-card{
+    margin:18px;background:linear-gradient(135deg,var(--primary),var(--primary-light));
+    border-radius:20px;color:#fff;padding:20px;position:relative;overflow:hidden;
+  }
+  .big-card::before{
+    content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;
+    border-radius:50%;background:#ffffff15;
+  }
+  .big-card::after{
+    content:"";position:absolute;right:30px;bottom:-50px;width:120px;height:120px;
+    border-radius:50%;background:#ffffff10;
+  }
+  .big-label{font-size:12px;color:#ffffffcc;text-transform:uppercase;letter-spacing:.4px;
+    position:relative;z-index:1;}
+  .big-amount{
+    font-size:48px;font-weight:700;margin-top:6px;letter-spacing:-1.5px;
+    font-variant-numeric:tabular-nums;position:relative;z-index:1;
+  }
+  .big-amount .currency{font-size:22px;opacity:.8;font-weight:500;margin-right:4px;vertical-align:8px;}
+  .big-row{display:flex;gap:14px;margin-top:14px;position:relative;z-index:1;}
+  .big-row .item{flex:1;}
+  .big-row .item .l{font-size:11px;color:#ffffffaa;text-transform:uppercase;letter-spacing:.3px;}
+  .big-row .item .v{font-size:18px;font-weight:700;margin-top:2px;}
+
+  /* Quick action chips B */
+  .quick-row{
+    display:flex;gap:8px;padding:0 18px 4px;overflow-x:auto;
+  }
+  .quick-row::-webkit-scrollbar{display:none}
+  .quick-chip{
+    flex-shrink:0;background:#fff;border:1px solid var(--outline);border-radius:99px;
+    padding:8px 14px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;
+    color:var(--text);cursor:pointer;
+  }
+  .quick-chip .material-icons{font-size:16px;color:var(--primary);}
+
+  /* Earnings breakdown card */
+  .breakdown{
+    background:#fff;border-radius:14px;padding:14px;border:1px solid var(--outline);
+  }
+  .bd-row{
+    display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--outline);
+  }
+  .bd-row:last-child{border-bottom:0;padding-bottom:2px;}
+  .bd-row .ico{
+    width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .bd-row .label{font-size:13px;color:var(--text);flex:1;}
+  .bd-row .label .sub{font-size:11px;color:var(--text-2);margin-top:1px;}
+  .bd-row .amount{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;}
+  .bd-row.total{border-top:2px solid var(--text);margin-top:6px;padding-top:12px;border-bottom:0;}
+  .bd-row.total .label{font-weight:700;font-size:14px;}
+  .bd-row.total .amount{font-size:20px;font-weight:700;color:var(--primary);}
+
+  /* Rating card */
+  .rating-card{
+    background:#fff;border-radius:14px;padding:14px;border:1px solid var(--outline);
+    display:flex;align-items:center;gap:14px;
+  }
+  .rating-big{
+    font-size:38px;font-weight:700;color:var(--warning);font-variant-numeric:tabular-nums;
+    line-height:1;
+  }
+  .rating-info{flex:1;}
+  .rating-stars{color:var(--warning);font-size:16px;letter-spacing:1px;}
+  .rating-count{font-size:12px;color:var(--text-2);margin-top:2px;}
+  .rating-trend{font-size:11px;color:var(--success);font-weight:500;margin-top:4px;}
+
+</style>
+</head>
+<body>
+
+  <!-- Variant A: Dashboard estándar con tabs y stat grid -->
+  <div>
+    <div class="device">
+      <div class="screen">
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <span class="material-icons" style="font-size:14px;">network_cell</span>
+            <span class="material-icons" style="font-size:14px;">wifi</span>
+            <span class="material-icons" style="font-size:14px;">battery_full</span>
+          </span>
+        </div>
+
+        <div class="scroll-area">
+          <div class="header-a">
+            <div class="header-row">
+              <div>
+                <div class="header-title">¡Buenos días!</div>
+                <div class="header-name">Carlos Mendoza</div>
+              </div>
+              <div class="header-icons">
+                <button><span class="material-icons" style="font-size:20px;">notifications_none</span></button>
+                <button><span class="material-icons" style="font-size:20px;">file_download</span></button>
+              </div>
+            </div>
+            <div class="tabs">
+              <div class="tab active">Hoy</div>
+              <div class="tab">Semana</div>
+              <div class="tab">Mes</div>
+              <div class="tab">Historial</div>
+            </div>
+          </div>
+
+          <div class="hero-card">
+            <div class="hero-label">Ingresos del día</div>
+            <div class="hero-amount"><span class="currency">$</span>1,350</div>
+            <span class="hero-trend">
+              <span class="material-icons">trending_up</span>+12% vs ayer
+            </span>
+            <div class="hero-divider"></div>
+            <div class="hero-mini-grid">
+              <div class="hero-mini">
+                <div class="v">11</div>
+                <div class="l">Entregadas</div>
+              </div>
+              <div class="hero-mini-divider"></div>
+              <div class="hero-mini">
+                <div class="v">2</div>
+                <div class="l">No entreg.</div>
+              </div>
+              <div class="hero-mini-divider"></div>
+              <div class="hero-mini">
+                <div class="v">28</div>
+                <div class="l">Garrafones</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-head">
+              <h3>Resumen del día</h3>
+            </div>
+            <div class="stat-grid">
+              <div class="stat">
+                <div class="ico-wrap" style="background:#0077B619;color:var(--primary);">
+                  <span class="material-icons">local_shipping</span>
+                </div>
+                <div class="v">11</div>
+                <div class="l">Entregas completadas</div>
+                <div class="delta up">▲ +3 vs ayer</div>
+              </div>
+              <div class="stat">
+                <div class="ico-wrap" style="background:#EF444419;color:var(--danger);">
+                  <span class="material-icons">cancel</span>
+                </div>
+                <div class="v">2</div>
+                <div class="l">No entregadas</div>
+                <div class="delta down">▼ -1 vs ayer</div>
+              </div>
+              <div class="stat">
+                <div class="ico-wrap" style="background:#10B98119;color:var(--success);">
+                  <span class="material-icons">payments</span>
+                </div>
+                <div class="v">$1,350</div>
+                <div class="l">Ventas</div>
+                <div class="delta up">▲ +$180 vs ayer</div>
+              </div>
+              <div class="stat">
+                <div class="ico-wrap" style="background:#0077B619;color:var(--primary);">
+                  <span class="material-icons">water_drop</span>
+                </div>
+                <div class="v">28</div>
+                <div class="l">Garrafones vendidos hoy</div>
+                <div class="delta up">▲ +5 vs ayer</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section" style="padding-top:0;">
+            <div class="section-head">
+              <h3>Tendencia semanal</h3>
+              <a href="#">Ver detalle</a>
+            </div>
+            <div class="chart-card">
+              <div class="chart-head">
+                <div>
+                  <div class="chart-title">$8,420 esta semana</div>
+                  <div class="chart-week">Lun 14 - Dom 20 oct</div>
+                </div>
+                <span class="hero-trend">
+                  <span class="material-icons">trending_up</span>+8%
+                </span>
+              </div>
+              <svg class="chart-svg" viewBox="0 0 320 140" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chgrad" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="#0077B6" stop-opacity=".4"/>
+                    <stop offset="100%" stop-color="#0077B6" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <line x1="0" y1="35" x2="320" y2="35" stroke="#E2E8F0" stroke-dasharray="3 3"/>
+                <line x1="0" y1="75" x2="320" y2="75" stroke="#E2E8F0" stroke-dasharray="3 3"/>
+                <line x1="0" y1="115" x2="320" y2="115" stroke="#E2E8F0" stroke-dasharray="3 3"/>
+                <path d="M 20 90 L 65 70 L 110 80 L 155 50 L 200 60 L 245 30 L 290 45 L 290 130 L 20 130 Z"
+                      fill="url(#chgrad)"/>
+                <path d="M 20 90 L 65 70 L 110 80 L 155 50 L 200 60 L 245 30 L 290 45"
+                      stroke="#0077B6" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="20" cy="90" r="3" fill="#0077B6"/>
+                <circle cx="65" cy="70" r="3" fill="#0077B6"/>
+                <circle cx="110" cy="80" r="3" fill="#0077B6"/>
+                <circle cx="155" cy="50" r="3" fill="#0077B6"/>
+                <circle cx="200" cy="60" r="3" fill="#0077B6"/>
+                <circle cx="245" cy="30" r="4" fill="#0077B6" stroke="#fff" stroke-width="2"/>
+                <circle cx="290" cy="45" r="3" fill="#0077B6"/>
+              </svg>
+              <div class="chart-x">
+                <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span>
+                <span style="color:var(--primary);font-weight:700;">S</span><span>D</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section" style="padding-top:0;">
+            <div class="section-head">
+              <h3>Entregas recientes</h3>
+              <a href="#">Ver todas</a>
+            </div>
+            <div class="chart-card" style="padding:0 14px;">
+              <div class="delivery-row">
+                <div class="del-ico ok"><span class="material-icons">check_circle</span></div>
+                <div class="del-body">
+                  <div class="del-title">Andrea Martínez</div>
+                  <div class="del-sub">9:41 AM · 3 × Ciel 20 L</div>
+                </div>
+                <div class="del-amount">
+                  $135
+                </div>
+              </div>
+              <div class="delivery-row">
+                <div class="del-ico ok"><span class="material-icons">check_circle</span></div>
+                <div class="del-body">
+                  <div class="del-title">Restaurante La Esquina</div>
+                  <div class="del-sub">9:12 AM · 5 × Bonafont 20 L</div>
+                </div>
+                <div class="del-amount">
+                  $250
+                </div>
+              </div>
+              <div class="delivery-row">
+                <div class="del-ico no"><span class="material-icons">cancel</span></div>
+                <div class="del-body">
+                  <div class="del-title">Roberto Silva</div>
+                  <div class="del-sub">8:48 AM · Cliente no se encontraba</div>
+                </div>
+                <div class="del-amount neg">$0</div>
+              </div>
+              <div class="delivery-row">
+                <div class="del-ico ok"><span class="material-icons">check_circle</span></div>
+                <div class="del-body">
+                  <div class="del-title">Laura Hernández</div>
+                  <div class="del-sub">8:25 AM · 2 × Ciel 20 L</div>
+                </div>
+                <div class="del-amount">$90</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="height:8px;"></div>
+        </div>
+
+        <div class="bottombar">
+          <div class="bb-item"><span class="material-icons">home</span>Inicio</div>
+          <div class="bb-item"><span class="material-icons">list_alt</span>Pedidos</div>
+          <div class="bb-item active"><span class="material-icons">bar_chart</span>Ingresos</div>
+          <div class="bb-item"><span class="material-icons">person_outline</span>Perfil</div>
+        </div>
+
+        <div class="nav-pill"></div>
+      </div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 02 Registro</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0; --error:#EF4444; --success:#10B981;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;}
+  .topbar{height:56px;display:flex;align-items:center;padding:0 8px;}
+  .iconbtn{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;border:0;background:transparent;cursor:pointer;color:var(--text);}
+  .iconbtn:hover{background:#0000000a}
+  .scroll{flex:1;overflow-y:auto;padding:0 24px 24px;}
+  .scroll::-webkit-scrollbar{display:none}
+  .header{display:flex;align-items:center;gap:12px;margin-bottom:24px;}
+  .brand-mark{width:44px;height:44px;border-radius:50%;background:var(--primary);
+    display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;}
+  .brand-mark .material-icons{font-size:22px}
+  .h-title{font-size:24px;font-weight:600;line-height:1.1;}
+  .h-sub{font-size:14px;color:var(--text-2);margin-top:2px;}
+  .role-row{display:flex;gap:12px;margin-bottom:8px;}
+  .role-card{
+    flex:1;height:96px;border:1.5px solid var(--outline);border-radius:16px;
+    background:var(--surface);padding:12px;cursor:pointer;
+    display:flex;flex-direction:column;justify-content:space-between;
+    transition:.15s;
+  }
+  .role-card .material-icons{font-size:24px;color:var(--text-2);}
+  .role-card .r-title{font-size:15px;font-weight:600;color:var(--text);}
+  .role-card .r-sub{font-size:13px;color:var(--text-2);}
+  .role-card.on{border-color:var(--primary);border-width:2px;background:var(--primary-soft);}
+  .role-card.on .material-icons{color:var(--primary);}
+  .role-card.on .r-title{color:var(--primary-dark);}
+  .role-section-title{font-size:16px;font-weight:500;margin:8px 0 12px;color:var(--text);}
+  .field{position:relative;margin-bottom:16px;}
+  .field-inner{
+    display:flex;align-items:center;background:var(--surface);
+    border:1.5px solid var(--outline);border-radius:14px;padding:0 14px;
+    height:56px;transition:border-color .15s, box-shadow .15s;
+  }
+  .field-inner.focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(0,119,182,.08);}
+  .field-inner.error{border-color:var(--error);}
+  .field-inner .lead{color:var(--text-2);margin-right:10px;}
+  .field-inner.focus .lead{color:var(--primary)}
+  .field-inner input{
+    flex:1;border:0;outline:0;background:transparent;
+    font-family:inherit;font-size:15px;color:var(--text);height:100%;
+  }
+  .field-inner .trail{color:var(--text-2);cursor:pointer;}
+  .field-label{
+    position:absolute;left:42px;top:50%;transform:translateY(-50%);
+    color:var(--text-2);font-size:15px;background:transparent;pointer-events:none;
+    transition:.15s;
+  }
+  .field.has-value .field-label,
+  .field-inner.focus + .field-label{
+    top:0;left:36px;font-size:11px;color:var(--primary);
+    background:var(--bg);padding:0 6px;
+  }
+  .field.error .field-label{color:var(--error);}
+  .support{font-size:12px;color:var(--text-2);margin:6px 0 0 14px;}
+  .support.error{color:var(--error)}
+  .terms{display:flex;align-items:flex-start;gap:8px;margin:12px 0 16px;}
+  .checkbox{
+    width:20px;height:20px;border:2px solid var(--outline);border-radius:4px;
+    cursor:pointer;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;
+    background:var(--surface);
+  }
+  .checkbox.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .checkbox .material-icons{font-size:14px;display:none}
+  .checkbox.on .material-icons{display:block}
+  .terms-text{font-size:13px;color:var(--text-2);line-height:1.4;}
+  .terms-text a{color:var(--primary);text-decoration:none;font-weight:500;}
+  .btn{width:100%;height:56px;border-radius:28px;border:0;cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.2px;
+    background:var(--primary);color:#fff;
+    box-shadow:0 6px 16px rgba(0,119,182,.3);transition:.15s;}
+  .btn:disabled{background:var(--outline);color:var(--text-3);box-shadow:none;cursor:not-allowed;}
+  .btn:active:not(:disabled){transform:scale(.98)}
+  .login-row{display:flex;justify-content:center;align-items:center;gap:4px;margin-top:12px;
+    font-size:14px;color:var(--text-2);}
+  .login-row button{border:0;background:transparent;color:var(--primary);font-weight:600;
+    font-family:inherit;font-size:14px;cursor:pointer;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons" style="font-size:14px;">network_cell</span>
+          <span class="material-icons" style="font-size:14px;">wifi</span>
+          <span class="material-icons" style="font-size:14px;">battery_full</span>
+        </span>
+      </div>
+
+      <div class="topbar">
+        <button class="iconbtn"><span class="material-icons">arrow_back</span></button>
+      </div>
+
+      <div class="scroll">
+        <div class="header">
+          <div class="brand-mark"><span class="material-icons">water_drop</span></div>
+          <div>
+            <div class="h-title">Crea tu cuenta</div>
+            <div class="h-sub">Tarda menos de un minuto</div>
+          </div>
+        </div>
+
+        <div class="role-section-title">¿Cómo vas a usar HToGo?</div>
+        <div class="role-row">
+          <div class="role-card on" data-role="cliente">
+            <span class="material-icons">water_drop</span>
+            <div>
+              <div class="r-title">Soy cliente</div>
+              <div class="r-sub">Quiero pedir agua</div>
+            </div>
+          </div>
+          <div class="role-card" data-role="repartidor">
+            <span class="material-icons">local_shipping</span>
+            <div>
+              <div class="r-title">Soy repartidor</div>
+              <div class="r-sub">Quiero entregar</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field" data-field="nombre">
+          <div class="field-inner">
+            <span class="material-icons lead">person</span>
+            <input type="text" />
+          </div>
+          <label class="field-label">Nombre completo</label>
+        </div>
+
+        <div class="field" data-field="correo">
+          <div class="field-inner">
+            <span class="material-icons lead">alternate_email</span>
+            <input type="email" />
+          </div>
+          <label class="field-label">Correo electrónico</label>
+        </div>
+
+        <div class="field" data-field="telefono">
+          <div class="field-inner">
+            <span class="material-icons lead">phone</span>
+            <input type="tel" maxlength="10" />
+          </div>
+          <label class="field-label">Teléfono (10 dígitos)</label>
+        </div>
+
+        <div class="field" data-field="password">
+          <div class="field-inner">
+            <span class="material-icons lead">lock</span>
+            <input type="password" />
+            <span class="material-icons trail" data-toggle="password">visibility_off</span>
+          </div>
+          <label class="field-label">Contraseña</label>
+          <div class="support">Mínimo 8 caracteres</div>
+        </div>
+
+        <div class="field" data-field="confirm">
+          <div class="field-inner">
+            <span class="material-icons lead">lock</span>
+            <input type="password" />
+            <span class="material-icons trail" data-toggle="confirm">visibility_off</span>
+          </div>
+          <label class="field-label">Confirmar contraseña</label>
+          <div class="support" id="confirmSupport"></div>
+        </div>
+
+        <div class="terms">
+          <div class="checkbox" id="checkbox"><span class="material-icons">check</span></div>
+          <div class="terms-text">
+            Acepto los <a href="#">Términos</a> y el <a href="#">Aviso de Privacidad</a>
+          </div>
+        </div>
+
+        <button class="btn" id="submit" disabled>Crear cuenta</button>
+
+        <div class="login-row">
+          <span>¿Ya tienes cuenta?</span>
+          <button>Iniciar sesión</button>
+        </div>
+      </div>
+
+      <div class="nav-pill"></div>
+    </div>
+  </div>
+
+<script>
+  // role selection
+  document.querySelectorAll('.role-card').forEach(card=>{
+    card.addEventListener('click',()=>{
+      document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('on'));
+      card.classList.add('on');
+    });
+  });
+  // floating-label behavior
+  document.querySelectorAll('.field').forEach(field=>{
+    const inner = field.querySelector('.field-inner');
+    const input = field.querySelector('input');
+    const label = field.querySelector('.field-label');
+    function reposition(focused){
+      const float = focused || input.value.length>0;
+      label.style.top = float ? '0' : '50%';
+      label.style.left = float ? '36px' : '42px';
+      label.style.fontSize = float ? '11px' : '15px';
+      label.style.padding = float ? '0 6px' : '0';
+      label.style.background = float ? 'var(--bg)' : 'transparent';
+      label.style.color = focused ? 'var(--primary)' : (float?'var(--text-2)':'var(--text-2)');
+      label.style.transform = float ? 'translateY(-50%)' : 'translateY(-50%)';
+    }
+    input.addEventListener('focus',()=>{inner.classList.add('focus');reposition(true);});
+    input.addEventListener('blur',()=>{inner.classList.remove('focus');reposition(false);});
+    input.addEventListener('input',()=>{validate();});
+  });
+  // password toggles
+  document.querySelectorAll('[data-toggle]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const input = t.parentElement.querySelector('input');
+      if(input.type==='password'){input.type='text';t.textContent='visibility';}
+      else {input.type='password';t.textContent='visibility_off';}
+    });
+  });
+  // telefono digits-only
+  const telInput = document.querySelector('[data-field="telefono"] input');
+  telInput.addEventListener('input',()=>{
+    telInput.value = telInput.value.replace(/\D/g,'').slice(0,10);
+  });
+  // checkbox
+  const cb = document.getElementById('checkbox');
+  cb.addEventListener('click',()=>{cb.classList.toggle('on');validate();});
+  // validation
+  const submit = document.getElementById('submit');
+  const confirmSupport = document.getElementById('confirmSupport');
+  function v(name){return document.querySelector(`[data-field="${name}"] input`).value;}
+  function validate(){
+    const nombre = v('nombre').trim();
+    const correo = v('correo');
+    const tel = v('telefono');
+    const pw = v('password');
+    const cf = v('confirm');
+    const match = pw.length>0 && pw===cf;
+    const accepted = cb.classList.contains('on');
+    // confirm support
+    const confirmField = document.querySelector('[data-field="confirm"]');
+    if(cf.length>0 && !match){
+      confirmField.querySelector('.field-inner').classList.add('error');
+      confirmSupport.textContent='Las contraseñas no coinciden';
+      confirmSupport.classList.add('error');
+    } else {
+      confirmField.querySelector('.field-inner').classList.remove('error');
+      confirmSupport.textContent='';
+      confirmSupport.classList.remove('error');
+    }
+    submit.disabled = !(nombre && correo.includes('@') && tel.length>=10 &&
+                        pw.length>=8 && match && accepted);
+  }
+</script>
+</body>
+</html>

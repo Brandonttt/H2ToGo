@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 08 Historial de pedidos</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;background:var(--primary-dark);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;}
+
+  .header{
+    background:var(--primary-dark);color:#fff;padding:8px 16px 16px;
+  }
+  .header-row{display:flex;align-items:center;gap:8px;}
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;background:#ffffff1a;border:0;color:#fff;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .header h1{margin:0;flex:1;font-size:18px;font-weight:600;}
+
+  .search-bar{
+    margin-top:14px;background:#ffffff1a;border-radius:12px;padding:10px 12px;
+    display:flex;align-items:center;gap:10px;color:#fff;font-size:13px;
+  }
+  .search-bar .material-icons{font-size:18px;color:#ffffffaa;}
+  .search-bar input{
+    border:0;outline:0;flex:1;color:#fff;background:transparent;font-family:inherit;font-size:13px;
+  }
+  .search-bar input::placeholder{color:#ffffffaa;}
+
+  /* Tabs */
+  .tabs{
+    display:flex;gap:6px;padding:12px 16px;background:var(--bg);overflow-x:auto;
+    scrollbar-width:none;border-bottom:1px solid var(--outline);
+  }
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{
+    flex:0 0 auto;background:#fff;border:1px solid var(--outline);border-radius:99px;
+    padding:7px 14px;font-size:13px;font-weight:500;color:var(--text-2);cursor:pointer;
+    font-family:inherit;
+  }
+  .tab.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .tab .count{
+    background:#ffffff33;color:#fff;font-size:11px;font-weight:600;padding:1px 6px;border-radius:99px;
+    margin-left:4px;
+  }
+  .tab:not(.active) .count{background:var(--bg);color:var(--text-2);}
+
+  .scroll{flex:1;overflow-y:auto;padding:0 16px 16px;}
+  .scroll::-webkit-scrollbar{display:none}
+
+  /* Group */
+  .group-label{
+    font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;
+    padding:18px 0 8px;
+  }
+
+  /* Active card (con tracking) */
+  .active-card{
+    background:linear-gradient(135deg,var(--primary-dark),var(--primary));
+    color:#fff;border-radius:18px;padding:16px;
+    box-shadow:0 8px 24px rgba(0,119,182,.3);position:relative;overflow:hidden;
+    margin-bottom:8px;
+  }
+  .active-card::after{
+    content:"";position:absolute;right:-30px;bottom:-30px;width:120px;height:120px;
+    border-radius:50%;background:#ffffff14;
+  }
+  .active-row{display:flex;align-items:center;gap:12px;position:relative;z-index:1;}
+  .active-icon{
+    width:46px;height:46px;border-radius:14px;background:#ffffff22;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .active-icon .material-icons{font-size:24px;}
+  .active-info{flex:1;min-width:0;}
+  .active-info .id{font-size:13px;color:#ffffffcc;font-weight:500;}
+  .active-info .meta{font-size:14px;font-weight:600;margin-top:2px;}
+  .active-chip{
+    display:inline-flex;align-items:center;gap:6px;padding:4px 10px;
+    border-radius:99px;font-size:11px;font-weight:600;background:#ffffff2a;color:#fff;
+  }
+  .active-chip .dot{width:6px;height:6px;border-radius:3px;background:#fff;
+    animation:blink 1.4s infinite;}
+  @keyframes blink{50%{opacity:.3;}}
+  .active-cta{
+    margin-top:14px;background:#fff;color:var(--primary);border:0;border-radius:12px;
+    padding:11px;width:100%;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;position:relative;z-index:1;
+  }
+  .active-cta .material-icons{font-size:18px;}
+
+  /* Pedido card */
+  .pedido{
+    background:#fff;border-radius:14px;padding:14px;margin-bottom:8px;
+    box-shadow:0 1px 4px rgba(15,23,42,.04);cursor:pointer;
+  }
+  .ped-row{display:flex;align-items:center;gap:12px;}
+  .ped-icon{
+    width:42px;height:42px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .ped-icon.entregado{background:#10B98114;color:var(--s-entregado);}
+  .ped-icon.cancelado{background:#EF444414;color:var(--s-cancelado);}
+  .ped-info{flex:1;min-width:0;}
+  .ped-id{font-size:13px;color:var(--text-2);}
+  .ped-resumen{font-size:14px;font-weight:600;color:var(--text);margin-top:1px;}
+  .ped-fecha{font-size:11px;color:var(--text-3);margin-top:2px;}
+  .ped-right{text-align:right;flex-shrink:0;}
+  .ped-total{font-size:15px;font-weight:700;color:var(--text);}
+  .chip{
+    display:inline-flex;align-items:center;gap:4px;padding:3px 8px;
+    border-radius:99px;font-size:11px;font-weight:600;margin-top:4px;
+  }
+  .chip .dot{width:5px;height:5px;border-radius:3px;}
+  .chip.entregado{background:#10B98119;color:var(--s-entregado);}
+  .chip.entregado .dot{background:var(--s-entregado);}
+  .chip.cancelado{background:#EF444419;color:var(--s-cancelado);}
+  .chip.cancelado .dot{background:var(--s-cancelado);}
+
+  .ped-foot{
+    display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;
+    border-top:1px dashed var(--outline);font-size:12px;color:var(--text-2);
+  }
+  .ped-foot .material-icons{font-size:14px;color:var(--text-3);}
+  .repetir{
+    margin-left:auto;background:var(--primary-soft);color:var(--primary);
+    border:0;border-radius:99px;padding:6px 12px;font-family:inherit;font-size:12px;font-weight:600;
+    cursor:pointer;display:flex;align-items:center;gap:4px;
+  }
+  .repetir .material-icons{font-size:14px;}
+
+  /* Empty state */
+  .empty-month{
+    background:#fff;border:1px dashed var(--outline);border-radius:14px;
+    padding:18px;text-align:center;color:var(--text-3);font-size:13px;
+  }
+
+  /* Bottombar */
+  .bottombar{
+    position:absolute;bottom:0;left:0;right:0;height:72px;background:#fff;
+    display:flex;align-items:center;justify-content:space-around;
+    box-shadow:0 -2px 12px rgba(15,23,42,.06);padding-bottom:8px;z-index:5;
+  }
+  .nav-item{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    color:var(--text-3);cursor:pointer;font-size:11px;font-weight:500;
+    padding:6px 16px;border-radius:99px;
+  }
+  .nav-item.active{color:var(--primary);background:var(--primary-soft);}
+  .nav-item .material-icons{font-size:22px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons" style="font-size:14px;">network_cell</span>
+          <span class="material-icons" style="font-size:14px;">wifi</span>
+          <span class="material-icons" style="font-size:14px;">battery_full</span>
+        </span>
+      </div>
+
+      <div class="header">
+        <div class="header-row">
+          <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+          <h1>Mis pedidos</h1>
+          <button class="icon-btn"><span class="material-icons">filter_list</span></button>
+        </div>
+        <div class="search-bar">
+          <span class="material-icons">search</span>
+          <input placeholder="Buscar por #, purificadora o marca…" />
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active">Todos<span class="count">14</span></button>
+        <button class="tab">Activos<span class="count">1</span></button>
+        <button class="tab">Entregados<span class="count">12</span></button>
+        <button class="tab">Cancelados<span class="count">1</span></button>
+      </div>
+
+      <div class="scroll" style="padding-bottom:90px;">
+
+        <!-- Activo -->
+        <div class="group-label">En curso</div>
+        <div class="active-card">
+          <div class="active-row">
+            <div class="active-icon"><span class="material-icons">delivery_dining</span></div>
+            <div class="active-info">
+              <div class="id">Pedido #HG-1287</div>
+              <div class="meta"><span class="material-icons" style="font-size:13px;vertical-align:-1px;">storefront</span> Aguas Del Valle</div>
+              <div class="id" style="margin-top:2px;">3 × Ciel · Carlos M.</div>
+            </div>
+            <div class="active-chip"><span class="dot"></span>En camino</div>
+          </div>
+          <button class="active-cta">
+            Rastrear pedido
+            <span class="material-icons">arrow_forward</span>
+          </button>
+        </div>
+
+        <!-- Hoy -->
+        <div class="group-label">Hoy · 26 abr</div>
+
+        <div class="pedido">
+          <div class="ped-row">
+            <div class="ped-icon entregado"><span class="material-icons">check_circle</span></div>
+            <div class="ped-info">
+              <div class="ped-id">#HG-1284</div>
+              <div class="ped-resumen">2 × Bonafont 20 L</div>
+              <div class="ped-fecha"><span class="material-icons" style="font-size:11px;vertical-align:-1px;">storefront</span> Hidro Express BJ · Luis P. · 7:15 AM</div>
+              <div class="chip entregado"><span class="dot"></span>Entregado</div>
+            </div>
+            <div class="ped-right">
+              <div class="ped-total">$91</div>
+            </div>
+          </div>
+          <div class="ped-foot">
+            <span class="material-icons">home</span>Casa · Insurgentes Sur 1234
+            <button class="repetir"><span class="material-icons">refresh</span>Repetir</button>
+          </div>
+        </div>
+
+        <!-- Ayer -->
+        <div class="group-label">Ayer · 25 abr</div>
+
+        <div class="pedido">
+          <div class="ped-row">
+            <div class="ped-icon entregado"><span class="material-icons">check_circle</span></div>
+            <div class="ped-info">
+              <div class="ped-id">#HG-1271</div>
+              <div class="ped-resumen">5 × Ciel 20 L</div>
+              <div class="ped-fecha"><span class="material-icons" style="font-size:11px;vertical-align:-1px;">storefront</span> Aguas Del Valle · Carlos M. · 5:48 PM</div>
+              <div class="chip entregado"><span class="dot"></span>Entregado</div>
+            </div>
+            <div class="ped-right">
+              <div class="ped-total">$195</div>
+            </div>
+          </div>
+          <div class="ped-foot">
+            <span class="material-icons">work</span>Oficina · Av. Universidad 567
+            <button class="repetir"><span class="material-icons">refresh</span>Repetir</button>
+          </div>
+        </div>
+
+        <div class="pedido">
+          <div class="ped-row">
+            <div class="ped-icon cancelado"><span class="material-icons">cancel</span></div>
+            <div class="ped-info">
+              <div class="ped-id">#HG-1265</div>
+              <div class="ped-resumen">1 × Epura 20 L</div>
+              <div class="ped-fecha">10:32 AM · Cancelado por usuario</div>
+              <div class="chip cancelado"><span class="dot"></span>Cancelado</div>
+            </div>
+            <div class="ped-right">
+              <div class="ped-total" style="color:var(--text-3);text-decoration:line-through;">$56</div>
+            </div>
+          </div>
+          <div class="ped-foot">
+            <span class="material-icons">home</span>Casa · Insurgentes Sur 1234
+            <button class="repetir"><span class="material-icons">refresh</span>Repetir</button>
+          </div>
+        </div>
+
+        <!-- Esta semana -->
+        <div class="group-label">Esta semana</div>
+
+        <div class="pedido">
+          <div class="ped-row">
+            <div class="ped-icon entregado"><span class="material-icons">check_circle</span></div>
+            <div class="ped-info">
+              <div class="ped-id">#HG-1244</div>
+              <div class="ped-resumen">3 × Ciel 20 L</div>
+              <div class="ped-fecha"><span class="material-icons" style="font-size:11px;vertical-align:-1px;">storefront</span> Aguas Del Valle · 22 abr, 8:05 AM</div>
+              <div class="chip entregado"><span class="dot"></span>Entregado</div>
+            </div>
+            <div class="ped-right">
+              <div class="ped-total">$125</div>
+            </div>
+          </div>
+          <div class="ped-foot">
+            <span class="material-icons">home</span>Casa · Insurgentes Sur 1234
+            <button class="repetir"><span class="material-icons">refresh</span>Repetir</button>
+          </div>
+        </div>
+
+        <div class="pedido">
+          <div class="ped-row">
+            <div class="ped-icon entregado"><span class="material-icons">check_circle</span></div>
+            <div class="ped-info">
+              <div class="ped-id">#HG-1232</div>
+              <div class="ped-resumen">10 × Santorini 20 L</div>
+              <div class="ped-fecha"><span class="material-icons" style="font-size:11px;vertical-align:-1px;">storefront</span> AquaPura Nápoles · 20 abr, 11:22 AM</div>
+              <div class="chip entregado"><span class="dot"></span>Entregado</div>
+            </div>
+            <div class="ped-right">
+              <div class="ped-total">$320</div>
+            </div>
+          </div>
+          <div class="ped-foot">
+            <span class="material-icons">favorite</span>Casa de mamá · Heriberto Frías 890
+            <button class="repetir"><span class="material-icons">refresh</span>Repetir</button>
+          </div>
+        </div>
+
+        <!-- Marzo -->
+        <div class="group-label">Marzo 2026</div>
+
+        <div class="pedido">
+          <div class="ped-row">
+            <div class="ped-icon entregado"><span class="material-icons">check_circle</span></div>
+            <div class="ped-info">
+              <div class="ped-id">#HG-1180</div>
+              <div class="ped-resumen">3 × Bonafont 20 L</div>
+              <div class="ped-fecha"><span class="material-icons" style="font-size:11px;vertical-align:-1px;">storefront</span> Hidro Express BJ · 28 mar</div>
+              <div class="chip entregado"><span class="dot"></span>Entregado</div>
+            </div>
+            <div class="ped-right">
+              <div class="ped-total">$134</div>
+            </div>
+          </div>
+          <div class="ped-foot">
+            <span class="material-icons">home</span>Casa · Insurgentes Sur 1234
+            <button class="repetir"><span class="material-icons">refresh</span>Repetir</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="bottombar">
+        <div class="nav-item">
+          <span class="material-icons">home</span>Inicio
+        </div>
+        <div class="nav-item active">
+          <span class="material-icons">history</span>Pedidos
+        </div>
+        <div class="nav-item">
+          <span class="material-icons">person</span>Perfil
+        </div>
+      </div>
+
+      <div class="nav-pill"></div>
+    </div>
+  </div>
+</body>
+</html>

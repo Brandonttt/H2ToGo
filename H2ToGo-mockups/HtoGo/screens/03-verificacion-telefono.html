@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 03 Verificación de teléfono</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0; --error:#EF4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;}
+  .topbar{height:56px;display:flex;align-items:center;padding:0 8px;}
+  .iconbtn{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;border:0;background:transparent;cursor:pointer;color:var(--text);}
+  .iconbtn:hover{background:#0000000a}
+  .body{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 24px 24px;}
+  .icon-circle{
+    width:72px;height:72px;border-radius:50%;background:var(--primary-soft);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .icon-circle .material-icons{font-size:36px;color:var(--primary);}
+  .h-title{font-size:24px;font-weight:600;margin-top:20px;text-align:center;}
+  .h-sub{font-size:15px;color:var(--text-2);margin-top:8px;text-align:center;line-height:1.4;}
+  .phone{font-size:16px;font-weight:600;color:var(--text);margin-top:2px;}
+  .change{
+    border:0;background:transparent;color:var(--primary);font-weight:600;
+    font-family:inherit;font-size:14px;cursor:pointer;margin-top:4px;
+  }
+  .otp{display:flex;gap:10px;margin-top:24px;}
+  .otp-box{
+    width:46px;height:56px;border-radius:12px;background:var(--surface);
+    border:1.5px solid var(--outline);
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;font-weight:600;color:var(--text);transition:.15s;
+  }
+  .otp-box.filled{background:var(--primary-soft);border-color:var(--primary);}
+  .otp-box.focus{border-color:var(--primary);border-width:2px;
+    box-shadow:0 0 0 4px rgba(0,119,182,.12);}
+  .otp-box.error{border-color:var(--error);border-width:2px;}
+  .otp-input{
+    position:absolute;opacity:0;pointer-events:none;
+  }
+  .otp-wrap{position:relative;}
+  .err-msg{margin-top:12px;color:var(--error);font-size:14px;}
+  .resend{margin-top:24px;font-size:14px;color:var(--text-2);}
+  .resend.active{color:var(--primary);font-weight:600;cursor:pointer;}
+  .spacer{flex:1;}
+  .btn{width:100%;height:56px;border-radius:28px;border:0;cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.2px;
+    background:var(--primary);color:#fff;
+    box-shadow:0 6px 16px rgba(0,119,182,.3);transition:.15s;}
+  .btn:disabled{background:var(--outline);color:var(--text-3);box-shadow:none;cursor:not-allowed;}
+  .btn:active:not(:disabled){transform:scale(.98)}
+  .help{margin-top:14px;font-size:13px;color:var(--text-2);text-align:center;}
+  .hint{
+    margin-top:14px;font-size:11px;color:var(--text-3);text-align:center;
+    background:#fff7d6;border:1px dashed #f3d77a;padding:6px 10px;border-radius:8px;
+  }
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons" style="font-size:14px;">network_cell</span>
+          <span class="material-icons" style="font-size:14px;">wifi</span>
+          <span class="material-icons" style="font-size:14px;">battery_full</span>
+        </span>
+      </div>
+
+      <div class="topbar">
+        <button class="iconbtn"><span class="material-icons">arrow_back</span></button>
+      </div>
+
+      <div class="body">
+        <div class="icon-circle"><span class="material-icons">sms</span></div>
+        <div class="h-title">Verifica tu teléfono</div>
+        <div class="h-sub">Te enviamos un código de 6 dígitos por SMS al</div>
+        <div class="phone">+52 55 1234 5678</div>
+        <button class="change">Cambiar número</button>
+
+        <div class="otp-wrap">
+          <input class="otp-input" id="otpInput" type="tel" inputmode="numeric" maxlength="6" autofocus />
+          <div class="otp" id="otp">
+            <div class="otp-box focus"></div>
+            <div class="otp-box"></div>
+            <div class="otp-box"></div>
+            <div class="otp-box"></div>
+            <div class="otp-box"></div>
+            <div class="otp-box"></div>
+          </div>
+        </div>
+
+        <div class="err-msg" id="err" style="display:none">Código incorrecto, inténtalo de nuevo</div>
+
+        <div class="resend" id="resend">Reenviar código en <span id="timer">45</span>s</div>
+
+        <div class="hint">Para probar usa el código <b>123456</b></div>
+
+        <div class="spacer"></div>
+
+        <button class="btn" id="verifyBtn" disabled>Verificar</button>
+      </div>
+
+      <div class="nav-pill"></div>
+    </div>
+  </div>
+
+<script>
+  const input = document.getElementById('otpInput');
+  const boxes = [...document.querySelectorAll('.otp-box')];
+  const err = document.getElementById('err');
+  const btn = document.getElementById('verifyBtn');
+
+  // Tap on the otp area focuses the hidden input
+  document.getElementById('otp').addEventListener('click',()=>input.focus());
+
+  function render(){
+    const v = input.value;
+    boxes.forEach((b,i)=>{
+      b.classList.remove('focus','filled','error');
+      const ch = v[i] || '';
+      b.textContent = ch;
+      if(ch) b.classList.add('filled');
+      if(!ch && i===v.length) b.classList.add('focus');
+    });
+    btn.disabled = v.length !== 6;
+    err.style.display = 'none';
+    if(v.length === 6){
+      if(v === '123456'){
+        // Success: pulse and "verify"
+        boxes.forEach(b=>{b.classList.remove('error');b.style.borderColor='#10B981';b.style.background='#D1FAE5';});
+      } else {
+        boxes.forEach(b=>b.classList.add('error'));
+        err.style.display = 'block';
+      }
+    }
+  }
+  input.addEventListener('input',()=>{
+    input.value = input.value.replace(/\D/g,'').slice(0,6);
+    render();
+  });
+  btn.addEventListener('click',()=>{
+    if(input.value === '123456'){ alert('¡Verificado! → Iniciar sesión'); }
+    else { boxes.forEach(b=>b.classList.add('error')); err.style.display='block'; }
+  });
+
+  // Resend timer
+  const resend = document.getElementById('resend');
+  const timer = document.getElementById('timer');
+  let s = 45;
+  const tick = setInterval(()=>{
+    s -= 1;
+    if(s<=0){
+      clearInterval(tick);
+      resend.classList.add('active');
+      resend.innerHTML = 'Reenviar código';
+      resend.addEventListener('click',()=>{
+        s=45;resend.classList.remove('active');
+        resend.innerHTML='Reenviar código en <span id="timer">45</span>s';
+        location.reload();
+      });
+    } else {
+      timer.textContent = s;
+    }
+  },1000);
+
+  // Auto-focus the hidden input on load
+  setTimeout(()=>input.focus(),200);
+</script>
+</body>
+</html>

@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 12 Historial de pedidos</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8; --primary-wash:#E0F7FF;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+    --accent-emerald:#10B981; --accent-amber:#F59E0B;
+    --accent-rose:#EF4444; --accent-purple:#8B5CF6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;
+    flex:0 0 auto;background:var(--primary-dark);
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .status .material-icons{font-size:14px;}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;
+  }
+
+  /* Header */
+  .header{
+    background:var(--primary-dark);color:#fff;padding:12px 16px 14px;
+    flex:0 0 auto;
+  }
+  .header-row{display:flex;align-items:center;gap:8px;}
+  .header-icon{
+    width:40px;height:40px;border-radius:50%;
+    background:rgba(255,255,255,.10);
+    display:flex;align-items:center;justify-content:center;border:0;cursor:pointer;
+  }
+  .header-icon .material-icons{color:#fff;font-size:22px;}
+  .header h1{margin:0;flex:1;font-size:18px;font-weight:600;color:#fff;}
+  .search-box{
+    background:rgba(255,255,255,.10);border-radius:12px;
+    margin-top:14px;padding:10px 12px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .search-box .material-icons{color:rgba(255,255,255,.7);font-size:18px;}
+  .search-box .ph{font-size:13px;color:rgba(255,255,255,.7);}
+
+  /* Tabs */
+  .tabs{
+    display:flex;gap:6px;padding:12px 16px;flex:0 0 auto;
+    overflow-x:auto;background:var(--bg);
+  }
+  .tab-pill{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:7px 14px;border-radius:99px;
+    border:1px solid var(--outline);background:#fff;
+    font-size:13px;font-weight:500;color:var(--text-2);
+    cursor:pointer;flex:0 0 auto;
+  }
+  .tab-pill .count{
+    background:var(--bg);color:var(--text-2);
+    font-size:11px;font-weight:600;
+    padding:1px 6px;border-radius:99px;
+  }
+  .tab-pill.active{
+    background:var(--primary);border-color:var(--primary);color:#fff;
+  }
+  .tab-pill.active .count{background:rgba(255,255,255,.20);color:#fff;}
+
+  /* Content */
+  .content{
+    flex:1;overflow:auto;padding:0 16px 24px;
+  }
+
+  .group-label{
+    font-size:12px;font-weight:600;color:var(--text-2);
+    letter-spacing:.4px;text-transform:uppercase;
+    padding:18px 0 8px;
+  }
+
+  /* Active order card */
+  .active-card{
+    background:linear-gradient(135deg,var(--primary-dark) 0%,var(--primary) 100%);
+    border-radius:18px;padding:16px;margin-bottom:8px;color:#fff;
+    box-shadow:0 6px 18px rgba(0,119,182,.25);
+  }
+  .active-row{display:flex;align-items:center;gap:12px;}
+  .active-icon{
+    width:46px;height:46px;border-radius:14px;
+    background:rgba(255,255,255,.13);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .active-icon .material-icons{color:#fff;font-size:24px;}
+  .active-info{flex:1;min-width:0;}
+  .active-info .id{font-size:13px;color:rgba(255,255,255,.8);}
+  .active-info .res{font-size:14px;font-weight:600;}
+  .active-chip{
+    display:inline-flex;align-items:center;gap:6px;
+    background:rgba(255,255,255,.16);border-radius:99px;
+    padding:4px 10px;font-size:11px;font-weight:600;
+  }
+  .active-chip::before{
+    content:'';width:6px;height:6px;border-radius:50%;background:#fff;
+  }
+  .active-btn{
+    width:100%;background:#fff;color:var(--primary);
+    border:0;border-radius:12px;padding:10px;
+    font:600 13px 'Roboto',sans-serif;cursor:pointer;
+    margin-top:14px;display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .active-btn .material-icons{font-size:18px;}
+
+  /* Hist card */
+  .hist-card{
+    background:#fff;border-radius:14px;padding:14px;margin-bottom:8px;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+  }
+  .hist-top{display:flex;align-items:flex-start;gap:12px;}
+  .hist-icon{
+    width:42px;height:42px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .hist-icon .material-icons{font-size:22px;}
+  .hist-icon.entregado{background:rgba(16,185,129,.08);color:var(--s-entregado);}
+  .hist-icon.cancelado{background:rgba(239,68,68,.08);color:var(--s-cancelado);}
+  .hist-icon.encamino{background:rgba(0,119,182,.08);color:var(--s-encamino);}
+  .hist-info{flex:1;min-width:0;}
+  .hist-id{font-size:13px;color:var(--text-2);}
+  .hist-res{font-size:14px;font-weight:600;color:var(--text);}
+  .hist-pur{
+    display:inline-flex;align-items:center;gap:4px;
+    font-size:12px;font-weight:500;color:var(--primary);
+    margin-top:2px;
+  }
+  .hist-pur .material-icons{font-size:13px;}
+  .hist-fecha{font-size:11px;color:var(--text-3);margin-top:2px;}
+  .chip-status{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:3px 8px;border-radius:99px;
+    font-size:11px;font-weight:600;margin-top:6px;
+  }
+  .chip-status::before{
+    content:'';width:5px;height:5px;border-radius:50%;background:currentColor;
+  }
+  .chip-entregado{background:rgba(16,185,129,.10);color:var(--s-entregado);}
+  .chip-cancelado{background:rgba(239,68,68,.10);color:var(--s-cancelado);}
+  .chip-encamino{background:rgba(0,119,182,.10);color:var(--s-encamino);}
+  .hist-total{
+    font-size:15px;font-weight:700;color:var(--text);text-align:right;
+    flex:0 0 auto;
+  }
+  .hist-total.cancelado{color:var(--text-3);text-decoration:line-through;}
+  .hist-divider{height:1px;background:var(--outline);margin:10px 0;}
+  .hist-bottom{display:flex;align-items:center;gap:8px;}
+  .hist-dir{
+    display:flex;align-items:center;gap:6px;flex:1;min-width:0;
+    font-size:12px;color:var(--text-2);
+  }
+  .hist-dir .material-icons{font-size:14px;color:var(--text-3);flex:0 0 auto;}
+  .hist-dir .txt{
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .hist-repeat{
+    background:var(--primary-soft);color:var(--primary);
+    border:0;border-radius:99px;padding:6px 12px;
+    font:600 12px 'Roboto',sans-serif;cursor:pointer;
+    display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;
+  }
+  .hist-repeat .material-icons{font-size:14px;}
+
+  /* BottomBar */
+  .bottombar{
+    background:#fff;border-top:1px solid var(--outline);
+    display:flex;height:72px;padding:6px 0 10px;flex:0 0 auto;
+  }
+  .tab{
+    flex:1;border:0;background:transparent;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;cursor:pointer;
+    color:var(--text-3);font:500 11px 'Roboto',sans-serif;
+  }
+  .tab .material-icons{font-size:22px;padding:4px 16px;border-radius:99px;}
+  .tab.active{color:var(--primary);}
+  .tab.active .material-icons{background:var(--primary-soft);}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <!-- Status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons">network_cell</span>
+          <span class="material-icons">wifi</span>
+          <span class="material-icons">battery_full</span>
+        </span>
+      </div>
+
+      <!-- Header -->
+      <div class="header">
+        <div class="header-row">
+          <button class="header-icon" aria-label="Atrás">
+            <span class="material-icons">arrow_back</span>
+          </button>
+          <h1>Mis pedidos</h1>
+          <button class="header-icon" aria-label="Filtros">
+            <span class="material-icons">filter_list</span>
+          </button>
+        </div>
+        <div class="search-box">
+          <span class="material-icons">search</span>
+          <span class="ph">Buscar por #, purificadora o marca…</span>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-pill active">Todos<span class="count">14</span></button>
+        <button class="tab-pill">Activos<span class="count">1</span></button>
+        <button class="tab-pill">Entregados<span class="count">12</span></button>
+        <button class="tab-pill">Cancelados<span class="count">1</span></button>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <div class="group-label">EN CURSO</div>
+
+        <!-- Active order -->
+        <div class="active-card">
+          <div class="active-row">
+            <div class="active-icon"><span class="material-icons">storefront</span></div>
+            <div class="active-info">
+              <div class="id">Pedido #HG-1287</div>
+              <div class="res">3 × Ciel · Aguas Del Valle</div>
+            </div>
+            <span class="active-chip">En camino</span>
+          </div>
+          <button class="active-btn">
+            <span>Rastrear pedido</span>
+            <span class="material-icons">arrow_forward</span>
+          </button>
+        </div>
+
+        <div class="group-label">HOY · 26 ABR</div>
+
+        <div class="hist-card">
+          <div class="hist-top">
+            <div class="hist-icon entregado"><span class="material-icons">check_circle</span></div>
+            <div class="hist-info">
+              <div class="hist-id">#HG-1284</div>
+              <div class="hist-res">2 × Bonafont 20 L</div>
+              <div class="hist-pur"><span class="material-icons">storefront</span>Hidro Express BJ</div>
+              <div class="hist-fecha">7:15 AM · Carlos M.</div>
+              <span class="chip-status chip-entregado">Entregado</span>
+            </div>
+            <div class="hist-total">$91</div>
+          </div>
+          <div class="hist-divider"></div>
+          <div class="hist-bottom">
+            <div class="hist-dir">
+              <span class="material-icons">home</span>
+              <span class="txt">Casa · Insurgentes Sur 1234</span>
+            </div>
+            <button class="hist-repeat">
+              <span class="material-icons">refresh</span>Repetir
+            </button>
+          </div>
+        </div>
+
+        <div class="group-label">AYER · 25 ABR</div>
+
+        <div class="hist-card">
+          <div class="hist-top">
+            <div class="hist-icon entregado"><span class="material-icons">check_circle</span></div>
+            <div class="hist-info">
+              <div class="hist-id">#HG-1271</div>
+              <div class="hist-res">5 × Ciel 20 L</div>
+              <div class="hist-pur"><span class="material-icons">storefront</span>Aguas Del Valle</div>
+              <div class="hist-fecha">5:48 PM · Luis R.</div>
+              <span class="chip-status chip-entregado">Entregado</span>
+            </div>
+            <div class="hist-total">$195</div>
+          </div>
+          <div class="hist-divider"></div>
+          <div class="hist-bottom">
+            <div class="hist-dir">
+              <span class="material-icons">work</span>
+              <span class="txt">Oficina · Av. Universidad 567</span>
+            </div>
+            <button class="hist-repeat">
+              <span class="material-icons">refresh</span>Repetir
+            </button>
+          </div>
+        </div>
+
+        <div class="hist-card">
+          <div class="hist-top">
+            <div class="hist-icon cancelado"><span class="material-icons">cancel</span></div>
+            <div class="hist-info">
+              <div class="hist-id">#HG-1265</div>
+              <div class="hist-res">1 × Epura 20 L</div>
+              <div class="hist-pur"><span class="material-icons">storefront</span>Aguas Del Valle</div>
+              <div class="hist-fecha">10:32 AM · Cancelado por usuario</div>
+              <span class="chip-status chip-cancelado">Cancelado</span>
+            </div>
+            <div class="hist-total cancelado">$56</div>
+          </div>
+          <div class="hist-divider"></div>
+          <div class="hist-bottom">
+            <div class="hist-dir">
+              <span class="material-icons">home</span>
+              <span class="txt">Casa · Insurgentes Sur 1234</span>
+            </div>
+            <button class="hist-repeat">
+              <span class="material-icons">refresh</span>Repetir
+            </button>
+          </div>
+        </div>
+
+        <div class="group-label">ESTA SEMANA</div>
+
+        <div class="hist-card">
+          <div class="hist-top">
+            <div class="hist-icon entregado"><span class="material-icons">check_circle</span></div>
+            <div class="hist-info">
+              <div class="hist-id">#HG-1244</div>
+              <div class="hist-res">3 × Ciel 20 L</div>
+              <div class="hist-pur"><span class="material-icons">storefront</span>Aguas Del Valle</div>
+              <div class="hist-fecha">22 abr, 8:05 AM · Carlos M.</div>
+              <span class="chip-status chip-entregado">Entregado</span>
+            </div>
+            <div class="hist-total">$125</div>
+          </div>
+          <div class="hist-divider"></div>
+          <div class="hist-bottom">
+            <div class="hist-dir">
+              <span class="material-icons">home</span>
+              <span class="txt">Casa · Insurgentes Sur 1234</span>
+            </div>
+            <button class="hist-repeat">
+              <span class="material-icons">refresh</span>Repetir
+            </button>
+          </div>
+        </div>
+
+        <div class="hist-card">
+          <div class="hist-top">
+            <div class="hist-icon entregado"><span class="material-icons">check_circle</span></div>
+            <div class="hist-info">
+              <div class="hist-id">#HG-1232</div>
+              <div class="hist-res">10 × Santorini 20 L</div>
+              <div class="hist-pur"><span class="material-icons">storefront</span>AquaPura Nápoles</div>
+              <div class="hist-fecha">20 abr, 11:22 AM · Sergio T.</div>
+              <span class="chip-status chip-entregado">Entregado</span>
+            </div>
+            <div class="hist-total">$320</div>
+          </div>
+          <div class="hist-divider"></div>
+          <div class="hist-bottom">
+            <div class="hist-dir">
+              <span class="material-icons">favorite</span>
+              <span class="txt">Casa de mamá · Heriberto Frías 890</span>
+            </div>
+            <button class="hist-repeat">
+              <span class="material-icons">refresh</span>Repetir
+            </button>
+          </div>
+        </div>
+
+        <div class="group-label">MARZO 2026</div>
+
+        <div class="hist-card">
+          <div class="hist-top">
+            <div class="hist-icon entregado"><span class="material-icons">check_circle</span></div>
+            <div class="hist-info">
+              <div class="hist-id">#HG-1180</div>
+              <div class="hist-res">3 × Bonafont 20 L</div>
+              <div class="hist-pur"><span class="material-icons">storefront</span>Hidro Express BJ</div>
+              <div class="hist-fecha">28 mar · Carlos M.</div>
+              <span class="chip-status chip-entregado">Entregado</span>
+            </div>
+            <div class="hist-total">$134</div>
+          </div>
+          <div class="hist-divider"></div>
+          <div class="hist-bottom">
+            <div class="hist-dir">
+              <span class="material-icons">home</span>
+              <span class="txt">Casa · Insurgentes Sur 1234</span>
+            </div>
+            <button class="hist-repeat">
+              <span class="material-icons">refresh</span>Repetir
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- BottomBar -->
+      <div class="bottombar">
+        <button class="tab"><span class="material-icons">home</span><span>Inicio</span></button>
+        <button class="tab active"><span class="material-icons">history</span><span>Pedidos</span></button>
+        <button class="tab"><span class="material-icons">person</span><span>Perfil</span></button>
+      </div>
+    </div>
+    <div class="nav-pill"></div>
+  </div>
+</body>
+</html>

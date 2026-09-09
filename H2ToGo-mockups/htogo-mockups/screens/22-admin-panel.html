@@ -1,0 +1,1473 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 22 Panel de administración</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'sans-serif'] },
+        colors: {
+          brand: {
+            50:'#E0F7FF', 100:'#CAF0F8', 200:'#90E0EF',
+            300:'#48CAE4', 400:'#00B4D8', 500:'#0096C7',
+            600:'#0077B6', 700:'#023E8A', 800:'#03045E', 900:'#020429'
+          }
+        }
+      }
+    }
+  };
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .mi { font-family: 'Material Icons Outlined'; font-feature-settings: 'liga'; }
+  /* Hide scrollbar but keep scroll */
+  .nice-scroll::-webkit-scrollbar { width: 6px; height: 6px;}
+  .nice-scroll::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px;}
+  .nice-scroll::-webkit-scrollbar-track { background:transparent;}
+  .badge-dot::before { content:''; width:6px; height:6px; border-radius:99px; display:inline-block; margin-right:6px; vertical-align:middle; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+<!-- ============= APP SHELL ============= -->
+<div class="flex h-screen overflow-hidden">
+
+  <!-- ===== Sidebar ===== -->
+  <aside class="w-64 bg-brand-800 text-white flex flex-col shrink-0">
+    <div class="px-5 py-5 flex items-center gap-3 border-b border-white/10">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-300 to-brand-500 flex items-center justify-center font-bold text-brand-900">H</div>
+      <div>
+        <div class="font-semibold leading-tight">HToGo</div>
+        <div class="text-[11px] text-brand-200 leading-tight">Panel admin</div>
+      </div>
+    </div>
+
+    <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+      <button onclick="setView('dashboard')" data-nav="dashboard" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/10 text-white">
+        <span class="mi text-[20px]">dashboard</span> Dashboard
+      </button>
+      <button onclick="setView('usuarios')" data-nav="usuarios" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-100 hover:bg-white/5">
+        <span class="mi text-[20px]">group</span> Usuarios
+        <span class="ml-auto bg-brand-300 text-brand-900 text-[10px] font-bold rounded-full px-1.5">324</span>
+      </button>
+      <button onclick="setView('historial')" data-nav="historial" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-100 hover:bg-white/5">
+        <span class="mi text-[20px]">receipt_long</span> Historial de pedidos
+      </button>
+      <button onclick="setView('solicitudes')" data-nav="solicitudes" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-100 hover:bg-white/5">
+        <span class="mi text-[20px]">approval</span> Solicitudes de cambio
+        <span class="ml-auto bg-amber-400 text-amber-900 text-[10px] font-bold rounded-full px-1.5">8</span>
+      </button>
+    </nav>
+
+    <div class="p-3 border-t border-white/10">
+      <div class="flex items-center gap-3 px-2 py-2 rounded-lg">
+        <div class="w-9 h-9 rounded-full bg-brand-300 text-brand-900 font-bold flex items-center justify-center">RM</div>
+        <div class="text-xs leading-tight">
+          <div class="font-semibold">Ricardo Méndez</div>
+          <div class="text-brand-200">Superadmin</div>
+        </div>
+        <span class="mi ml-auto text-brand-200 text-[18px]">logout</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Top bar -->
+    <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center gap-4 shrink-0">
+      <div>
+        <h1 id="pageTitle" class="text-lg font-semibold text-slate-900 leading-tight">Dashboard</h1>
+        <p id="pageSub" class="text-xs text-slate-500 leading-tight">Panorama operativo en tiempo real · jueves 23 oct, 10:42 AM</p>
+      </div>
+    </header>
+
+    <!-- ============= DASHBOARD VIEW ============= -->
+    <section id="view-dashboard" class="flex-1 overflow-y-auto nice-scroll p-6">
+
+      <!-- KPIs row -->
+      <div class="grid grid-cols-4 gap-4 mb-5">
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Pedidos hoy</div>
+            <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center"><span class="mi text-[18px]">receipt_long</span></div>
+          </div>
+          <div class="text-3xl font-bold mt-1">147</div>
+          <div class="text-xs text-emerald-600 font-medium mt-1">▲ +18% vs ayer</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Ingresos hoy</div>
+            <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><span class="mi text-[18px]">payments</span></div>
+          </div>
+          <div class="text-3xl font-bold mt-1">$18,420</div>
+          <div class="text-xs text-emerald-600 font-medium mt-1">▲ +12% vs ayer</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Tasa de éxito</div>
+            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><span class="mi text-[18px]">verified</span></div>
+          </div>
+          <div class="text-3xl font-bold mt-1">93.2%</div>
+          <div class="text-xs text-emerald-600 font-medium mt-1">▲ +0.8 esta semana</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Usuarios nuevos</div>
+            <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center"><span class="mi text-[18px]">person_add</span></div>
+          </div>
+          <div class="text-3xl font-bold mt-1">12</div>
+          <div class="text-xs text-slate-500 font-medium mt-1">esta semana</div>
+        </div>
+      </div>
+
+      <!-- Estado actual del sistema -->
+      <div class="grid grid-cols-4 gap-4 mb-5">
+        <div class="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center"><span class="mi">schedule</span></div>
+          <div>
+            <div class="text-xl font-bold leading-none">8</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">Pendientes</div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><span class="mi">assignment_ind</span></div>
+          <div>
+            <div class="text-xl font-bold leading-none">15</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">Asignados</div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center"><span class="mi">local_shipping</span></div>
+          <div>
+            <div class="text-xl font-bold leading-none">23</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">En camino</div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><span class="mi">wifi</span></div>
+          <div>
+            <div class="text-xl font-bold leading-none">19/28</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">Repartidores en línea</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="grid grid-cols-3 gap-4 mb-5">
+        <!-- Trend chart -->
+        <div class="col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+          <div class="flex items-center mb-1">
+            <div>
+              <div class="font-semibold text-sm">Pedidos · últimos 30 días</div>
+              <div class="text-xs text-slate-500">Total 3,847 · promedio 128/día</div>
+            </div>
+            <div class="ml-auto inline-flex p-1 bg-slate-100 rounded-lg text-xs">
+              <button class="px-3 py-1 rounded-md bg-white shadow-sm font-medium">30 d</button>
+              <button class="px-3 py-1 rounded-md text-slate-600">7 d</button>
+              <button class="px-3 py-1 rounded-md text-slate-600">24 h</button>
+            </div>
+          </div>
+          <svg viewBox="0 0 600 200" class="w-full h-48 mt-2">
+            <defs>
+              <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0077B6" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#0077B6" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <g stroke="#E2E8F0" stroke-width="1">
+              <line x1="0" y1="40" x2="600" y2="40"/>
+              <line x1="0" y1="90" x2="600" y2="90"/>
+              <line x1="0" y1="140" x2="600" y2="140"/>
+            </g>
+            <path d="M0,150 L20,140 L40,135 L60,120 L80,128 L100,110 L120,118 L140,95 L160,105 L180,80 L200,90 L220,72 L240,85 L260,68 L280,78 L300,60 L320,70 L340,55 L360,68 L380,48 L400,62 L420,52 L440,42 L460,55 L480,38 L500,50 L520,32 L540,45 L560,30 L580,40 L600,25 L600,200 L0,200 Z" fill="url(#trendFill)"/>
+            <path d="M0,150 L20,140 L40,135 L60,120 L80,128 L100,110 L120,118 L140,95 L160,105 L180,80 L200,90 L220,72 L240,85 L260,68 L280,78 L300,60 L320,70 L340,55 L360,68 L380,48 L400,62 L420,52 L440,42 L460,55 L480,38 L500,50 L520,32 L540,45 L560,30 L580,40 L600,25" fill="none" stroke="#0077B6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="600" cy="25" r="5" fill="#0077B6"/>
+            <circle cx="600" cy="25" r="10" fill="#0077B6" opacity="0.15"/>
+          </svg>
+          <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+            <span>24 sep</span><span>1 oct</span><span>8 oct</span><span>15 oct</span><span>22 oct</span><span>hoy</span>
+          </div>
+        </div>
+
+        <!-- Donut: distribución por estado -->
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+          <div class="font-semibold text-sm">Distribución hoy</div>
+          <div class="text-xs text-slate-500">Por estado de pedido</div>
+          <div class="flex items-center justify-center my-2">
+            <svg viewBox="0 0 120 120" class="w-32 h-32">
+              <circle cx="60" cy="60" r="45" fill="none" stroke="#E2E8F0" stroke-width="16"/>
+              <!-- 75% entregado, 12% en curso, 8% pendiente, 5% no entregado -->
+              <circle cx="60" cy="60" r="45" fill="none" stroke="#10B981" stroke-width="16" stroke-dasharray="212 283" stroke-dashoffset="0" transform="rotate(-90 60 60)"/>
+              <circle cx="60" cy="60" r="45" fill="none" stroke="#0077B6" stroke-width="16" stroke-dasharray="34 283" stroke-dashoffset="-212" transform="rotate(-90 60 60)"/>
+              <circle cx="60" cy="60" r="45" fill="none" stroke="#94A3B8" stroke-width="16" stroke-dasharray="23 283" stroke-dashoffset="-246" transform="rotate(-90 60 60)"/>
+              <circle cx="60" cy="60" r="45" fill="none" stroke="#EF4444" stroke-width="16" stroke-dasharray="14 283" stroke-dashoffset="-269" transform="rotate(-90 60 60)"/>
+            </svg>
+          </div>
+          <div class="space-y-1.5 text-xs">
+            <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span> Entregado <b class="ml-auto">110</b></div>
+            <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-brand-600"></span> En curso <b class="ml-auto">18</b></div>
+            <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-slate-400"></span> Pendiente <b class="ml-auto">12</b></div>
+            <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500"></span> No entregado <b class="ml-auto">7</b></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map -->
+      <div class="mb-5">
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-100 flex items-center">
+            <div>
+              <div class="font-semibold text-sm">Cobertura en tiempo real</div>
+              <div class="text-xs text-slate-500">CDMX · 19 repartidores activos · 23 pedidos en curso</div>
+            </div>
+            <div class="ml-auto flex items-center gap-3 text-xs">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Repartidor</span>
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-brand-500"></span> Pedido</span>
+            </div>
+          </div>
+          <div class="relative h-72 bg-[#eaf3ee] overflow-hidden">
+            <!-- Mapa SVG estilizado de CDMX (estilo Google Maps light) -->
+            <svg class="absolute inset-0 w-full h-full" viewBox="0 0 800 288" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+              <!-- Fondo base (terreno) -->
+              <rect width="800" height="288" fill="#f1f5f0"/>
+              <!-- Áreas verdes (parques: Chapultepec, Xochimilco, etc.) -->
+              <ellipse cx="290" cy="120" rx="55" ry="32" fill="#d6e8d2"/>
+              <ellipse cx="640" cy="220" rx="48" ry="28" fill="#d6e8d2"/>
+              <ellipse cx="120" cy="200" rx="38" ry="22" fill="#d6e8d2"/>
+              <path d="M 460 40 Q 510 50 520 90 Q 500 110 470 95 Q 450 75 460 40 Z" fill="#d6e8d2"/>
+              <!-- Cuerpos de agua -->
+              <path d="M 700 250 Q 740 240 780 260 L 780 288 L 700 288 Z" fill="#bcd9e8"/>
+              <!-- Grid de calles secundarias (gris claro) -->
+              <g stroke="#e2e8e0" stroke-width="1" fill="none">
+                <line x1="0" y1="40" x2="800" y2="50"/>
+                <line x1="0" y1="80" x2="800" y2="85"/>
+                <line x1="0" y1="160" x2="800" y2="155"/>
+                <line x1="0" y1="200" x2="800" y2="210"/>
+                <line x1="0" y1="240" x2="800" y2="245"/>
+                <line x1="60" y1="0" x2="55" y2="288"/>
+                <line x1="180" y1="0" x2="190" y2="288"/>
+                <line x1="260" y1="0" x2="255" y2="288"/>
+                <line x1="380" y1="0" x2="385" y2="288"/>
+                <line x1="500" y1="0" x2="495" y2="288"/>
+                <line x1="600" y1="0" x2="610" y2="288"/>
+                <line x1="720" y1="0" x2="715" y2="288"/>
+              </g>
+              <!-- Avenidas principales (más anchas, blancas) -->
+              <g stroke="#ffffff" stroke-width="6" fill="none" stroke-linecap="round">
+                <!-- Reforma (diagonal) -->
+                <path d="M 80 260 L 760 30"/>
+                <!-- Insurgentes (vertical) -->
+                <line x1="340" y1="0" x2="350" y2="288"/>
+                <!-- Periférico (curva) -->
+                <path d="M 0 100 Q 200 60 400 90 Q 600 120 800 80"/>
+                <!-- Circuito interior -->
+                <path d="M 100 0 Q 130 140 200 240 Q 300 280 500 270 Q 700 250 780 180"/>
+                <!-- Viaducto -->
+                <line x1="0" y1="180" x2="800" y2="170"/>
+              </g>
+              <!-- Bordes sutiles de avenidas -->
+              <g stroke="#dde4dc" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.5">
+                <path d="M 80 260 L 760 30"/>
+                <line x1="340" y1="0" x2="350" y2="288"/>
+                <path d="M 0 100 Q 200 60 400 90 Q 600 120 800 80"/>
+              </g>
+              <!-- Etiquetas de zonas -->
+              <g font-family="ui-sans-serif, system-ui" font-size="9" fill="#94a3b0" font-weight="500">
+                <text x="150" y="60">POLANCO</text>
+                <text x="280" y="155">CONDESA</text>
+                <text x="430" y="115">ROMA</text>
+                <text x="560" y="75">DOCTORES</text>
+                <text x="100" y="225">SANTA FE</text>
+                <text x="620" y="200">NARVARTE</text>
+                <text x="380" y="245">DEL VALLE</text>
+                <text x="700" y="50">CENTRO</text>
+              </g>
+              <!-- Etiquetas de avenidas -->
+              <g font-family="ui-sans-serif, system-ui" font-size="8" fill="#b8c2bc" font-style="italic">
+                <text x="240" y="175" transform="rotate(-18 240 175)">Av. Reforma</text>
+                <text x="356" y="140">Insurgentes</text>
+              </g>
+            </svg>
+            <!-- Capa de pines -->
+            <div class="absolute inset-0 pointer-events-none">
+            <!-- Pins repartidores (verde) -->
+            <div class="absolute top-[20%] left-[15%] w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/25 animate-pulse"></div>
+            <div class="absolute top-[35%] left-[28%] w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/25"></div>
+            <div class="absolute top-[55%] left-[18%] w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/25"></div>
+            <div class="absolute top-[70%] left-[42%] w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/25 animate-pulse"></div>
+            <div class="absolute top-[40%] left-[55%] w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/25"></div>
+            <div class="absolute top-[25%] left-[70%] w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/25"></div>
+            <div class="absolute top-[60%] left-[78%] w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/25"></div>
+            <div class="absolute top-[80%] left-[62%] w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/25 animate-pulse"></div>
+            <!-- Pins pedidos (azul) -->
+            <div class="absolute top-[28%] left-[22%] w-2.5 h-2.5 rounded-full bg-brand-500"></div>
+            <div class="absolute top-[48%] left-[35%] w-2.5 h-2.5 rounded-full bg-brand-500"></div>
+            <div class="absolute top-[65%] left-[50%] w-2.5 h-2.5 rounded-full bg-brand-500"></div>
+            <div class="absolute top-[32%] left-[62%] w-2.5 h-2.5 rounded-full bg-brand-500"></div>
+            <div class="absolute top-[50%] left-[72%] w-2.5 h-2.5 rounded-full bg-brand-500"></div>
+            <div class="absolute top-[75%] left-[30%] w-2.5 h-2.5 rounded-full bg-brand-500"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top repartidores + actividad reciente -->
+      <div class="grid grid-cols-3 gap-4">
+        <!-- Top repartidores -->
+        <div class="col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+          <div class="flex items-center mb-3">
+            <div>
+              <div class="font-semibold text-sm">Top repartidores</div>
+              <div class="text-xs text-slate-500">Por volumen de entregas · esta semana</div>
+            </div>
+            <button onclick="setView('usuarios')" class="ml-auto text-xs text-brand-600 font-semibold hover:underline">Ver todos →</button>
+          </div>
+          <table class="w-full text-sm">
+            <thead class="text-[10px] uppercase text-slate-500">
+              <tr><th class="text-left font-semibold py-2 w-8">#</th><th class="text-left font-semibold">Repartidor</th><th class="text-right font-semibold">Entregas</th><th class="text-right font-semibold">Ingresos</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr><td class="py-2 font-bold text-amber-500">1</td><td><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-brand-600 text-white text-[10px] font-bold flex items-center justify-center">CM</div>Carlos Mendoza</div></td><td class="text-right font-semibold">87</td><td class="text-right text-slate-600">$11,845</td></tr>
+              <tr><td class="py-2 font-bold text-slate-400">2</td><td><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">RS</div>Roberto Silva</div></td><td class="text-right font-semibold">71</td><td class="text-right text-slate-600">$9,610</td></tr>
+              <tr><td class="py-2 font-bold text-orange-500">3</td><td><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-teal-500 text-white text-[10px] font-bold flex items-center justify-center">PD</div>Pedro Domínguez</div></td><td class="text-right font-semibold">64</td><td class="text-right text-slate-600">$8,720</td></tr>
+              <tr><td class="py-2 text-slate-500">4</td><td><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center">ER</div>Elena Ramírez</div></td><td class="text-right font-semibold">52</td><td class="text-right text-slate-600">$7,140</td></tr>
+              <tr><td class="py-2 text-slate-500">5</td><td><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-purple-500 text-white text-[10px] font-bold flex items-center justify-center">JL</div>José López</div></td><td class="text-right font-semibold">48</td><td class="text-right text-slate-600">$6,520</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Actividad reciente -->
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+          <div class="flex items-center mb-3">
+            <div class="font-semibold text-sm">Actividad reciente</div>
+            <span class="ml-auto flex items-center gap-1 text-[10px] text-emerald-600 font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> en vivo</span>
+          </div>
+          <div class="space-y-3">
+            <div class="flex gap-2.5 text-xs">
+              <div class="w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><span class="mi text-[14px]">check_circle</span></div>
+              <div class="flex-1">
+                <div><b>Pedido #HG-1287</b> entregado</div>
+                <div class="text-slate-500">Carlos M. · hace 1 min</div>
+              </div>
+            </div>
+            <div class="flex gap-2.5 text-xs">
+              <div class="w-7 h-7 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shrink-0"><span class="mi text-[14px]">person_add</span></div>
+              <div class="flex-1">
+                <div>Nuevo cliente <b>Sofía C.</b></div>
+                <div class="text-slate-500">hace 4 min</div>
+              </div>
+            </div>
+            <div class="flex gap-2.5 text-xs">
+              <div class="w-7 h-7 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center shrink-0"><span class="mi text-[14px]">login</span></div>
+              <div class="flex-1">
+                <div><b>Pedro D.</b> se conectó</div>
+                <div class="text-slate-500">hace 8 min</div>
+              </div>
+            </div>
+            <div class="flex gap-2.5 text-xs">
+              <div class="w-7 h-7 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0"><span class="mi text-[14px]">error</span></div>
+              <div class="flex-1">
+                <div>Disputa abierta en <b>#HG-1284</b></div>
+                <div class="text-slate-500">hace 14 min</div>
+              </div>
+            </div>
+            <div class="flex gap-2.5 text-xs">
+              <div class="w-7 h-7 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0"><span class="mi text-[14px]">assignment_ind</span></div>
+              <div class="flex-1">
+                <div><b>Pedido #HG-1289</b> asignado</div>
+                <div class="text-slate-500">→ Roberto S. · hace 18 min</div>
+              </div>
+            </div>
+            <div class="flex gap-2.5 text-xs">
+              <div class="w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><span class="mi text-[14px]">check_circle</span></div>
+              <div class="flex-1">
+                <div><b>Pedido #HG-1286</b> entregado</div>
+                <div class="text-slate-500">Carlos M. · hace 22 min</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-4"></div>
+    </section>
+
+    <!-- ============= USUARIOS VIEW ============= -->
+    <section id="view-usuarios" class="hidden flex-1 overflow-y-auto nice-scroll p-6">
+
+      <!-- Stat cards -->
+      <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Total usuarios</div>
+            <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center"><span class="mi text-[18px]">group</span></div>
+          </div>
+          <div class="text-2xl font-bold mt-1">324</div>
+          <div class="text-xs text-emerald-600 font-medium mt-1">▲ +12 esta semana</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Clientes activos</div>
+            <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><span class="mi text-[18px]">person</span></div>
+          </div>
+          <div class="text-2xl font-bold mt-1">287</div>
+          <div class="text-xs text-emerald-600 font-medium mt-1">▲ +8 esta semana</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Repartidores</div>
+            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><span class="mi text-[18px]">local_shipping</span></div>
+          </div>
+          <div class="text-2xl font-bold mt-1">28</div>
+          <div class="text-xs text-emerald-600 font-medium mt-1">▲ +4 esta semana</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Inactivos</div>
+            <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center"><span class="mi text-[18px]">person_off</span></div>
+          </div>
+          <div class="text-2xl font-bold mt-1">9</div>
+          <div class="text-xs text-slate-500 font-medium mt-1">Baja lógica</div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="bg-white rounded-xl border border-slate-200">
+        <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-100 flex-wrap">
+          <!-- Tabs -->
+          <div class="inline-flex p-1 bg-slate-100 rounded-lg text-sm" id="userTabs">
+            <button data-tab="todos" class="user-tab px-4 py-1.5 rounded-md font-medium bg-white shadow-sm text-slate-900">Todos</button>
+            <button data-tab="cliente" class="user-tab px-4 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900">Clientes</button>
+            <button data-tab="repartidor" class="user-tab px-4 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900">Repartidores</button>
+            <button data-tab="inactivo" class="user-tab px-4 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900">Inactivos</button>
+          </div>
+
+          <div class="ml-auto flex items-center gap-2">
+            <button class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1.5">
+              <span class="mi text-[16px]">filter_list</span> Filtros
+            </button>
+            <button class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1.5">
+              <span class="mi text-[16px]">file_download</span> Exportar
+            </button>
+            <button onclick="openModal('modalAlta')"
+                    class="px-3.5 py-2 text-sm rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold flex items-center gap-1.5 shadow-sm">
+              <span class="mi text-[18px]">person_add</span> Nuevo usuario
+            </button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wide">
+              <tr>
+                <th class="text-left font-semibold px-5 py-3 w-10"><input type="checkbox" class="rounded"/></th>
+                <th class="text-left font-semibold px-3 py-3">Usuario</th>
+                <th class="text-left font-semibold px-3 py-3">Rol</th>
+                <th class="text-left font-semibold px-3 py-3">Negocio</th>
+                <th class="text-left font-semibold px-3 py-3">Estado</th>
+                <th class="text-left font-semibold px-3 py-3">Pedidos</th>
+                <th class="text-left font-semibold px-3 py-3">Registro</th>
+                <th class="text-left font-semibold px-3 py-3">Última actividad</th>
+                <th class="text-right font-semibold px-5 py-3">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="userRows" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100 text-sm text-slate-500">
+          <div>Mostrando <b class="text-slate-900">1–10</b> de <b class="text-slate-900">324</b> usuarios</div>
+          <div class="flex items-center gap-1">
+            <button class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"><span class="mi text-[18px]">chevron_left</span></button>
+            <button class="w-8 h-8 rounded-lg bg-brand-600 text-white font-semibold">1</button>
+            <button class="w-8 h-8 rounded-lg hover:bg-slate-100">2</button>
+            <button class="w-8 h-8 rounded-lg hover:bg-slate-100">3</button>
+            <span class="px-1">…</span>
+            <button class="w-8 h-8 rounded-lg hover:bg-slate-100">33</button>
+            <button class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"><span class="mi text-[18px]">chevron_right</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= HISTORIAL VIEW ============= -->
+    <section id="view-historial" class="hidden flex-1 overflow-y-auto nice-scroll p-6">
+
+      <!-- Stat cards -->
+      <div class="grid grid-cols-5 gap-4 mb-6">
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Total pedidos</div>
+          <div class="text-2xl font-bold mt-1">12,847</div>
+          <div class="text-xs text-slate-500 mt-1">Historial completo</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Hoy</div>
+          <div class="text-2xl font-bold mt-1">147</div>
+          <div class="text-xs text-emerald-600 font-medium mt-1">▲ +18% vs ayer</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Entregados</div>
+          <div class="text-2xl font-bold mt-1 text-emerald-600">11,932</div>
+          <div class="text-xs text-slate-500 mt-1">93% tasa éxito</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">No entregados</div>
+          <div class="text-2xl font-bold mt-1 text-rose-600">328</div>
+          <div class="text-xs text-slate-500 mt-1">2.5% del total</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">En curso</div>
+          <div class="text-2xl font-bold mt-1 text-brand-600">23</div>
+          <div class="text-xs text-slate-500 mt-1">Activos ahora</div>
+        </div>
+      </div>
+
+      <!-- Filters bar -->
+      <div class="bg-white rounded-xl border border-slate-200 mb-4">
+        <div class="px-5 py-4 flex flex-wrap items-end gap-3">
+          <div>
+            <label class="block text-[11px] uppercase font-semibold text-slate-500 mb-1">Rango de fechas</label>
+            <select class="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white min-w-[180px]">
+              <option>Últimos 7 días</option>
+              <option>Hoy</option>
+              <option>Últimos 30 días</option>
+              <option>Mes actual</option>
+              <option>Personalizado…</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] uppercase font-semibold text-slate-500 mb-1">Estado</label>
+            <select class="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white min-w-[160px]">
+              <option>Todos</option>
+              <option>Pendiente</option>
+              <option>Asignado</option>
+              <option>En camino</option>
+              <option>Entregado</option>
+              <option>No entregado</option>
+              <option>Cancelado</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] uppercase font-semibold text-slate-500 mb-1">Cliente</label>
+            <input placeholder="Nombre o ID" class="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white w-44"/>
+          </div>
+          <div>
+            <label class="block text-[11px] uppercase font-semibold text-slate-500 mb-1">Repartidor</label>
+            <input placeholder="Nombre o ID" class="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white w-44"/>
+          </div>
+          <div class="flex items-center gap-2 ml-auto">
+            <button class="px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">Limpiar</button>
+            <button class="px-3.5 py-2 text-sm rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold">Aplicar filtros</button>
+          </div>
+        </div>
+        <div class="px-5 py-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-500">
+          <span class="mi text-[16px] text-brand-600">filter_alt</span>
+          Mostrando 147 pedidos de los últimos 7 días
+          <button class="ml-auto text-brand-600 hover:underline flex items-center gap-1 font-medium">
+            <span class="mi text-[14px]">file_download</span> Exportar CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Orders table -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wide">
+              <tr>
+                <th class="text-left font-semibold px-5 py-3">Pedido</th>
+                <th class="text-left font-semibold px-3 py-3">Fecha</th>
+                <th class="text-left font-semibold px-3 py-3">Cliente</th>
+                <th class="text-left font-semibold px-3 py-3">Repartidor</th>
+                <th class="text-left font-semibold px-3 py-3">Productos</th>
+                <th class="text-right font-semibold px-3 py-3">Total</th>
+                <th class="text-left font-semibold px-3 py-3">Estado</th>
+                <th class="text-right font-semibold px-5 py-3">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="orderRows" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100 text-sm text-slate-500">
+          <div>Página 1 de 15 · 147 resultados</div>
+          <div class="flex items-center gap-1">
+            <button class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"><span class="mi text-[18px]">chevron_left</span></button>
+            <button class="w-8 h-8 rounded-lg bg-brand-600 text-white font-semibold">1</button>
+            <button class="w-8 h-8 rounded-lg hover:bg-slate-100">2</button>
+            <button class="w-8 h-8 rounded-lg hover:bg-slate-100">3</button>
+            <span class="px-1">…</span>
+            <button class="w-8 h-8 rounded-lg hover:bg-slate-100">15</button>
+            <button class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"><span class="mi text-[18px]">chevron_right</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= SOLICITUDES VIEW (RN-020) ============= -->
+    <section id="view-solicitudes" class="hidden flex-1 overflow-y-auto nice-scroll p-6">
+
+      <!-- Stat cards -->
+      <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Pendientes</div>
+            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><span class="mi text-[18px]">schedule</span></div>
+          </div>
+          <div class="text-2xl font-bold mt-1 text-amber-600">8</div>
+          <div class="text-xs text-slate-500 font-medium mt-1">Esperan revisión</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Aprobadas (mes)</div>
+            <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><span class="mi text-[18px]">check_circle</span></div>
+          </div>
+          <div class="text-2xl font-bold mt-1 text-emerald-600">42</div>
+          <div class="text-xs text-slate-500 font-medium mt-1">Octubre</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Rechazadas (mes)</div>
+            <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><span class="mi text-[18px]">cancel</span></div>
+          </div>
+          <div class="text-2xl font-bold mt-1 text-rose-600">5</div>
+          <div class="text-xs text-slate-500 font-medium mt-1">Octubre</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tracking-wide">Tiempo promedio</div>
+            <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center"><span class="mi text-[18px]">timer</span></div>
+          </div>
+          <div class="text-2xl font-bold mt-1">4.2 h</div>
+          <div class="text-xs text-emerald-600 font-medium mt-1">▼ -1.1 h vs mes anterior</div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="bg-white rounded-xl border border-slate-200">
+        <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-100 flex-wrap">
+          <div class="inline-flex p-1 bg-slate-100 rounded-lg text-sm" id="solTabs">
+            <button data-tab="pendiente" class="sol-tab px-4 py-1.5 rounded-md font-medium bg-white shadow-sm text-slate-900">Pendientes</button>
+            <button data-tab="aprobada" class="sol-tab px-4 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900">Aprobadas</button>
+            <button data-tab="rechazada" class="sol-tab px-4 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900">Rechazadas</button>
+            <button data-tab="todas" class="sol-tab px-4 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900">Todas</button>
+          </div>
+          <div class="ml-auto flex items-center gap-2">
+            <select class="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white">
+              <option>Todos los tipos</option>
+              <option>Foto perfil</option>
+              <option>Datos vehículo</option>
+              <option>Agregar vehículo</option>
+              <option>Eliminar vehículo</option>
+              <option>Nombre negocio</option>
+              <option>Dirección base</option>
+              <option>Precio producto</option>
+              <option>Agregar producto</option>
+            </select>
+            <button class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1.5">
+              <span class="mi text-[16px]">file_download</span> Exportar
+            </button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wide">
+              <tr>
+                <th class="text-left font-semibold px-5 py-3">Repartidor solicitante</th>
+                <th class="text-left font-semibold px-3 py-3">Negocio</th>
+                <th class="text-left font-semibold px-3 py-3">Tipo de cambio</th>
+                <th class="text-left font-semibold px-3 py-3">Estado</th>
+                <th class="text-left font-semibold px-3 py-3">Fecha</th>
+                <th class="text-right font-semibold px-5 py-3">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="solRows" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+
+        <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100 text-sm text-slate-500">
+          <div>Mostrando <b class="text-slate-900" id="solCount">0</b> solicitudes</div>
+          <div class="text-xs flex items-center gap-2">
+            <span class="mi text-[14px]">info</span>
+            Las aprobaciones se aplican inmediatamente al perfil del repartidor (RN-020).
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============= MODAL: DETALLE SOLICITUD ============= -->
+<div id="modalSolicitud" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center"><span class="mi">approval</span></div>
+      <div>
+        <h2 class="text-base font-semibold leading-tight" id="solTitle">Solicitud #SOL-0124</h2>
+        <p class="text-[11px] text-slate-500 leading-tight">RN-020 · Cambio sujeto a aprobación del admin</p>
+      </div>
+      <button onclick="closeModal('modalSolicitud')" class="ml-auto w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"><span class="mi">close</span></button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto nice-scroll px-6 py-5 space-y-4 text-sm">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <div class="text-[11px] uppercase font-semibold text-slate-500 mb-1">Repartidor</div>
+          <div id="solRepartidor" class="font-semibold text-slate-900">—</div>
+        </div>
+        <div>
+          <div class="text-[11px] uppercase font-semibold text-slate-500 mb-1">Negocio</div>
+          <div id="solNegocio" class="text-slate-700 flex items-center gap-1.5"><span class="mi text-[16px] text-slate-400">storefront</span><span>—</span></div>
+        </div>
+        <div>
+          <div class="text-[11px] uppercase font-semibold text-slate-500 mb-1">Tipo</div>
+          <div id="solTipo" class="text-slate-700">—</div>
+        </div>
+        <div>
+          <div class="text-[11px] uppercase font-semibold text-slate-500 mb-1">Fecha</div>
+          <div id="solFecha" class="text-slate-700">—</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+        <div class="text-[11px] uppercase font-semibold text-slate-500 mb-2">Cambio propuesto</div>
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div>
+            <div class="text-slate-500 mb-1">Valor actual</div>
+            <div id="solActual" class="text-slate-700 line-through">—</div>
+          </div>
+          <div>
+            <div class="text-slate-500 mb-1">Valor propuesto</div>
+            <div id="solPropuesto" class="font-semibold text-brand-700">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-[11px] uppercase font-semibold text-slate-500 mb-1">Justificación del repartidor</div>
+        <div id="solJustif" class="text-slate-700 text-xs bg-white border border-slate-200 rounded-lg p-3">—</div>
+      </div>
+    </div>
+
+    <div class="px-6 py-4 border-t border-slate-100 flex items-center gap-2">
+      <button onclick="closeModal('modalSolicitud')" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Cerrar</button>
+      <button onclick="openRechazo(currentSolId)" class="ml-auto px-4 py-2 text-sm rounded-lg border border-rose-300 text-rose-600 hover:bg-rose-50 font-semibold flex items-center gap-1.5">
+        <span class="mi text-[18px]">cancel</span> Rechazar
+      </button>
+      <button onclick="aprobarSolicitud(currentSolId)" class="px-4 py-2 text-sm rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-1.5">
+        <span class="mi text-[18px]">check_circle</span> Aprobar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= MODAL: RECHAZAR SOLICITUD ============= -->
+<div id="modalRechazo" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><span class="mi">cancel</span></div>
+      <div>
+        <h2 class="text-base font-semibold leading-tight">Rechazar solicitud</h2>
+        <p class="text-[11px] text-slate-500 leading-tight">El repartidor verá el motivo en su perfil</p>
+      </div>
+      <button onclick="closeModal('modalRechazo')" class="ml-auto w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"><span class="mi">close</span></button>
+    </div>
+    <div class="px-6 py-5 space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Motivo *</label>
+        <select id="rechazoMotivo" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
+          <option>Datos incompletos o ilegibles</option>
+          <option>Falta documentación de respaldo</option>
+          <option>Precio fuera del rango permitido</option>
+          <option>Cambio no autorizado para empleados</option>
+          <option>Información duplicada</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Comentario para el repartidor</label>
+        <textarea id="rechazoComentario" rows="3" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none resize-none" placeholder="Ej. Vuelve a subir la foto del vehículo con mejor iluminación."></textarea>
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-100 flex items-center gap-2">
+      <button onclick="closeModal('modalRechazo')" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Cancelar</button>
+      <button onclick="confirmarRechazo()" class="ml-auto px-4 py-2 text-sm rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2">
+        <span class="mi text-[18px]">cancel</span> Rechazar solicitud
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= MODAL: ALTA (CU-014) ============= -->
+<div id="modalAlta" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center"><span class="mi">person_add</span></div>
+      <div>
+        <h2 class="text-base font-semibold leading-tight">Dar de alta nuevo usuario</h2>
+        <p class="text-xs text-slate-500 leading-tight">CU-014 · El sistema enviará un correo con instrucciones de acceso</p>
+      </div>
+      <button onclick="closeModal('modalAlta')" class="ml-auto w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"><span class="mi">close</span></button>
+    </div>
+
+    <form id="formAlta" class="flex-1 overflow-y-auto nice-scroll px-6 py-5 space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Rol del usuario *</label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="role-opt cursor-pointer relative">
+            <input type="radio" name="rol" value="cliente" class="peer sr-only" checked onchange="toggleNegocioSection()" />
+            <div class="border-2 border-slate-200 peer-checked:border-brand-600 peer-checked:bg-brand-50 rounded-xl p-3 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center"><span class="mi">person</span></div>
+              <div>
+                <div class="font-semibold text-sm">Cliente</div>
+                <div class="text-[11px] text-slate-500">Hace pedidos en la app</div>
+              </div>
+            </div>
+          </label>
+          <label class="role-opt cursor-pointer relative">
+            <input type="radio" name="rol" value="repartidor" class="peer sr-only" onchange="toggleNegocioSection()" />
+            <div class="border-2 border-slate-200 peer-checked:border-brand-600 peer-checked:bg-brand-50 rounded-xl p-3 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center"><span class="mi">local_shipping</span></div>
+              <div>
+                <div class="font-semibold text-sm">Repartidor</div>
+                <div class="text-[11px] text-slate-500">Trabaja en una purificadora</div>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Sección de negocio (solo visible si rol = repartidor) -->
+      <div id="negocioSection" class="hidden space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">¿Crea negocio nuevo o se une a uno existente? *</label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="cursor-pointer relative">
+              <input type="radio" name="negocioMode" value="crear" class="peer sr-only" checked onchange="toggleNegocioMode()" />
+              <div class="border-2 border-slate-200 peer-checked:border-brand-600 peer-checked:bg-brand-50 rounded-xl p-3 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center"><span class="mi text-[20px]">add_business</span></div>
+                <div>
+                  <div class="font-semibold text-sm">Crear negocio nuevo</div>
+                  <div class="text-[11px] text-slate-500">Será dueño</div>
+                </div>
+              </div>
+            </label>
+            <label class="cursor-pointer relative">
+              <input type="radio" name="negocioMode" value="unirse" class="peer sr-only" onchange="toggleNegocioMode()" />
+              <div class="border-2 border-slate-200 peer-checked:border-brand-600 peer-checked:bg-brand-50 rounded-xl p-3 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center"><span class="mi text-[20px]">groups</span></div>
+                <div>
+                  <div class="font-semibold text-sm">Unirse a uno existente</div>
+                  <div class="text-[11px] text-slate-500">Será empleado</div>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div id="negocioCrear">
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Nombre comercial del negocio *</label>
+          <input class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none" placeholder="Ej. Purificadora Aqua Pura"/>
+          <p class="mt-1 text-[11px] text-slate-500">El admin podrá registrar más adelante la dirección base, vehículos y precios.</p>
+        </div>
+
+        <div id="negocioUnirse" class="hidden">
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Selecciona el negocio existente *</label>
+          <select class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
+            <option value="">— Elige un negocio —</option>
+            <option>Purificadora Aqua Pura · BJ</option>
+            <option>Purificadora del Valle · BJ</option>
+            <option>Agua Clara · BJ</option>
+            <option>HidroPlus BJ</option>
+            <option>HidroExpress BJ</option>
+            <option>Aguas Del Valle · BJ</option>
+          </select>
+          <p class="mt-1 text-[11px] text-slate-500">El nuevo repartidor heredará vehículos, marcas y precios del negocio.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Nombre completo *</label>
+          <input required class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none" placeholder="Ej. María González Pérez"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Correo electrónico *</label>
+          <input id="emailField" type="email" required class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none" placeholder="usuario@ejemplo.com"/>
+          <p id="emailHelp" class="hidden mt-1 text-[11px] text-rose-600 flex items-center gap-1"><span class="mi text-[14px]">error_outline</span> Este correo ya está registrado (RN-016)</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Teléfono *</label>
+          <input required class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none" placeholder="+52 55 1234 5678"/>
+        </div>
+      </div>
+
+      <div class="bg-brand-50 border border-brand-200 rounded-xl p-3.5 flex gap-3 text-xs">
+        <span class="mi text-brand-600 text-[20px]">mark_email_read</span>
+        <div class="text-brand-900">
+          <div class="font-semibold mb-0.5">El sistema enviará un correo automático</div>
+          <div class="text-brand-800/80 leading-relaxed">El usuario recibirá un enlace seguro para abrir la página web y establecer su propia contraseña. La contraseña se almacenará cifrada (RN-018) y el correo/teléfono se valida contra duplicados (RN-016).</div>
+        </div>
+      </div>
+    </form>
+
+    <div class="px-6 py-4 border-t border-slate-100 flex items-center gap-2">
+      <button onclick="closeModal('modalAlta')" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Cancelar</button>
+      <button onclick="submitAlta()" class="ml-auto px-4 py-2 text-sm rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold flex items-center gap-2">
+        <span class="mi text-[18px]">mark_email_read</span> Crear y enviar correo
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= MODAL: BAJA (CU-015) ============= -->
+<div id="modalBaja" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><span class="mi">person_off</span></div>
+      <div>
+        <h2 class="text-base font-semibold leading-tight">Dar de baja usuario</h2>
+        <p class="text-[11px] text-slate-500 leading-tight">CU-015 · Baja lógica · el historial se preserva</p>
+      </div>
+      <button onclick="closeModal('modalBaja')" class="ml-auto w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"><span class="mi">close</span></button>
+    </div>
+
+    <div class="px-6 py-5 space-y-4">
+      <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+        <div id="bajaAvatar" class="w-12 h-12 rounded-full bg-brand-600 text-white font-bold flex items-center justify-center">AM</div>
+        <div class="min-w-0 flex-1">
+          <div id="bajaNombre" class="font-semibold text-sm truncate">Andrea Martínez</div>
+          <div id="bajaCorreo" class="text-xs text-slate-500 truncate">andrea.m@correo.com</div>
+        </div>
+        <span id="bajaRol" class="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">CLIENTE</span>
+      </div>
+
+      <!-- Warning si hay pedidos en curso -->
+      <div id="bajaWarning" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs">
+        <div class="flex gap-2 mb-2">
+          <span class="mi text-amber-600 text-[18px]">warning</span>
+          <div>
+            <div class="font-semibold text-amber-900">Este repartidor tiene 2 pedidos activos</div>
+            <div class="text-amber-800">Pedido #HG-1287 (En camino) y #HG-1289 (Asignado)</div>
+          </div>
+        </div>
+        <div class="ml-7 space-y-1.5">
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="radio" name="bajaPedidos" value="esperar" class="mt-0.5" checked/>
+            <span class="text-amber-900">Esperar a que termine los pedidos en curso</span>
+          </label>
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="radio" name="bajaPedidos" value="forzar" class="mt-0.5"/>
+            <span class="text-amber-900"><b>Forzar baja</b> · los pedidos se devolverán a estado "Pendiente"</span>
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Motivo de la baja (opcional)</label>
+        <select class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white">
+          <option value="">— Sin especificar —</option>
+          <option>Solicitud del usuario</option>
+          <option>Inactividad prolongada</option>
+          <option>Incumplimiento de términos</option>
+          <option>Cuenta duplicada</option>
+          <option>Otro</option>
+        </select>
+      </div>
+
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 space-y-1">
+        <div class="flex gap-2"><span class="mi text-[14px] text-slate-500">check_circle</span> El usuario no podrá iniciar sesión</div>
+        <div class="flex gap-2"><span class="mi text-[14px] text-slate-500">check_circle</span> Las sesiones activas se invalidarán</div>
+        <div class="flex gap-2"><span class="mi text-[14px] text-slate-500">check_circle</span> El historial se conserva (RN-013)</div>
+        <div class="flex gap-2"><span class="mi text-[14px] text-slate-500">check_circle</span> La cuenta puede reactivarse después</div>
+      </div>
+    </div>
+
+    <div class="px-6 py-4 border-t border-slate-100 flex items-center gap-2">
+      <button onclick="closeModal('modalBaja')" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Cancelar</button>
+      <button onclick="submitBaja()" class="ml-auto px-4 py-2 text-sm rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2">
+        <span class="mi text-[18px]">person_off</span> Confirmar baja
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= MODAL: DETALLE PEDIDO (CU-016) ============= -->
+<div id="modalDetalle" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center"><span class="mi">receipt_long</span></div>
+      <div>
+        <h2 class="text-base font-semibold leading-tight" id="detalleId">Pedido #HG-1287</h2>
+        <p class="text-[11px] text-slate-500 leading-tight">CU-016 · Solo lectura · Registro inmutable (RN-013)</p>
+      </div>
+      <button onclick="closeModal('modalDetalle')" class="ml-auto w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center"><span class="mi">close</span></button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto nice-scroll px-6 py-5 space-y-5">
+
+      <!-- Status header -->
+      <div class="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+        <div class="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center"><span class="mi">check_circle</span></div>
+        <div>
+          <div class="text-sm font-semibold text-emerald-900">Entregado</div>
+          <div class="text-xs text-emerald-700">23 oct 2025 · 9:48 AM · Tiempo total 32 min</div>
+        </div>
+        <div class="ml-auto text-right">
+          <div class="text-2xl font-bold text-emerald-700">$135</div>
+          <div class="text-[11px] text-emerald-600">Pagado en efectivo</div>
+        </div>
+      </div>
+
+      <!-- Cliente / Repartidor -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="border border-slate-200 rounded-xl p-4">
+          <div class="text-[11px] uppercase font-semibold text-slate-500 mb-2">Cliente</div>
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center">AM</div>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold truncate">Andrea Martínez</div>
+              <div class="text-[11px] text-slate-500">Cliente · ID #C-0428</div>
+            </div>
+          </div>
+          <div class="text-xs space-y-1 text-slate-600">
+            <div class="flex gap-2"><span class="mi text-[14px] text-slate-400">phone</span> +52 55 1234 5678</div>
+            <div class="flex gap-2"><span class="mi text-[14px] text-slate-400">place</span> Insurgentes Sur 1234, 4B · Del Valle</div>
+          </div>
+        </div>
+        <div class="border border-slate-200 rounded-xl p-4">
+          <div class="text-[11px] uppercase font-semibold text-slate-500 mb-2">Repartidor</div>
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-10 h-10 rounded-full bg-brand-600 text-white font-bold flex items-center justify-center">CM</div>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold truncate">Carlos Mendoza</div>
+              <div class="text-[11px] text-slate-500">Purificadora Aqua Pura · ID #R-012</div>
+            </div>
+          </div>
+          <div class="text-xs space-y-1 text-slate-600">
+            <div class="flex gap-2"><span class="mi text-[14px] text-slate-400">phone</span> +52 55 8765 4321</div>
+            <div class="flex gap-2"><span class="mi text-[14px] text-slate-400">local_shipping</span> Pickup Nissan Frontier · RPK-285-A</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Productos -->
+      <div>
+        <div class="text-[11px] uppercase font-semibold text-slate-500 mb-2">Productos</div>
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <div class="px-4 py-3 flex items-center gap-3 border-b border-slate-100">
+            <div class="w-9 h-9 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center"><span class="mi">water_drop</span></div>
+            <div class="flex-1 text-sm">Ciel · Garrafón 20 L</div>
+            <div class="text-xs text-slate-500">3 × $45</div>
+            <div class="text-sm font-semibold w-16 text-right">$135</div>
+          </div>
+          <div class="px-4 py-2 bg-slate-50 flex items-center text-sm">
+            <div class="flex-1 font-semibold">Total cobrado</div>
+            <div class="font-bold">$135 MXN</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div>
+        <div class="text-[11px] uppercase font-semibold text-slate-500 mb-3">Timeline (timestamps inmutables)</div>
+        <div class="space-y-3 relative pl-6 border-l-2 border-slate-200 ml-2">
+          <div class="relative">
+            <div class="absolute -left-[31px] w-4 h-4 rounded-full bg-emerald-500 border-2 border-white ring-2 ring-emerald-200"></div>
+            <div class="text-sm font-semibold">Pedido creado</div>
+            <div class="text-[11px] text-slate-500">23 oct 2025 · 9:16:42 AM · por cliente</div>
+          </div>
+          <div class="relative">
+            <div class="absolute -left-[31px] w-4 h-4 rounded-full bg-emerald-500 border-2 border-white ring-2 ring-emerald-200"></div>
+            <div class="text-sm font-semibold">Asignado al repartidor</div>
+            <div class="text-[11px] text-slate-500">23 oct 2025 · 9:18:03 AM · automático · Carlos Mendoza aceptó</div>
+          </div>
+          <div class="relative">
+            <div class="absolute -left-[31px] w-4 h-4 rounded-full bg-emerald-500 border-2 border-white ring-2 ring-emerald-200"></div>
+            <div class="text-sm font-semibold">En camino</div>
+            <div class="text-[11px] text-slate-500">23 oct 2025 · 9:24:51 AM · 1.2 km de distancia</div>
+          </div>
+          <div class="relative">
+            <div class="absolute -left-[31px] w-4 h-4 rounded-full bg-emerald-500 border-2 border-white ring-2 ring-emerald-200"></div>
+            <div class="text-sm font-semibold">Llegó al destino</div>
+            <div class="text-[11px] text-slate-500">23 oct 2025 · 9:42:18 AM</div>
+          </div>
+          <div class="relative">
+            <div class="absolute -left-[31px] w-4 h-4 rounded-full bg-emerald-500 border-2 border-white ring-2 ring-emerald-200"></div>
+            <div class="text-sm font-semibold">Entregado</div>
+            <div class="text-[11px] text-slate-500">23 oct 2025 · 9:48:07 AM · Cobro $135 · Cambio $65</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="px-6 py-4 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-500">
+      <span class="mi text-[14px]">lock</span> Registro inmutable
+      <button onclick="closeModal('modalDetalle')" class="ml-auto px-4 py-2 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700">Cerrar</button>
+      <button class="px-4 py-2 text-sm rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold flex items-center gap-1.5">
+        <span class="mi text-[16px]">file_download</span> Exportar PDF
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= TOAST ============= -->
+<div id="toast" class="hidden fixed bottom-6 right-6 z-[60] bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm">
+  <span class="mi">check_circle</span>
+  <span id="toastMsg">Operación exitosa</span>
+</div>
+
+<script>
+/* ===== Data ===== */
+const users = [
+  { id:'C-0428', nombre:'Andrea Martínez',     correo:'andrea.m@correo.com',       rol:'cliente',     estado:'activo',   pedidos:32, registro:'15 mar 2025', activity:'hace 2 h',  iniciales:'AM', color:'bg-emerald-500', negocio:'' },
+  { id:'R-012',  nombre:'Carlos Mendoza',      correo:'carlos@aquapura.mx',        rol:'repartidor',  estado:'activo',   pedidos:1284, registro:'02 feb 2025', activity:'en línea',  iniciales:'CM', color:'bg-brand-600',    pedidosActivos:2, negocio:'Purificadora Aqua Pura', esDueno:true },
+  { id:'C-0427', nombre:'Laura Hernández',     correo:'laura.hg@gmail.com',        rol:'cliente',     estado:'activo',   pedidos:14, registro:'18 abr 2025', activity:'hace 1 día', iniciales:'LH', color:'bg-purple-500', negocio:'' },
+  { id:'R-011',  nombre:'Roberto Silva',       correo:'rsilva@purificadoradelvalle.mx', rol:'repartidor', estado:'activo', pedidos:892, registro:'10 ene 2025', activity:'en línea',  iniciales:'RS', color:'bg-amber-500', negocio:'Purificadora del Valle', esDueno:true },
+  { id:'C-0426', nombre:'Restaurante La Esquina', correo:'compras@laesquina.mx',  rol:'cliente',     estado:'activo',   pedidos:78, registro:'22 feb 2025', activity:'hace 3 h',  iniciales:'RL', color:'bg-rose-500', negocio:'' },
+  { id:'C-0425', nombre:'Miguel Ángel López',  correo:'malopez@correo.com',        rol:'cliente',     estado:'inactivo', pedidos:8,  registro:'05 may 2025', activity:'hace 28 días', iniciales:'ML', color:'bg-slate-400', negocio:'' },
+  { id:'R-010',  nombre:'Elena Ramírez',       correo:'elena.r@aguaclara.mx',      rol:'repartidor',  estado:'activo',   pedidos:421, registro:'14 mar 2025', activity:'hace 5 h',  iniciales:'ER', color:'bg-indigo-500', negocio:'Agua Clara', esDueno:true },
+  { id:'C-0424', nombre:'Sofía Castillo',      correo:'sofia.cm@correo.com',       rol:'cliente',     estado:'activo',   pedidos:21, registro:'30 mar 2025', activity:'hace 1 h',  iniciales:'SC', color:'bg-cyan-500', negocio:'' },
+  { id:'C-0423', nombre:'Jorge Pérez',         correo:'jorge.p@correo.com',        rol:'cliente',     estado:'inactivo', pedidos:3,  registro:'08 jun 2025', activity:'hace 2 meses', iniciales:'JP', color:'bg-slate-400', negocio:'' },
+  { id:'R-009',  nombre:'Pedro Domínguez',     correo:'pdominguez@hidroplus.mx',   rol:'repartidor',  estado:'activo',   pedidos:512, registro:'19 feb 2025', activity:'hace 30 min', iniciales:'PD', color:'bg-teal-500', negocio:'HidroPlus BJ', esDueno:false },
+  { id:'R-008',  nombre:'José López',          correo:'jlopez@aquapura.mx',         rol:'repartidor',  estado:'activo',   pedidos:298, registro:'05 mar 2025', activity:'hace 12 min', iniciales:'JL', color:'bg-purple-500', negocio:'Purificadora Aqua Pura', esDueno:false },
+];
+
+const orders = [
+  { id:'HG-1287', fecha:'23 oct · 9:48 AM',  cliente:'Andrea Martínez',    repartidor:'Carlos Mendoza',  productos:'3 × Ciel 20 L',     total:135, estado:'entregado' },
+  { id:'HG-1286', fecha:'23 oct · 9:35 AM',  cliente:'Restaurante La Esquina', repartidor:'Carlos Mendoza', productos:'5 × Bonafont 20 L', total:250, estado:'entregado' },
+  { id:'HG-1285', fecha:'23 oct · 9:20 AM',  cliente:'Laura Hernández',    repartidor:'Carlos Mendoza',  productos:'2 × Ciel 20 L',     total:90,  estado:'entregado' },
+  { id:'HG-1284', fecha:'23 oct · 9:12 AM',  cliente:'Roberto Silva',      repartidor:'Elena Ramírez',   productos:'4 × Ciel 20 L',     total:0,   estado:'no_entregado' },
+  { id:'HG-1283', fecha:'23 oct · 9:05 AM',  cliente:'Sofía Castillo',     repartidor:'Pedro Domínguez', productos:'1 × Bonafont 10 L', total:35,  estado:'entregado' },
+  { id:'HG-1282', fecha:'23 oct · 9:01 AM',  cliente:'Andrea Martínez',    repartidor:'—',                productos:'3 × Ciel 20 L',     total:135, estado:'en_camino' },
+  { id:'HG-1281', fecha:'23 oct · 8:58 AM',  cliente:'Miguel Ángel López', repartidor:'Carlos Mendoza',   productos:'2 × Ciel 20 L',     total:90,  estado:'entregado' },
+  { id:'HG-1280', fecha:'23 oct · 8:42 AM',  cliente:'Jorge Pérez',        repartidor:'—',                productos:'1 × Ciel 20 L',     total:45,  estado:'pendiente' },
+  { id:'HG-1279', fecha:'23 oct · 8:30 AM',  cliente:'Restaurante La Esquina', repartidor:'Roberto Silva', productos:'6 × Bonafont 20 L', total:300, estado:'entregado' },
+  { id:'HG-1278', fecha:'22 oct · 7:15 PM',  cliente:'Laura Hernández',    repartidor:'Pedro Domínguez', productos:'2 × Ciel 20 L',     total:90,  estado:'cancelado' },
+];
+
+const estadoStyles = {
+  entregado:    { label:'Entregado',     cls:'bg-emerald-100 text-emerald-700', dot:'bg-emerald-500' },
+  no_entregado: { label:'No entregado',  cls:'bg-rose-100 text-rose-700',       dot:'bg-rose-500' },
+  en_camino:    { label:'En camino',     cls:'bg-brand-100 text-brand-700',     dot:'bg-brand-500' },
+  pendiente:    { label:'Pendiente',     cls:'bg-slate-100 text-slate-600',     dot:'bg-slate-400' },
+  asignado:     { label:'Asignado',      cls:'bg-amber-100 text-amber-700',     dot:'bg-amber-500' },
+  cancelado:    { label:'Cancelado',     cls:'bg-rose-100 text-rose-700',       dot:'bg-rose-500' },
+};
+
+const solicitudes = [
+  { id:'SOL-0124', repartidor:'Carlos Mendoza',   iniciales:'CM', color:'bg-brand-600',    negocio:'Purificadora Aqua Pura',  tipo:'Precio producto',  estado:'pendiente', fecha:'28 abr 2026 · 9:14 AM',  actual:'Ciel 20L $45',                propuesto:'Ciel 20L $48',          justif:'El proveedor subió el precio mayoreo $2 por garrafón.' },
+  { id:'SOL-0123', repartidor:'Roberto Silva',    iniciales:'RS', color:'bg-amber-500',    negocio:'Purificadora del Valle',  tipo:'Agregar vehículo', estado:'pendiente', fecha:'28 abr 2026 · 8:42 AM',  actual:'2 vehículos registrados',     propuesto:'+ Moto Italika DS-150 (placa MAB-732)', justif:'Compré una moto para entregas chicas en horario pico.' },
+  { id:'SOL-0122', repartidor:'Elena Ramírez',    iniciales:'ER', color:'bg-indigo-500',   negocio:'Agua Clara',              tipo:'Foto perfil',      estado:'pendiente', fecha:'27 abr 2026 · 6:30 PM',  actual:'Foto antigua (2024)',         propuesto:'Foto nueva con uniforme',  justif:'Cambié la foto para que se me reconozca con el nuevo uniforme.' },
+  { id:'SOL-0121', repartidor:'Pedro Domínguez',  iniciales:'PD', color:'bg-teal-500',     negocio:'HidroPlus BJ',            tipo:'Datos vehículo',   estado:'pendiente', fecha:'27 abr 2026 · 4:18 PM',  actual:'Pickup Frontier · placa RPK-285-A', propuesto:'Pickup Frontier · placa MJB-441-B', justif:'Cambié de placas tras renovar el seguro.' },
+  { id:'SOL-0120', repartidor:'José López',       iniciales:'JL', color:'bg-purple-500',   negocio:'Purificadora Aqua Pura',  tipo:'Foto perfil',      estado:'pendiente', fecha:'27 abr 2026 · 2:55 PM',  actual:'Foto borrosa',                propuesto:'Foto nueva con buena luz',   justif:'La foto anterior estaba muy oscura.' },
+  { id:'SOL-0119', repartidor:'Carlos Mendoza',   iniciales:'CM', color:'bg-brand-600',    negocio:'Purificadora Aqua Pura',  tipo:'Agregar producto', estado:'pendiente', fecha:'26 abr 2026 · 11:02 AM', actual:'3 marcas activas',            propuesto:'+ Bonafont 20L $48',         justif:'Quiero ofrecer Bonafont además de Ciel y Epura.' },
+  { id:'SOL-0118', repartidor:'Roberto Silva',    iniciales:'RS', color:'bg-amber-500',    negocio:'Purificadora del Valle',  tipo:'Dirección base',   estado:'pendiente', fecha:'26 abr 2026 · 9:48 AM',  actual:'Av. Universidad 1840',        propuesto:'Av. Cuauhtémoc 1102, BJ',    justif:'Nos mudamos a una bodega más grande.' },
+  { id:'SOL-0117', repartidor:'Elena Ramírez',    iniciales:'ER', color:'bg-indigo-500',   negocio:'Agua Clara',              tipo:'Eliminar vehículo',estado:'pendiente', fecha:'25 abr 2026 · 5:30 PM',  actual:'Bicicleta Mercurio (BIC-021)', propuesto:'Eliminar de la flota',       justif:'La bici ya no la usamos, está fuera de servicio.' },
+
+  { id:'SOL-0116', repartidor:'Carlos Mendoza',   iniciales:'CM', color:'bg-brand-600',    negocio:'Purificadora Aqua Pura',  tipo:'Foto perfil',      estado:'aprobada',  fecha:'24 abr 2026 · 10:00 AM', actual:'Foto antigua',                propuesto:'Foto profesional nueva',     justif:'Foto profesional para el directorio.' },
+  { id:'SOL-0115', repartidor:'Pedro Domínguez',  iniciales:'PD', color:'bg-teal-500',     negocio:'HidroPlus BJ',            tipo:'Precio producto',  estado:'aprobada',  fecha:'23 abr 2026 · 3:12 PM',  actual:'Epura 20L $42',                propuesto:'Epura 20L $44',              justif:'Aumento por inflación trimestral.' },
+
+  { id:'SOL-0114', repartidor:'José López',       iniciales:'JL', color:'bg-purple-500',   negocio:'Purificadora Aqua Pura',  tipo:'Nombre negocio',   estado:'rechazada', fecha:'22 abr 2026 · 11:40 AM', actual:'Purificadora Aqua Pura',       propuesto:'Aqua Pura Premium',          justif:'Rebranding del negocio.', motivoRechazo:'Cambio no autorizado para empleados', comentarioRechazo:'Solo el dueño del negocio (Carlos Mendoza) puede solicitar cambio de nombre comercial.' },
+];
+
+const solEstadoStyles = {
+  pendiente: { label:'Pendiente', cls:'bg-amber-100 text-amber-700',     dot:'bg-amber-500' },
+  aprobada:  { label:'Aprobada',  cls:'bg-emerald-100 text-emerald-700', dot:'bg-emerald-500' },
+  rechazada: { label:'Rechazada', cls:'bg-rose-100 text-rose-700',       dot:'bg-rose-500' },
+};
+
+let currentTab = 'todos';
+let currentSolTab = 'pendiente';
+let currentSolId = null;
+
+/* ===== Render Users ===== */
+function renderUsers() {
+  const filter = currentTab;
+  const list = users.filter(u => {
+    if (filter === 'todos') return true;
+    if (filter === 'inactivo') return u.estado === 'inactivo';
+    return u.rol === filter && u.estado === 'activo';
+  });
+  document.getElementById('userRows').innerHTML = list.map(u => `
+    <tr class="hover:bg-slate-50">
+      <td class="px-5 py-3"><input type="checkbox" class="rounded"/></td>
+      <td class="px-3 py-3">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full ${u.color} text-white text-xs font-bold flex items-center justify-center">${u.iniciales}</div>
+          <div class="min-w-0">
+            <div class="font-semibold text-slate-900 truncate">${u.nombre}</div>
+            <div class="text-xs text-slate-500 truncate">${u.correo} · ${u.id}</div>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-3">
+        ${u.rol === 'cliente'
+          ? `<span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700"><span class="mi text-[14px]">person</span> Cliente</span>`
+          : `<span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700"><span class="mi text-[14px]">local_shipping</span> Repartidor</span>`}
+      </td>
+      <td class="px-3 py-3">
+        ${u.rol === 'repartidor' && u.negocio
+          ? `<div class="flex items-center gap-1.5 text-xs text-slate-700"><span class="mi text-[14px] text-slate-400">storefront</span><span class="truncate max-w-[160px]" title="${u.negocio}">${u.negocio}</span>${u.esDueno ? '<span class="ml-1 text-[9px] font-bold uppercase tracking-wide text-brand-700 bg-brand-50 border border-brand-200 px-1 rounded">Dueño</span>' : ''}</div>`
+          : `<span class="text-xs text-slate-300">—</span>`}
+      </td>
+      <td class="px-3 py-3">
+        ${u.estado === 'activo'
+          ? `<span class="badge-dot before:bg-emerald-500 text-xs font-medium text-emerald-700">Activo</span>`
+          : `<span class="badge-dot before:bg-slate-400 text-xs font-medium text-slate-500">Inactivo</span>`}
+      </td>
+      <td class="px-3 py-3 text-sm text-slate-600">${u.pedidos.toLocaleString()}</td>
+      <td class="px-3 py-3 text-sm text-slate-500">${u.registro}</td>
+      <td class="px-3 py-3 text-sm text-slate-500">${u.activity}</td>
+      <td class="px-5 py-3 text-right">
+        <div class="inline-flex items-center gap-1">
+          <button class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500" title="Ver perfil"><span class="mi text-[18px]">visibility</span></button>
+          <button class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500" title="Editar"><span class="mi text-[18px]">edit</span></button>
+          ${u.estado === 'activo'
+            ? `<button onclick='openBaja(${JSON.stringify(u)})' class="w-8 h-8 rounded-lg hover:bg-rose-50 text-rose-600" title="Dar de baja"><span class="mi text-[18px]">person_off</span></button>`
+            : `<button class="w-8 h-8 rounded-lg hover:bg-emerald-50 text-emerald-600" title="Reactivar"><span class="mi text-[18px]">restart_alt</span></button>`}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+/* ===== Render Orders ===== */
+function renderOrders() {
+  document.getElementById('orderRows').innerHTML = orders.map(o => {
+    const s = estadoStyles[o.estado];
+    return `
+    <tr class="hover:bg-slate-50">
+      <td class="px-5 py-3"><div class="font-mono text-xs font-semibold text-brand-700">#${o.id}</div></td>
+      <td class="px-3 py-3 text-sm text-slate-600">${o.fecha}</td>
+      <td class="px-3 py-3 text-sm">${o.cliente}</td>
+      <td class="px-3 py-3 text-sm text-slate-600">${o.repartidor}</td>
+      <td class="px-3 py-3 text-sm text-slate-600">${o.productos}</td>
+      <td class="px-3 py-3 text-sm font-semibold text-right">${o.total > 0 ? '$'+o.total : '<span class="text-slate-400">$0</span>'}</td>
+      <td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${s.cls}"><span class="w-1.5 h-1.5 rounded-full ${s.dot}"></span> ${s.label}</span></td>
+      <td class="px-5 py-3 text-right">
+        <button onclick='openDetalle("${o.id}")' class="text-brand-600 hover:underline text-sm font-semibold">Ver detalle →</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ===== Render Solicitudes ===== */
+function renderSolicitudes() {
+  const list = solicitudes.filter(s => currentSolTab === 'todas' ? true : s.estado === currentSolTab);
+  document.getElementById('solCount').textContent = list.length;
+  document.getElementById('solRows').innerHTML = list.map(s => {
+    const e = solEstadoStyles[s.estado];
+    return `
+    <tr class="hover:bg-slate-50">
+      <td class="px-5 py-3">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full ${s.color} text-white text-xs font-bold flex items-center justify-center">${s.iniciales}</div>
+          <div class="min-w-0">
+            <div class="font-semibold text-slate-900 truncate">${s.repartidor}</div>
+            <div class="text-[11px] text-slate-500 font-mono truncate">#${s.id}</div>
+          </div>
+        </div>
+      </td>
+      <td class="px-3 py-3">
+        <div class="flex items-center gap-1.5 text-xs text-slate-700"><span class="mi text-[14px] text-slate-400">storefront</span><span class="truncate max-w-[160px]" title="${s.negocio}">${s.negocio}</span></div>
+      </td>
+      <td class="px-3 py-3 text-sm text-slate-700">${s.tipo}</td>
+      <td class="px-3 py-3"><span class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${e.cls}"><span class="w-1.5 h-1.5 rounded-full ${e.dot}"></span> ${e.label}</span></td>
+      <td class="px-3 py-3 text-sm text-slate-500">${s.fecha}</td>
+      <td class="px-5 py-3 text-right">
+        <div class="inline-flex items-center gap-1">
+          <button onclick='openSolicitud("${s.id}")' class="px-2.5 h-8 rounded-lg hover:bg-slate-100 text-slate-600 text-xs font-medium">Ver</button>
+          ${s.estado === 'pendiente' ? `
+            <button onclick='aprobarSolicitud("${s.id}")' class="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1"><span class="mi text-[14px]">check</span> Aprobar</button>
+            <button onclick='openRechazo("${s.id}")' class="h-8 px-3 rounded-lg border border-rose-300 text-rose-600 hover:bg-rose-50 text-xs font-semibold flex items-center gap-1"><span class="mi text-[14px]">close</span> Rechazar</button>
+          ` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" class="px-5 py-12 text-center text-sm text-slate-400">No hay solicitudes en esta categoría</td></tr>`;
+}
+
+/* ===== Tabs ===== */
+document.getElementById('userTabs').addEventListener('click', e => {
+  const btn = e.target.closest('.user-tab');
+  if (!btn) return;
+  currentTab = btn.dataset.tab;
+  document.querySelectorAll('.user-tab').forEach(b => {
+    b.className = 'user-tab px-4 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900';
+  });
+  btn.className = 'user-tab px-4 py-1.5 rounded-md font-medium bg-white shadow-sm text-slate-900';
+  renderUsers();
+});
+
+document.getElementById('solTabs').addEventListener('click', e => {
+  const btn = e.target.closest('.sol-tab');
+  if (!btn) return;
+  currentSolTab = btn.dataset.tab;
+  document.querySelectorAll('.sol-tab').forEach(b => {
+    b.className = 'sol-tab px-4 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900';
+  });
+  btn.className = 'sol-tab px-4 py-1.5 rounded-md font-medium bg-white shadow-sm text-slate-900';
+  renderSolicitudes();
+});
+
+/* ===== Views ===== */
+function setView(v) {
+  const titles = {
+    dashboard:   ['Dashboard',                   'Panorama operativo en tiempo real · jueves 23 oct, 10:42 AM'],
+    usuarios:    ['Gestión de usuarios',         'Clientes y repartidores · CU-014, CU-015'],
+    historial:   ['Historial global de pedidos', 'Auditoría completa · CU-016 · Solo lectura'],
+    solicitudes: ['Solicitudes de cambio',       'RN-020 · Aprobar o rechazar cambios pedidos por los repartidores']
+  };
+  document.getElementById('pageTitle').textContent = titles[v][0];
+  document.getElementById('pageSub').textContent   = titles[v][1];
+  document.getElementById('view-dashboard').classList.toggle('hidden', v !== 'dashboard');
+  document.getElementById('view-usuarios').classList.toggle('hidden', v !== 'usuarios');
+  document.getElementById('view-historial').classList.toggle('hidden', v !== 'historial');
+  document.getElementById('view-solicitudes').classList.toggle('hidden', v !== 'solicitudes');
+  document.querySelectorAll('[data-nav]').forEach(b => {
+    const isActive = b.dataset.nav === v;
+    const baseCls = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm';
+    b.className = isActive
+      ? baseCls + ' bg-white/10 text-white'
+      : baseCls + ' text-brand-100 hover:bg-white/5';
+  });
+}
+
+/* ===== Modals ===== */
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+  if (id === 'modalAlta') {
+    document.getElementById('formAlta').reset();
+    document.getElementById('emailHelp').classList.add('hidden');
+    document.getElementById('emailField').classList.remove('border-rose-400');
+    toggleNegocioSection();
+  }
+}
+
+function toggleNegocioSection() {
+  const rol = document.querySelector('input[name="rol"]:checked')?.value;
+  document.getElementById('negocioSection').classList.toggle('hidden', rol !== 'repartidor');
+  toggleNegocioMode();
+}
+
+function toggleNegocioMode() {
+  const mode = document.querySelector('input[name="negocioMode"]:checked')?.value || 'crear';
+  document.getElementById('negocioCrear').classList.toggle('hidden', mode !== 'crear');
+  document.getElementById('negocioUnirse').classList.toggle('hidden', mode !== 'unirse');
+}
+document.querySelectorAll('[id^=modal]').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
+});
+
+function openBaja(u) {
+  document.getElementById('bajaNombre').textContent = u.nombre;
+  document.getElementById('bajaCorreo').textContent = u.correo + ' · ' + u.id;
+  document.getElementById('bajaAvatar').textContent = u.iniciales;
+  document.getElementById('bajaAvatar').className = 'w-12 h-12 rounded-full ' + u.color + ' text-white font-bold flex items-center justify-center';
+  const rolEl = document.getElementById('bajaRol');
+  if (u.rol === 'cliente') {
+    rolEl.textContent = 'CLIENTE';
+    rolEl.className = 'text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700';
+  } else {
+    rolEl.textContent = 'REPARTIDOR';
+    rolEl.className = 'text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700';
+  }
+  // Mostrar warning solo si es repartidor con pedidos activos
+  document.getElementById('bajaWarning').classList.toggle('hidden', !(u.rol === 'repartidor' && u.pedidosActivos > 0));
+  openModal('modalBaja');
+}
+
+function openDetalle(id) {
+  document.getElementById('detalleId').textContent = 'Pedido #' + id;
+  openModal('modalDetalle');
+}
+
+function openSolicitud(id) {
+  const s = solicitudes.find(x => x.id === id);
+  if (!s) return;
+  currentSolId = id;
+  document.getElementById('solTitle').textContent = 'Solicitud #' + s.id;
+  document.getElementById('solRepartidor').textContent = s.repartidor;
+  document.getElementById('solNegocio').querySelector('span:last-child').textContent = s.negocio;
+  document.getElementById('solTipo').textContent = s.tipo;
+  document.getElementById('solFecha').textContent = s.fecha;
+  document.getElementById('solActual').textContent = s.actual;
+  document.getElementById('solPropuesto').textContent = s.propuesto;
+  document.getElementById('solJustif').textContent = s.justif || '—';
+  openModal('modalSolicitud');
+}
+
+function aprobarSolicitud(id) {
+  const s = solicitudes.find(x => x.id === id);
+  if (!s) return;
+  s.estado = 'aprobada';
+  closeModal('modalSolicitud');
+  renderSolicitudes();
+  toast(`Solicitud ${s.id} aprobada · cambio aplicado al perfil`);
+}
+
+function openRechazo(id) {
+  currentSolId = id;
+  document.getElementById('rechazoComentario').value = '';
+  openModal('modalRechazo');
+}
+
+function confirmarRechazo() {
+  const s = solicitudes.find(x => x.id === currentSolId);
+  if (!s) return;
+  s.estado = 'rechazada';
+  s.motivoRechazo = document.getElementById('rechazoMotivo').value;
+  s.comentarioRechazo = document.getElementById('rechazoComentario').value.trim();
+  closeModal('modalRechazo');
+  closeModal('modalSolicitud');
+  renderSolicitudes();
+  toast(`Solicitud ${s.id} rechazada · repartidor notificado`, 'rose');
+}
+
+/* ===== Submits ===== */
+function submitAlta() {
+  // Demo: simular email duplicado para "duplicado@correo.com"
+  const email = document.getElementById('emailField').value.trim().toLowerCase();
+  if (email === 'duplicado@correo.com') {
+    document.getElementById('emailHelp').classList.remove('hidden');
+    document.getElementById('emailField').classList.add('border-rose-400');
+    return;
+  }
+  closeModal('modalAlta');
+  toast('Usuario creado · correo enviado con enlace para establecer contraseña');
+}
+function submitBaja() {
+  closeModal('modalBaja');
+  toast('Usuario dado de baja · sesiones invalidadas', 'rose');
+}
+
+function toast(msg, color='emerald') {
+  const t = document.getElementById('toast');
+  t.className = 'fixed bottom-6 right-6 z-[60] px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm text-white ' +
+    (color === 'rose' ? 'bg-rose-600' : 'bg-emerald-600');
+  document.getElementById('toastMsg').textContent = msg;
+  setTimeout(() => t.classList.add('hidden'), 3500);
+  t.classList.remove('hidden');
+}
+
+/* ===== Init ===== */
+renderUsers();
+renderOrders();
+renderSolicitudes();
+</script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 01 Splash / Onboarding</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  /* Android device frame */
+  .device{
+    width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:linear-gradient(180deg,var(--primary-soft) 0%,var(--bg) 55%);
+    position:relative;display:flex;flex-direction:column;
+  }
+  .status{
+    height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:var(--text);
+  }
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{
+    position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;
+  }
+  .content{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 24px 24px;}
+  .brand{display:flex;align-items:center;gap:8px;margin-top:8px;}
+  .brand-mark{
+    width:36px;height:36px;border-radius:50%;background:var(--primary);
+    display:flex;align-items:center;justify-content:center;color:#fff;
+  }
+  .brand-mark .material-icons{font-size:20px}
+  .brand-name{font-weight:700;font-size:22px;color:var(--primary-dark);letter-spacing:-.2px;}
+  .pager{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;}
+  .illu{
+    width:200px;height:200px;border-radius:48px;background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 10px 30px rgba(3,4,94,.08);
+  }
+  .illu .material-icons{font-size:96px;color:var(--primary)}
+  .title{font-size:24px;font-weight:600;text-align:center;margin:40px 0 12px;line-height:1.2;}
+  .subtitle{font-size:16px;color:var(--text-2);text-align:center;line-height:1.5;max-width:280px;}
+  .dots{display:flex;gap:8px;margin:24px 0;}
+  .dot{width:8px;height:8px;border-radius:99px;background:var(--outline);transition:all .25s;}
+  .dot.active{width:24px;background:var(--primary);}
+  .cta{width:100%;display:flex;flex-direction:column;gap:8px;}
+  .btn{
+    width:100%;height:56px;border-radius:28px;border:0;cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.2px;
+    background:var(--primary);color:#fff;
+    box-shadow:0 6px 16px rgba(0,119,182,.3);
+    transition:transform .15s, box-shadow .15s;
+  }
+  .btn:active{transform:scale(.98)}
+  .btn-text{
+    width:100%;height:48px;border:0;background:transparent;color:var(--primary);
+    font-family:inherit;font-weight:600;font-size:14px;cursor:pointer;
+  }
+  .label{font-size:11px;color:#7c8aa1;text-align:center;margin-top:18px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons" style="font-size:14px;">network_cell</span>
+          <span class="material-icons" style="font-size:14px;">wifi</span>
+          <span class="material-icons" style="font-size:14px;">battery_full</span>
+        </span>
+      </div>
+
+      <div class="content">
+        <div class="brand">
+          <div class="brand-mark"><span class="material-icons">water_drop</span></div>
+          <div class="brand-name">HToGo</div>
+        </div>
+
+        <div class="pager" id="pager">
+          <div class="illu"><span class="material-icons" id="illuIcon">water_drop</span></div>
+          <div class="title" id="title">Agua a un toque</div>
+          <div class="subtitle" id="subtitle">Pide tus garrafones de agua potable sin llamadas ni esperas innecesarias.</div>
+        </div>
+
+        <div class="dots">
+          <div class="dot active"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+
+        <div class="cta">
+          <button class="btn" id="primaryBtn">Siguiente</button>
+          <button class="btn-text">Ya tengo cuenta · Iniciar sesión</button>
+        </div>
+      </div>
+      <div class="nav-pill"></div>
+    </div>
+  </div>
+
+<script>
+  const pages = [
+    { icon:'water_drop', title:'Agua a un toque',
+      sub:'Pide tus garrafones de agua potable sin llamadas ni esperas innecesarias.' },
+    { icon:'location_on', title:'Sigue tu pedido en vivo',
+      sub:'Mira en tiempo real dónde está tu repartidor y cuándo llegará a tu puerta.' },
+    { icon:'local_shipping', title:'Hecho para Benito Juárez',
+      sub:'Repartidores locales verificados, listos para entregar en tu colonia.' }
+  ];
+  let idx=0;
+  const dots=[...document.querySelectorAll('.dot')];
+  const titleEl=document.getElementById('title');
+  const subEl=document.getElementById('subtitle');
+  const iconEl=document.getElementById('illuIcon');
+  const btn=document.getElementById('primaryBtn');
+  function render(){
+    titleEl.textContent=pages[idx].title;
+    subEl.textContent=pages[idx].sub;
+    iconEl.textContent=pages[idx].icon;
+    dots.forEach((d,i)=>d.classList.toggle('active',i===idx));
+    btn.textContent = (idx===pages.length-1)?'Crear cuenta':'Siguiente';
+  }
+  btn.addEventListener('click',()=>{
+    if(idx===pages.length-1) idx=0; else idx++;
+    render();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 11 Pedidos disponibles</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --success:#10B981; --warning:#F59E0B; --danger:#EF4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;gap:32px;flex-wrap:wrap;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;background:var(--primary-dark);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;z-index:30;}
+
+  .header{
+    background:var(--primary-dark);color:#fff;padding:8px 16px 14px;
+  }
+  .header-row{display:flex;align-items:center;gap:8px;}
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;background:#ffffff1a;border:0;color:#fff;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .header h1{margin:0;flex:1;font-size:18px;font-weight:600;}
+  .header-sub{font-size:12px;color:#ffffffaa;margin-top:2px;}
+
+  .filters{
+    display:flex;gap:6px;padding:12px 16px;background:#fff;
+    overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--outline);
+  }
+  .filters::-webkit-scrollbar{display:none}
+  .chip-filter{
+    flex:0 0 auto;background:var(--bg);border:1px solid var(--outline);border-radius:99px;
+    padding:7px 12px;font-size:13px;font-weight:500;color:var(--text-2);cursor:pointer;
+    font-family:inherit;display:flex;align-items:center;gap:4px;
+  }
+  .chip-filter.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .chip-filter .material-icons{font-size:14px;}
+
+  /* Mini map */
+  .mini-map{
+    height:140px;background:#e8f0f5;position:relative;overflow:hidden;
+    border-bottom:1px solid var(--outline);
+  }
+  .map-svg{position:absolute;inset:0;width:100%;height:100%;}
+  .map-pin{
+    position:absolute;width:28px;height:28px;border-radius:50%;
+    background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;
+    border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);font-size:12px;font-weight:700;
+    transform:translate(-50%,-50%);
+  }
+  .map-pin.me{background:#fff;color:var(--primary);}
+  .map-pin.me::after{
+    content:"";position:absolute;inset:-6px;border:2px solid var(--primary);
+    border-radius:50%;animation:pulse 2s infinite;
+  }
+  @keyframes pulse{0%{opacity:.8;transform:scale(1);}100%{opacity:0;transform:scale(1.6);}}
+  .map-overlay{
+    position:absolute;top:10px;left:10px;background:#ffffffee;color:var(--text);
+    padding:6px 10px;border-radius:99px;font-size:12px;font-weight:600;
+    display:flex;align-items:center;gap:6px;
+  }
+  .map-overlay .material-icons{font-size:14px;color:var(--primary);}
+  .map-controls{
+    position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:6px;
+  }
+  .map-btn{
+    width:34px;height:34px;border-radius:10px;background:#fff;border:0;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:var(--text);
+    box-shadow:0 2px 6px rgba(0,0,0,.1);
+  }
+  .map-btn .material-icons{font-size:18px;}
+
+  .scroll{flex:1;overflow-y:auto;padding:12px 16px;padding-bottom:90px;}
+  .scroll::-webkit-scrollbar{display:none}
+
+  .count-row{
+    display:flex;align-items:center;justify-content:space-between;padding:0 0 10px;
+  }
+  .count-row .ttl{font-size:14px;font-weight:600;}
+  .count-row .ttl .num{color:var(--primary);}
+  .sort-btn{
+    background:#fff;border:1px solid var(--outline);border-radius:8px;padding:6px 10px;
+    font-family:inherit;font-size:12px;font-weight:500;color:var(--text-2);cursor:pointer;
+    display:flex;align-items:center;gap:4px;
+  }
+  .sort-btn .material-icons{font-size:14px;}
+
+  /* Pedido card */
+  .pedido-card{
+    background:#fff;border-radius:16px;padding:14px;margin-bottom:10px;
+    box-shadow:0 1px 4px rgba(15,23,42,.04);
+  }
+  .pc-head{display:flex;align-items:center;gap:10px;}
+  .pc-id{font-size:13px;font-weight:600;color:var(--text);}
+  .pc-time-ago{font-size:11px;color:var(--text-3);margin-left:auto;}
+  .pc-body{display:flex;align-items:flex-start;gap:12px;margin-top:10px;}
+  .pc-icon{
+    width:46px;height:46px;border-radius:14px;background:var(--primary-soft);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .pc-info{flex:1;min-width:0;}
+  .pc-marca{font-size:15px;font-weight:600;}
+  .pc-cant{font-size:12px;color:var(--text-2);margin-top:1px;}
+  .pc-money{
+    text-align:right;flex-shrink:0;
+  }
+  .pc-money .gan{font-size:18px;font-weight:700;color:var(--success);}
+  .pc-money .lbl{font-size:10px;color:var(--text-2);text-transform:uppercase;letter-spacing:.3px;}
+
+  .pc-meta{
+    display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px;
+    padding-top:12px;border-top:1px dashed var(--outline);
+  }
+  .pc-meta-item{
+    display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);
+  }
+  .pc-meta-item .material-icons{font-size:14px;color:var(--primary);}
+  .pc-meta-item b{color:var(--text);font-weight:600;}
+
+  .pc-addr{
+    display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text-2);
+  }
+  .pc-addr .material-icons{font-size:14px;color:var(--text-3);}
+
+  .pc-actions{display:flex;gap:8px;margin-top:12px;}
+  .btn-reject{
+    flex:1;height:42px;border-radius:21px;border:1px solid var(--outline);background:#fff;
+    color:var(--text-2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:4px;
+  }
+  .btn-reject .material-icons{font-size:16px;}
+  .btn-accept{
+    flex:2;height:42px;border-radius:21px;border:0;background:var(--success);
+    color:#fff;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .btn-accept .material-icons{font-size:18px;}
+
+  /* Tag perks */
+  .tag{
+    display:inline-flex;align-items:center;gap:3px;padding:2px 7px;
+    border-radius:99px;font-size:10px;font-weight:600;
+  }
+  .tag.bonus{background:#F59E0B19;color:var(--warning);}
+  .tag.cerca{background:#10B98119;color:var(--success);}
+  .tag.urgent{background:#EF444419;color:var(--danger);}
+  .tag .material-icons{font-size:12px;}
+
+  /* Empty state */
+  .empty{
+    text-align:center;padding:32px 20px;color:var(--text-3);
+  }
+  .empty .material-icons{font-size:42px;margin-bottom:8px;color:var(--text-3);}
+  .empty .t{font-size:14px;font-weight:600;color:var(--text-2);}
+  .empty .s{font-size:12px;margin-top:4px;}
+
+  /* Bottombar */
+  .bottombar{
+    position:absolute;bottom:0;left:0;right:0;height:72px;background:#fff;
+    display:flex;align-items:center;justify-content:space-around;
+    box-shadow:0 -2px 12px rgba(15,23,42,.06);padding-bottom:8px;z-index:5;
+  }
+  .nav-item{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    color:var(--text-3);cursor:pointer;font-size:11px;font-weight:500;
+    padding:6px 14px;border-radius:99px;
+  }
+  .nav-item.active{color:var(--primary);background:var(--primary-soft);}
+  .nav-item .material-icons{font-size:22px;}
+
+  /* Modal aceptar */
+  .modal-backdrop{
+    position:absolute;inset:0;background:#0f172abb;z-index:20;
+    display:flex;align-items:flex-end;
+  }
+  .modal{
+    background:#fff;width:100%;border-radius:24px 24px 0 0;padding:18px 18px 24px;
+    max-height:85%;overflow-y:auto;
+  }
+  .modal-handle{width:40px;height:4px;border-radius:2px;background:var(--outline);margin:0 auto 12px;}
+  .modal h3{margin:0 0 4px;font-size:18px;font-weight:600;}
+  .modal-sub{font-size:13px;color:var(--text-2);margin-bottom:16px;}
+
+  .summary-box{
+    background:linear-gradient(135deg,var(--primary-soft),#e0f4f9);
+    border-radius:14px;padding:14px;margin-bottom:14px;
+  }
+  .sb-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;}
+  .sb-row .l{font-size:13px;color:var(--text-2);}
+  .sb-row .v{font-size:14px;font-weight:600;color:var(--text);}
+  .sb-row.total{border-top:1px solid #ffffff80;padding-top:10px;margin-top:6px;}
+  .sb-row.total .v{font-size:20px;color:var(--success);}
+
+  .check-list{
+    background:var(--bg);border-radius:12px;padding:12px;margin-bottom:14px;
+  }
+  .check-item{
+    display:flex;align-items:flex-start;gap:8px;padding:6px 0;font-size:12px;color:var(--text-2);line-height:1.4;
+  }
+  .check-item .material-icons{font-size:16px;color:var(--success);flex-shrink:0;margin-top:1px;}
+  .check-item.warn{color:#92400E;}
+  .check-item.warn .material-icons{color:var(--warning);}
+  .check-item.err{color:var(--danger);}
+  .check-item.err .material-icons{color:var(--danger);}
+  .check-list.warn{background:#FEF3C7;}
+  .check-list.err{background:#FEE2E2;}
+  .btn-confirm:disabled{background:var(--text-3);cursor:not-allowed;opacity:.7;}
+
+  .modal-footer{display:flex;gap:8px;}
+  .modal-footer button{
+    flex:1;height:48px;border-radius:24px;border:0;cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:600;
+  }
+  .btn-cancel{background:var(--bg);color:var(--text-2);}
+  .btn-confirm{background:var(--success);color:#fff;}
+
+  .label-tag{
+    text-align:center;color:#ffffff99;font-size:13px;margin-top:8px;font-weight:500;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Device 1: Lista de pedidos disponibles -->
+  <div>
+    <div class="device">
+      <div class="screen">
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <span class="material-icons" style="font-size:14px;">network_cell</span>
+            <span class="material-icons" style="font-size:14px;">wifi</span>
+            <span class="material-icons" style="font-size:14px;">battery_full</span>
+          </span>
+        </div>
+
+        <div class="header">
+          <div class="header-row">
+            <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+            <div style="flex:1;">
+              <h1>Pedidos disponibles</h1>
+              <div class="header-sub">Cerca de tu ubicación · CDMX, Del Valle</div>
+            </div>
+            <button class="icon-btn"><span class="material-icons">tune</span></button>
+          </div>
+        </div>
+
+        <div class="mini-map">
+          <svg class="map-svg" viewBox="0 0 412 140" preserveAspectRatio="none">
+            <defs>
+              <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#cbd5e1" stroke-width="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="412" height="140" fill="url(#grid)"/>
+            <path d="M 0 70 L 412 70" stroke="#94a3b8" stroke-width="2" opacity=".5"/>
+            <path d="M 0 30 L 412 30" stroke="#94a3b8" stroke-width="1.5" opacity=".4"/>
+            <path d="M 0 110 L 412 110" stroke="#94a3b8" stroke-width="1.5" opacity=".4"/>
+            <path d="M 100 0 L 100 140" stroke="#94a3b8" stroke-width="1.5" opacity=".4"/>
+            <path d="M 220 0 L 220 140" stroke="#94a3b8" stroke-width="2" opacity=".5"/>
+            <path d="M 320 0 L 320 140" stroke="#94a3b8" stroke-width="1.5" opacity=".4"/>
+            <circle cx="180" cy="55" r="20" fill="#86efac" opacity=".4"/>
+            <rect x="55" y="42" width="22" height="18" fill="#cbd5e1" opacity=".5"/>
+            <rect x="280" y="80" width="28" height="22" fill="#cbd5e1" opacity=".5"/>
+          </svg>
+          <div class="map-pin me" style="left:50%;top:50%;">
+            <span class="material-icons" style="font-size:14px;">person_pin</span>
+          </div>
+          <div class="map-pin" style="left:28%;top:30%;">1</div>
+          <div class="map-pin" style="left:72%;top:35%;">2</div>
+          <div class="map-pin" style="left:36%;top:78%;">3</div>
+          <div class="map-pin" style="left:78%;top:72%;">4</div>
+          <div class="map-overlay">
+            <span class="material-icons">my_location</span>4 pedidos en 2 km
+          </div>
+          <div class="map-controls">
+            <button class="map-btn"><span class="material-icons">my_location</span></button>
+            <button class="map-btn"><span class="material-icons">fullscreen</span></button>
+          </div>
+        </div>
+
+        <div class="filters">
+          <button class="chip-filter active">Todos</button>
+          <button class="chip-filter"><span class="material-icons">near_me</span>&lt; 2 km</button>
+          <button class="chip-filter"><span class="material-icons">attach_money</span>Mejor pago</button>
+          <button class="chip-filter"><span class="material-icons">water_drop</span>Ciel</button>
+        </div>
+
+        <div class="scroll">
+          <div class="count-row">
+            <div class="ttl"><span class="num">4</span> pedidos disponibles</div>
+            <button class="sort-btn">
+              <span class="material-icons">sort</span>Más cercano
+            </button>
+          </div>
+
+          <!-- Card 1: Cerca + bonus -->
+          <div class="pedido-card">
+            <div class="pc-head">
+              <div class="pc-id">#HG-1301</div>
+              <div class="tag cerca"><span class="material-icons">near_me</span>0.8 km</div>
+              <div class="tag" style="background:#F59E0B19;color:var(--warning);"><span class="material-icons">attach_money</span>Precio máx $60</div>
+              <div class="pc-time-ago">hace 2 min</div>
+            </div>
+            <div class="pc-body">
+              <div class="pc-icon"><span class="material-icons">water_drop</span></div>
+              <div class="pc-info">
+                <div class="pc-marca">3 × Ciel 20 L</div>
+                <div class="pc-cant">Andrea M.</div>
+              </div>
+              <div class="pc-money">
+                <div class="gan">$135</div>
+                <div class="lbl">Ganarás</div>
+              </div>
+            </div>
+            <div class="pc-meta">
+              <div class="pc-meta-item">
+                <span class="material-icons">schedule</span>
+                Lo antes posible
+              </div>
+              <div class="pc-meta-item">
+                <span class="material-icons">payments</span>
+                Efectivo · <b>$135</b>
+              </div>
+            </div>
+            <div class="pc-addr">
+              <span class="material-icons">place</span>
+              Insurgentes Sur 1234, Del Valle
+            </div>
+            <div class="pc-actions">
+              <button class="btn-reject"><span class="material-icons">close</span>Rechazar</button>
+              <button class="btn-accept"><span class="material-icons">check</span>Aceptar pedido</button>
+            </div>
+          </div>
+
+          <!-- Card 2: Urgente -->
+          <div class="pedido-card">
+            <div class="pc-head">
+              <div class="pc-id">#HG-1302</div>
+              <div class="pc-time-ago">hace 4 min</div>
+            </div>
+            <div class="pc-body">
+              <div class="pc-icon" style="background:#10B98119;color:var(--success);">
+                <span class="material-icons">water_drop</span>
+              </div>
+              <div class="pc-info">
+                <div class="pc-marca">5 × Bonafont 20 L</div>
+                <div class="pc-cant">Roberto V.</div>
+              </div>
+              <div class="pc-money">
+                <div class="gan">$240</div>
+                <div class="lbl">Ganarás</div>
+              </div>
+            </div>
+            <div class="pc-meta">
+              <div class="pc-meta-item">
+                <span class="material-icons">schedule</span>
+                Antes de <b>10:30 AM</b>
+              </div>
+              <div class="pc-meta-item">
+                <span class="material-icons">payments</span>
+                Efectivo · <b>$240</b>
+              </div>
+              <div class="pc-meta-item">
+                <span class="material-icons">near_me</span>
+                <b>1.4 km</b>
+              </div>
+              <div class="pc-meta-item">
+                <span class="material-icons">stairs</span>
+                Piso 3 · sin elevador
+              </div>
+            </div>
+            <div class="pc-addr">
+              <span class="material-icons">place</span>
+              Av. Universidad 567, Narvarte
+            </div>
+            <div class="pc-actions">
+              <button class="btn-reject"><span class="material-icons">close</span>Rechazar</button>
+              <button class="btn-accept"><span class="material-icons">check</span>Aceptar pedido</button>
+            </div>
+          </div>
+
+          <!-- Card 3: Programado -->
+          <div class="pedido-card">
+            <div class="pc-head">
+              <div class="pc-id">#HG-1303</div>
+              <div class="tag" style="background:var(--primary-soft);color:var(--primary);">
+                <span class="material-icons">event</span>Agendado
+              </div>
+              <div class="pc-time-ago">hace 12 min</div>
+            </div>
+            <div class="pc-body">
+              <div class="pc-icon" style="background:#F59E0B19;color:var(--warning);">
+                <span class="material-icons">water_drop</span>
+              </div>
+              <div class="pc-info">
+                <div class="pc-marca">2 × Epura 20 L</div>
+                <div class="pc-cant">Lucía F. · cliente nuevo</div>
+              </div>
+              <div class="pc-money">
+                <div class="gan">$84</div>
+                <div class="lbl">Ganarás</div>
+              </div>
+            </div>
+            <div class="pc-meta">
+              <div class="pc-meta-item">
+                <span class="material-icons">event</span>
+                Hoy a las <b>2:30 PM</b>
+              </div>
+              <div class="pc-meta-item">
+                <span class="material-icons">payments</span>
+                Efectivo · <b>$84</b>
+              </div>
+              <div class="pc-meta-item">
+                <span class="material-icons">near_me</span>
+                <b>1.7 km</b>
+              </div>
+              <div class="pc-meta-item">
+                <span class="material-icons">home</span>
+                Casa · planta baja
+              </div>
+            </div>
+            <div class="pc-addr">
+              <span class="material-icons">place</span>
+              Heriberto Frías 890, Narvarte
+            </div>
+            <div class="pc-actions">
+              <button class="btn-reject"><span class="material-icons">close</span>Rechazar</button>
+              <button class="btn-accept"><span class="material-icons">check</span>Aceptar pedido</button>
+            </div>
+          </div>
+
+          <!-- Card 4: lejos -->
+          <div class="pedido-card">
+            <div class="pc-head">
+              <div class="pc-id">#HG-1304</div>
+              <div class="pc-time-ago">hace 18 min</div>
+            </div>
+            <div class="pc-body">
+              <div class="pc-icon"><span class="material-icons">water_drop</span></div>
+              <div class="pc-info">
+                <div class="pc-marca">10 × Santorini 20 L</div>
+                <div class="pc-cant">Pedido grande · Hotel Boutique</div>
+              </div>
+              <div class="pc-money">
+                <div class="gan">$420</div>
+                <div class="lbl">Ganarás</div>
+              </div>
+            </div>
+            <div class="pc-meta">
+              <div class="pc-meta-item">
+                <span class="material-icons">schedule</span>
+                Lo antes posible
+              </div>
+              <div class="pc-meta-item">
+                <span class="material-icons">near_me</span>
+                <b>2.1 km</b>
+              </div>
+            </div>
+            <div class="pc-addr">
+              <span class="material-icons">place</span>
+              Eje 7 Sur 234, Nápoles
+            </div>
+            <div class="pc-actions">
+              <button class="btn-reject"><span class="material-icons">close</span>Rechazar</button>
+              <button class="btn-accept"><span class="material-icons">check</span>Aceptar pedido</button>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="bottombar">
+          <div class="nav-item">
+            <span class="material-icons">local_shipping</span>Hoy
+          </div>
+          <div class="nav-item active">
+            <span class="material-icons">inbox</span>Pedidos
+          </div>
+          <div class="nav-item">
+            <span class="material-icons">inventory_2</span>Negocio
+          </div>
+          <div class="nav-item">
+            <span class="material-icons">person</span>Perfil
+          </div>
+        </div>
+
+        <div class="nav-pill"></div>
+      </div>
+    </div>
+    <div class="label-tag">Lista de pedidos disponibles</div>
+  </div>
+
+  <!-- Device 2: Modal de confirmación -->
+  <div>
+    <div class="device">
+      <div class="screen">
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <span class="material-icons" style="font-size:14px;">network_cell</span>
+            <span class="material-icons" style="font-size:14px;">wifi</span>
+            <span class="material-icons" style="font-size:14px;">battery_full</span>
+          </span>
+        </div>
+
+        <div class="header">
+          <div class="header-row">
+            <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+            <div style="flex:1;">
+              <h1>Pedidos disponibles</h1>
+            </div>
+            <button class="icon-btn"><span class="material-icons">tune</span></button>
+          </div>
+        </div>
+
+        <div class="scroll" style="filter:blur(2px);opacity:.6;">
+          <div class="pedido-card">
+            <div class="pc-head">
+              <div class="pc-id">#HG-1301</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-backdrop">
+          <div class="modal">
+            <div class="modal-handle"></div>
+            <h3>¿Aceptar este pedido?</h3>
+            <div class="modal-sub">Confirma para tomar el pedido. Se descontará de tu inventario.</div>
+
+            <div class="summary-box">
+              <div class="sb-row">
+                <div class="l">Pedido</div>
+                <div class="v">#HG-1301</div>
+              </div>
+              <div class="sb-row">
+                <div class="l">Producto</div>
+                <div class="v">3 × Ciel 20 L</div>
+              </div>
+              <div class="sb-row">
+                <div class="l">Cliente</div>
+                <div class="v">Andrea M.</div>
+              </div>
+              <div class="sb-row">
+                <div class="l">Distancia</div>
+                <div class="v">0.8 km</div>
+              </div>
+              <div class="sb-row">
+                <div class="l">Cobrarás en efectivo</div>
+                <div class="v">$135 MXN</div>
+              </div>
+              <div class="sb-row total">
+                <div class="l" style="font-weight:600;color:var(--text);">Tu ganancia</div>
+                <div class="v">+$135 MXN</div>
+              </div>
+            </div>
+
+            <div class="check-list">
+              <div class="check-item">
+                <span class="material-icons">check_circle</span>
+                Tienes <b>5 garrafones</b> de Ciel en tu vehículo (suficiente para este pedido)
+              </div>
+              <div class="check-item">
+                <span class="material-icons">check_circle</span>
+                El cliente está dentro de tu zona de cobertura
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn-cancel">Cancelar</button>
+              <button class="btn-confirm">
+                <span class="material-icons" style="font-size:18px;vertical-align:-4px;margin-right:4px;">check</span>
+                Aceptar pedido
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-pill"></div>
+      </div>
+    </div>
+    <div class="label-tag">Modal · Aceptar (stock OK)</div>
+  </div>
+
+  <!-- Device 3: Modal — stock parcial (cargar desde base) -->
+  <div>
+    <div class="device">
+      <div class="screen">
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <span class="material-icons" style="font-size:14px;">network_cell</span>
+            <span class="material-icons" style="font-size:14px;">wifi</span>
+            <span class="material-icons" style="font-size:14px;">battery_full</span>
+          </span>
+        </div>
+
+        <div class="header">
+          <div class="header-row">
+            <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+            <div style="flex:1;"><h1>Pedidos disponibles</h1></div>
+            <button class="icon-btn"><span class="material-icons">tune</span></button>
+          </div>
+        </div>
+
+        <div class="scroll" style="filter:blur(2px);opacity:.6;"></div>
+
+        <div class="modal-backdrop">
+          <div class="modal">
+            <div class="modal-handle"></div>
+            <h3>¿Aceptar este pedido?</h3>
+            <div class="modal-sub">Confirma para tomar el pedido. Necesitarás cargar más antes de salir.</div>
+
+            <div class="summary-box">
+              <div class="sb-row"><div class="l">Pedido</div><div class="v">#HG-1302</div></div>
+              <div class="sb-row"><div class="l">Producto</div><div class="v">3 × Ciel 20 L</div></div>
+              <div class="sb-row"><div class="l">Cliente</div><div class="v">Roberto V.</div></div>
+              <div class="sb-row total">
+                <div class="l" style="font-weight:600;color:var(--text);">Cobrarás</div>
+                <div class="v">$135 MXN</div>
+              </div>
+            </div>
+
+            <div class="check-list warn">
+              <div class="check-item warn">
+                <span class="material-icons">warning</span>
+                Solo tienes <b>2 garrafones</b> de Ciel en tu vehículo. Tendrás que cargar <b>1 más</b> desde la base antes de salir.
+              </div>
+              <div class="check-item">
+                <span class="material-icons">check_circle</span>
+                Hay <b>18 disponibles</b> en la base · suficiente respaldo
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn-cancel">Cancelar</button>
+              <button class="btn-confirm" style="background:var(--warning);">
+                <span class="material-icons" style="font-size:18px;vertical-align:-4px;margin-right:4px;">check</span>
+                Aceptar y cargar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-pill"></div>
+      </div>
+    </div>
+    <div class="label-tag">Modal · Aceptar (cargar desde base)</div>
+  </div>
+
+  <!-- Device 4: Modal — sin stock suficiente (bloqueado) -->
+  <div>
+    <div class="device">
+      <div class="screen">
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <span class="material-icons" style="font-size:14px;">network_cell</span>
+            <span class="material-icons" style="font-size:14px;">wifi</span>
+            <span class="material-icons" style="font-size:14px;">battery_full</span>
+          </span>
+        </div>
+
+        <div class="header">
+          <div class="header-row">
+            <button class="icon-btn"><span class="material-icons">arrow_back</span></button>
+            <div style="flex:1;"><h1>Pedidos disponibles</h1></div>
+            <button class="icon-btn"><span class="material-icons">tune</span></button>
+          </div>
+        </div>
+
+        <div class="scroll" style="filter:blur(2px);opacity:.6;"></div>
+
+        <div class="modal-backdrop">
+          <div class="modal">
+            <div class="modal-handle"></div>
+            <h3>¿Aceptar este pedido?</h3>
+            <div class="modal-sub">No es posible aceptar este pedido por falta de stock.</div>
+
+            <div class="summary-box" style="background:linear-gradient(135deg,#FEE2E2,#FECACA);">
+              <div class="sb-row"><div class="l">Pedido</div><div class="v">#HG-1304</div></div>
+              <div class="sb-row"><div class="l">Producto</div><div class="v">10 × Santorini 20 L</div></div>
+              <div class="sb-row"><div class="l">Cliente</div><div class="v">Hotel Boutique</div></div>
+              <div class="sb-row total">
+                <div class="l" style="font-weight:600;color:var(--text);">Cobrarás</div>
+                <div class="v" style="color:var(--text);">$420 MXN</div>
+              </div>
+            </div>
+
+            <div class="check-list err">
+              <div class="check-item err">
+                <span class="material-icons">cancel</span>
+                <span>No hay stock suficiente entre tu vehículo y la base. <b>Vehículo: 0 · Base: 4 · Necesitas: 10</b></span>
+              </div>
+              <div class="check-item warn">
+                <span class="material-icons">info</span>
+                Pide a tu negocio que registre una entrada de Santorini para poder aceptar este pedido.
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn-cancel">Cerrar</button>
+              <button class="btn-confirm" disabled>
+                <span class="material-icons" style="font-size:18px;vertical-align:-4px;margin-right:4px;">block</span>
+                Sin stock suficiente
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-pill"></div>
+      </div>
+    </div>
+    <div class="label-tag">Modal · Sin stock (bloqueado)</div>
+  </div>
+
+</body>
+</html>

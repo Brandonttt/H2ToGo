@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>HToGo · 05b Home Repartidor</title>
+<meta name="viewport" content="width=460" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0077B6; --primary-light:#00B4D8; --primary-dark:#03045E;
+    --primary-soft:#CAF0F8;
+    --bg:#F8FAFC; --surface:#FFFFFF;
+    --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+    --outline:#E2E8F0;
+    --s-pendiente:#94A3B8; --s-asignado:#F59E0B;
+    --s-encamino:#0077B6; --s-entregado:#10B981; --s-cancelado:#EF4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1220;font-family:'Roboto',sans-serif;color:var(--text);}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+  .device{width:412px;height:868px;background:#0f172a;border-radius:46px;
+    padding:12px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 2px #1e293b;position:relative;}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;
+    background:var(--bg);position:relative;display:flex;flex-direction:column;}
+  .status{height:32px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600;color:#fff;background:var(--primary-dark);}
+  .status .right{display:flex;gap:6px;align-items:center}
+  .nav-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;
+    width:120px;height:5px;border-radius:3px;background:#0f172a;opacity:.4;}
+  .scroll{flex:1;overflow-y:auto;padding-bottom:100px;}
+  .scroll::-webkit-scrollbar{display:none}
+  .header{background:linear-gradient(180deg,var(--primary-dark),var(--primary));padding:20px;color:#fff;}
+  .header-row{display:flex;align-items:center;}
+  .avatar-bg{width:48px;height:48px;border-radius:50%;background:#ffffff33;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;}
+  .greet{flex:1;margin-left:12px;}
+  .greet h1{margin:0;font-size:20px;font-weight:700;}
+  .greet .date{font-size:13px;color:var(--primary-soft);}
+  .bell{width:40px;height:40px;border-radius:50%;background:#ffffff1a;
+    display:flex;align-items:center;justify-content:center;color:#fff;border:0;cursor:pointer;}
+  .status-card{background:#fff;margin-top:20px;border-radius:16px;padding:16px;
+    display:flex;align-items:center;gap:10px;color:var(--text);}
+  .dot-online{width:10px;height:10px;border-radius:50%;background:var(--s-entregado);}
+  .dot-offline{width:10px;height:10px;border-radius:50%;background:var(--s-pendiente);}
+  .status-info{flex:1;}
+  .status-info .t{font-size:15px;font-weight:600;}
+  .status-info .s{font-size:12px;color:var(--text-2);}
+  /* Switch */
+  .switch{
+    position:relative;width:48px;height:28px;border-radius:14px;
+    background:var(--outline);transition:.2s;cursor:pointer;
+  }
+  .switch.on{background:var(--primary);}
+  .switch::after{
+    content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;
+    border-radius:50%;background:#fff;transition:.2s;box-shadow:0 2px 4px rgba(0,0,0,.2);
+  }
+  .switch.on::after{left:23px;}
+  .section{padding:20px 20px 0;}
+  .section h2{font-size:16px;font-weight:600;margin:0 0 8px;color:var(--text);}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .stat{background:#fff;border-radius:16px;padding:14px;height:110px;
+    display:flex;flex-direction:column;justify-content:space-between;
+    box-shadow:0 1px 4px rgba(15,23,42,.04);}
+  .stat-head{display:flex;align-items:center;gap:8px;}
+  .stat-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+  .stat-icon .material-icons{font-size:16px;}
+  .stat-label{font-size:12px;color:var(--text-2);}
+  .stat-bottom{display:flex;align-items:flex-end;gap:4px;}
+  .stat-big{font-size:24px;font-weight:700;color:var(--text);line-height:1;}
+  .stat-small{font-size:12px;color:var(--text-2);padding-bottom:2px;}
+  .next-card{background:#fff;border-radius:16px;padding:16px;margin:0 20px;
+    box-shadow:0 2px 8px rgba(15,23,42,.06);}
+  .nc-row{display:flex;align-items:center;gap:12px;}
+  .nc-avatar{width:44px;height:44px;border-radius:50%;background:var(--primary-soft);
+    color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .nc-info{flex:1;}
+  .nc-info .id{font-size:15px;font-weight:600;}
+  .nc-info .meta{font-size:13px;color:var(--text-2);}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;
+    border-radius:99px;font-size:12px;font-weight:600;}
+  .chip .dot{width:6px;height:6px;border-radius:3px;}
+  .chip.asignado{background:rgba(245,158,11,.14);color:var(--s-asignado);}
+  .chip.asignado .dot{background:var(--s-asignado);}
+  .chip.pendiente{background:rgba(148,163,184,.16);color:var(--s-pendiente);}
+  .chip.pendiente .dot{background:var(--s-pendiente);}
+  .nc-meta-row{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;color:var(--text-2);}
+  .nc-meta-row .material-icons{font-size:16px;}
+  .iniciar-btn{width:100%;height:48px;border-radius:24px;border:0;cursor:pointer;
+    background:var(--primary);color:#fff;font-family:inherit;font-size:14px;font-weight:600;
+    margin-top:14px;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .iniciar-btn .material-icons{font-size:18px;}
+  .queue-head{display:flex;align-items:center;padding:0 20px;margin-top:24px;margin-bottom:8px;}
+  .queue-head h2{flex:1;font-size:16px;font-weight:600;margin:0;}
+  .ver-todos{border:0;background:transparent;color:var(--primary);font-weight:600;
+    font-family:inherit;font-size:13px;cursor:pointer;}
+  .cola-item{background:#fff;border-radius:14px;padding:12px;margin:0 20px 8px;
+    display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(15,23,42,.04);}
+  .cola-info{flex:1;}
+  .cola-id-row{display:flex;align-items:center;gap:8px;}
+  .cola-id{font-size:13px;font-weight:600;}
+  .cola-meta{font-size:12px;color:var(--text-2);}
+  .cola-monto{font-size:16px;font-weight:700;color:var(--primary-dark);}
+  .bottombar{position:absolute;bottom:0;left:0;right:0;height:72px;background:#fff;
+    display:flex;align-items:center;justify-content:space-around;
+    box-shadow:0 -2px 12px rgba(15,23,42,.06);padding-bottom:8px;}
+  .nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;
+    color:var(--text-3);cursor:pointer;font-size:11px;font-weight:500;
+    padding:6px 16px;border-radius:99px;}
+  .nav-item.active{color:var(--primary);background:var(--primary-soft);}
+  .nav-item .material-icons{font-size:22px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <span class="material-icons" style="font-size:14px;">network_cell</span>
+          <span class="material-icons" style="font-size:14px;">wifi</span>
+          <span class="material-icons" style="font-size:14px;">battery_full</span>
+        </span>
+      </div>
+
+      <div class="scroll">
+        <div class="header">
+          <div class="header-row">
+            <div class="avatar-bg">C</div>
+            <div class="greet">
+              <h1>Hola, Carlos</h1>
+              <div class="date" style="display:flex;align-items:center;gap:4px;"><span class="material-icons" style="font-size:14px;">storefront</span>Purificadora Aqua Pura</div>
+              <div class="date">Lunes 26 de abril</div>
+            </div>
+            <button class="bell"><span class="material-icons">notifications</span></button>
+          </div>
+          <div class="status-card">
+            <div class="dot-online" id="dotOnline"></div>
+            <div class="status-info">
+              <div class="t" id="statusT">En línea</div>
+              <div class="s" id="statusS">Recibiendo pedidos</div>
+            </div>
+            <div class="switch on" id="switch"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Tu jornada de hoy</h2>
+          <div class="stat-grid">
+            <div class="stat">
+              <div class="stat-head">
+                <div class="stat-icon" style="background:rgba(16,185,129,.14);color:var(--s-entregado);">
+                  <span class="material-icons">check_circle</span>
+                </div>
+                <div class="stat-label">Entregas</div>
+              </div>
+              <div class="stat-bottom">
+                <div class="stat-big">8</div>
+                <div class="stat-small">/ 14</div>
+              </div>
+            </div>
+            <div class="stat">
+              <div class="stat-head">
+                <div class="stat-icon" style="background:rgba(0,119,182,.14);color:var(--primary);">
+                  <span class="material-icons">local_shipping</span>
+                </div>
+                <div class="stat-label">En tu vehículo</div>
+              </div>
+              <div class="stat-bottom">
+                <div class="stat-big">22</div>
+                <div class="stat-small">garrafones</div>
+              </div>
+            </div>
+            <div class="stat">
+              <div class="stat-head">
+                <div class="stat-icon" style="background:rgba(245,158,11,.14);color:var(--s-asignado);">
+                  <span class="material-icons">attach_money</span>
+                </div>
+                <div class="stat-label">Ingresos</div>
+              </div>
+              <div class="stat-bottom">
+                <div class="stat-big">$1,260</div>
+                <div class="stat-small">MXN</div>
+              </div>
+            </div>
+            <div class="stat">
+              <div class="stat-head">
+                <div class="stat-icon" style="background:rgba(3,4,94,.14);color:var(--primary-dark);">
+                  <span class="material-icons">warehouse</span>
+                </div>
+                <div class="stat-label">En base</div>
+              </div>
+              <div class="stat-bottom">
+                <div class="stat-big">38</div>
+                <div class="stat-small">garrafones</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Próxima entrega</h2>
+          <div class="next-card">
+            <div class="nc-row">
+              <div class="nc-avatar"><span class="material-icons">water_drop</span></div>
+              <div class="nc-info">
+                <div class="id">Pedido #HG-1287</div>
+                <div class="meta">Gael M. · 3 garrafones</div>
+              </div>
+              <div class="chip asignado"><span class="dot"></span>Asignado</div>
+            </div>
+            <div class="nc-meta-row">
+              <span class="material-icons" style="color:var(--s-asignado);">event</span>
+              Agendado para hoy <b>11:30 am</b> · en ~45 min
+            </div>
+            <div class="nc-meta-row">
+              <span class="material-icons">map</span>
+              Av. Insurgentes Sur 1234, Del Valle
+            </div>
+            <div class="nc-meta-row">
+              <span class="material-icons" style="color:var(--s-entregado);">attach_money</span>
+              Cobrarás <b style="color:var(--s-entregado);">$120 MXN</b> en este pedido
+            </div>
+            <button class="iniciar-btn">
+              <span class="material-icons">play_arrow</span>Iniciar ruta
+            </button>
+          </div>
+        </div>
+
+        <div class="queue-head">
+          <h2>Pedidos en cola (3)</h2>
+          <button class="ver-todos">Ver todos</button>
+        </div>
+        <div class="cola-item">
+          <div class="cola-info">
+            <div class="cola-id-row">
+              <span class="cola-id">#HG-1290</span>
+              <div class="chip pendiente"><span class="dot"></span>Pendiente</div>
+            </div>
+            <div class="cola-meta"><span class="material-icons" style="font-size:13px;vertical-align:-2px;color:var(--s-asignado);">event</span> Agendado <b>12:15 pm</b></div>
+            <div class="cola-meta">María L. · Col. Nápoles</div>
+            <div class="cola-meta">5 garrafones</div>
+          </div>
+          <div class="cola-monto">$200</div>
+        </div>
+        <div class="cola-item">
+          <div class="cola-info">
+            <div class="cola-id-row">
+              <span class="cola-id">#HG-1292</span>
+              <div class="chip pendiente"><span class="dot"></span>Pendiente</div>
+            </div>
+            <div class="cola-meta"><span class="material-icons" style="font-size:13px;vertical-align:-2px;color:var(--s-asignado);">event</span> Agendado <b>1:00 pm</b></div>
+            <div class="cola-meta">Roberto V. · Col. Narvarte</div>
+            <div class="cola-meta">2 garrafones</div>
+          </div>
+          <div class="cola-monto">$80</div>
+        </div>
+        <div class="cola-item">
+          <div class="cola-info">
+            <div class="cola-id-row">
+              <span class="cola-id">#HG-1295</span>
+              <div class="chip pendiente"><span class="dot"></span>Pendiente</div>
+            </div>
+            <div class="cola-meta"><span class="material-icons" style="font-size:13px;vertical-align:-2px;color:var(--s-asignado);">event</span> Agendado <b>2:30 pm</b></div>
+            <div class="cola-meta">Lucía F. · Col. Del Valle</div>
+            <div class="cola-meta">4 garrafones</div>
+          </div>
+          <div class="cola-monto">$160</div>
+        </div>
+      </div>
+
+      <div class="bottombar">
+        <div class="nav-item active">
+          <span class="material-icons">local_shipping</span>Hoy
+        </div>
+        <div class="nav-item">
+          <span class="material-icons">route</span>Ruta
+        </div>
+        <div class="nav-item">
+          <span class="material-icons">person</span>Perfil
+        </div>
+      </div>
+
+      <div class="nav-pill"></div>
+    </div>
+  </div>
+
+<script>
+  const sw = document.getElementById('switch');
+  const dot = document.getElementById('dotOnline');
+  const t = document.getElementById('statusT');
+  const s = document.getElementById('statusS');
+  sw.addEventListener('click',()=>{
+    sw.classList.toggle('on');
+    const on = sw.classList.contains('on');
+    dot.style.background = on ? 'var(--s-entregado)' : 'var(--s-pendiente)';
+    t.textContent = on ? 'En línea' : 'Fuera de línea';
+    s.textContent = on ? 'Recibiendo pedidos' : 'Activa para recibir pedidos';
+  });
+</script>
+</body>
+</html>
