@@ -47,7 +47,7 @@ services:
       DB_PASSWORD: h2togo
     ports:
       # Puerto del host configurable (APP_PORT) por si el 8080 está ocupado.
-      - "${APP_PORT:-8080}:8080"
+      - "${APP_PORT:-8088}:8080"
     # Si el backend arranca antes de que la BD termine de sembrar, reintenta hasta lograrlo.
     restart: on-failure
 

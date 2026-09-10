@@ -20,7 +20,7 @@ spring:
         format_sql: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 # springdoc / Swagger UI en /swagger-ui.html
 springdoc:
