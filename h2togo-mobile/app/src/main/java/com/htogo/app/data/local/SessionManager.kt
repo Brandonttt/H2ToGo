@@ -19,6 +19,8 @@ class SessionManager(context: Context) {
         private const val KEY_USER_ID = "user_id"
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_USER_EMAIL = "user_email"
+        private const val KEY_USER_PHONE = "user_phone"
+        private const val KEY_USER_DOB = "user_dob"
 
         @Volatile
         private var instance: SessionManager? = null
@@ -30,14 +32,19 @@ class SessionManager(context: Context) {
         }
     }
 
-    fun guardarSesion(token: String, rol: String, idUsuario: Int, nombre: String, correo: String) {
+    fun guardarSesion(token: String, rol: String, idUsuario: Int, nombre: String, correo: String, telefono: String = "") {
         prefs.edit()
             .putString(KEY_TOKEN, token)
             .putString(KEY_ROL, rol)
             .putInt(KEY_USER_ID, idUsuario)
             .putString(KEY_USER_NAME, nombre)
             .putString(KEY_USER_EMAIL, correo)
+            .putString(KEY_USER_PHONE, telefono)
             .apply()
+    }
+
+    fun guardarFechaNacimiento(fecha: String) {
+        prefs.edit().putString(KEY_USER_DOB, fecha).apply()
     }
 
     fun obtenerToken(): String? = prefs.getString(KEY_TOKEN, null)
@@ -47,6 +54,10 @@ class SessionManager(context: Context) {
     fun obtenerNombre(): String? = prefs.getString(KEY_USER_NAME, null)
 
     fun obtenerCorreo(): String? = prefs.getString(KEY_USER_EMAIL, null)
+    
+    fun obtenerTelefono(): String? = prefs.getString(KEY_USER_PHONE, null)
+    
+    fun obtenerFechaNacimiento(): String? = prefs.getString(KEY_USER_DOB, null)
 
     fun obtenerIdUsuario(): Int = prefs.getInt(KEY_USER_ID, -1)
 

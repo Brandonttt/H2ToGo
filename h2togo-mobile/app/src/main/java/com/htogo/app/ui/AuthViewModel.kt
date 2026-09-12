@@ -81,7 +81,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                         rol = sesion.rol,
                         idUsuario = sesion.perfil.idUsuario,
                         nombre = "${sesion.perfil.nombre} ${sesion.perfil.apellidos}".trim(),
-                        correo = sesion.perfil.correo
+                        correo = sesion.perfil.correo,
+                        telefono = sesion.perfil.telefono
                     )
                     _uiState.value = AuthUiState.Success(sesion)
                 } else if (response.code() == 409) {
@@ -167,7 +168,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                                     rol = sesion.rol,
                                     idUsuario = sesion.perfil.idUsuario,
                                     nombre = "${sesion.perfil.nombre} ${sesion.perfil.apellidos}".trim(),
-                                    correo = sesion.perfil.correo
+                                    correo = sesion.perfil.correo,
+                                    telefono = sesion.perfil.telefono
                                 )
                                 _uiState.value = AuthUiState.Success(sesion)
                             }

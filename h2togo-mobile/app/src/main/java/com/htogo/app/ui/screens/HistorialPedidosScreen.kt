@@ -180,7 +180,7 @@ fun HistorialPedidosScreen(
 @Composable
 private fun HistHeader(query: String, onQuery: (String) -> Unit, onBack: () -> Unit) {
     Surface(color = HToGoColors.PrimaryDark) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Column(Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 HeaderIconBtn(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)

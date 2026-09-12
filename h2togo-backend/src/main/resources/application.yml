@@ -48,6 +48,10 @@ h2togo:
     entrega-radio-m: 50
     # Radio de aviso de proximidad al cliente (RF-005/RN-010).
     proximidad-radio-m: 500
+  twilio:
+    account-sid: ${TWILIO_ACCOUNT_SID:AC_AQUI_TU_SID}
+    auth-token: ${TWILIO_AUTH_TOKEN:AQUI_TU_TOKEN}
+    from-number: ${TWILIO_FROM_NUMBER:+1234567890}
 
 logging:
   level:

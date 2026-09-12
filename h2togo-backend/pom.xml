@@ -58,6 +58,13 @@
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
 
+        <!-- Twilio SDK para el envío de SMS OTP en producción -->
+        <dependency>
+            <groupId>com.twilio.sdk</groupId>
+            <artifactId>twilio</artifactId>
+            <version>10.1.0</version>
+        </dependency>
+
         <!-- Driver PostgreSQL -->
         <dependency>
             <groupId>org.postgresql</groupId>

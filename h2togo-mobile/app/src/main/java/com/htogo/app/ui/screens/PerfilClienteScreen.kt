@@ -34,6 +34,9 @@ import com.htogo.app.ui.components.ClienteBottomBar
 import com.htogo.app.ui.components.ClienteTab
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.Date
 
 data class UserProfile(
     val initials: String,
@@ -85,12 +88,21 @@ fun PerfilClienteScreen(
     onInicio: () -> Unit = {},
     onPedidos: () -> Unit = {},
     onLogout: () -> Unit = {},
+    onAvisoPrivacidad: () -> Unit = {},
     clienteViewModel: ClienteViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val sessionManager = remember { SessionManager.getInstance(context) }
     val savedName = remember { sessionManager.obtenerNombre() ?: SAMPLE_USER.nombre }
     val savedEmail = remember { sessionManager.obtenerCorreo() ?: SAMPLE_USER.email }
+    val savedPhone = remember { sessionManager.obtenerTelefono() ?: SAMPLE_USER.telefono }
+    
+    // El DOB lo manejamos como state porque el usuario lo puede editar desde esta pantalla
+    var savedDob by remember { mutableStateOf(sessionManager.obtenerFechaNacimiento() ?: "No especificada") }
+    
+    // Obtenemos el historial real del viewModel
+    val historial by clienteViewModel.historial.collectAsState()
+    
     val initials = remember(savedName) {
         savedName.split(" ")
             .filter { it.isNotBlank() }
@@ -101,17 +113,21 @@ fun PerfilClienteScreen(
             .uppercase()
     }
 
-    val user = remember(savedName, savedEmail, initials) {
+    val user = remember(savedName, savedEmail, savedPhone, savedDob, historial.size, initials) {
         SAMPLE_USER.copy(
             initials = initials,
             nombre = savedName,
             nombreCompleto = savedName,
-            email = savedEmail
+            email = savedEmail,
+            telefono = savedPhone,
+            nacimiento = savedDob,
+            totalPedidos = historial.size
         )
     }
 
     val direccionesDisponibles by clienteViewModel.direcciones.collectAsState()
     var mostrarDialogDireccion by remember { mutableStateOf(false) }
+    var mostrarDialogFecha by remember { mutableStateOf(false) }
 
     val direcciones = remember(direccionesDisponibles) {
         direccionesDisponibles.map { d ->
@@ -154,7 +170,7 @@ fun PerfilClienteScreen(
             item { StatsRow(user) }
 
             item { SectionTitle("Datos personales") }
-            item { DataList(user) }
+            item { DataList(user, onDobClick = { mostrarDialogFecha = true }) }
 
             item { SectionTitle("Mis direcciones · ${direcciones.size}") }
             if (direcciones.isEmpty()) {
@@ -192,7 +208,7 @@ fun PerfilClienteScreen(
                     SettingRowSwitch(Icons.Filled.Notifications, "Notificaciones",
                         checked = notif, onCheck = { notif = it })
                     SettingRow(Icons.Filled.HelpOutline, "Ayuda y soporte")
-                    SettingRow(Icons.Filled.Description, "Términos y privacidad")
+                    SettingRow(Icons.Filled.Description, "Términos y privacidad", onClick = onAvisoPrivacidad)
                 }
             }
 
@@ -223,14 +239,28 @@ fun PerfilClienteScreen(
                 clienteViewModel = clienteViewModel
             )
         }
+
+        if (mostrarDialogFecha) {
+            DatePickerModal(
+                onDismiss = { mostrarDialogFecha = false },
+                onDateSelected = { millis ->
+                    if (millis != null) {
+                        val format = SimpleDateFormat("dd 'de' MMMM, yyyy", Locale("es", "MX"))
+                        val dateString = format.format(Date(millis))
+                        savedDob = dateString
+                        sessionManager.guardarFechaNacimiento(dateString)
+                    }
+                }
+            )
+        }
     }
 }
 
 @Composable
 private fun ProfileHeader(user: UserProfile, onBack: () -> Unit) {
-    Box {
+    Box(Modifier.fillMaxWidth()) {
         Surface(color = HToGoColors.PrimaryDark, modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 32.dp)) {
+            Column(Modifier.statusBarsPadding().padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 54.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     HeaderIconBtn(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
@@ -246,8 +276,8 @@ private fun ProfileHeader(user: UserProfile, onBack: () -> Unit) {
             color = HToGoColors.Surface,
             shadowElevation = 4.dp,
             modifier = Modifier
+                .padding(top = 54.dp)
                 .padding(horizontal = 16.dp)
-                .offset(y = (-20).dp)
                 .fillMaxWidth()
         ) {
             Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -310,7 +340,7 @@ private fun StatsRow(user: UserProfile) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .offset(y = (-32).dp)
+            .padding(top = 4.dp)
             .border(1.dp, HToGoColors.OutlineSoft, RoundedCornerShape(14.dp))
     ) {
         Row(Modifier.fillMaxWidth()) {
@@ -338,7 +368,7 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun DataList(user: UserProfile) {
+private fun DataList(user: UserProfile, onDobClick: () -> Unit = {}) {
     Surface(shape = RoundedCornerShape(14.dp), color = Color.White,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Column {
@@ -348,14 +378,14 @@ private fun DataList(user: UserProfile) {
             DividerRow()
             DataRow(Icons.Filled.Phone, "Teléfono", user.telefono)
             DividerRow()
-            DataRow(Icons.Filled.Cake, "Fecha de nacimiento", user.nacimiento)
+            DataRow(Icons.Filled.Cake, "Fecha de nacimiento", user.nacimiento, onClick = onDobClick)
         }
     }
 }
 
 @Composable
-private fun DataRow(icon: ImageVector, lbl: String, value: String) {
-    Row(Modifier.fillMaxWidth().clickable {}.padding(horizontal = 16.dp, vertical = 14.dp),
+private fun DataRow(icon: ImageVector, lbl: String, value: String, onClick: () -> Unit = {}) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
             .background(HToGoColors.PrimarySoft), contentAlignment = Alignment.Center) {
@@ -547,7 +577,35 @@ private fun SettingRowSwitch(icon: ImageVector, label: String,
 
 
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 900, name = "09 · Perfil Cliente")
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerModal(
+    onDateSelected: (Long?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = rememberDatePickerState()
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                onDateSelected(datePickerState.selectedDateMillis)
+                onDismiss()
+            }) {
+                Text("Aceptar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
+    }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 900, name = "09 – Perfil Cliente")
 @Composable
 fun PerfilClienteScreenPreview() {
     HToGoTheme { PerfilClienteScreen() }

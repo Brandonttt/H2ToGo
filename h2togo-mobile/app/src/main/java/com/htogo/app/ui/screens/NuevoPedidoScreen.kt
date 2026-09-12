@@ -29,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.htogo.app.data.api.GeocodingHelper
 import com.htogo.app.data.dto.DetallePedidoRequest
 import com.htogo.app.data.dto.PedidoCreateRequest
 import com.htogo.app.ui.ClienteViewModel
@@ -36,6 +37,7 @@ import com.htogo.app.ui.components.AgregarDireccionDialog
 import com.htogo.app.ui.components.OsmMapView
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
+import kotlinx.coroutines.launch
 
 private data class SavedAddress(
     val id: String,
@@ -310,7 +312,18 @@ private fun AddAddressButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun MapConfirmCard(addr: SavedAddress, onAdjust: () -> Unit) {
+private fun MapConfirmCard(
+    addr: SavedAddress?,
+    onAdjust: (Double, Double, String?) -> Unit,
+    onLocationSelected: (Double, Double, String?) -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var currentLat by remember(addr?.lat) { mutableStateOf(addr?.lat ?: 19.376692) }
+    var currentLon by remember(addr?.lon) { mutableStateOf(addr?.lon ?: -99.165057) }
+    var pinAddressText by remember(addr?.address) { mutableStateOf(addr?.address ?: "Benito Juárez, CDMX") }
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearching by remember { mutableStateOf(false) }
+
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = HToGoColors.Surface,
@@ -318,39 +331,115 @@ private fun MapConfirmCard(addr: SavedAddress, onAdjust: () -> Unit) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
-            OsmMapView(
-                latitude = addr.lat,
-                longitude = addr.lon,
-                zoom = 16,
-                isInteractive = false,
-                isDraggablePin = false,
+            // Buscador de dirección sobre el mapa
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-            )
-            Row(
-                Modifier.fillMaxWidth().padding(14.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Filled.Place, null, tint = HToGoColors.Primary)
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Buscar calle o dirección...", fontSize = 12.sp) },
+                    leadingIcon = {
+                        Icon(Icons.Filled.Search, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
+                    },
+                    trailingIcon = {
+                        if (isSearching) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = HToGoColors.Primary)
+                        } else if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = {
+                                coroutineScope.launch {
+                                    isSearching = true
+                                    val res = GeocodingHelper.buscarCoordenadas(searchQuery)
+                                    if (res != null) {
+                                        currentLat = res.lat
+                                        currentLon = res.lon
+                                        val formatted = "${res.road ?: searchQuery} ${res.houseNumber ?: ""}, Col. ${res.neighbourhood ?: ""}".trim().trim(',')
+                                        pinAddressText = formatted
+                                        onLocationSelected(res.lat, res.lon, formatted)
+                                    }
+                                    isSearching = false
+                                }
+                            }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, "Buscar", tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    textStyle = TextStyle(fontSize = 12.sp, color = HToGoColors.TextPrimary),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = HToGoColors.Primary,
+                        unfocusedBorderColor = HToGoColors.OutlineSoft
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Mapa interactivo OSM
+            OsmMapView(
+                latitude = currentLat,
+                longitude = currentLon,
+                zoom = 16,
+                isInteractive = true,
+                isDraggablePin = true,
+                onLocationChange = { newLat, newLon ->
+                    currentLat = newLat
+                    currentLon = newLon
+                    coroutineScope.launch {
+                        val res = GeocodingHelper.obtenerDireccionDeCoordenadas(newLat, newLon)
+                        if (res != null) {
+                            val road = res.road ?: ""
+                            val num = res.houseNumber ?: ""
+                            val col = res.neighbourhood ?: ""
+                            val formatted = "$road $num, Col. $col".trim().trim(',')
+                            if (formatted.isNotBlank()) {
+                                pinAddressText = formatted
+                            }
+                            onLocationSelected(newLat, newLon, pinAddressText)
+                        } else {
+                            onLocationSelected(newLat, newLon, null)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+            )
+
+            // Info de la dirección seleccionada
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.Place, null, tint = HToGoColors.Primary, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        addr.address.substringBefore(","),
+                        pinAddressText.substringBefore(","),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = HToGoColors.TextPrimary
+                        color = HToGoColors.TextPrimary,
+                        maxLines = 1
                     )
                     Text(
-                        addr.address.substringAfter(", ", ""),
+                        if (pinAddressText.contains(",")) pinAddressText.substringAfter(", ") else "Arrastra el pin para ajustar la ubicación exacta",
                         fontSize = 11.sp,
-                        color = HToGoColors.TextSecondary
+                        color = HToGoColors.TextSecondary,
+                        maxLines = 1
                     )
                 }
-                TextButton(onClick = onAdjust) {
-                    Text("Ajustar", fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                        color = HToGoColors.Primary)
+                TextButton(onClick = { onAdjust(currentLat, currentLon, pinAddressText) }) {
+                    Text(
+                        if (addr != null) "Ajustar" else "Guardar",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = HToGoColors.Primary
+                    )
                 }
             }
         }
@@ -503,6 +592,9 @@ fun NuevoPedidoScreen(
     val errorMsg by clienteViewModel.errorMessage.collectAsState()
 
     var mostrarDialogDireccion by remember { mutableStateOf(false) }
+    var latParaDialog by remember { mutableStateOf<Double?>(null) }
+    var lonParaDialog by remember { mutableStateOf<Double?>(null) }
+    var calleParaDialog by remember { mutableStateOf<String?>(null) }
 
     val brands = remember(marcasDisponibles) {
         if (marcasDisponibles.isNotEmpty()) {
@@ -723,30 +815,22 @@ fun NuevoPedidoScreen(
             SectionTitle("Confirmar en el mapa")
             Spacer(Modifier.height(10.dp))
             Box(Modifier.padding(horizontal = 16.dp)) {
-                if (selectedAddr != null) {
-                    MapConfirmCard(selectedAddr) {
+                MapConfirmCard(
+                    addr = selectedAddr,
+                    onAdjust = { lat, lon, detectedAddr ->
+                        latParaDialog = lat
+                        lonParaDialog = lon
+                        calleParaDialog = detectedAddr?.substringBefore(",")?.takeIf { it.isNotBlank() }
                         mostrarDialogDireccion = true
-                    }
-                } else {
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = HToGoColors.Surface,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, HToGoColors.OutlineSoft),
-                        modifier = Modifier.fillMaxWidth().clickable { mostrarDialogDireccion = true }
-                    ) {
-                        Row(
-                            Modifier.padding(20.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Filled.AddLocation, null, tint = HToGoColors.Primary, modifier = Modifier.size(32.dp))
-                            Spacer(Modifier.width(14.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text("Agrega un domicilio", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary)
-                                Text("El mapa OpenStreetMap se centrará aquí.", fontSize = 12.sp, color = HToGoColors.TextSecondary)
-                            }
+                    },
+                    onLocationSelected = { lat, lon, detectedAddr ->
+                        latParaDialog = lat
+                        lonParaDialog = lon
+                        if (detectedAddr != null) {
+                            calleParaDialog = detectedAddr.substringBefore(",").takeIf { it.isNotBlank() }
                         }
                     }
-                }
+                )
             }
 
             Spacer(Modifier.height(18.dp))
@@ -767,12 +851,23 @@ fun NuevoPedidoScreen(
 
         if (mostrarDialogDireccion) {
             AgregarDireccionDialog(
-                onDismiss = { mostrarDialogDireccion = false },
+                onDismiss = {
+                    mostrarDialogDireccion = false
+                    latParaDialog = null
+                    lonParaDialog = null
+                    calleParaDialog = null
+                },
                 onDireccionCreada = { nueva ->
                     mostrarDialogDireccion = false
+                    latParaDialog = null
+                    lonParaDialog = null
+                    calleParaDialog = null
                     selectedAddrId = nueva.id.toString()
                 },
-                clienteViewModel = clienteViewModel
+                clienteViewModel = clienteViewModel,
+                initialLat = latParaDialog,
+                initialLon = lonParaDialog,
+                initialCalle = calleParaDialog
             )
         }
     }

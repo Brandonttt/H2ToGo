@@ -223,6 +223,9 @@ fun HToGoNavHost(
                 onLogout  = {
                     sessionManager.cerrarSesion()
                     navController.navigateAndClear(HToGoRoutes.LOGIN)
+                },
+                onAvisoPrivacidad = {
+                    navController.navigate(HToGoRoutes.AVISO_PRIVACIDAD)
                 }
             )
         }

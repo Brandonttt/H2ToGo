@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,30 +22,88 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.htogo.app.data.api.GeocodingHelper
 import com.htogo.app.data.dto.DireccionResponse
 import com.htogo.app.ui.ClienteViewModel
 import com.htogo.app.ui.theme.HToGoColors
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun AgregarDireccionDialog(
     onDismiss: () -> Unit,
     onDireccionCreada: (DireccionResponse) -> Unit,
-    clienteViewModel: ClienteViewModel
+    clienteViewModel: ClienteViewModel,
+    initialLat: Double? = null,
+    initialLon: Double? = null,
+    initialCalle: String? = null,
+    initialColonia: String? = null
 ) {
-    // Benito Juárez por defecto
-    var lat by remember { mutableStateOf(19.376692) }
-    var lon by remember { mutableStateOf(-99.165057) }
+    // Benito Juárez por defecto o recibido
+    var lat by remember { mutableStateOf(initialLat ?: 19.376692) }
+    var lon by remember { mutableStateOf(initialLon ?: -99.165057) }
 
     var alias by remember { mutableStateOf("Casa") }
-    var calle by remember { mutableStateOf("") }
+    var calle by remember { mutableStateOf(initialCalle ?: "") }
     var numeroExterior by remember { mutableStateOf("") }
     var numeroInterior by remember { mutableStateOf("") }
-    var colonia by remember { mutableStateOf("Del Valle") }
+    var colonia by remember { mutableStateOf(initialColonia ?: "Del Valle") }
     var codigoPostal by remember { mutableStateOf("03100") }
     var referencias by remember { mutableStateOf("") }
 
     var localError by remember { mutableStateOf<String?>(null) }
     var guardando by remember { mutableStateOf(false) }
+
+    var isGeocoding by remember { mutableStateOf(false) }
+    var geocodeMessage by remember { mutableStateOf<String?>(null) }
+    var isReverseGeocoding by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(calle, numeroExterior, colonia) {
+        if (isReverseGeocoding) return@LaunchedEffect
+        if (calle.trim().length >= 3 && numeroExterior.isNotBlank()) {
+            delay(1000)
+            isGeocoding = true
+            geocodeMessage = "Buscando en mapa..."
+            val query = "${calle.trim()} ${numeroExterior.trim()}, ${colonia.trim()}"
+            val result = GeocodingHelper.buscarCoordenadas(query)
+            if (result != null) {
+                lat = result.lat
+                lon = result.lon
+                geocodeMessage = "✓ Ubicación colocada en el mapa"
+                if (!result.postcode.isNullOrBlank() && (codigoPostal.isBlank() || codigoPostal == "03100")) {
+                    codigoPostal = result.postcode
+                }
+            } else {
+                geocodeMessage = null
+            }
+            isGeocoding = false
+        }
+    }
+
+    fun ubicarEnMapaManual() {
+        if (calle.isBlank()) {
+            localError = "Ingresa la calle para ubicar en el mapa"
+            return
+        }
+        coroutineScope.launch {
+            isGeocoding = true
+            geocodeMessage = "Buscando dirección..."
+            val query = "${calle.trim()} ${numeroExterior.trim()}, ${colonia.trim()}"
+            val result = GeocodingHelper.buscarCoordenadas(query)
+            if (result != null) {
+                lat = result.lat
+                lon = result.lon
+                geocodeMessage = "✓ Pin ubicado: ${result.displayName.take(45)}..."
+                if (!result.postcode.isNullOrBlank()) {
+                    codigoPostal = result.postcode
+                }
+            } else {
+                geocodeMessage = "No se localizó exactamente. Puedes mover el pin en el mapa."
+            }
+            isGeocoding = false
+        }
+    }
 
     Dialog(
         onDismissRequest = { if (!guardando) onDismiss() },
@@ -239,39 +298,91 @@ fun AgregarDireccionDialog(
 
                     // Ubicación en el mapa OSM
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.LocationOn, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.LocationOn, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "Ubicación en el mapa",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = HToGoColors.TextPrimary
+                            )
+                        }
+                        TextButton(
+                            onClick = { ubicarEnMapaManual() },
+                            enabled = !isGeocoding && calle.isNotBlank(),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Icon(Icons.Filled.Search, null, modifier = Modifier.size(14.dp), tint = HToGoColors.Primary)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Ubicar en mapa", fontSize = 11.sp, color = HToGoColors.Primary, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+
+                    if (isGeocoding || geocodeMessage != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        ) {
+                            if (isGeocoding) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(12.dp),
+                                    strokeWidth = 1.5.dp,
+                                    color = HToGoColors.Primary
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Buscando en mapa...", fontSize = 11.sp, color = HToGoColors.Primary)
+                            } else if (geocodeMessage != null) {
+                                Text(
+                                    geocodeMessage!!,
+                                    fontSize = 11.sp,
+                                    color = if (geocodeMessage!!.startsWith("✓")) Color(0xFF16A34A) else HToGoColors.TextSecondary
+                                )
+                            }
+                        }
+                    } else {
                         Text(
-                            "Ajustar ubicación en el mapa",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = HToGoColors.TextPrimary
+                            "Al escribir tu dirección se ubicará en el mapa. También puedes arrastrar el pin.",
+                            fontSize = 11.sp,
+                            color = HToGoColors.TextSecondary,
+                            modifier = Modifier.padding(bottom = 6.dp)
                         )
                     }
-                    Text(
-                        "Toca el mapa o arrastra el pin a tu entrada exacta.",
-                        fontSize = 11.sp,
-                        color = HToGoColors.TextSecondary
-                    )
-
-                    Spacer(Modifier.height(8.dp))
 
                     // OSM Webview
                     OsmMapView(
                         latitude = lat,
                         longitude = lon,
-                        zoom = 15,
+                        zoom = 16,
                         isInteractive = true,
                         isDraggablePin = true,
                         onLocationChange = { newLat, newLon ->
                             lat = newLat
                             lon = newLon
+                            coroutineScope.launch {
+                                isReverseGeocoding = true
+                                isGeocoding = true
+                                geocodeMessage = "Detectando dirección..."
+                                val res = GeocodingHelper.obtenerDireccionDeCoordenadas(newLat, newLon)
+                                if (res != null) {
+                                    if (!res.road.isNullOrBlank()) calle = res.road
+                                    if (!res.houseNumber.isNullOrBlank()) numeroExterior = res.houseNumber
+                                    if (!res.neighbourhood.isNullOrBlank()) colonia = res.neighbourhood
+                                    if (!res.postcode.isNullOrBlank()) codigoPostal = res.postcode
+                                    geocodeMessage = "✓ Dirección detectada desde el mapa"
+                                }
+                                isGeocoding = false
+                                delay(600)
+                                isReverseGeocoding = false
+                            }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(190.dp)
+                            .height(210.dp)
                             .clip(RoundedCornerShape(14.dp))
                     )
 

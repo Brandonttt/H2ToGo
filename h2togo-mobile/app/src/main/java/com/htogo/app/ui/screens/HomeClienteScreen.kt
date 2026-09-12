@@ -94,7 +94,8 @@ fun HomeClienteScreen(
                             listOf(HToGoColors.PrimaryDark, HToGoColors.Primary)
                         )
                     )
-                    .padding(horizontal = 20.dp, vertical = 20.dp)
+                    .statusBarsPadding()
+                    .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 14.dp)
             ) {
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -116,7 +117,7 @@ fun HomeClienteScreen(
                             Icon(Icons.Filled.Notifications, null, tint = Color.White)
                         }
                     }
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
                     Row(
                         Modifier
                             .clip(RoundedCornerShape(99.dp))
@@ -132,7 +133,7 @@ fun HomeClienteScreen(
                             color = Color.White, fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold)
                     }
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(12.dp))
                     Card(
                         onClick = onElegirPurificadora,
                         modifier = Modifier.fillMaxWidth(),
@@ -305,28 +306,41 @@ private fun QuickActionTile(
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(108.dp),
+        modifier = modifier.height(144.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
-            Modifier.fillMaxSize().padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
             Box(
-                Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
+                Modifier.size(34.dp).clip(RoundedCornerShape(10.dp))
                     .background(HToGoColors.PrimarySoft),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(icon, null, tint = HToGoColors.Primary,
-                    modifier = Modifier.size(20.dp))
+                    modifier = Modifier.size(18.dp))
             }
-            Column {
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-                    color = HToGoColors.TextPrimary)
-                Text(subtitle, fontSize = 12.sp, color = HToGoColors.TextSecondary)
-            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                title,
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = HToGoColors.TextPrimary,
+                lineHeight = 17.sp,
+                maxLines = 2
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                subtitle,
+                fontSize = 11.5.sp,
+                color = HToGoColors.TextSecondary,
+                lineHeight = 14.sp,
+                maxLines = 2
+            )
         }
     }
 }
