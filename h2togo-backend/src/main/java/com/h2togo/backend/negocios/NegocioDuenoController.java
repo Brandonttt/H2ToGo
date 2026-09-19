@@ -44,4 +44,18 @@ public class NegocioDuenoController {
     public ProductoResponse actualizarPrecio(@PathVariable int id, @Valid @RequestBody PrecioRequest request) {
         return negocioService.actualizarPrecio(SecurityUtils.idActual(), id, request);
     }
+
+    @PutMapping("/vehiculos/{id}")
+    public PerfilNegocioResponse.VehiculoResponse actualizarVehiculo(
+            @PathVariable int id,
+            @Valid @RequestBody com.h2togo.backend.negocios.dto.VehiculoRequest request) {
+        return negocioService.actualizarVehiculo(SecurityUtils.idActual(), id, request);
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/vehiculos")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    public PerfilNegocioResponse.VehiculoResponse registrarVehiculo(
+            @Valid @RequestBody com.h2togo.backend.negocios.dto.VehiculoRequest request) {
+        return negocioService.registrarVehiculo(SecurityUtils.idActual(), request);
+    }
 }

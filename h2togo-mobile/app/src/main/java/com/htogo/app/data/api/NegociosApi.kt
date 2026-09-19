@@ -30,4 +30,15 @@ interface NegociosApi {
         @Path("id") id: Int,
         @retrofit2.http.Body request: com.htogo.app.data.dto.PrecioRequest
     ): Response<com.htogo.app.data.dto.ProductoNegocioDto>
+
+    @retrofit2.http.PUT("negocios/me/vehiculos/{id}")
+    suspend fun actualizarVehiculo(
+        @Path("id") id: Int,
+        @retrofit2.http.Body request: com.htogo.app.data.dto.ActualizarVehiculoRequest
+    ): Response<com.htogo.app.data.dto.VehiculoDto>
+
+    @retrofit2.http.POST("negocios/me/vehiculos")
+    suspend fun crearVehiculo(
+        @retrofit2.http.Body request: com.htogo.app.data.dto.ActualizarVehiculoRequest
+    ): Response<com.htogo.app.data.dto.VehiculoDto>
 }

@@ -27,6 +27,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.htogo.app.data.local.SessionManager
+import com.htogo.app.ui.RepartidorViewModel
 import com.htogo.app.ui.components.RepartidorBottomBar
 import com.htogo.app.ui.components.RepartidorTab
 import com.htogo.app.ui.theme.HToGoColors
@@ -53,22 +57,54 @@ fun IngresosScreen(
     onBack: () -> Unit = {},
     onInicio: () -> Unit = {},
     onNegocio: () -> Unit = {},
-    onPerfil: () -> Unit = {}
+    onPerfil: () -> Unit = {},
+    repartidorViewModel: RepartidorViewModel = viewModel()
 ) {
     var tab by remember { mutableStateOf(TabIngresos.HOY) }
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager.getInstance(context) }
+    val nombreRepartidor = remember {
+        sessionManager.obtenerNombre()?.substringBefore(" ")?.ifBlank { "Repartidor" } ?: "Repartidor"
+    }
 
-    val resumen = remember {
+    val liveMisEntregas by repartidorViewModel.misEntregas.collectAsState()
+
+    LaunchedEffect(Unit) {
+        repartidorViewModel.cargarMisEntregas()
+    }
+
+    val pedidosEntregados = remember(liveMisEntregas) {
+        liveMisEntregas.filter { it.estado.equals("entregado", ignoreCase = true) }
+    }
+    val pedidosNoEntregados = remember(liveMisEntregas) {
+        liveMisEntregas.filter {
+            it.estado.equals("no_entregado", ignoreCase = true) ||
+            it.estado.equals("cancelado", ignoreCase = true)
+        }
+    }
+    val totalIngresos = remember(pedidosEntregados) {
+        pedidosEntregados.sumOf { it.totalPagar ?: 0.0 }
+    }
+    val garrafonesVendidos = remember(pedidosEntregados) {
+        pedidosEntregados.sumOf { it.garrafonesTotales ?: 0 }
+    }
+    val cantEntregadas = pedidosEntregados.size
+    val cantNoEntregadas = pedidosNoEntregados.size
+    val totalEntregas = cantEntregadas + cantNoEntregadas
+    val tasaEntrega = if (totalEntregas > 0) (cantEntregadas * 100 / totalEntregas) else 100
+
+    val resumen = remember(totalIngresos, cantEntregadas, totalEntregas, cantNoEntregadas, garrafonesVendidos, tasaEntrega) {
         ResumenIngresos(
-            totalIngresos = 1350.0,
-            entregadas = 11,
-            totalEntregas = 13,
-            noEntregadas = 2,
-            garrafonesVendidos = 28,
-            tasaEntrega = 92,
-            ingresosSemana = listOf(820.0, 1080.0, 950.0, 1290.0, 1180.0, 1750.0, 1350.0),
-            totalSemana = 8420.0,
-            entregasSemana = 67,
-            deltaSemana = 8
+            totalIngresos = totalIngresos,
+            entregadas = cantEntregadas,
+            totalEntregas = totalEntregas,
+            noEntregadas = cantNoEntregadas,
+            garrafonesVendidos = garrafonesVendidos,
+            tasaEntrega = tasaEntrega,
+            ingresosSemana = listOf(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, totalIngresos),
+            totalSemana = totalIngresos,
+            entregasSemana = cantEntregadas,
+            deltaSemana = 0
         )
     }
 
@@ -100,7 +136,7 @@ fun IngresosScreen(
                         Column(Modifier.weight(1f)) {
                             Text("¡Buenos días!", color = Color.White.copy(alpha = .7f), fontSize = 13.sp)
                             Text(
-                                "Carlos Mendoza",
+                                nombreRepartidor,
                                 color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -363,7 +399,7 @@ private fun ChartCard(r: ResumenIngresos, modifier: Modifier = Modifier) {
                         color = HToGoColors.TextPrimary
                     )
                     Text(
-                        "Lun 14 - Dom 20 oct · ${r.entregasSemana} entregas",
+                        "Semana actual · ${r.entregasSemana} entregas",
                         fontSize = 11.sp, color = HToGoColors.TextSecondary
                     )
                 }

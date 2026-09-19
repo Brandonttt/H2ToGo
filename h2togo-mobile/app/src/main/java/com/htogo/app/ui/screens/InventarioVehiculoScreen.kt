@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -150,7 +151,7 @@ fun InventarioVehiculoScreen(
                     capacidad = "20 L",
                     precio = p.precio,
                     proveedor = "Proveedor oficial",
-                    enBase = if (p.stockDisponible > 0) p.stockDisponible.toInt() else 18,
+                    enBase = p.stockDisponible.toInt(),
                     maximoBase = p.capacidadMaxima,
                     accent = if (idx % 2 == 0) HToGoColors.Primary else HToGoColors.AccentEmerald
                 )
@@ -164,34 +165,13 @@ fun InventarioVehiculoScreen(
                     capacidad = "20 L",
                     precio = 45.0,
                     proveedor = "Proveedor base",
-                    enBase = 18,
+                    enBase = 0,
                     maximoBase = 50,
                     accent = if (idx % 2 == 0) HToGoColors.Primary else HToGoColors.AccentEmerald
                 )
             }
         } else {
-            listOf(
-                MarcaBaseStock(
-                    "1", "CIE", "Ciel", "20 L", 45.0, "Proveedor 1", 18, 50, HToGoColors.Primary,
-                    lotes = listOf(
-                        Lote("L-2026-04-12", 6, "12 oct 2026", 159),
-                        Lote("L-2026-04-22", 12, "22 oct 2026", 169)
-                    )
-                ),
-                MarcaBaseStock(
-                    "2", "BON", "Bonafont", "20 L", 48.0, "Proveedor 2", 12, 50, HToGoColors.AccentEmerald,
-                    lotes = listOf(
-                        Lote("L-2026-03-30", 4, "30 may 2026", 24),
-                        Lote("L-2026-04-18", 8, "18 sep 2026", 135)
-                    )
-                ),
-                MarcaBaseStock(
-                    "3", "EPU", "Epura", "20 L", 42.0, "Proveedor 3", 8, 50, HToGoColors.AccentAmber,
-                    lotes = listOf(
-                        Lote("L-2026-04-05", 8, "20 may 2026", 14)
-                    )
-                )
-            )
+            emptyList()
         }
     }
 
@@ -219,16 +199,16 @@ fun InventarioVehiculoScreen(
                 )
             }
         } else {
-            listOf(
-                MarcaVehiculoStock("1", "CIE", "Ciel", "20 L", 45.0, 12, 8, 4, HToGoColors.Primary),
-                MarcaVehiculoStock("2", "BON", "Bonafont", "20 L", 48.0, 7, 5, 2, HToGoColors.AccentEmerald),
-                MarcaVehiculoStock("3", "EPU", "Epura", "20 L", 42.0, 3, 1, 2, HToGoColors.AccentAmber)
-            )
+            emptyList()
         }
     }
 
+    val vehiculoActual = liveMiNegocio?.vehiculoPrincipal
+    val capacidadVehiculo = vehiculoActual?.capacidadGarrafones ?: 30
     val totalBaseStock = remember(marcasBase) { marcasBase.sumOf { it.enBase } }
     val totalVehiculoStock = remember(marcasVehiculo) { marcasVehiculo.sumOf { it.cargados } }
+    val totalApartadosVehiculo = remember(marcasVehiculo) { marcasVehiculo.sumOf { it.apartados } }
+    val totalDisponiblesVehiculo = remember(marcasVehiculo) { marcasVehiculo.sumOf { it.disponibles } }
 
     Scaffold(
         containerColor = HToGoColors.Background,
@@ -282,7 +262,39 @@ fun InventarioVehiculoScreen(
                     item { ResumenBaseCard(totalGarrafones = totalBaseStock, numMarcas = marcasBase.size) }
                     item { ProductosPreciosShortcut(onProductosPrecios) }
                     item { SectionTitle("Marcas en base · ${marcasBase.size}") }
-                    items(marcasBase) { m -> MarcaBaseCard(m) }
+                    if (marcasBase.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
+                            ) {
+                                Column(
+                                    Modifier.fillMaxWidth().padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        Modifier.size(52.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Filled.Warehouse, null, tint = HToGoColors.Primary, modifier = Modifier.size(26.dp))
+                                    }
+                                    Spacer(Modifier.height(10.dp))
+                                    Text("Sin marcas registradas", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = HToGoColors.TextPrimary)
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        "Entra a 'Productos y precios' para configurar el catálogo de tu negocio.",
+                                        fontSize = 12.sp,
+                                        color = HToGoColors.TextSecondary,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        items(marcasBase) { m -> MarcaBaseCard(m) }
+                    }
                     item {
                         Button(
                             onClick = { showRegistrarEntrada = true },
@@ -325,7 +337,15 @@ fun InventarioVehiculoScreen(
                     }
                 }
                 TabInventario.EN_VEHICULO -> {
-                    item { ResumenVehiculoCard(cargados = totalVehiculoStock, numMarcas = marcasVehiculo.size) }
+                    item {
+                        ResumenVehiculoCard(
+                            cargados = totalVehiculoStock,
+                            disponibles = totalDisponiblesVehiculo,
+                            apartados = totalApartadosVehiculo,
+                            capacidad = capacidadVehiculo,
+                            numMarcas = marcasVehiculo.size
+                        )
+                    }
                     item {
                         Button(
                             onClick = { showCargarVehiculo = true },
@@ -340,11 +360,48 @@ fun InventarioVehiculoScreen(
                             Text("Cargar desde la base", fontWeight = FontWeight.SemiBold)
                         }
                     }
-                    item { SectionTitle("Carga actual · ${marcasVehiculo.size} marcas") }
-                    items(marcasVehiculo) { m -> MarcaVehiculoCard(m) }
+                    if (marcasVehiculo.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
+                            ) {
+                                Column(
+                                    Modifier.fillMaxWidth().padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        Modifier.size(52.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Filled.LocalShipping, null, tint = HToGoColors.Primary, modifier = Modifier.size(26.dp))
+                                    }
+                                    Spacer(Modifier.height(10.dp))
+                                    Text("Vehículo sin garrafones", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = HToGoColors.TextPrimary)
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        "Carga garrafones desde la base para salir a ruta y repartir pedidos.",
+                                        fontSize = 12.sp,
+                                        color = HToGoColors.TextSecondary,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        item { SectionTitle("Carga actual · ${marcasVehiculo.size} marcas") }
+                        items(marcasVehiculo) { m -> MarcaVehiculoCard(m) }
+                    }
                 }
                 TabInventario.VEHICULO -> {
-                    item { VehiculoDetalleCard(onSolicitarCambio = { showSolicitarCambio = true }) }
+                    item {
+                        VehiculoDetalleCard(
+                            vehiculo = vehiculoActual,
+                            onSolicitarCambio = { showSolicitarCambio = true }
+                        )
+                    }
                 }
             }
         }
@@ -394,7 +451,18 @@ fun InventarioVehiculoScreen(
         )
     }
     if (showSolicitarCambio) {
-        SolicitarCambioVehiculoDialog(onDismiss = { showSolicitarCambio = false })
+        SolicitarCambioVehiculoDialog(
+            vehiculo = vehiculoActual,
+            onDismiss = { showSolicitarCambio = false },
+            onGuardar = { req ->
+                repartidorViewModel.actualizarVehiculo(
+                    idVehiculo = vehiculoActual?.id,
+                    request = req,
+                    onSuccess = { showSolicitarCambio = false },
+                    onError = { showSolicitarCambio = false }
+                )
+            }
+        )
     }
 }
 
@@ -543,7 +611,13 @@ private fun ResumenBaseCard(totalGarrafones: Int = 38, capacidad: Int = 50, numM
 }
 
 @Composable
-private fun ResumenVehiculoCard(cargados: Int = 22, capacidad: Int = 25, numMarcas: Int = 3) {
+private fun ResumenVehiculoCard(
+    cargados: Int,
+    disponibles: Int,
+    apartados: Int,
+    capacidad: Int,
+    numMarcas: Int
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -571,16 +645,17 @@ private fun ResumenVehiculoCard(cargados: Int = 22, capacidad: Int = 25, numMarc
                     Column {
                         Text("En mi vehículo · hoy", color = Color.White.copy(alpha = .8f), fontSize = 12.sp)
                         Text("$cargados garrafones", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                        Text("$numMarcas marcas cargadas · $capacidad cap.", color = Color.White.copy(alpha = .85f), fontSize = 12.sp)
+                        Text("$numMarcas marcas cargadas · $capacidad cap. máx.", color = Color.White.copy(alpha = .85f), fontSize = 12.sp)
                     }
                 }
                 Spacer(Modifier.height(14.dp))
                 HorizontalDivider(color = Color.White.copy(alpha = .18f))
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    HeroStat("14", "Disponibles")
-                    HeroStat("8", "Apartados")
-                    HeroStat("$1,260", "Ingresos hoy")
+                    HeroStat("$disponibles", "Disponibles")
+                    HeroStat("$apartados", "Apartados")
+                    val libres = maxOf(0, capacidad - cargados)
+                    HeroStat("$libres", "Espacio libre")
                 }
             }
         }
@@ -786,7 +861,29 @@ private fun MarcaVehiculoCard(m: MarcaVehiculoStock) {
 }
 
 @Composable
-private fun VehiculoDetalleCard(onSolicitarCambio: () -> Unit) {
+private fun VehiculoDetalleCard(
+    vehiculo: com.htogo.app.data.dto.VehiculoDto?,
+    onSolicitarCambio: () -> Unit
+) {
+    val tipoNormalizado = (vehiculo?.tipoVehiculo ?: "motocicleta").lowercase()
+    val tipoDisplay = when (tipoNormalizado) {
+        "motocicleta" -> "Motocicleta"
+        "automovil" -> "Automóvil"
+        "camioneta" -> "Camioneta"
+        "bicicleta" -> "Bicicleta de carga"
+        else -> vehiculo?.tipoVehiculo?.replaceFirstChar { it.uppercase() } ?: "Vehículo de reparto"
+    }
+    val iconVehiculo = when (tipoNormalizado) {
+        "camioneta" -> Icons.Filled.LocalShipping
+        else -> Icons.Filled.DirectionsCar
+    }
+    val marcaDisplay = vehiculo?.marca?.takeIf { it.isNotBlank() } ?: "Italika"
+    val modeloDisplay = vehiculo?.modelo?.takeIf { it.isNotBlank() } ?: "FT150"
+    val placasDisplay = vehiculo?.placas?.takeIf { it.isNotBlank() } ?: "ABC1234"
+    val colorDisplay = vehiculo?.color?.takeIf { it.isNotBlank() } ?: "Rojo"
+    val capacidadNum = vehiculo?.capacidadGarrafones ?: 30
+    val kgTotal = capacidadNum * 20
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -801,7 +898,7 @@ private fun VehiculoDetalleCard(onSolicitarCambio: () -> Unit) {
                     .background(Brush.linearGradient(listOf(Color(0xFF1E293B), Color(0xFF475569)))),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Filled.LocalShipping, null, tint = Color.White.copy(alpha = .4f), modifier = Modifier.size(80.dp))
+                Icon(iconVehiculo, null, tint = Color.White.copy(alpha = .4f), modifier = Modifier.size(80.dp))
                 Surface(
                     shape = RoundedCornerShape(99.dp),
                     color = HToGoColors.AccentEmerald,
@@ -815,14 +912,19 @@ private fun VehiculoDetalleCard(onSolicitarCambio: () -> Unit) {
                     ) {
                         Icon(Icons.Filled.Verified, null, tint = Color.White, modifier = Modifier.size(13.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Verificado", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (vehiculo?.activo != false) "Verificado" else "Inactivo",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "Camioneta · Estaquitas",
+                        "$marcaDisplay · $modeloDisplay",
                         fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f)
                     )
@@ -842,14 +944,14 @@ private fun VehiculoDetalleCard(onSolicitarCambio: () -> Unit) {
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    VField("Tipo", "Camioneta", Modifier.weight(1f), Icons.Filled.LocalShipping)
-                    VField("Año", "2018", Modifier.weight(1f))
+                    VField("Tipo", tipoDisplay, Modifier.weight(1f), iconVehiculo)
+                    VField("Modelo", modeloDisplay, Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(10.dp))
-                VField("Placas", "PJU-432-A · CDMX", Modifier.fillMaxWidth())
+                VField("Placas", "$placasDisplay · CDMX", Modifier.fillMaxWidth())
                 Spacer(Modifier.height(10.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    VField("Color", "Blanco", Modifier.weight(1f))
+                    VField("Color", colorDisplay, Modifier.weight(1f))
                     VField("Combustible", "Gasolina", Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(14.dp))
@@ -877,11 +979,11 @@ private fun VehiculoDetalleCard(onSolicitarCambio: () -> Unit) {
                             fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            "25 garrafones",
+                            "$capacidadNum garrafones",
                             fontSize = 18.sp, color = HToGoColors.PrimaryDark, fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "de 20 L cada uno · ~500 kg total",
+                            "de 20 L cada uno · ~$kgTotal kg total",
                             fontSize = 12.sp, color = HToGoColors.TextSecondary
                         )
                     }
@@ -1380,23 +1482,37 @@ private fun SalidaManualDialog(
 }
 
 @Composable
-private fun SolicitarCambioVehiculoDialog(onDismiss: () -> Unit) {
-    var tipoNuevo by remember { mutableStateOf("Camioneta") }
-    var placas by remember { mutableStateOf("") }
+private fun SolicitarCambioVehiculoDialog(
+    vehiculo: com.htogo.app.data.dto.VehiculoDto?,
+    onDismiss: () -> Unit,
+    onGuardar: (com.htogo.app.data.dto.ActualizarVehiculoRequest) -> Unit
+) {
+    val tipoInicial = when (vehiculo?.tipoVehiculo?.lowercase()) {
+        "camioneta" -> "Camioneta"
+        "automovil" -> "Automóvil"
+        "bicicleta" -> "Bicicleta de carga"
+        else -> "Motocicleta"
+    }
+    var tipoNuevo by remember { mutableStateOf(tipoInicial) }
+    var marca by remember { mutableStateOf(vehiculo?.marca ?: "Italika") }
+    var modelo by remember { mutableStateOf(vehiculo?.modelo ?: "FT150") }
+    var placas by remember { mutableStateOf(vehiculo?.placas ?: "ABC1234") }
+    var color by remember { mutableStateOf(vehiculo?.color ?: "Rojo") }
+    var capacidad by remember { mutableStateOf((vehiculo?.capacidadGarrafones ?: 30).toString()) }
     var motivo by remember { mutableStateOf("") }
-    val tipos = listOf("Camioneta", "Pickup", "Motocicleta", "Bicicleta de carga")
+    val tipos = listOf("Motocicleta", "Camioneta", "Automóvil", "Bicicleta de carga")
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
             color = Color.White,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
         ) {
             Column(Modifier.padding(20.dp)) {
                 Text("Solicitar cambio de vehículo", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "El admin revisará tu solicitud y te avisará cuando se apruebe.",
+                    "Actualiza los datos del vehículo de tu negocio.",
                     fontSize = 13.sp, color = HToGoColors.TextSecondary
                 )
                 Spacer(Modifier.height(14.dp))
@@ -1411,15 +1527,19 @@ private fun SolicitarCambioVehiculoDialog(onDismiss: () -> Unit) {
                     Icon(Icons.Filled.SwapHoriz, null, tint = HToGoColors.Primary)
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text("Vehículo actual: Camioneta · PJU-432-A",
+                        Text(
+                            "Vehículo actual: ${vehiculo?.marca ?: "Italika"} ${vehiculo?.modelo ?: "FT150"} · ${vehiculo?.placas ?: "ABC1234"}",
                             fontSize = 13.sp, color = HToGoColors.PrimaryDark,
-                            fontWeight = FontWeight.SemiBold)
-                        Text("Capacidad 25 garrafones",
-                            fontSize = 11.sp, color = HToGoColors.TextSecondary)
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "Capacidad: ${vehiculo?.capacidadGarrafones ?: 30} garrafones",
+                            fontSize = 11.sp, color = HToGoColors.TextSecondary
+                        )
                     }
                 }
                 Spacer(Modifier.height(14.dp))
-                Text("NUEVO TIPO DE VEHÍCULO", fontSize = 11.sp, color = HToGoColors.TextSecondary,
+                Text("TIPO DE VEHÍCULO", fontSize = 11.sp, color = HToGoColors.TextSecondary,
                     fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1445,11 +1565,45 @@ private fun SolicitarCambioVehiculoDialog(onDismiss: () -> Unit) {
                         }
                     }
                 }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = marca,
+                        onValueChange = { marca = it },
+                        label = { Text("Marca") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = modelo,
+                        onValueChange = { modelo = it },
+                        label = { Text("Modelo") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = placas,
+                        onValueChange = { placas = it },
+                        label = { Text("Placas") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = color,
+                        onValueChange = { color = it },
+                        label = { Text("Color") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
-                    value = placas,
-                    onValueChange = { placas = it },
-                    label = { Text("Placas del nuevo vehículo") },
+                    value = capacidad,
+                    onValueChange = { if (it.all { ch -> ch.isDigit() }) capacidad = it },
+                    label = { Text("Capacidad máxima (garrafones)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -1457,7 +1611,7 @@ private fun SolicitarCambioVehiculoDialog(onDismiss: () -> Unit) {
                 OutlinedTextField(
                     value = motivo,
                     onValueChange = { motivo = it },
-                    label = { Text("Motivo del cambio") },
+                    label = { Text("Motivo / Notas del cambio (opcional)") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2
                 )
@@ -1469,11 +1623,29 @@ private fun SolicitarCambioVehiculoDialog(onDismiss: () -> Unit) {
                         shape = RoundedCornerShape(23.dp)
                     ) { Text("Cancelar") }
                     Button(
-                        onClick = onDismiss,
+                        onClick = {
+                            val tipoEnumStr = when (tipoNuevo) {
+                                "Motocicleta" -> "motocicleta"
+                                "Camioneta" -> "camioneta"
+                                "Automóvil" -> "automovil"
+                                "Bicicleta de carga" -> "bicicleta"
+                                else -> "motocicleta"
+                            }
+                            onGuardar(
+                                com.htogo.app.data.dto.ActualizarVehiculoRequest(
+                                    tipoVehiculo = tipoEnumStr,
+                                    marca = marca.trim(),
+                                    modelo = modelo.trim(),
+                                    color = color.trim(),
+                                    placas = placas.trim(),
+                                    capacidadGarrafones = capacidad.toIntOrNull() ?: 30
+                                )
+                            )
+                        },
                         modifier = Modifier.weight(1f).height(46.dp),
                         shape = RoundedCornerShape(23.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                    ) { Text("Enviar solicitud", fontWeight = FontWeight.SemiBold) }
+                    ) { Text("Guardar cambios", fontWeight = FontWeight.SemiBold) }
                 }
             }
         }

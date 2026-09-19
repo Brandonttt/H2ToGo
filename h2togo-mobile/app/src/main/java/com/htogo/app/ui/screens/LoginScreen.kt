@@ -47,10 +47,16 @@ fun LoginScreen(
     val isLoading = uiState is AuthUiState.Loading
     val canSubmit = correo.contains("@") && password.length >= 6 && !isLoading
 
+    LaunchedEffect(Unit) {
+        authViewModel.resetState()
+    }
+
     // Escuchar cambios en uiState para navegar si fue exitoso
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
-            onLoginSuccess((uiState as AuthUiState.Success).sesion)
+            val sesion = (uiState as AuthUiState.Success).sesion
+            authViewModel.resetState()
+            onLoginSuccess(sesion)
         }
     }
 

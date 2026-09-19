@@ -221,8 +221,9 @@ fun HToGoNavHost(
                     }
                 },
                 onLogout  = {
-                    sessionManager.cerrarSesion()
-                    navController.navigateAndClear(HToGoRoutes.LOGIN)
+                    authViewModel.logout {
+                        navController.navigateAndClear(HToGoRoutes.LOGIN)
+                    }
                 },
                 onAvisoPrivacidad = {
                     navController.navigate(HToGoRoutes.AVISO_PRIVACIDAD)
@@ -288,8 +289,9 @@ fun HToGoNavHost(
             PerfilRepartidorScreen(
                 onBack    = { navController.popBackStack() },
                 onLogout  = {
-                    sessionManager.cerrarSesion()
-                    navController.navigateAndClear(HToGoRoutes.LOGIN)
+                    authViewModel.logout {
+                        navController.navigateAndClear(HToGoRoutes.LOGIN)
+                    }
                 },
                 onInicio  = { navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
                 onNegocio = { navController.navigate(HToGoRoutes.INVENTARIO) },
@@ -301,7 +303,7 @@ fun HToGoNavHost(
 
 private fun NavHostController.navigateAndClear(route: String) {
     navigate(route) {
-        popUpTo(graph.startDestinationId) { inclusive = false }
+        popUpTo(0) { inclusive = true }
         launchSingleTop = true
     }
 }

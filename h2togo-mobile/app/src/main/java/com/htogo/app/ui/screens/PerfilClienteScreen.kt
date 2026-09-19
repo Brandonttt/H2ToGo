@@ -61,27 +61,6 @@ data class Direccion(
     val predeterminada: Boolean = false
 )
 
-private val SAMPLE_USER = UserProfile(
-    initials = "DG",
-    nombre = "Daniel González",
-    nombreCompleto = "Daniel González Pérez",
-    telefono = "+52 55 1234 5678",
-    email = "daniel.g@neuroplus.mx",
-    nacimiento = "15 de marzo, 1995"
-)
-
-private val SAMPLE_DIRECCIONES = listOf(
-    Direccion("1","Casa", Icons.Filled.Home,
-        "Insurgentes Sur 1234, Int. 4B","Del Valle, Benito Juárez, 03100",
-        "CDMX","Edificio azul, frente al parque", true),
-    Direccion("2","Oficina", Icons.Filled.Work,
-        "Av. Universidad 567, Piso 8","Narvarte, Benito Juárez, 03020",
-        "CDMX","Recepción a la izquierda", false),
-    Direccion("3","Casa de mamá", Icons.Filled.Favorite,
-        "Heriberto Frías 890","Narvarte, Benito Juárez, 03020",
-        "CDMX","Casa amarilla con portón blanco", false),
-)
-
 @Composable
 fun PerfilClienteScreen(
     onBack: () -> Unit = {},
@@ -93,9 +72,9 @@ fun PerfilClienteScreen(
 ) {
     val context = LocalContext.current
     val sessionManager = remember { SessionManager.getInstance(context) }
-    val savedName = remember { sessionManager.obtenerNombre() ?: SAMPLE_USER.nombre }
-    val savedEmail = remember { sessionManager.obtenerCorreo() ?: SAMPLE_USER.email }
-    val savedPhone = remember { sessionManager.obtenerTelefono() ?: SAMPLE_USER.telefono }
+    val savedName = remember { sessionManager.obtenerNombre()?.ifBlank { "Cliente" } ?: "Cliente" }
+    val savedEmail = remember { sessionManager.obtenerCorreo() ?: "" }
+    val savedPhone = remember { sessionManager.obtenerTelefono() ?: "No registrado" }
     
     // El DOB lo manejamos como state porque el usuario lo puede editar desde esta pantalla
     var savedDob by remember { mutableStateOf(sessionManager.obtenerFechaNacimiento() ?: "No especificada") }
@@ -114,14 +93,16 @@ fun PerfilClienteScreen(
     }
 
     val user = remember(savedName, savedEmail, savedPhone, savedDob, historial.size, initials) {
-        SAMPLE_USER.copy(
+        UserProfile(
             initials = initials,
             nombre = savedName,
             nombreCompleto = savedName,
             email = savedEmail,
             telefono = savedPhone,
             nacimiento = savedDob,
-            totalPedidos = historial.size
+            verificado = true,
+            totalPedidos = historial.size,
+            totalGastado = "$0"
         )
     }
 

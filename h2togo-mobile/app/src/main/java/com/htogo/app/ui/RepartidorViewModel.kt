@@ -30,6 +30,9 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
     private val _totalEntregas = MutableStateFlow(0)
     val totalEntregas: StateFlow<Int> = _totalEntregas.asStateFlow()
 
+    private val _misEntregas = MutableStateFlow<List<com.htogo.app.data.dto.PedidoResumenDto>>(emptyList())
+    val misEntregas: StateFlow<List<com.htogo.app.data.dto.PedidoResumenDto>> = _misEntregas.asStateFlow()
+
     // Inventario (CU-018 / CU-019)
     private val _inventarioBase = MutableStateFlow<com.htogo.app.data.dto.InventarioBaseResponse?>(null)
     val inventarioBase: StateFlow<com.htogo.app.data.dto.InventarioBaseResponse?> = _inventarioBase.asStateFlow()
@@ -85,11 +88,38 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    fun actualizarVehiculo(
+        idVehiculo: Int?,
+        request: com.htogo.app.data.dto.ActualizarVehiculoRequest,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                val resp = if (idVehiculo != null && idVehiculo > 0) {
+                    apiClient.negociosApi.actualizarVehiculo(idVehiculo, request)
+                } else {
+                    apiClient.negociosApi.crearVehiculo(request)
+                }
+                if (resp.isSuccessful) {
+                    cargarMiNegocio()
+                    onSuccess()
+                } else {
+                    onError("Error al actualizar vehículo (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError("Error de conexión: ${e.message}")
+            }
+        }
+    }
+
     fun cargarMisEntregas() {
         viewModelScope.launch {
             try {
-                val resp = apiClient.repartidorApi.obtenerMisEntregas(page = 0, size = 1)
+                val resp = apiClient.repartidorApi.obtenerMisEntregas(page = 0, size = 50)
                 if (resp.isSuccessful && resp.body() != null) {
+                    val lista = resp.body()!!.elementos
+                    _misEntregas.value = lista
                     _totalEntregas.value = resp.body()!!.totalElementos.toInt()
                 }
             } catch (e: Exception) {
@@ -247,6 +277,7 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                     val pedido = resp.body()!!
                     _pedidoEnRuta.value = pedido
                     cargarPedidosDisponibles()
+                    cargarMisEntregas()
                     onSuccess(pedido)
                 } else {
                     val err = parseError(resp.errorBody()?.string())
@@ -302,6 +333,8 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                 if (resp.isSuccessful && resp.body() != null) {
                     _pedidoEnRuta.value = null
                     cargarPedidosDisponibles()
+                    cargarMisEntregas()
+                    cargarInventarios()
                     onSuccess(resp.body()!!)
                 } else {
                     val err = parseError(resp.errorBody()?.string())

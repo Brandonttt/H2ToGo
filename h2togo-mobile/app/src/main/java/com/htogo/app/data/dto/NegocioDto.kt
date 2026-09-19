@@ -61,12 +61,36 @@ data class PerfilNegocioResponse(
     @SerializedName("abiertoAhora") val abiertoAhora: Boolean = true,
     @SerializedName("horarios") val horarios: List<HorarioNegocioDto>? = null,
     @SerializedName("productos") val productos: List<ProductoNegocioDto>? = null,
+    @SerializedName("vehiculos") val vehiculos: List<VehiculoDto>? = null,
     @SerializedName("telefono") val telefono: String? = null,
     @SerializedName("calificacionPromedio") val calificacionPromedio: Double? = null
 ) {
     val direccion: String
         get() = direccionObj?.formatDireccion() ?: "Dirección no registrada"
+
+    val vehiculoPrincipal: VehiculoDto?
+        get() = vehiculos?.firstOrNull()
 }
+
+data class VehiculoDto(
+    @SerializedName("id") val id: Int? = null,
+    @SerializedName("tipoVehiculo") val tipoVehiculo: String? = null,
+    @SerializedName("marca") val marca: String? = null,
+    @SerializedName("modelo") val modelo: String? = null,
+    @SerializedName("color") val color: String? = null,
+    @SerializedName("placas") val placas: String? = null,
+    @SerializedName("capacidadGarrafones") val capacidadGarrafones: Int? = null,
+    @SerializedName("activo") val activo: Boolean = true
+)
+
+data class ActualizarVehiculoRequest(
+    @SerializedName("tipoVehiculo") val tipoVehiculo: String? = null,
+    @SerializedName("marca") val marca: String? = null,
+    @SerializedName("modelo") val modelo: String? = null,
+    @SerializedName("color") val color: String? = null,
+    @SerializedName("placas") val placas: String? = null,
+    @SerializedName("capacidadGarrafones") val capacidadGarrafones: Int? = null
+)
 
 data class ProductoNegocioDto(
     @SerializedName("idProductoNegocio") val idProductoNegocio: Int? = null,

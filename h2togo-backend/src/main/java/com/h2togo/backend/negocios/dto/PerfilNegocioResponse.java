@@ -15,8 +15,21 @@ public record PerfilNegocioResponse(
         DireccionBase direccion,
         boolean abiertoAhora,
         List<HorarioResponse> horarios,
-        List<ProductoResponse> productos
+        List<ProductoResponse> productos,
+        List<VehiculoResponse> vehiculos
 ) {
+
+    public PerfilNegocioResponse(
+            Integer id,
+            String nombreComercial,
+            boolean activo,
+            DireccionBase direccion,
+            boolean abiertoAhora,
+            List<HorarioResponse> horarios,
+            List<ProductoResponse> productos
+    ) {
+        this(id, nombreComercial, activo, direccion, abiertoAhora, horarios, productos, List.of());
+    }
 
     /** Dirección de la base para el mini mapa (lat/lon del punto geográfico). */
     public record DireccionBase(
@@ -28,6 +41,18 @@ public record PerfilNegocioResponse(
             String referencias,
             Double lat,
             Double lon
+    ) {
+    }
+
+    public record VehiculoResponse(
+            Integer id,
+            String tipoVehiculo,
+            String marca,
+            String modelo,
+            String color,
+            String placas,
+            Integer capacidadGarrafones,
+            boolean activo
     ) {
     }
 }

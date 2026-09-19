@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CheckCircle
@@ -63,6 +65,26 @@ fun HomeRepartidorScreen(
     val liveBase by repartidorViewModel.inventarioBase.collectAsState()
     val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
     val totalEntregas by repartidorViewModel.totalEntregas.collectAsState()
+    val liveMisEntregas by repartidorViewModel.misEntregas.collectAsState()
+
+    val pedidosApartados = remember(liveMisEntregas) {
+        liveMisEntregas.filter {
+            it.estado.equals("asignado", ignoreCase = true) ||
+            it.estado.equals("en_camino", ignoreCase = true)
+        }
+    }
+    val pedidosEntregados = remember(liveMisEntregas) {
+        liveMisEntregas.filter { it.estado.equals("entregado", ignoreCase = true) }
+    }
+    val totalIngresosHoy = remember(pedidosEntregados) {
+        pedidosEntregados.sumOf { it.totalPagar ?: 0.0 }
+    }
+    val entregasHoyCount = remember(pedidosEntregados) {
+        pedidosEntregados.size
+    }
+    val enRutaCount = remember(liveMisEntregas, livePedidoEnRuta) {
+        if (livePedidoEnRuta != null) 1 else liveMisEntregas.count { it.estado.equals("en_camino", ignoreCase = true) }
+    }
 
     val nombreNegocio = liveMiNegocio?.nombreComercial ?: sessionManager.obtenerNombreNegocio() ?: "Purificadora"
     val fechaHoy = remember {
@@ -218,7 +240,7 @@ fun HomeRepartidorScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard("Entregas", "$totalEntregas", "/ $totalEntregas", Icons.Filled.CheckCircle, HToGoColors.StatusEntregado, Modifier.weight(1f))
+                StatCard("Entregas", "$entregasHoyCount", "/ ${liveMisEntregas.size}", Icons.Filled.CheckCircle, HToGoColors.StatusEntregado, Modifier.weight(1f))
                 StatCard("En tu vehículo", "${liveVehiculo?.ocupado ?: 0}", "garrafones", Icons.Filled.DirectionsCar, HToGoColors.Primary, Modifier.weight(1f))
             }
             Spacer(Modifier.height(12.dp))
@@ -227,14 +249,14 @@ fun HomeRepartidorScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatCard("En base", "${liveBase?.lotes?.sumOf { it.cantidadActual } ?: 0}", "garrafones", Icons.Filled.Warehouse, HToGoColors.AccentPurple, Modifier.weight(1f))
-                StatCard("Ingresos", "$0", "MXN", Icons.Filled.Payments, HToGoColors.StatusAsignado, Modifier.weight(1f))
+                StatCard("Ingresos", "$${totalIngresosHoy.toInt()}", "MXN", Icons.Filled.Payments, HToGoColors.StatusAsignado, Modifier.weight(1f))
             }
             Spacer(Modifier.height(12.dp))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard("En ruta", if (livePedidoEnRuta != null) "1" else "0", if (livePedidoEnRuta != null) "pedido activo" else "pedidos", Icons.Filled.Schedule, HToGoColors.PrimaryDark, Modifier.weight(1f))
+                StatCard("En ruta", "$enRutaCount", if (enRutaCount == 1) "pedido activo" else "pedidos", Icons.Filled.Schedule, HToGoColors.PrimaryDark, Modifier.weight(1f))
                 Spacer(Modifier.weight(1f))
             }
 
@@ -359,22 +381,59 @@ fun HomeRepartidorScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Pedidos apartados aceptados (3)",
+                    "Pedidos apartados aceptados (${pedidosApartados.size})",
                     style = MaterialTheme.typography.titleMedium,
                     color = HToGoColors.TextPrimary,
                     modifier = Modifier.weight(1f)
                 )
             }
             Text(
-                "Pedidos programados que ya te apartaste",
+                "Pedidos programados o asignados que te corresponden",
                 fontSize = 12.sp,
                 color = HToGoColors.TextSecondary,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
             )
-            Spacer(Modifier.height(4.dp))
-            ColaItem("HG-1290", "María L.", "Col. Nápoles", "5 garrafones", "$200", EstadoPedido.ASIGNADO, onPedidoProgramado)
-            ColaItem("HG-1292", "Roberto V.", "Col. Narvarte", "2 garrafones", "$80", EstadoPedido.ASIGNADO, onPedidoProgramado)
-            ColaItem("HG-1295", "Lucía F.", "Col. Del Valle", "4 garrafones", "$160", EstadoPedido.ASIGNADO, onPedidoProgramado)
+            Spacer(Modifier.height(8.dp))
+
+            if (pedidosApartados.isEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
+                ) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Filled.Schedule, null, tint = HToGoColors.TextTertiary, modifier = Modifier.size(36.dp))
+                        Spacer(Modifier.height(8.dp))
+                        Text("No tienes pedidos apartados", fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary, fontSize = 15.sp)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Cuando te asignes o apartes un pedido aparecerá aquí.", fontSize = 12.sp, color = HToGoColors.TextSecondary, textAlign = TextAlign.Center)
+                    }
+                }
+            } else {
+                pedidosApartados.forEach { p ->
+                    val chipEstado = when (p.estado.lowercase()) {
+                        "asignado" -> EstadoPedido.ASIGNADO
+                        "en_camino" -> EstadoPedido.EN_CAMINO
+                        "entregado" -> EstadoPedido.ENTREGADO
+                        "cancelado" -> EstadoPedido.CANCELADO
+                        else -> EstadoPedido.PENDIENTE
+                    }
+                    val formattedFecha = p.fechaCreacion?.take(10) ?: "Hoy"
+                    ColaItem(
+                        id = "${p.id}",
+                        cliente = if (p.esProgramado) "Pedido programado" else "Entrega #${p.id}",
+                        colonia = formattedFecha,
+                        cant = "${p.garrafonesTotales ?: 1} garrafones",
+                        monto = "$${p.totalPagar?.toInt() ?: 0}",
+                        estado = chipEstado,
+                        onClick = onPedidoProgramado
+                    )
+                }
+            }
         }
     }
 }
