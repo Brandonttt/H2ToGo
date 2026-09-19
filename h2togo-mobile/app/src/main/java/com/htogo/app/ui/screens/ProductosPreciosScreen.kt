@@ -60,15 +60,46 @@ private data class SolicitudPendiente(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductosPreciosScreen(
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    repartidorViewModel: com.htogo.app.ui.RepartidorViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    var productos by remember {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance(context) }
+    val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
+
+    LaunchedEffect(Unit) {
+        repartidorViewModel.cargarMiNegocio()
+    }
+
+    val nombreNegocio = liveMiNegocio?.nombreComercial ?: sessionManager.obtenerNombreNegocio() ?: "Mi negocio"
+
+    val backendProductos = liveMiNegocio?.productos
+    var productos by remember(backendProductos) {
         mutableStateOf(
-            listOf(
-                ProductoCatalogo("p1", "CIE", "Ciel", "20 L", 45, true, "Distribuidor MX", HToGoColors.Primary),
-                ProductoCatalogo("p2", "BON", "Bonafont", "20 L", 48, true, "Bonafont SA", HToGoColors.AccentEmerald),
-                ProductoCatalogo("p3", "EPU", "Epura", "20 L", 42, true, "Epura Distrib.", HToGoColors.AccentAmber)
-            )
+            if (!backendProductos.isNullOrEmpty()) {
+                backendProductos.mapIndexed { idx, p ->
+                    val code = p.marca.take(3).uppercase()
+                    val color = when (idx % 3) {
+                        0 -> HToGoColors.Primary
+                        1 -> HToGoColors.AccentEmerald
+                        else -> HToGoColors.AccentAmber
+                    }
+                    ProductoCatalogo(
+                        id = (p.idProductoNegocio ?: (idx + 1)).toString(),
+                        codigo = code,
+                        marca = p.marca,
+                        capacidad = "20 L",
+                        precio = p.precio.toInt(),
+                        activo = p.activo,
+                        proveedor = "Proveedor oficial",
+                        accent = color
+                    )
+                }
+            } else {
+                listOf(
+                    ProductoCatalogo("p1", "AGU", "Agua Purificada", "20 L", 45, true, "Proveedor oficial", HToGoColors.Primary)
+                )
+            }
         )
     }
     var pendientes by remember {
@@ -132,7 +163,7 @@ fun ProductosPreciosScreen(
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "Aguas Del Valle · CU-23",
+                        "$nombreNegocio · CU-23",
                         color = HToGoColors.PrimarySoft, fontSize = 12.sp
                     )
                 }
@@ -180,6 +211,10 @@ fun ProductosPreciosScreen(
             producto = producto,
             onDismiss = { editandoPrecio = null },
             onConfirmar = { nuevoPrecio ->
+                val idNum = producto.id.toIntOrNull()
+                if (idNum != null) {
+                    repartidorViewModel.actualizarPrecio(idNum, nuevoPrecio.toDouble())
+                }
                 productos = productos.map {
                     if (it.id == producto.id) it.copy(precio = nuevoPrecio) else it
                 }

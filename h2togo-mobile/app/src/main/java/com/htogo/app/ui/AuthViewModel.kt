@@ -54,6 +54,22 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _otpState = MutableStateFlow<OtpUiState>(OtpUiState.Idle)
     val otpState: StateFlow<OtpUiState> = _otpState.asStateFlow()
 
+    private val _purificadoras = MutableStateFlow<List<com.htogo.app.data.dto.NegocioCercanoResponse>>(emptyList())
+    val purificadoras: StateFlow<List<com.htogo.app.data.dto.NegocioCercanoResponse>> = _purificadoras.asStateFlow()
+
+    fun cargarPurificadoras() {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.negociosApi.buscarCercanos(cerca = null, limite = 50)
+                if (resp.isSuccessful && resp.body() != null) {
+                    _purificadoras.value = resp.body()!!
+                }
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+    }
+
     // Datos temporales para iniciar sesión automáticamente post-verificación OTP
     var tempCorreo: String = ""
         private set
@@ -84,6 +100,16 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                         correo = sesion.perfil.correo,
                         telefono = sesion.perfil.telefono
                     )
+                    if (sesion.rol.equals("repartidor", ignoreCase = true)) {
+                        try {
+                            val negocioResp = apiClient.negociosApi.obtenerMiNegocio()
+                            if (negocioResp.isSuccessful && negocioResp.body() != null) {
+                                sessionManager.guardarNombreNegocio(negocioResp.body()!!.nombreComercial)
+                            }
+                        } catch (e: Exception) {
+                            // ignore
+                        }
+                    }
                     _uiState.value = AuthUiState.Success(sesion)
                 } else if (response.code() == 409) {
                     _uiState.value = AuthUiState.Error("SESION_ACTIVA: Ya hay una sesión abierta en otro dispositivo.")

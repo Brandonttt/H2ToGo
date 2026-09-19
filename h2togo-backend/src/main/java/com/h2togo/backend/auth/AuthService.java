@@ -24,6 +24,8 @@ import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,16 +44,19 @@ public class AuthService {
     private final NegocioRepository negocioRepository;
     private final PasswordEncoder passwordEncoder;
     private final com.h2togo.backend.notificaciones.SmsService smsService;
+    private final NamedParameterJdbcTemplate jdbc;
     private final SecureRandom secureRandom = new SecureRandom();
 
     private final int otpLongitud;
     private final int otpVigenciaMinutos;
     private final int tokenDias;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AuthService(UsuarioRepository usuarioRepository, ClienteRepository clienteRepository,
             RepartidorRepository repartidorRepository, NegocioRepository negocioRepository,
             PasswordEncoder passwordEncoder,
             com.h2togo.backend.notificaciones.SmsService smsService,
+            NamedParameterJdbcTemplate jdbc,
             @Value("${h2togo.auth.otp-longitud}") int otpLongitud,
             @Value("${h2togo.auth.otp-vigencia-minutos}") int otpVigenciaMinutos,
             @Value("${h2togo.auth.token-dias}") int tokenDias) {
@@ -61,9 +66,21 @@ public class AuthService {
         this.negocioRepository = negocioRepository;
         this.passwordEncoder = passwordEncoder;
         this.smsService = smsService;
+        this.jdbc = jdbc;
         this.otpLongitud = otpLongitud;
         this.otpVigenciaMinutos = otpVigenciaMinutos;
         this.tokenDias = tokenDias;
+    }
+
+    public AuthService(UsuarioRepository usuarioRepository, ClienteRepository clienteRepository,
+            RepartidorRepository repartidorRepository, NegocioRepository negocioRepository,
+            PasswordEncoder passwordEncoder,
+            com.h2togo.backend.notificaciones.SmsService smsService,
+            int otpLongitud,
+            int otpVigenciaMinutos,
+            int tokenDias) {
+        this(usuarioRepository, clienteRepository, repartidorRepository, negocioRepository,
+                passwordEncoder, smsService, null, otpLongitud, otpVigenciaMinutos, tokenDias);
     }
 
     /** CU-001: alta de cuenta + OTP. Todo en una transacción (incluye el ciclo diferido dueño+negocio). */
@@ -138,6 +155,44 @@ public class AuthService {
         negocioRepository.save(negocio);
         r.setIdNegocio(negocio.getId());
         repartidorRepository.save(r);
+
+        if (jdbc != null) {
+            // Inicializar ubicación base, horarios y producto para que los clientes puedan pedirle de inmediato
+            jdbc.update("""
+                    UPDATE negocios SET
+                        calle = 'Av. Insurgentes Sur',
+                        numero_exterior = '1200',
+                        colonia = 'Del Valle',
+                        codigo_postal = '03100',
+                        referencias = 'Base registrada al dar de alta la purificadora',
+                        ubicacion_base = ST_SetSRID(ST_MakePoint(-99.165057, 19.376692), 4326)::geography
+                    WHERE id_negocio = :negId
+                    """, new MapSqlParameterSource("negId", negocio.getId()));
+
+            jdbc.update("""
+                    INSERT INTO productos_negocio (id_negocio, id_marca, precio, precio_envase, capacidad_maxima, activo)
+                    VALUES (:negId, 1, 45.00, 80.00, 50, true) ON CONFLICT DO NOTHING
+                    """, new MapSqlParameterSource("negId", negocio.getId()));
+
+            jdbc.update("""
+                    INSERT INTO horarios_negocio (id_negocio, dia_semana, hora_apertura, hora_cierre, cerrado)
+                    VALUES 
+                      (:negId, 1, '08:00', '20:00', false),
+                      (:negId, 2, '08:00', '20:00', false),
+                      (:negId, 3, '08:00', '20:00', false),
+                      (:negId, 4, '08:00', '20:00', false),
+                      (:negId, 5, '08:00', '20:00', false),
+                      (:negId, 6, '08:00', '18:00', false),
+                      (:negId, 7, NULL, NULL, true)
+                    ON CONFLICT DO NOTHING
+                    """, new MapSqlParameterSource("negId", negocio.getId()));
+
+            jdbc.update("""
+                    INSERT INTO vehiculos_negocio (id_negocio, tipo_vehiculo, marca, modelo, color, placas, capacidad_garrafones, activo)
+                    VALUES (:negId, 'motocicleta', 'Italika', 'FT150', 'Rojo', 'ABC1234', 30, true) ON CONFLICT DO NOTHING
+                    """, new MapSqlParameterSource("negId", negocio.getId()));
+        }
+
         return negocio.getId();
     }
 

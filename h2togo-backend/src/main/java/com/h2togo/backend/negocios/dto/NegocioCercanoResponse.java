@@ -6,6 +6,11 @@ public record NegocioCercanoResponse(
         String nombreComercial,
         double lat,
         double lon,
-        double distanciaM
+        double distanciaM,
+        String direccion,
+        int repartidores
 ) {
+    public NegocioCercanoResponse(Integer id, String nombreComercial, double lat, double lon, double distanciaM) {
+        this(id, nombreComercial, lat, lon, distanciaM, null, 0);
+    }
 }

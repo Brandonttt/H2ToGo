@@ -31,4 +31,10 @@ interface RepartidorApi {
 
     @PUT("repartidores/me/ubicacion")
     suspend fun reportarUbicacion(@Body ubicacion: Map<String, Double>): Response<Unit>
+
+    @GET("repartidores/me/entregas")
+    suspend fun obtenerMisEntregas(
+        @retrofit2.http.Query("page") page: Int = 0,
+        @retrofit2.http.Query("size") size: Int = 20
+    ): Response<com.htogo.app.data.dto.PagedResponseDto<com.htogo.app.data.dto.PedidoResumenDto>>
 }

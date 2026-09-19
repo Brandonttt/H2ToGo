@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 class RepartidorViewModel(application: Application) : AndroidViewModel(application) {
 
     private val apiClient = ApiClient.getInstance(application)
+    private val sessionManager = com.htogo.app.data.local.SessionManager.getInstance(application)
     private val gson = Gson()
 
     private val _pedidosDisponibles = MutableStateFlow<List<PedidoDisponibleResponse>>(emptyList())
@@ -22,6 +23,12 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _pedidoEnRuta = MutableStateFlow<PedidoResponse?>(null)
     val pedidoEnRuta: StateFlow<PedidoResponse?> = _pedidoEnRuta.asStateFlow()
+
+    private val _miNegocio = MutableStateFlow<com.htogo.app.data.dto.PerfilNegocioResponse?>(null)
+    val miNegocio: StateFlow<com.htogo.app.data.dto.PerfilNegocioResponse?> = _miNegocio.asStateFlow()
+
+    private val _totalEntregas = MutableStateFlow(0)
+    val totalEntregas: StateFlow<Int> = _totalEntregas.asStateFlow()
 
     // Inventario (CU-018 / CU-019)
     private val _inventarioBase = MutableStateFlow<com.htogo.app.data.dto.InventarioBaseResponse?>(null)
@@ -43,6 +50,52 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         cargarPedidosDisponibles()
         cargarInventarios()
         cargarMarcas()
+        cargarMiNegocio()
+        cargarMisEntregas()
+    }
+
+    fun cargarMiNegocio() {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.negociosApi.obtenerMiNegocio()
+                if (resp.isSuccessful && resp.body() != null) {
+                    _miNegocio.value = resp.body()!!
+                    sessionManager.guardarNombreNegocio(resp.body()!!.nombreComercial)
+                }
+            } catch (e: Exception) {
+                // Silencioso
+            }
+        }
+    }
+
+    fun actualizarPrecio(idProducto: Int, nuevoPrecio: Double, precioEnvase: Double = 80.0, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.negociosApi.actualizarPrecio(
+                    id = idProducto,
+                    request = com.htogo.app.data.dto.PrecioRequest(precio = nuevoPrecio, precioEnvase = precioEnvase)
+                )
+                if (resp.isSuccessful) {
+                    cargarMiNegocio()
+                    onSuccess()
+                }
+            } catch (e: Exception) {
+                // Silencioso
+            }
+        }
+    }
+
+    fun cargarMisEntregas() {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.repartidorApi.obtenerMisEntregas(page = 0, size = 1)
+                if (resp.isSuccessful && resp.body() != null) {
+                    _totalEntregas.value = resp.body()!!.totalElementos.toInt()
+                }
+            } catch (e: Exception) {
+                // Silencioso
+            }
+        }
     }
 
     fun cargarMarcas() {

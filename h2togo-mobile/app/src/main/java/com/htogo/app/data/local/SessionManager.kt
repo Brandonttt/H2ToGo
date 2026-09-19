@@ -21,6 +21,7 @@ class SessionManager(context: Context) {
         private const val KEY_USER_EMAIL = "user_email"
         private const val KEY_USER_PHONE = "user_phone"
         private const val KEY_USER_DOB = "user_dob"
+        private const val KEY_NEGOCIO_NOMBRE = "negocio_nombre"
 
         @Volatile
         private var instance: SessionManager? = null
@@ -47,6 +48,10 @@ class SessionManager(context: Context) {
         prefs.edit().putString(KEY_USER_DOB, fecha).apply()
     }
 
+    fun guardarNombreNegocio(nombre: String) {
+        prefs.edit().putString(KEY_NEGOCIO_NOMBRE, nombre).apply()
+    }
+
     fun obtenerToken(): String? = prefs.getString(KEY_TOKEN, null)
 
     fun obtenerRol(): String? = prefs.getString(KEY_ROL, null)
@@ -58,6 +63,8 @@ class SessionManager(context: Context) {
     fun obtenerTelefono(): String? = prefs.getString(KEY_USER_PHONE, null)
     
     fun obtenerFechaNacimiento(): String? = prefs.getString(KEY_USER_DOB, null)
+
+    fun obtenerNombreNegocio(): String? = prefs.getString(KEY_NEGOCIO_NOMBRE, null)
 
     fun obtenerIdUsuario(): Int = prefs.getInt(KEY_USER_ID, -1)
 

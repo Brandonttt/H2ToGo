@@ -29,13 +29,16 @@ public class NegociosPublicController {
         return negocioService.perfil(id, true);
     }
 
-    /** {@code ?cerca=lat,lon&limite=n}: negocios activos en cobertura, ordenados por distancia. */
+    /** {@code ?cerca=lat,lon&limite=n}: negocios activos en cobertura, ordenados por distancia. Si 'cerca' es nulo, lista todos los activos. */
     @GetMapping
     public List<NegocioCercanoResponse> cercanos(
-            @RequestParam String cerca,
-            @RequestParam(defaultValue = "5") int limite) {
-        double[] coords = parseCerca(cerca);
+            @RequestParam(required = false) String cerca,
+            @RequestParam(defaultValue = "50") int limite) {
         int lim = Math.max(1, Math.min(limite, 50));
+        if (cerca == null || cerca.isBlank()) {
+            return negocioService.todosActivos(lim);
+        }
+        double[] coords = parseCerca(cerca);
         return negocioService.cercanos(coords[0], coords[1], lim);
     }
 

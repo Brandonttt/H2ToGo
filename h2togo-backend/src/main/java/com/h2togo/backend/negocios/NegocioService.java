@@ -84,7 +84,9 @@ public class NegocioService {
         return jdbc.query("""
                 SELECT n.id_negocio, n.nombre_comercial,
                        ST_Y(n.ubicacion_base::geometry) AS lat, ST_X(n.ubicacion_base::geometry) AS lon,
-                       ST_Distance(n.ubicacion_base, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography) AS dist
+                       ST_Distance(n.ubicacion_base, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography) AS dist,
+                       CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', n.calle, n.numero_exterior), ''), NULLIF(n.colonia, ''), NULLIF(CONCAT('CP ', n.codigo_postal), 'CP ')) AS direccion,
+                       (SELECT COUNT(*) FROM repartidores r WHERE r.id_negocio = n.id_negocio) AS repartidores
                 FROM negocios n
                 WHERE n.activo AND n.ubicacion_base IS NOT NULL
                   AND EXISTS (SELECT 1 FROM zonas_cobertura z WHERE z.activo AND ST_Covers(z.geom, n.ubicacion_base))
@@ -92,7 +94,28 @@ public class NegocioService {
                 LIMIT :limite
                 """, params, (rs, n) -> new NegocioCercanoResponse(
                         rs.getInt("id_negocio"), rs.getString("nombre_comercial"),
-                        rs.getDouble("lat"), rs.getDouble("lon"), rs.getDouble("dist")));
+                        rs.getDouble("lat"), rs.getDouble("lon"), rs.getDouble("dist"),
+                        rs.getString("direccion"), rs.getInt("repartidores")));
+    }
+
+    @Transactional(readOnly = true)
+    public List<NegocioCercanoResponse> todosActivos(int limite) {
+        var params = new MapSqlParameterSource().addValue("limite", limite);
+        return jdbc.query("""
+                SELECT n.id_negocio, n.nombre_comercial,
+                       COALESCE(ST_Y(n.ubicacion_base::geometry), 0.0) AS lat,
+                       COALESCE(ST_X(n.ubicacion_base::geometry), 0.0) AS lon,
+                       0.0 AS dist,
+                       CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', n.calle, n.numero_exterior), ''), NULLIF(n.colonia, ''), NULLIF(CONCAT('CP ', n.codigo_postal), 'CP ')) AS direccion,
+                       (SELECT COUNT(*) FROM repartidores r WHERE r.id_negocio = n.id_negocio) AS repartidores
+                FROM negocios n
+                WHERE n.activo
+                ORDER BY n.nombre_comercial ASC
+                LIMIT :limite
+                """, params, (rs, n) -> new NegocioCercanoResponse(
+                        rs.getInt("id_negocio"), rs.getString("nombre_comercial"),
+                        rs.getDouble("lat"), rs.getDouble("lon"), rs.getDouble("dist"),
+                        rs.getString("direccion"), rs.getInt("repartidores")));
     }
 
     @Transactional(readOnly = true)

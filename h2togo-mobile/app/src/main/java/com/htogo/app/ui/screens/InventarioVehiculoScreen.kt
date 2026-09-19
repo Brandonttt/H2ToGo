@@ -109,8 +109,9 @@ fun InventarioVehiculoScreen(
     val liveBase by repartidorViewModel.inventarioBase.collectAsState()
     val liveVehiculo by repartidorViewModel.inventarioVehiculo.collectAsState()
     val marcasCatalogo by repartidorViewModel.marcas.collectAsState()
+    val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
 
-    val marcasBase = remember(liveBase, marcasCatalogo) {
+    val marcasBase = remember(liveBase, marcasCatalogo, liveMiNegocio) {
         val lotes = liveBase?.lotes
         if (!lotes.isNullOrEmpty()) {
             lotes.groupBy { it.idMarca }.map { (idMarca, items) ->
@@ -138,6 +139,20 @@ fun InventarioVehiculoScreen(
                             diasParaCaducar = 90
                         )
                     }
+                )
+            }
+        } else if (!liveMiNegocio?.productos.isNullOrEmpty()) {
+            liveMiNegocio!!.productos!!.mapIndexed { idx, p ->
+                MarcaBaseStock(
+                    id = p.idMarca.toString(),
+                    codigo = p.marca.take(3).uppercase(),
+                    nombre = p.marca,
+                    capacidad = "20 L",
+                    precio = p.precio,
+                    proveedor = "Proveedor oficial",
+                    enBase = if (p.stockDisponible > 0) p.stockDisponible.toInt() else 18,
+                    maximoBase = p.capacidadMaxima,
+                    accent = if (idx % 2 == 0) HToGoColors.Primary else HToGoColors.AccentEmerald
                 )
             }
         } else if (marcasCatalogo.isNotEmpty()) {
@@ -224,7 +239,10 @@ fun InventarioVehiculoScreen(
                     .padding(horizontal = 8.dp)
             ) {
                 TopAppBar(
-                    title = { Text("Mi negocio", color = Color.White, fontWeight = FontWeight.SemiBold) },
+                    title = {
+                        val nom = liveMiNegocio?.nombreComercial ?: ""
+                        Text(if (nom.isNotBlank()) "Mi negocio · $nom" else "Mi negocio", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = Color.White)

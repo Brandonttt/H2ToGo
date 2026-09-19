@@ -88,13 +88,25 @@ fun RegistroScreen(
     var nuevoHorarioCierre by remember { mutableStateOf("19:00") }
     var nuevoRfc by remember { mutableStateOf("") }
 
-    val purificadoras = remember {
-        listOf(
-            PurificadoraExistente("p1", "Aguas Del Valle", "Av. Cuauhtémoc 1102, Benito Juárez", 4),
-            PurificadoraExistente("p2", "HidroPlus BJ", "Eje 5 Sur 320, Narvarte", 2),
-            PurificadoraExistente("p3", "Agua Clara", "Insurgentes Sur 1456, Del Valle", 3),
-            PurificadoraExistente("p4", "Purificadora Aqua Pura", "Diagonal San Antonio 980", 5)
-        )
+    LaunchedEffect(Unit) {
+        authViewModel.cargarPurificadoras()
+    }
+    val purificadorasBackend by authViewModel.purificadoras.collectAsState()
+    val purificadoras = remember(purificadorasBackend) {
+        if (purificadorasBackend.isNotEmpty()) {
+            purificadorasBackend.map { p ->
+                PurificadoraExistente(
+                    id = p.id.toString(),
+                    nombre = p.nombreComercial,
+                    direccion = p.direccion ?: "Benito Juárez, CDMX",
+                    repartidores = p.repartidores ?: 1
+                )
+            }
+        } else {
+            listOf(
+                PurificadoraExistente("1", "Purificadora Demo", "Av. Insurgentes Sur 1234, Del Valle", 1)
+            )
+        }
     }
     val purificadorasFiltradas = purificadoras.filter {
         busquedaPurif.isBlank() || it.nombre.contains(busquedaPurif, ignoreCase = true)
@@ -306,7 +318,7 @@ fun RegistroScreen(
                             nuevoNombreNegocio
                         else null
                         val idExistente = if (rol == RolUsuario.REPARTIDOR && modoPurif == ModoPurificadora.UNIRSE) {
-                            purificadoraSeleccionada?.removePrefix("p")?.toIntOrNull() ?: 1
+                            purificadoraSeleccionada?.toIntOrNull() ?: purificadoraSeleccionada?.removePrefix("p")?.toIntOrNull() ?: 1
                         } else null
 
                         authViewModel.registrar(

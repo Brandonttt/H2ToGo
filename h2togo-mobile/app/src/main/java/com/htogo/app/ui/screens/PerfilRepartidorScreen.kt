@@ -54,19 +54,43 @@ fun PerfilRepartidorScreen(
     onLogout: () -> Unit = {},
     onInicio: () -> Unit = {},
     onNegocio: () -> Unit = {},
-    onIngresos: () -> Unit = {}
+    onIngresos: () -> Unit = {},
+    repartidorViewModel: com.htogo.app.ui.RepartidorViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    val usuario = remember {
-        PerfilUsuario(
-            nombre = "Carlos Mendoza Ramírez",
-            iniciales = "CM",
-            nombreNegocio = "Aguas Del Valle",
-            telefono = "+52 55 1234 5678",
-            correo = "carlos.mendoza@aguasdelvalle.mx",
-            totalEntregas = 1284,
-            antiguedadMeses = 8
-        )
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance(context) }
+
+    val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
+    val totalEntregas by repartidorViewModel.totalEntregas.collectAsState()
+
+    LaunchedEffect(Unit) {
+        repartidorViewModel.cargarMiNegocio()
+        repartidorViewModel.cargarMisEntregas()
     }
+
+    val realNombre = sessionManager.obtenerNombre() ?: "Repartidor"
+    val realCorreo = sessionManager.obtenerCorreo() ?: "repartidor@h2togo.mx"
+    val realTelefono = sessionManager.obtenerTelefono() ?: ""
+    val realNegocio = liveMiNegocio?.nombreComercial ?: sessionManager.obtenerNombreNegocio() ?: "Mi Purificadora"
+
+    val iniciales = remember(realNombre) {
+        val parts = realNombre.trim().split("\\s+".toRegex()).filter { it.isNotBlank() }
+        if (parts.size >= 2) {
+            "${parts[0].first().uppercase()}${parts[1].first().uppercase()}"
+        } else {
+            realNombre.take(2).uppercase().ifBlank { "R" }
+        }
+    }
+
+    val usuario = PerfilUsuario(
+        nombre = realNombre,
+        iniciales = iniciales,
+        nombreNegocio = realNegocio,
+        telefono = if (realTelefono.isNotBlank()) realTelefono else "No registrado",
+        correo = realCorreo,
+        totalEntregas = totalEntregas,
+        antiguedadMeses = 1
+    )
 
     var enLinea by remember { mutableStateOf(true) }
     var notifPush by remember { mutableStateOf(true) }
@@ -91,6 +115,7 @@ fun PerfilRepartidorScreen(
                     Modifier
                         .fillMaxWidth()
                         .background(Brush.linearGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary)))
+                        .statusBarsPadding()
                         .padding(start = 8.dp, end = 18.dp, top = 8.dp, bottom = 16.dp)
                         .padding(bottom = 56.dp)
                 ) {
@@ -135,7 +160,8 @@ fun PerfilRepartidorScreen(
                     Column {
                         InfoRow(Icons.Filled.Person, "Nombre", usuario.nombre)
                         InfoRow(Icons.Filled.Phone, "Teléfono", usuario.telefono)
-                        InfoRow(Icons.Filled.MailOutline, "Correo", usuario.correo, last = true)
+                        InfoRow(Icons.Filled.MailOutline, "Correo", usuario.correo)
+                        InfoRow(Icons.Filled.Storefront, "Purificadora", usuario.nombreNegocio, last = true)
                     }
                 }
             }

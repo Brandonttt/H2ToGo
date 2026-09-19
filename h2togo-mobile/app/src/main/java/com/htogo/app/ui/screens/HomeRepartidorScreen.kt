@@ -61,6 +61,19 @@ fun HomeRepartidorScreen(
     val livePedidoEnRuta by repartidorViewModel.pedidoEnRuta.collectAsState()
     val liveVehiculo by repartidorViewModel.inventarioVehiculo.collectAsState()
     val liveBase by repartidorViewModel.inventarioBase.collectAsState()
+    val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
+    val totalEntregas by repartidorViewModel.totalEntregas.collectAsState()
+
+    val nombreNegocio = liveMiNegocio?.nombreComercial ?: sessionManager.obtenerNombreNegocio() ?: "Purificadora"
+    val fechaHoy = remember {
+        val sdf = java.text.SimpleDateFormat("EEEE d 'de' MMMM", java.util.Locale("es", "MX"))
+        sdf.format(java.util.Date()).replaceFirstChar { it.uppercase() }
+    }
+
+    LaunchedEffect(Unit) {
+        repartidorViewModel.cargarMiNegocio()
+        repartidorViewModel.cargarMisEntregas()
+    }
 
     Scaffold(
         containerColor = HToGoColors.Background,
@@ -82,7 +95,7 @@ fun HomeRepartidorScreen(
             Box(
                 Modifier.fillMaxWidth().background(
                     Brush.verticalGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary))
-                ).padding(20.dp)
+                ).statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp)
             ) {
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -91,7 +104,7 @@ fun HomeRepartidorScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                nombre.first().toString(),
+                                nombre.firstOrNull()?.toString()?.uppercase() ?: "R",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp
@@ -114,14 +127,14 @@ fun HomeRepartidorScreen(
                                 )
                                 Spacer(Modifier.width(4.dp))
                                 Text(
-                                    "Purificadora Aqua Pura",
+                                    nombreNegocio,
                                     color = HToGoColors.PrimarySoft,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
                             Text(
-                                "Lunes 26 de abril",
+                                fechaHoy,
                                 color = HToGoColors.PrimarySoft.copy(alpha = .85f),
                                 fontSize = 12.sp
                             )
@@ -205,23 +218,23 @@ fun HomeRepartidorScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard("Entregas", "8", "/ 14", Icons.Filled.CheckCircle, HToGoColors.StatusEntregado, Modifier.weight(1f))
-                StatCard("En tu vehículo", "${liveVehiculo?.ocupado ?: 22}", "garrafones", Icons.Filled.DirectionsCar, HToGoColors.Primary, Modifier.weight(1f))
+                StatCard("Entregas", "$totalEntregas", "/ $totalEntregas", Icons.Filled.CheckCircle, HToGoColors.StatusEntregado, Modifier.weight(1f))
+                StatCard("En tu vehículo", "${liveVehiculo?.ocupado ?: 0}", "garrafones", Icons.Filled.DirectionsCar, HToGoColors.Primary, Modifier.weight(1f))
             }
             Spacer(Modifier.height(12.dp))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard("En base", "${liveBase?.lotes?.sumOf { it.cantidadActual } ?: 38}", "garrafones", Icons.Filled.Warehouse, HToGoColors.AccentPurple, Modifier.weight(1f))
-                StatCard("Ingresos", "$1,260", "MXN", Icons.Filled.Payments, HToGoColors.StatusAsignado, Modifier.weight(1f))
+                StatCard("En base", "${liveBase?.lotes?.sumOf { it.cantidadActual } ?: 0}", "garrafones", Icons.Filled.Warehouse, HToGoColors.AccentPurple, Modifier.weight(1f))
+                StatCard("Ingresos", "$0", "MXN", Icons.Filled.Payments, HToGoColors.StatusAsignado, Modifier.weight(1f))
             }
             Spacer(Modifier.height(12.dp))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard("En ruta", "4h 12m", "trabajadas", Icons.Filled.Schedule, HToGoColors.PrimaryDark, Modifier.weight(1f))
+                StatCard("En ruta", if (livePedidoEnRuta != null) "1" else "0", if (livePedidoEnRuta != null) "pedido activo" else "pedidos", Icons.Filled.Schedule, HToGoColors.PrimaryDark, Modifier.weight(1f))
                 Spacer(Modifier.weight(1f))
             }
 

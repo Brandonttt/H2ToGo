@@ -55,6 +55,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/clientes/**").hasRole("CLIENTE")
                         .requestMatchers("/api/v1/negocios/me/**").hasRole("REPARTIDOR")
+                        .requestMatchers("/api/v1/negocios", "/api/v1/negocios/**").permitAll()
                         .requestMatchers("/api/v1/inventario/**").hasRole("REPARTIDOR")
                         .requestMatchers("/api/v1/repartidores/**").hasRole("REPARTIDOR")
                         .requestMatchers("/api/v1/solicitudes/**").hasRole("REPARTIDOR")
