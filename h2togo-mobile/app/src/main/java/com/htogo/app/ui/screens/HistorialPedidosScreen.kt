@@ -187,7 +187,6 @@ private fun HistHeader(query: String, onQuery: (String) -> Unit, onBack: () -> U
                 Text("Mis pedidos",
                     Modifier.weight(1f),
                     fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                HeaderIconBtn(Icons.Filled.FilterList, onClick = {})
             }
             Spacer(Modifier.height(14.dp))
             Surface(

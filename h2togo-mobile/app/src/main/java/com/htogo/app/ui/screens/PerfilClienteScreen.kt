@@ -130,7 +130,7 @@ fun PerfilClienteScreen(
         }
     }
 
-    var notif by remember { mutableStateOf(true) }
+    var notif by remember { mutableStateOf(sessionManager.estanNotificacionesActivas()) }
 
     Scaffold(
         bottomBar = {
@@ -187,8 +187,8 @@ fun PerfilClienteScreen(
             item {
                 SettingsList {
                     SettingRowSwitch(Icons.Filled.Notifications, "Notificaciones",
-                        checked = notif, onCheck = { notif = it })
-                    SettingRow(Icons.Filled.HelpOutline, "Ayuda y soporte")
+                        checked = notif, onCheck = { notif = it; sessionManager.guardarNotificacionesActivas(it) })
+                    // SettingRow(Icons.Filled.HelpOutline, "Ayuda y soporte")
                     SettingRow(Icons.Filled.Description, "Términos y privacidad", onClick = onAvisoPrivacidad)
                 }
             }
@@ -440,15 +440,15 @@ private fun AddressCard(direccion: Direccion) {
                 }
             }
             Divider(Modifier.padding(top = 10.dp, bottom = 4.dp), color = HToGoColors.OutlineSoft)
-            Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (!direccion.predeterminada) {
                     AddrAction("Predeterminar", Icons.Outlined.StarOutline,
-                        HToGoColors.Primary, Modifier.weight(1f)) {}
+                        HToGoColors.Primary, Modifier.weight(1.35f)) {}
                 }
                 AddrAction("Editar", Icons.Filled.Edit,
-                    HToGoColors.TextSecondary, Modifier.weight(1f)) {}
+                    HToGoColors.TextSecondary, Modifier.weight(if (!direccion.predeterminada) 0.82f else 1f)) {}
                 AddrAction("Eliminar", Icons.Outlined.DeleteOutline,
-                    HToGoColors.AccentRose, Modifier.weight(1f)) {}
+                    HToGoColors.AccentRose, Modifier.weight(if (!direccion.predeterminada) 0.88f else 1f)) {}
             }
         }
     }
@@ -457,12 +457,12 @@ private fun AddressCard(direccion: Direccion) {
 @Composable
 private fun AddrAction(label: String, icon: ImageVector, color: Color,
                       modifier: Modifier, onClick: () -> Unit) {
-    Row(modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(6.dp),
+    Row(modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = color, modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(4.dp))
-        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = color)
+        Spacer(Modifier.width(3.dp))
+        Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.Medium, color = color, maxLines = 1, softWrap = false)
     }
 }
 

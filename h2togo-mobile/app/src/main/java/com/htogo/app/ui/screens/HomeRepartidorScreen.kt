@@ -15,11 +15,11 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warehouse
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.*
@@ -58,6 +58,7 @@ fun HomeRepartidorScreen(
     val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance(context) }
     val nombre = remember { sessionManager.obtenerNombre()?.substringBefore(" ")?.ifBlank { "Repartidor" } ?: "Repartidor" }
     var enLinea by remember { mutableStateOf(true) }
+    var notificacionesActivas by remember { mutableStateOf(sessionManager.estanNotificacionesActivas()) }
 
     val livePedidosDisponibles by repartidorViewModel.pedidosDisponibles.collectAsState()
     val livePedidoEnRuta by repartidorViewModel.pedidoEnRuta.collectAsState()
@@ -93,6 +94,7 @@ fun HomeRepartidorScreen(
     }
 
     LaunchedEffect(Unit) {
+        notificacionesActivas = sessionManager.estanNotificacionesActivas()
         repartidorViewModel.cargarMiNegocio()
         repartidorViewModel.cargarMisEntregas()
     }
@@ -161,33 +163,21 @@ fun HomeRepartidorScreen(
                                 fontSize = 12.sp
                             )
                         }
-                        Box(
-                            Modifier
-                                .clip(RoundedCornerShape(99.dp))
-                                .background(Color.White.copy(alpha = .18f))
-                                .clickable { onSwitchRol() }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.SwapHoriz,
-                                    null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    "Rol",
-                                    color = Color.White,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-                        Spacer(Modifier.width(4.dp))
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Filled.Notifications, null, tint = Color.White)
+                        IconButton(onClick = {
+                            val nuevoEstado = !notificacionesActivas
+                            notificacionesActivas = nuevoEstado
+                            sessionManager.guardarNotificacionesActivas(nuevoEstado)
+                            android.widget.Toast.makeText(
+                                context,
+                                if (nuevoEstado) "Notificaciones activadas" else "Notificaciones desactivadas",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }) {
+                            Icon(
+                                if (notificacionesActivas) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
+                                contentDescription = if (notificacionesActivas) "Desactivar notificaciones" else "Activar notificaciones",
+                                tint = if (notificacionesActivas) Color.White else Color.White.copy(alpha = 0.6f)
+                            )
                         }
                     }
                     Spacer(Modifier.height(20.dp))

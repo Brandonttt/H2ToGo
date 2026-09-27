@@ -12,7 +12,9 @@ import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Settings
@@ -93,7 +95,7 @@ fun PerfilRepartidorScreen(
     )
 
     var enLinea by remember { mutableStateOf(true) }
-    var notifPush by remember { mutableStateOf(true) }
+    var notifPush by remember { mutableStateOf(sessionManager.estanNotificacionesActivas()) }
     var notifEmail by remember { mutableStateOf(false) }
     var notifNovedades by remember { mutableStateOf(true) }
 
@@ -128,8 +130,21 @@ fun PerfilRepartidorScreen(
                             color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f).padding(start = 4.dp)
                         )
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Outlined.NotificationsNone, null, tint = Color.White)
+                        IconButton(onClick = {
+                            val nuevoEstado = !notifPush
+                            notifPush = nuevoEstado
+                            sessionManager.guardarNotificacionesActivas(nuevoEstado)
+                            android.widget.Toast.makeText(
+                                context,
+                                if (nuevoEstado) "Notificaciones activadas" else "Notificaciones desactivadas",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }) {
+                            Icon(
+                                if (notifPush) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
+                                contentDescription = if (notifPush) "Desactivar notificaciones" else "Activar notificaciones",
+                                tint = if (notifPush) Color.White else Color.White.copy(alpha = 0.6f)
+                            )
                         }
                         IconButton(onClick = {}) {
                             Icon(Icons.Filled.Settings, null, tint = Color.White)
@@ -176,7 +191,15 @@ fun PerfilRepartidorScreen(
                 ) {
                     Column {
                         SwitchRow(Icons.Filled.NotificationsActive, "Notificaciones push",
-                            "Nuevos pedidos y mensajes", notifPush) { notifPush = it }
+                            "Nuevos pedidos y mensajes", notifPush) {
+                            notifPush = it
+                            sessionManager.guardarNotificacionesActivas(it)
+                            android.widget.Toast.makeText(
+                                context,
+                                if (it) "Notificaciones activadas" else "Notificaciones desactivadas",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         SwitchRow(Icons.Filled.MailOutline, "Notificaciones por correo",
                             "Resúmenes y novedades", notifEmail) { notifEmail = it }
                         SwitchRow(Icons.Filled.Campaign, "Novedades",
@@ -349,7 +372,13 @@ private fun SwitchRow(
     isLast: Boolean = false,
     onChange: (Boolean) -> Unit
 ) {
-    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable { onChange(!checked) }
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Box(
             Modifier
                 .size(36.dp)

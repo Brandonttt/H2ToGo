@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
@@ -56,6 +57,7 @@ fun HomeClienteScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance(context) }
     val nombre = remember { sessionManager.obtenerNombre()?.substringBefore(" ")?.ifBlank { "Cliente" } ?: "Cliente" }
+    var notificacionesActivas by remember { mutableStateOf(sessionManager.estanNotificacionesActivas()) }
     val direccion = "Benito Juárez, CDMX"
 
     val livePurificadoras by clienteViewModel.purificadoras.collectAsState()
@@ -113,8 +115,21 @@ fun HomeClienteScreen(
                                     maxLines = 1)
                             }
                         }
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Filled.Notifications, null, tint = Color.White)
+                        IconButton(onClick = {
+                            val nuevoEstado = !notificacionesActivas
+                            notificacionesActivas = nuevoEstado
+                            sessionManager.guardarNotificacionesActivas(nuevoEstado)
+                            android.widget.Toast.makeText(
+                                context,
+                                if (nuevoEstado) "Notificaciones activadas" else "Notificaciones desactivadas",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }) {
+                            Icon(
+                                if (notificacionesActivas) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
+                                contentDescription = if (notificacionesActivas) "Desactivar notificaciones" else "Activar notificaciones",
+                                tint = if (notificacionesActivas) Color.White else Color.White.copy(alpha = 0.6f)
+                            )
                         }
                     }
                     Spacer(Modifier.height(8.dp))

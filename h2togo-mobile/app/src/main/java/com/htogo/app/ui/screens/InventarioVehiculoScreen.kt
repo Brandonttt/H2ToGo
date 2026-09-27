@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.EventAvailable
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.HourglassBottom
@@ -226,11 +225,6 @@ fun InventarioVehiculoScreen(
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = Color.White)
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Filled.HelpOutline, null, tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(

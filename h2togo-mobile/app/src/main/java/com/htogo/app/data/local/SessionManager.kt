@@ -22,6 +22,7 @@ class SessionManager(context: Context) {
         private const val KEY_USER_PHONE = "user_phone"
         private const val KEY_USER_DOB = "user_dob"
         private const val KEY_NEGOCIO_NOMBRE = "negocio_nombre"
+        private const val KEY_NOTIFICACIONES_ACTIVAS = "notificaciones_activas"
 
         @Volatile
         private var instance: SessionManager? = null
@@ -67,6 +68,12 @@ class SessionManager(context: Context) {
     fun obtenerNombreNegocio(): String? = prefs.getString(KEY_NEGOCIO_NOMBRE, null)
 
     fun obtenerIdUsuario(): Int = prefs.getInt(KEY_USER_ID, -1)
+
+    fun estanNotificacionesActivas(): Boolean = prefs.getBoolean(KEY_NOTIFICACIONES_ACTIVAS, true)
+
+    fun guardarNotificacionesActivas(activas: Boolean) {
+        prefs.edit().putBoolean(KEY_NOTIFICACIONES_ACTIVAS, activas).apply()
+    }
 
     fun estaAutenticado(): Boolean = !obtenerToken().isNullOrBlank()
 
