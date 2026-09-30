@@ -9,4 +9,12 @@ public interface SmsService {
 
     /** Envía el código de verificación al teléfono indicado. */
     void enviarCodigoVerificacion(String telefono, String codigo);
+
+    /**
+     * Valida el código con el proveedor si soporta validación externa (p. ej. Twilio Verify).
+     * Por defecto retorna false para delegar a la base de datos local.
+     */
+    default boolean verificarCodigo(String telefono, String codigo) {
+        return false;
+    }
 }

@@ -2,6 +2,8 @@
 target/
 build/
 *.class
+azure-db-build/
+.azure-build/
 
 # ---- Crashes de la JVM ----
 hs_err_pid*.log
@@ -14,6 +16,8 @@ replay_pid*.log
 application-local.yml
 application-local.yaml
 secrets.properties
+azure-db*.yaml
+test-*.json
 
 # ---- IDE ----
 .idea/

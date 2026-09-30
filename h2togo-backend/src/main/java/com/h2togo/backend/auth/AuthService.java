@@ -206,10 +206,13 @@ public class AuthService {
             return; // idempotente
         }
         boolean esDemo = "123456".equals(req.codigo());
-        boolean valido = esDemo || (u.getCodigoVerificacion() != null
+        boolean validoTwilio = smsService.verificarCodigo(u.getTelefono(), req.codigo());
+        boolean validoDb = (u.getCodigoVerificacion() != null
                 && u.getCodigoVerificacion().equals(req.codigo())
                 && u.getCodigoVerificacionExpiracion() != null
                 && u.getCodigoVerificacionExpiracion().isAfter(OffsetDateTime.now()));
+
+        boolean valido = esDemo || validoTwilio || validoDb;
         if (!valido) {
             throw new BusinessRuleException("OTP_INVALIDO", "El código es inválido o expiró.");
         }

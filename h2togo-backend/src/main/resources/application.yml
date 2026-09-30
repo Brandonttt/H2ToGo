@@ -52,6 +52,7 @@ h2togo:
     account-sid: ${TWILIO_ACCOUNT_SID:AC_AQUI_TU_SID}
     auth-token: ${TWILIO_AUTH_TOKEN:AQUI_TU_TOKEN}
     from-number: ${TWILIO_FROM_NUMBER:+1234567890}
+    verify-service-sid: ${TWILIO_VERIFY_SERVICE_SID:VAf49c305047af03c695f90bcf94e6a209}
 
 logging:
   level:

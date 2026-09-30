@@ -2,9 +2,9 @@ package com.htogo.app.data.api
 
 object ApiConstants {
     /**
-     * Túnel directo vía ADB (adb reverse tcp:8088 tcp:8088).
-     * Permite conectar tu teléfono físico por cable USB directamente a tu backend en la PC
-     * sin bloqueos de Firewall, sin depender de IPs locales ni del router Wi-Fi.
+     * Endpoint público en Microsoft Azure Container Apps (HTTPS).
+     * Funciona desde cualquier red móvil (datos celulares o Wi-Fi), sin necesidad
+     * de cable USB ni adb reverse.
      */
-    const val BASE_URL = "http://localhost:8088/api/v1/"
+    const val BASE_URL = "https://h2togo-api.orangecliff-485fd1d3.eastus.azurecontainerapps.io/api/v1/"
 }
