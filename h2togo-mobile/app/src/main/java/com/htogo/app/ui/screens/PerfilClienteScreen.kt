@@ -26,7 +26,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.htogo.app.data.dto.DireccionResponse
 import com.htogo.app.data.local.SessionManager
 import com.htogo.app.ui.ClienteViewModel
 import com.htogo.app.ui.components.AgregarDireccionDialog
@@ -108,9 +110,16 @@ fun PerfilClienteScreen(
 
     val direccionesDisponibles by clienteViewModel.direcciones.collectAsState()
     var mostrarDialogDireccion by remember { mutableStateOf(false) }
+    var direccionAEditar by remember { mutableStateOf<DireccionResponse?>(null) }
+    var direccionAEliminar by remember { mutableStateOf<DireccionResponse?>(null) }
+    var eliminandoDireccion by remember { mutableStateOf(false) }
+    var direccionPredeterminadaId by remember {
+        mutableStateOf(sessionManager.obtenerDireccionPredeterminadaId())
+    }
     var mostrarDialogFecha by remember { mutableStateOf(false) }
 
-    val direcciones = remember(direccionesDisponibles) {
+    val direcciones = remember(direccionesDisponibles, direccionPredeterminadaId) {
+        val effectiveDefaultId = direccionPredeterminadaId
         direccionesDisponibles.map { d ->
             val icon = when {
                 d.alias.contains("Casa", ignoreCase = true) -> Icons.Filled.Home
@@ -125,7 +134,7 @@ fun PerfilClienteScreen(
                 linea2 = "Col. ${d.colonia}, ${d.codigoPostal}",
                 ciudad = "CDMX",
                 referencia = d.referencias ?: "",
-                predeterminada = false
+                predeterminada = (effectiveDefaultId != null && d.id == effectiveDefaultId)
             )
         }
     }
@@ -178,7 +187,28 @@ fun PerfilClienteScreen(
                 }
             } else {
                 items(direcciones) { d ->
-                    AddressCard(direccion = d)
+                    val matchingResp = direccionesDisponibles.firstOrNull { it.id.toString() == d.id }
+                    AddressCard(
+                        direccion = d,
+                        onPredeterminar = {
+                            val idInt = d.id.toIntOrNull()
+                            if (idInt != null) {
+                                sessionManager.guardarDireccionPredeterminadaId(idInt)
+                                direccionPredeterminadaId = idInt
+                                Toast.makeText(
+                                    context,
+                                    "Dirección \"${d.nombre}\" establecida como predeterminada",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                        onEditar = {
+                            direccionAEditar = matchingResp
+                        },
+                        onEliminar = {
+                            direccionAEliminar = matchingResp
+                        }
+                    )
                 }
             }
             item { AddAddressButton { mostrarDialogDireccion = true } }
@@ -211,13 +241,93 @@ fun PerfilClienteScreen(
             }
         }
 
-        if (mostrarDialogDireccion) {
+        if (mostrarDialogDireccion || direccionAEditar != null) {
             AgregarDireccionDialog(
-                onDismiss = { mostrarDialogDireccion = false },
+                onDismiss = {
+                    mostrarDialogDireccion = false
+                    direccionAEditar = null
+                },
                 onDireccionCreada = {
                     mostrarDialogDireccion = false
+                    Toast.makeText(context, "Dirección registrada con éxito", Toast.LENGTH_SHORT).show()
                 },
-                clienteViewModel = clienteViewModel
+                onDireccionActualizada = {
+                    direccionAEditar = null
+                    Toast.makeText(context, "Dirección actualizada con éxito", Toast.LENGTH_SHORT).show()
+                },
+                clienteViewModel = clienteViewModel,
+                direccionAEditar = direccionAEditar
+            )
+        }
+
+        if (direccionAEliminar != null) {
+            val dir = direccionAEliminar!!
+            AlertDialog(
+                onDismissRequest = { if (!eliminandoDireccion) direccionAEliminar = null },
+                title = {
+                    Text("Eliminar dirección", fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
+                },
+                text = {
+                    Text(
+                        "¿Estás seguro de que deseas eliminar la dirección \"${dir.alias}\" (${dir.calle} ${dir.numeroExterior})?\nEsta acción no se puede deshacer.",
+                        color = HToGoColors.TextSecondary,
+                        fontSize = 14.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            eliminandoDireccion = true
+                            clienteViewModel.eliminarDireccion(
+                                id = dir.id,
+                                onSuccess = {
+                                    eliminandoDireccion = false
+                                    if (direccionPredeterminadaId == dir.id) {
+                                        sessionManager.limpiarDireccionPredeterminadaId()
+                                        direccionPredeterminadaId = null
+                                    }
+                                    direccionAEliminar = null
+                                    Toast.makeText(
+                                        context,
+                                        "Dirección eliminada correctamente",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                onError = { error ->
+                                    eliminandoDireccion = false
+                                    Toast.makeText(
+                                        context,
+                                        error,
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentRose),
+                        shape = RoundedCornerShape(10.dp),
+                        enabled = !eliminandoDireccion
+                    ) {
+                        if (eliminandoDireccion) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Eliminar", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { direccionAEliminar = null },
+                        enabled = !eliminandoDireccion
+                    ) {
+                        Text("Cancelar", color = HToGoColors.TextSecondary)
+                    }
+                },
+                shape = RoundedCornerShape(16.dp),
+                containerColor = Color.White
             )
         }
 
@@ -386,7 +496,12 @@ private fun DataRow(icon: ImageVector, lbl: String, value: String, onClick: () -
 private fun DividerRow() = Divider(color = HToGoColors.OutlineSoft)
 
 @Composable
-private fun AddressCard(direccion: Direccion) {
+private fun AddressCard(
+    direccion: Direccion,
+    onPredeterminar: () -> Unit = {},
+    onEditar: () -> Unit = {},
+    onEliminar: () -> Unit = {}
+) {
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = Color.White,
@@ -443,12 +558,12 @@ private fun AddressCard(direccion: Direccion) {
             Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (!direccion.predeterminada) {
                     AddrAction("Predeterminar", Icons.Outlined.StarOutline,
-                        HToGoColors.Primary, Modifier.weight(1.35f)) {}
+                        HToGoColors.Primary, Modifier.weight(1.35f), onClick = onPredeterminar)
                 }
                 AddrAction("Editar", Icons.Filled.Edit,
-                    HToGoColors.TextSecondary, Modifier.weight(if (!direccion.predeterminada) 0.82f else 1f)) {}
+                    HToGoColors.TextSecondary, Modifier.weight(if (!direccion.predeterminada) 0.82f else 1f), onClick = onEditar)
                 AddrAction("Eliminar", Icons.Outlined.DeleteOutline,
-                    HToGoColors.AccentRose, Modifier.weight(if (!direccion.predeterminada) 0.88f else 1f)) {}
+                    HToGoColors.AccentRose, Modifier.weight(if (!direccion.predeterminada) 0.88f else 1f), onClick = onEliminar)
             }
         }
     }

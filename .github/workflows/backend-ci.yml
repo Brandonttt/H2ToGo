@@ -1,0 +1,35 @@
+name: Backend CI (Validación y Pruebas)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'h2togo-backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'h2togo-backend/**'
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Compilación y Pruebas (Java 21)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Compilar y Ejecutar Pruebas (mvn verify)
+        working-directory: ./h2togo-backend
+        run: |
+          chmod +x ./mvnw || true
+          mvn -B verify

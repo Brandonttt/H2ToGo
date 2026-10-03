@@ -147,6 +147,77 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun actualizarDireccion(
+        id: Int,
+        alias: String,
+        calle: String,
+        numeroExterior: String,
+        numeroInterior: String?,
+        colonia: String,
+        codigoPostal: String,
+        referencias: String,
+        lat: Double,
+        lon: Double,
+        onSuccess: (DireccionResponse) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val req = DireccionRequest(
+                    alias = alias.trim(),
+                    calle = calle.trim(),
+                    numeroExterior = numeroExterior.trim(),
+                    numeroInterior = numeroInterior?.trim()?.ifBlank { null },
+                    colonia = colonia.trim(),
+                    codigoPostal = codigoPostal.trim(),
+                    referencias = referencias.trim(),
+                    lat = lat,
+                    lon = lon
+                )
+                val resp = apiClient.direccionesApi.actualizarDireccion(id, req)
+                if (resp.isSuccessful && resp.body() != null) {
+                    val actualizada = resp.body()!!
+                    _direcciones.value = _direcciones.value.map { if (it.id == id) actualizada else it }
+                    onSuccess(actualizada)
+                } else {
+                    val err = parseError(resp.errorBody()?.string())
+                        ?: "No se pudo actualizar la dirección (Código ${resp.code()})"
+                    onError(err)
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de conexión al actualizar dirección")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun eliminarDireccion(
+        id: Int,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val resp = apiClient.direccionesApi.eliminarDireccion(id)
+                if (resp.isSuccessful) {
+                    _direcciones.value = _direcciones.value.filter { it.id != id }
+                    onSuccess()
+                } else {
+                    val err = parseError(resp.errorBody()?.string())
+                        ?: "No se pudo eliminar la dirección (Código ${resp.code()})"
+                    onError(err)
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de conexión al eliminar dirección")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     fun buscarPurificadoras(lat: Double, lon: Double) {
         viewModelScope.launch {
             try {

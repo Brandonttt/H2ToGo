@@ -23,6 +23,7 @@ class SessionManager(context: Context) {
         private const val KEY_USER_DOB = "user_dob"
         private const val KEY_NEGOCIO_NOMBRE = "negocio_nombre"
         private const val KEY_NOTIFICACIONES_ACTIVAS = "notificaciones_activas"
+        private const val KEY_DIRECCION_PREDETERMINADA_ID = "direccion_predeterminada_id"
 
         @Volatile
         private var instance: SessionManager? = null
@@ -73,6 +74,19 @@ class SessionManager(context: Context) {
 
     fun guardarNotificacionesActivas(activas: Boolean) {
         prefs.edit().putBoolean(KEY_NOTIFICACIONES_ACTIVAS, activas).apply()
+    }
+
+    fun guardarDireccionPredeterminadaId(id: Int) {
+        prefs.edit().putInt(KEY_DIRECCION_PREDETERMINADA_ID, id).apply()
+    }
+
+    fun obtenerDireccionPredeterminadaId(): Int? {
+        val id = prefs.getInt(KEY_DIRECCION_PREDETERMINADA_ID, -1)
+        return if (id != -1) id else null
+    }
+
+    fun limpiarDireccionPredeterminadaId() {
+        prefs.edit().remove(KEY_DIRECCION_PREDETERMINADA_ID).apply()
     }
 
     fun estaAutenticado(): Boolean = !obtenerToken().isNullOrBlank()

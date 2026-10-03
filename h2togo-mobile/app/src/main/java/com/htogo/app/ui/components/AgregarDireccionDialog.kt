@@ -32,24 +32,28 @@ import kotlinx.coroutines.launch
 @Composable
 fun AgregarDireccionDialog(
     onDismiss: () -> Unit,
-    onDireccionCreada: (DireccionResponse) -> Unit,
+    onDireccionCreada: (DireccionResponse) -> Unit = {},
     clienteViewModel: ClienteViewModel,
+    direccionAEditar: DireccionResponse? = null,
+    onDireccionActualizada: (DireccionResponse) -> Unit = {},
     initialLat: Double? = null,
     initialLon: Double? = null,
     initialCalle: String? = null,
     initialColonia: String? = null
 ) {
-    // Benito Juárez por defecto o recibido
-    var lat by remember { mutableStateOf(initialLat ?: 19.376692) }
-    var lon by remember { mutableStateOf(initialLon ?: -99.165057) }
+    val isEditMode = direccionAEditar != null
 
-    var alias by remember { mutableStateOf("Casa") }
-    var calle by remember { mutableStateOf(initialCalle ?: "") }
-    var numeroExterior by remember { mutableStateOf("") }
-    var numeroInterior by remember { mutableStateOf("") }
-    var colonia by remember { mutableStateOf(initialColonia ?: "Del Valle") }
-    var codigoPostal by remember { mutableStateOf("03100") }
-    var referencias by remember { mutableStateOf("") }
+    // Benito Juárez por defecto o recibido
+    var lat by remember(direccionAEditar) { mutableStateOf(direccionAEditar?.lat ?: initialLat ?: 19.376692) }
+    var lon by remember(direccionAEditar) { mutableStateOf(direccionAEditar?.lon ?: initialLon ?: -99.165057) }
+
+    var alias by remember(direccionAEditar) { mutableStateOf(direccionAEditar?.alias ?: "Casa") }
+    var calle by remember(direccionAEditar) { mutableStateOf(direccionAEditar?.calle ?: initialCalle ?: "") }
+    var numeroExterior by remember(direccionAEditar) { mutableStateOf(direccionAEditar?.numeroExterior ?: "") }
+    var numeroInterior by remember(direccionAEditar) { mutableStateOf(direccionAEditar?.numeroInterior ?: "") }
+    var colonia by remember(direccionAEditar) { mutableStateOf(direccionAEditar?.colonia ?: initialColonia ?: "Del Valle") }
+    var codigoPostal by remember(direccionAEditar) { mutableStateOf(direccionAEditar?.codigoPostal ?: "03100") }
+    var referencias by remember(direccionAEditar) { mutableStateOf(direccionAEditar?.referencias ?: "") }
 
     var localError by remember { mutableStateOf<String?>(null) }
     var guardando by remember { mutableStateOf(false) }
@@ -57,9 +61,14 @@ fun AgregarDireccionDialog(
     var isGeocoding by remember { mutableStateOf(false) }
     var geocodeMessage by remember { mutableStateOf<String?>(null) }
     var isReverseGeocoding by remember { mutableStateOf(false) }
+    var initialGeocodingIgnored by remember { mutableStateOf(isEditMode) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(calle, numeroExterior, colonia) {
+        if (initialGeocodingIgnored) {
+            initialGeocodingIgnored = false
+            return@LaunchedEffect
+        }
         if (isReverseGeocoding) return@LaunchedEffect
         if (calle.trim().length >= 3 && numeroExterior.isNotBlank()) {
             delay(1000)
@@ -130,7 +139,7 @@ fun AgregarDireccionDialog(
                 ) {
                     Column {
                         Text(
-                            "Nueva dirección",
+                            if (isEditMode) "Editar dirección" else "Nueva dirección",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = HToGoColors.TextPrimary
@@ -433,25 +442,48 @@ fun AgregarDireccionDialog(
                             guardando = true
                             localError = null
 
-                            clienteViewModel.crearDireccion(
-                                alias = alias,
-                                calle = calle,
-                                numeroExterior = numeroExterior,
-                                numeroInterior = numeroInterior,
-                                colonia = colonia,
-                                codigoPostal = codigoPostal,
-                                referencias = referencias,
-                                lat = lat,
-                                lon = lon,
-                                onSuccess = { dir ->
-                                    guardando = false
-                                    onDireccionCreada(dir)
-                                },
-                                onError = { err ->
-                                    guardando = false
-                                    localError = err
-                                }
-                            )
+                            if (isEditMode && direccionAEditar != null) {
+                                clienteViewModel.actualizarDireccion(
+                                    id = direccionAEditar.id,
+                                    alias = alias,
+                                    calle = calle,
+                                    numeroExterior = numeroExterior,
+                                    numeroInterior = numeroInterior,
+                                    colonia = colonia,
+                                    codigoPostal = codigoPostal,
+                                    referencias = referencias,
+                                    lat = lat,
+                                    lon = lon,
+                                    onSuccess = { dir ->
+                                        guardando = false
+                                        onDireccionActualizada(dir)
+                                    },
+                                    onError = { err ->
+                                        guardando = false
+                                        localError = err
+                                    }
+                                )
+                            } else {
+                                clienteViewModel.crearDireccion(
+                                    alias = alias,
+                                    calle = calle,
+                                    numeroExterior = numeroExterior,
+                                    numeroInterior = numeroInterior,
+                                    colonia = colonia,
+                                    codigoPostal = codigoPostal,
+                                    referencias = referencias,
+                                    lat = lat,
+                                    lon = lon,
+                                    onSuccess = { dir ->
+                                        guardando = false
+                                        onDireccionCreada(dir)
+                                    },
+                                    onError = { err ->
+                                        guardando = false
+                                        localError = err
+                                    }
+                                )
+                            }
                         },
                         enabled = !guardando,
                         shape = RoundedCornerShape(12.dp),
@@ -465,7 +497,11 @@ fun AgregarDireccionDialog(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Guardar dirección", fontWeight = FontWeight.SemiBold, color = Color.White)
+                            Text(
+                                if (isEditMode) "Actualizar dirección" else "Guardar dirección",
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
                         }
                     }
                 }
