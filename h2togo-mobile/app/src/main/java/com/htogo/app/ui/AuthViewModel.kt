@@ -133,14 +133,34 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         telefono: String,
         rol: String,
         idNegocioExistente: Int? = null,
-        nombreNegocio: String? = null
+        nombreNegocio: String? = null,
+        calle: String? = null,
+        numeroExterior: String? = null,
+        colonia: String? = null,
+        codigoPostal: String? = null,
+        referencias: String? = null,
+        lat: Double? = null,
+        lon: Double? = null,
+        horarioApertura: String? = null,
+        horarioCierre: String? = null
     ) {
         viewModelScope.launch {
             _registroState.value = RegistroUiState.Loading
             try {
                 val negocioReq = when {
                     idNegocioExistente != null -> RegistroNegocioRequest(idExistente = idNegocioExistente)
-                    !nombreNegocio.isNullOrBlank() -> RegistroNegocioRequest(nombreComercial = nombreNegocio.trim())
+                    !nombreNegocio.isNullOrBlank() -> RegistroNegocioRequest(
+                        nombreComercial = nombreNegocio.trim(),
+                        calle = calle?.trim(),
+                        numeroExterior = numeroExterior?.trim(),
+                        colonia = colonia?.trim(),
+                        codigoPostal = codigoPostal?.trim(),
+                        referencias = referencias?.trim(),
+                        lat = lat,
+                        lon = lon,
+                        horarioApertura = horarioApertura?.trim(),
+                        horarioCierre = horarioCierre?.trim()
+                    )
                     else -> null
                 }
                 val request = RegistroRequest(

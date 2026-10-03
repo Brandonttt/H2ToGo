@@ -32,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Registro, verificación por OTP, login con sesión única y logout (CU-001/002/003).
- * Reglas: RN-015 (sin duplicados), RN-017 (BCrypt), RN-002 (OTP), RN-018 (sesión única),
+ * Reglas: RN-015 (sin duplicados), RN-017 (Argon2id), RN-002 (OTP), RN-018 (sesión única),
  * RN-024 (dueño de negocio nuevo). Decisiones de detalle en §10 #15–#17.
  */
 @Service
@@ -104,7 +104,7 @@ public class AuthService {
         u.setApellidos(req.apellidos());
         u.setCorreo(req.correo());
         u.setTelefono(req.telefono());
-        u.setPasswordHash(passwordEncoder.encode(req.password())); // RN-017 (BCrypt)
+        u.setPasswordHash(passwordEncoder.encode(req.password())); // RN-017 (Argon2id)
         u.setRol(req.rol());
         u.setTelefonoVerificado(false);
         u.setCuentaActiva(true);
@@ -157,40 +157,66 @@ public class AuthService {
         repartidorRepository.save(r);
 
         if (jdbc != null) {
-            // Inicializar ubicación base, horarios y producto para que los clientes puedan pedirle de inmediato
+            String calle = (n.calle() != null && !n.calle().isBlank()) ? n.calle() : "Av. Insurgentes Sur";
+            String numExt = (n.numeroExterior() != null && !n.numeroExterior().isBlank()) ? n.numeroExterior() : "1200";
+            String colonia = (n.colonia() != null && !n.colonia().isBlank()) ? n.colonia() : "Del Valle";
+            String cp = (n.codigoPostal() != null && !n.codigoPostal().isBlank()) ? n.codigoPostal() : "03100";
+            String refs = (n.referencias() != null && !n.referencias().isBlank()) ? n.referencias() : "Base registrada al dar de alta la purificadora";
+            double lat = (n.lat() != null && n.lat() != 0.0) ? n.lat() : 19.376692;
+            double lon = (n.lon() != null && n.lon() != 0.0) ? n.lon() : -99.165057;
+
+            String horaAp = (n.horarioApertura() != null && !n.horarioApertura().isBlank()) ? n.horarioApertura() : "08:00";
+            String horaCi = (n.horarioCierre() != null && !n.horarioCierre().isBlank()) ? n.horarioCierre() : "20:00";
+
+            MapSqlParameterSource params = new MapSqlParameterSource()
+                    .addValue("negId", negocio.getId())
+                    .addValue("calle", calle)
+                    .addValue("numExt", numExt)
+                    .addValue("colonia", colonia)
+                    .addValue("cp", cp)
+                    .addValue("refs", refs)
+                    .addValue("lat", lat)
+                    .addValue("lon", lon)
+                    .addValue("horaAp", horaAp)
+                    .addValue("horaCi", horaCi);
+
             jdbc.update("""
                     UPDATE negocios SET
-                        calle = 'Av. Insurgentes Sur',
-                        numero_exterior = '1200',
-                        colonia = 'Del Valle',
-                        codigo_postal = '03100',
-                        referencias = 'Base registrada al dar de alta la purificadora',
-                        ubicacion_base = ST_SetSRID(ST_MakePoint(-99.165057, 19.376692), 4326)::geography
+                        calle = :calle,
+                        numero_exterior = :numExt,
+                        colonia = :colonia,
+                        codigo_postal = :cp,
+                        referencias = :refs,
+                        ubicacion_base = ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
                     WHERE id_negocio = :negId
-                    """, new MapSqlParameterSource("negId", negocio.getId()));
+                    """, params);
 
             jdbc.update("""
                     INSERT INTO productos_negocio (id_negocio, id_marca, precio, precio_envase, capacidad_maxima, activo)
-                    VALUES (:negId, 1, 45.00, 80.00, 50, true) ON CONFLICT DO NOTHING
-                    """, new MapSqlParameterSource("negId", negocio.getId()));
+                    VALUES 
+                      (:negId, 1, 45.00, 80.00, 50, true),
+                      (:negId, 2, 48.00, 85.00, 40, true),
+                      (:negId, 3, 42.00, 75.00, 30, true)
+                    ON CONFLICT DO NOTHING
+                    """, params);
 
             jdbc.update("""
                     INSERT INTO horarios_negocio (id_negocio, dia_semana, hora_apertura, hora_cierre, cerrado)
                     VALUES 
-                      (:negId, 1, '08:00', '20:00', false),
-                      (:negId, 2, '08:00', '20:00', false),
-                      (:negId, 3, '08:00', '20:00', false),
-                      (:negId, 4, '08:00', '20:00', false),
-                      (:negId, 5, '08:00', '20:00', false),
-                      (:negId, 6, '08:00', '18:00', false),
+                      (:negId, 1, :horaAp, :horaCi, false),
+                      (:negId, 2, :horaAp, :horaCi, false),
+                      (:negId, 3, :horaAp, :horaCi, false),
+                      (:negId, 4, :horaAp, :horaCi, false),
+                      (:negId, 5, :horaAp, :horaCi, false),
+                      (:negId, 6, :horaAp, '18:00', false),
                       (:negId, 7, NULL, NULL, true)
                     ON CONFLICT DO NOTHING
-                    """, new MapSqlParameterSource("negId", negocio.getId()));
+                    """, params);
 
             jdbc.update("""
                     INSERT INTO vehiculos_negocio (id_negocio, tipo_vehiculo, marca, modelo, color, placas, capacidad_garrafones, activo)
                     VALUES (:negId, 'motocicleta', 'Italika', 'FT150', 'Rojo', 'ABC1234', 30, true) ON CONFLICT DO NOTHING
-                    """, new MapSqlParameterSource("negId", negocio.getId()));
+                    """, params);
         }
 
         return negocio.getId();

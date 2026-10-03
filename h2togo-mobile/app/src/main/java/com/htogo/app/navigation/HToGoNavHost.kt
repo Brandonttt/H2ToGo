@@ -27,13 +27,17 @@ import com.htogo.app.ui.screens.SolicitudPedidoProgramadoScreen
 import com.htogo.app.ui.screens.SplashOnboardingScreen
 import com.htogo.app.ui.screens.VerificacionTelefonoScreen
 
+import android.widget.Toast
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import com.htogo.app.data.api.ApiClient
 import com.htogo.app.data.local.SessionManager
+import kotlinx.coroutines.delay
 
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.htogo.app.ui.AuthViewModel
+import com.htogo.app.ui.ClienteViewModel
 
 @Composable
 fun HToGoNavHost(
@@ -41,6 +45,35 @@ fun HToGoNavHost(
     startDestination: String = HToGoRoutes.SPLASH
 ) {
     val authViewModel: AuthViewModel = viewModel()
+    val clienteViewModel: ClienteViewModel = viewModel()
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager.getInstance(context) }
+    val apiClient = remember { ApiClient.getInstance(context) }
+
+    // Escucha global de expulsión por sesión duplicada o expirada (RN-018):
+    // Limpia los datos de sesión y redirige inmediatamente a la pantalla de bienvenida.
+    LaunchedEffect(Unit) {
+        SessionManager.sesionExpiradaFlow.collect { motivo ->
+            Toast.makeText(context, motivo, Toast.LENGTH_LONG).show()
+            navController.navigateAndClear(HToGoRoutes.SPLASH)
+        }
+    }
+
+    // Heartbeat periódico (cada 8 segundos):
+    // Si se inició sesión en otro dispositivo, el backend devuelve 401 y AuthInterceptor
+    // activa el flujo de expulsión inmediata sin necesidad de que el usuario pulse la pantalla.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(8_000)
+            if (sessionManager.estaAutenticado()) {
+                try {
+                    apiClient.authApi.verificarSesion()
+                } catch (_: Exception) {
+                    // El error 401 es procesado por AuthInterceptor
+                }
+            }
+        }
+    }
 
     NavHost(navController = navController, startDestination = startDestination) {
 
@@ -133,19 +166,22 @@ fun HToGoNavHost(
                     }
                 },
                 onAbrirPurificadora  = { navController.navigate(HToGoRoutes.PERFIL_PURIFICADORA) },
-                onSwitchRol          = { navController.navigate(HToGoRoutes.HOME_REPARTIDOR) }
+                onSwitchRol          = { navController.navigate(HToGoRoutes.HOME_REPARTIDOR) },
+                clienteViewModel     = clienteViewModel
             )
         }
         composable(HToGoRoutes.BUSCAR_PURIFICADORAS) {
             BuscarPurificadorasScreen(
                 onBack              = { navController.popBackStack() },
-                onAbrirPurificadora = { navController.navigate(HToGoRoutes.PERFIL_PURIFICADORA) }
+                onAbrirPurificadora = { navController.navigate(HToGoRoutes.PERFIL_PURIFICADORA) },
+                clienteViewModel    = clienteViewModel
             )
         }
         composable(HToGoRoutes.PERFIL_PURIFICADORA) {
             PerfilPurificadoraScreen(
-                onBack  = { navController.popBackStack() },
-                onPedir = { navController.navigate(HToGoRoutes.NUEVO_PEDIDO) }
+                onBack           = { navController.popBackStack() },
+                onPedir          = { navController.navigate(HToGoRoutes.NUEVO_PEDIDO) },
+                clienteViewModel = clienteViewModel
             )
         }
         composable(HToGoRoutes.NUEVO_PEDIDO_ABIERTO) {
@@ -160,12 +196,13 @@ fun HToGoNavHost(
         }
         composable(HToGoRoutes.NUEVO_PEDIDO) {
             NuevoPedidoScreen(
-                onBack    = { navController.popBackStack() },
-                onConfirm = {
+                onBack           = { navController.popBackStack() },
+                onConfirm        = {
                     navController.navigate(HToGoRoutes.ASIGNANDO) {
                         popUpTo(HToGoRoutes.HOME_CLIENTE)
                     }
-                }
+                },
+                clienteViewModel = clienteViewModel
             )
         }
         composable(HToGoRoutes.ASIGNANDO) {
@@ -199,7 +236,8 @@ fun HToGoNavHost(
                 },
                 onPedidoTap         = { _ -> navController.navigate(HToGoRoutes.SEGUIMIENTO) },
                 onAbrirPurificadora = { navController.navigate(HToGoRoutes.PERFIL_PURIFICADORA) },
-                onRepetir           = { navController.navigate(HToGoRoutes.NUEVO_PEDIDO) }
+                onRepetir           = { navController.navigate(HToGoRoutes.NUEVO_PEDIDO) },
+                clienteViewModel    = clienteViewModel
             )
         }
         composable(HToGoRoutes.PERFIL_CLIENTE) {

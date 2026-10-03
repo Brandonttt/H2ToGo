@@ -20,6 +20,17 @@ class AuthInterceptor(private val sessionManager: SessionManager) : Interceptor 
             requestBuilder.addHeader("Authorization", "Bearer $token")
         }
 
-        return chain.proceed(requestBuilder.build())
+        val response = chain.proceed(requestBuilder.build())
+
+        // Si el backend responde 401 Unauthorized y la app contaba con token activo
+        if (response.code == 401 && !token.isNullOrBlank()) {
+            val path = originalRequest.url.encodedPath
+            // Evitar interceptar el login o registro (donde 401 son credenciales incorrectas)
+            if (!path.contains("/auth/login") && !path.contains("/auth/registro")) {
+                sessionManager.notificarSesionExpirada()
+            }
+        }
+
+        return response
     }
 }

@@ -39,6 +39,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.CircularProgressIndicator
+import com.htogo.app.ui.components.OsmMapView
 import com.htogo.app.ui.components.HToGoButton
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
@@ -61,34 +64,50 @@ fun PerfilPurificadoraScreen(
     horario: String = "Lun–Sáb · 8:00 AM – 7:00 PM",
     diasCerrados: String = "Cerrado los domingos",
     abiertoAhora: Boolean = true,
-    tiempoEnPlataforma: String = "8 meses con HToGo",
+    tiempoEnPlataforma: String = "Purificadora verificada HToGo",
     onBack: () -> Unit = {},
     onPedir: () -> Unit = {},
     clienteViewModel: ClienteViewModel = viewModel()
 ) {
     val perfil by clienteViewModel.perfilPurificadora.collectAsState()
+    val isLoading by clienteViewModel.isLoading.collectAsState()
 
     val displayNombre = perfil?.nombreComercial ?: clienteViewModel.purificadoraSeleccionadaNombre ?: nombre
+    val displayDistancia = clienteViewModel.purificadoraSeleccionadaDistancia ?: distancia
     val displayDireccion = perfil?.direccion ?: direccion
-    val displayHorario = horario
-    val displayAbierto = abiertoAhora
+    val displayAbierto = perfil?.abiertoAhora ?: abiertoAhora
+
+    val displayHorario = remember(perfil) {
+        val hList = perfil?.horarios
+        if (!hList.isNullOrEmpty()) {
+            val abiertos = hList.filter { !it.cerrado }
+            if (abiertos.isNotEmpty()) {
+                val primero = abiertos.first()
+                "Horario: ${primero.horaApertura?.take(5) ?: "08:00"} – ${primero.horaCierre?.take(5) ?: "19:00"}"
+            } else {
+                "Cerrado temporalmente"
+            }
+        } else {
+            horario
+        }
+    }
 
     val productos = remember(perfil) {
         if (!perfil?.productos.isNullOrEmpty()) {
             perfil!!.productos!!.map { prod ->
+                val precioInt = prod.precioLiquido.toInt()
+                val stock = if (prod.stockDisponible > 0) StockEstado.DISPONIBLE
+                            else if (prod.stockDisponible == 0L) StockEstado.POCOS
+                            else StockEstado.AGOTADO
                 Producto(
                     marca = prod.nombreMarca,
                     capacidad = "20 L",
-                    precio = "$${prod.precioLiquido.toInt()} c/u",
-                    stock = StockEstado.DISPONIBLE
+                    precio = "$$precioInt c/u",
+                    stock = stock
                 )
             }
         } else {
-            listOf(
-                Producto("Ciel", "20 L", "$45 c/u", StockEstado.DISPONIBLE),
-                Producto("Bonafont", "20 L", "$48 c/u", StockEstado.DISPONIBLE),
-                Producto("Epura", "20 L", "$42 c/u", StockEstado.POCOS),
-            )
+            emptyList()
         }
     }
 
@@ -111,14 +130,60 @@ fun PerfilPurificadoraScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            HeaderPurificadora(displayNombre, distancia, displayAbierto, onBack)
-            MiniMapa()
-            Spacer(Modifier.height(20.dp))
-            DatosNegocio(displayDireccion, displayHorario, diasCerrados, displayAbierto, tiempoEnPlataforma)
-            Spacer(Modifier.height(20.dp))
-            SectionTitle("Productos disponibles")
-            productos.forEach { ProductoRow(it) }
-            Spacer(Modifier.height(96.dp))
+            HeaderPurificadora(displayNombre, displayDistancia, displayAbierto, onBack)
+
+            if (isLoading && perfil == null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = HToGoColors.Primary)
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "Cargando información de la purificadora...",
+                            fontSize = 13.sp,
+                            color = HToGoColors.TextSecondary
+                        )
+                    }
+                }
+            } else {
+                MiniMapa(
+                    lat = perfil?.direccionObj?.lat,
+                    lon = perfil?.direccionObj?.lon
+                )
+                Spacer(Modifier.height(20.dp))
+                DatosNegocio(displayDireccion, displayHorario, diasCerrados, displayAbierto, tiempoEnPlataforma)
+                Spacer(Modifier.height(20.dp))
+                SectionTitle("Productos disponibles")
+                if (productos.isNotEmpty()) {
+                    productos.forEach { ProductoRow(it) }
+                } else {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Filled.WaterDrop, null, tint = HToGoColors.Primary, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                "Garrafón de agua purificada 20 L disponible al ordenar.",
+                                fontSize = 13.sp,
+                                color = HToGoColors.TextSecondary
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(96.dp))
+            }
         }
     }
 }
@@ -135,7 +200,8 @@ private fun HeaderPurificadora(
                     listOf(HToGoColors.PrimaryDark, HToGoColors.Primary)
                 )
             )
-            .padding(top = 20.dp, bottom = 22.dp, start = 8.dp, end = 20.dp)
+            .statusBarsPadding()
+            .padding(top = 10.dp, bottom = 20.dp, start = 8.dp, end = 20.dp)
     ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -186,29 +252,42 @@ private fun EstadoNegocioBadge(abierto: Boolean) {
 }
 
 @Composable
-private fun MiniMapa() {
+private fun MiniMapa(lat: Double? = null, lon: Double? = null) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .padding(top = 16.dp)
-            .height(140.dp),
+            .height(150.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF3EE)),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    Modifier.size(40.dp).clip(CircleShape).background(HToGoColors.Primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Storefront, null, tint = Color.White,
-                        modifier = Modifier.size(22.dp))
+        if (lat != null && lon != null && lat != 0.0 && lon != 0.0) {
+            OsmMapView(
+                latitude = lat,
+                longitude = lon,
+                zoom = 16,
+                isInteractive = false,
+                isDraggablePin = false,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+            )
+        } else {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        Modifier.size(40.dp).clip(CircleShape).background(HToGoColors.Primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Storefront, null, tint = Color.White,
+                            modifier = Modifier.size(22.dp))
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text("Base de la purificadora",
+                        fontSize = 11.sp, color = HToGoColors.TextSecondary)
                 }
-                Spacer(Modifier.height(6.dp))
-                Text("Base de la purificadora",
-                    fontSize = 11.sp, color = HToGoColors.TextSecondary)
             }
         }
     }

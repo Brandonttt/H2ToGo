@@ -54,6 +54,9 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
     // Purificadora preseleccionada para CU-022 -> CU-004
     var purificadoraSeleccionadaId: Int? = null
     var purificadoraSeleccionadaNombre: String? = null
+    var purificadoraSeleccionadaDistancia: String? = null
+    var purificadoraSeleccionadaRating: Float? = null
+    var purificadoraSeleccionadaResenas: Int? = null
 
     init {
         cargarMarcas()
@@ -94,7 +97,12 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val resp = apiClient.direccionesApi.listarDirecciones()
                 if (resp.isSuccessful && resp.body() != null) {
-                    _direcciones.value = resp.body()!!
+                    val lista = resp.body()!!
+                    _direcciones.value = lista
+                    val defaultDir = lista.firstOrNull()
+                    if (defaultDir != null) {
+                        buscarPurificadoras(defaultDir.lat, defaultDir.lon)
+                    }
                 }
             } catch (e: Exception) {
                 // Error de red
@@ -233,6 +241,7 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
 
     fun cargarPerfilPurificadora(id: Int) {
         viewModelScope.launch {
+            _perfilPurificadora.value = null
             _isLoading.value = true
             try {
                 val resp = apiClient.negociosApi.obtenerPerfilNegocio(id)

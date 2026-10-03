@@ -38,7 +38,16 @@ data class RegistroRequest(
 
 data class RegistroNegocioRequest(
     @SerializedName("idExistente") val idExistente: Int? = null,
-    @SerializedName("nombreComercial") val nombreComercial: String? = null
+    @SerializedName("nombreComercial") val nombreComercial: String? = null,
+    @SerializedName("calle") val calle: String? = null,
+    @SerializedName("numeroExterior") val numeroExterior: String? = null,
+    @SerializedName("colonia") val colonia: String? = null,
+    @SerializedName("codigoPostal") val codigoPostal: String? = null,
+    @SerializedName("referencias") val referencias: String? = null,
+    @SerializedName("lat") val lat: Double? = null,
+    @SerializedName("lon") val lon: Double? = null,
+    @SerializedName("horarioApertura") val horarioApertura: String? = null,
+    @SerializedName("horarioCierre") val horarioCierre: String? = null
 )
 
 data class RegistroResponse(

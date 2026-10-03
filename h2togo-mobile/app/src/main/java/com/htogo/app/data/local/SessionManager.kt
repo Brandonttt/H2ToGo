@@ -2,6 +2,9 @@ package com.htogo.app.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 /**
  * Gestor de sesión local del usuario.
@@ -24,6 +27,12 @@ class SessionManager(context: Context) {
         private const val KEY_NEGOCIO_NOMBRE = "negocio_nombre"
         private const val KEY_NOTIFICACIONES_ACTIVAS = "notificaciones_activas"
         private const val KEY_DIRECCION_PREDETERMINADA_ID = "direccion_predeterminada_id"
+
+        private val _sesionExpiradaFlow = MutableSharedFlow<String>(
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
+        val sesionExpiradaFlow = _sesionExpiradaFlow.asSharedFlow()
 
         @Volatile
         private var instance: SessionManager? = null
@@ -93,5 +102,10 @@ class SessionManager(context: Context) {
 
     fun cerrarSesion() {
         prefs.edit().clear().apply()
+    }
+
+    fun notificarSesionExpirada(motivo: String = "Tu sesión ha expirado porque se inició sesión en otro dispositivo.") {
+        cerrarSesion()
+        _sesionExpiradaFlow.tryEmit(motivo)
     }
 }

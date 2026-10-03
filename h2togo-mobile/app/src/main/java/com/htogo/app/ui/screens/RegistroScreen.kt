@@ -38,6 +38,10 @@ import androidx.compose.ui.unit.sp
 import com.htogo.app.ui.components.HToGoButton
 import com.htogo.app.ui.components.HToGoTextButton
 import com.htogo.app.ui.components.HToGoTextField
+import com.htogo.app.ui.components.OsmMapView
+import com.htogo.app.data.api.GeocodingHelper
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -84,6 +88,8 @@ fun RegistroScreen(
     var nuevaDireccion by remember { mutableStateOf("") }
     var nuevaColonia by remember { mutableStateOf("") }
     var nuevoCp by remember { mutableStateOf("") }
+    var nuevoLat by remember { mutableStateOf(19.376692) }
+    var nuevoLon by remember { mutableStateOf(-99.165057) }
     var nuevoHorarioApertura by remember { mutableStateOf("08:00") }
     var nuevoHorarioCierre by remember { mutableStateOf("19:00") }
     var nuevoRfc by remember { mutableStateOf("") }
@@ -237,6 +243,10 @@ fun RegistroScreen(
                     onColoniaChange = { nuevaColonia = it },
                     cp = nuevoCp,
                     onCpChange = { nuevoCp = it.filter(Char::isDigit).take(5) },
+                    lat = nuevoLat,
+                    onLatChange = { nuevoLat = it },
+                    lon = nuevoLon,
+                    onLonChange = { nuevoLon = it },
                     horarioApertura = nuevoHorarioApertura,
                     onHorarioAperturaChange = { nuevoHorarioApertura = it },
                     horarioCierre = nuevoHorarioCierre,
@@ -321,6 +331,7 @@ fun RegistroScreen(
                             purificadoraSeleccionada?.toIntOrNull() ?: purificadoraSeleccionada?.removePrefix("p")?.toIntOrNull() ?: 1
                         } else null
 
+                        val esCrearNegocio = rol == RolUsuario.REPARTIDOR && modoPurif == ModoPurificadora.CREAR
                         authViewModel.registrar(
                             nombre = nombre.trim(),
                             apellidos = apellidos.trim(),
@@ -329,7 +340,16 @@ fun RegistroScreen(
                             telefono = telefono.trim(),
                             rol = rolStr,
                             idNegocioExistente = idExistente,
-                            nombreNegocio = negocioNombre
+                            nombreNegocio = negocioNombre,
+                            calle = if (esCrearNegocio) nuevaDireccion else null,
+                            numeroExterior = null,
+                            colonia = if (esCrearNegocio) nuevaColonia else null,
+                            codigoPostal = if (esCrearNegocio) nuevoCp else null,
+                            referencias = null,
+                            lat = if (esCrearNegocio) nuevoLat else null,
+                            lon = if (esCrearNegocio) nuevoLon else null,
+                            horarioApertura = if (esCrearNegocio) nuevoHorarioApertura else null,
+                            horarioCierre = if (esCrearNegocio) nuevoHorarioCierre else null
                         )
                     },
                     enabled = canSubmit
@@ -463,6 +483,10 @@ private fun BloquePurificadora(
     onColoniaChange: (String) -> Unit,
     cp: String,
     onCpChange: (String) -> Unit,
+    lat: Double = 19.376692,
+    onLatChange: (Double) -> Unit = {},
+    lon: Double = -99.165057,
+    onLonChange: (Double) -> Unit = {},
     horarioApertura: String,
     onHorarioAperturaChange: (String) -> Unit,
     horarioCierre: String,
@@ -470,6 +494,33 @@ private fun BloquePurificadora(
     rfc: String,
     onRfcChange: (String) -> Unit
 ) {
+    var isGeocoding by remember { mutableStateOf(false) }
+    var geocodeMessage by remember { mutableStateOf<String?>(null) }
+    var isReverseGeocoding by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(direccion, colonia) {
+        if (isReverseGeocoding) return@LaunchedEffect
+        if (direccion.trim().length >= 4) {
+            delay(1000)
+            isGeocoding = true
+            geocodeMessage = "Buscando en mapa..."
+            val query = "${direccion.trim()}, ${colonia.trim()}"
+            val result = GeocodingHelper.buscarCoordenadas(query)
+            if (result != null) {
+                onLatChange(result.lat)
+                onLonChange(result.lon)
+                geocodeMessage = "✓ Ubicación colocada en el mapa"
+                if (!result.postcode.isNullOrBlank() && (cp.isBlank() || cp == "03100")) {
+                    onCpChange(result.postcode)
+                }
+            } else {
+                geocodeMessage = null
+            }
+            isGeocoding = false
+        }
+    }
+
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
@@ -608,7 +659,119 @@ private fun BloquePurificadora(
                             modifier = Modifier.weight(1f)
                         )
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
+
+                    // Mapa interactivo para ubicación exacta
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.LocationOn, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "Ubicación exacta de la base",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = HToGoColors.TextPrimary
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                if (direccion.isNotBlank()) {
+                                    coroutineScope.launch {
+                                        isGeocoding = true
+                                        geocodeMessage = "Buscando dirección..."
+                                        val query = "${direccion.trim()}, ${colonia.trim()}"
+                                        val result = GeocodingHelper.buscarCoordenadas(query)
+                                        if (result != null) {
+                                            onLatChange(result.lat)
+                                            onLonChange(result.lon)
+                                            geocodeMessage = "✓ Pin ubicado en el mapa"
+                                            if (!result.postcode.isNullOrBlank() && (cp.isBlank() || cp == "03100")) {
+                                                onCpChange(result.postcode)
+                                            }
+                                        } else {
+                                            geocodeMessage = "No se localizó exactamente. Mueve el pin en el mapa."
+                                        }
+                                        isGeocoding = false
+                                    }
+                                }
+                            },
+                            enabled = !isGeocoding && direccion.isNotBlank(),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Icon(Icons.Filled.Search, null, modifier = Modifier.size(14.dp), tint = HToGoColors.Primary)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Ubicar en mapa", fontSize = 11.sp, color = HToGoColors.Primary, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+
+                    if (isGeocoding || geocodeMessage != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        ) {
+                            if (isGeocoding) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(12.dp),
+                                    strokeWidth = 1.5.dp,
+                                    color = HToGoColors.Primary
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Buscando en mapa...", fontSize = 11.sp, color = HToGoColors.Primary)
+                            } else if (geocodeMessage != null) {
+                                Text(
+                                    geocodeMessage!!,
+                                    fontSize = 11.sp,
+                                    color = if (geocodeMessage!!.startsWith("✓")) Color(0xFF16A34A) else HToGoColors.TextSecondary
+                                )
+                            }
+                        }
+                    } else {
+                        Text(
+                            "Al escribir tu dirección se ubicará en el mapa. También puedes arrastrar el pin.",
+                            fontSize = 11.sp,
+                            color = HToGoColors.TextSecondary,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+                    }
+
+                    OsmMapView(
+                        latitude = lat,
+                        longitude = lon,
+                        zoom = 16,
+                        isInteractive = true,
+                        isDraggablePin = true,
+                        onLocationChange = { newLat, newLon ->
+                            onLatChange(newLat)
+                            onLonChange(newLon)
+                            coroutineScope.launch {
+                                isReverseGeocoding = true
+                                isGeocoding = true
+                                geocodeMessage = "Detectando dirección..."
+                                val res = GeocodingHelper.obtenerDireccionDeCoordenadas(newLat, newLon)
+                                if (res != null) {
+                                    val roadWithNum = listOfNotNull(res.road, res.houseNumber).joinToString(" ").trim()
+                                    if (roadWithNum.isNotBlank()) onDireccionChange(roadWithNum)
+                                    else if (!res.road.isNullOrBlank()) onDireccionChange(res.road)
+                                    if (!res.neighbourhood.isNullOrBlank()) onColoniaChange(res.neighbourhood)
+                                    if (!res.postcode.isNullOrBlank()) onCpChange(res.postcode)
+                                    geocodeMessage = "✓ Dirección detectada desde el mapa"
+                                }
+                                isGeocoding = false
+                                delay(600)
+                                isReverseGeocoding = false
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                    )
+
+                    Spacer(Modifier.height(12.dp))
                     Text(
                         "HORARIO DE ATENCIÓN",
                         fontSize = 11.sp,

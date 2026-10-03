@@ -65,6 +65,13 @@
             <version>10.1.0</version>
         </dependency>
 
+        <!-- Bouncy Castle: requerido para cifrado de contraseñas con Argon2id -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.78.1</version>
+        </dependency>
+
         <!-- Driver PostgreSQL -->
         <dependency>
             <groupId>org.postgresql</groupId>

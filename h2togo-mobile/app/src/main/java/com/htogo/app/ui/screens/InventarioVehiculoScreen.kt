@@ -1017,8 +1017,12 @@ private fun RegistrarEntradaDialog(
     val seleccionMarca = marcas.firstOrNull { it.id == seleccionada } ?: marcas.first()
     var cantidad by remember { mutableStateOf(10) }
     var codigoLote by remember { mutableStateOf("L-2026-05-001") }
-    var fechaCaducidad by remember { mutableStateOf("") }
+    var fechaCaducidadValue by remember {
+        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(""))
+    }
+    val fechaCaducidad = fechaCaducidadValue.text
     val caducidadValida = fechaCaducidad.length == 10
+    val context = androidx.compose.ui.platform.LocalContext.current
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
@@ -1092,18 +1096,42 @@ private fun RegistrarEntradaDialog(
                 )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = fechaCaducidad,
-                    onValueChange = { raw ->
-                        val digits = raw.filter(Char::isDigit).take(8)
-                        fechaCaducidad = buildString {
+                    value = fechaCaducidadValue,
+                    onValueChange = { tfv ->
+                        val digits = tfv.text.filter(Char::isDigit).take(8)
+                        val formatted = buildString {
                             digits.forEachIndexed { i, c ->
                                 if (i == 2 || i == 4) append('/')
                                 append(c)
                             }
                         }
+                        fechaCaducidadValue = androidx.compose.ui.text.input.TextFieldValue(
+                            text = formatted,
+                            selection = androidx.compose.ui.text.TextRange(formatted.length)
+                        )
                     },
                     label = { Text("Fecha de caducidad") },
                     leadingIcon = { Icon(Icons.Filled.CalendarMonth, null) },
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            val cal = java.util.Calendar.getInstance()
+                            android.app.DatePickerDialog(
+                                context,
+                                { _, y, m, d ->
+                                    val formatted = String.format("%02d/%02d/%04d", d, m + 1, y)
+                                    fechaCaducidadValue = androidx.compose.ui.text.input.TextFieldValue(
+                                        text = formatted,
+                                        selection = androidx.compose.ui.text.TextRange(formatted.length)
+                                    )
+                                },
+                                cal.get(java.util.Calendar.YEAR),
+                                cal.get(java.util.Calendar.MONTH),
+                                cal.get(java.util.Calendar.DAY_OF_MONTH)
+                            ).show()
+                        }) {
+                            Icon(Icons.Filled.CalendarMonth, contentDescription = "Seleccionar fecha", tint = HToGoColors.Primary)
+                        }
+                    },
                     placeholder = { Text("DD/MM/AAAA") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -1117,7 +1145,7 @@ private fun RegistrarEntradaDialog(
                             if (fechaCaducidad.isNotEmpty() && !caducidadValida)
                                 "Formato: DD/MM/AAAA"
                             else
-                                "Se registrará como un lote independiente"
+                                "Toca el icono para abrir calendario o escribe DD/MM/AAAA"
                         )
                     }
                 )

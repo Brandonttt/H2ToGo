@@ -26,7 +26,16 @@ public record RegistroRequest(
     /** Datos del negocio para el alta de un repartidor. */
     public record NegocioRegistroRequest(
             Integer idExistente,
-            @Size(max = 150) String nombreComercial
+            @Size(max = 150) String nombreComercial,
+            String calle,
+            String numeroExterior,
+            String colonia,
+            String codigoPostal,
+            String referencias,
+            Double lat,
+            Double lon,
+            String horarioApertura,
+            String horarioCierre
     ) {
     }
 }
