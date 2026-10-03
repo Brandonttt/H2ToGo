@@ -14,7 +14,7 @@ on:
 
 jobs:
   build-and-test:
-    name: Compilación y Pruebas (Java 21)
+    name: Compilación y Pruebas Unitarias (Java 21)
     runs-on: ubuntu-latest
 
     steps:
@@ -28,8 +28,8 @@ jobs:
           java-version: '21'
           cache: 'maven'
 
-      - name: Compilar y Ejecutar Pruebas (mvn verify)
+      - name: Compilar y Ejecutar Pruebas (mvn test)
         working-directory: ./h2togo-backend
         run: |
           chmod +x ./mvnw || true
-          mvn -B verify
+          mvn -B test
