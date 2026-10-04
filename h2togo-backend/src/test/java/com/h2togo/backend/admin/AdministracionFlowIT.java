@@ -190,6 +190,67 @@ class AdministracionFlowIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElementos").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
                 .andExpect(jsonPath("$.contenido[0].estado").value("pendiente"));
+
+        // Búsqueda por nombre de cliente: la fila trae nombres de cliente y negocio para el panel.
+        mvc.perform(get("/api/v1/admin/pedidos").header("Authorization", "Bearer " + admin)
+                        .param("cliente", "C E").param("estado", "pendiente"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].cliente").value("C E"))
+                .andExpect(jsonPath("$.contenido[0].negocio").value("Negocio Hist"));
+    }
+
+    @Test
+    void consultasDelPanelDeAdministracion() throws Exception {
+        String admin = adminToken();
+        // Alta por el admin (no por registro) para no depender del flujo de OTP.
+        mvc.perform(post("/api/v1/admin/usuarios").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"D","apellidos":"U","correo":"pdue@test.mx","password":"password123",
+                                 "telefono":"5551230070","rol":"repartidor","negocio":{"nombreComercial":"Negocio Panel"}}"""))
+                .andExpect(status().isCreated());
+        String tokenDue = JsonPath.read(mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"pdue@test.mx\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), "$.token");
+        int idRep = usuarioRepository.findByCorreo("pdue@test.mx").orElseThrow().getId();
+        int idNegocio = repartidorRepository.findById(idRep).orElseThrow().getIdNegocio();
+
+        mvc.perform(get("/api/v1/admin/dashboard").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.serie30d.length()").value(30))
+                .andExpect(jsonPath("$.estadoActual.entregado").exists())
+                .andExpect(jsonPath("$.usuariosTotales").value(org.hamcrest.Matchers.greaterThanOrEqualTo(2)));
+
+        // Listado filtrado por rol + texto libre, con el negocio del repartidor y su rol de dueño.
+        mvc.perform(get("/api/v1/admin/usuarios").header("Authorization", "Bearer " + admin)
+                        .param("rol", "repartidor").param("q", "pdue@test"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.contenido[0].negocio").value("Negocio Panel"))
+                .andExpect(jsonPath("$.contenido[0].esDueno").value(true));
+        mvc.perform(get("/api/v1/admin/usuarios").header("Authorization", "Bearer " + admin)
+                        .param("idNegocio", String.valueOf(idNegocio)))
+                .andExpect(jsonPath("$.contenido[0].id").value(idRep));
+        mvc.perform(get("/api/v1/admin/usuarios/resumen").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.repartidores").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
+
+        mvc.perform(get("/api/v1/admin/negocios").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == %d)].dueno".formatted(idNegocio)).value("D U"));
+
+        // Solicitud con nombre de negocio y solicitante; visible en la lista de todas.
+        mvc.perform(post("/api/v1/solicitudes").header("Authorization", "Bearer " + tokenDue)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"codigoCambio\":\"NOMBRE_NEGOCIO\",\"valorNuevo\":{\"nombreComercial\":\"Y\"}}"))
+                .andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/admin/solicitudes").header("Authorization", "Bearer " + admin).param("todas", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.negocio == 'Negocio Panel')].solicitante").value("D U"));
+
+        // La página del panel es pública; sus datos no.
+        mvc.perform(get("/admin/")).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/admin/dashboard")).andExpect(status().isUnauthorized());
     }
 
     @Test

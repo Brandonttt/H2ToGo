@@ -26,7 +26,7 @@ diagrama: **MariaDB → PostgreSQL 16 + PostGIS 3.4** (esquema v6).
 | Azure Monitor | Log Analytics workspace del environment (logs de consola) con tope diario | `law-h2togo` | Paso 5 |
 | Application Insights | Agente Java de App Insights | — | Paso 14 · ⚠️ PENDIENTE D-9 |
 | Azure Pipelines (build + deploy) | Pipeline YAML en Azure DevOps conectado al repo de GitHub | `azure-pipelines.yml` | Paso 12 · ⚠️ PENDIENTE D-7 |
-| Azure Static Web Apps (Panel Admin) | SWA plan **Free** | — | Paso 13 · ⚠️ PENDIENTE D-8 |
+| Azure Static Web Apps (Panel Admin) | **No requiere recurso**: el backend sirve el panel en `/admin/` (mismo origen, sin CORS) | `h2togo-api` | Paso 13 |
 | OpenStreetMap | **No requiere recurso**: el grafo va dentro del jar (`osm_data/sample_map.json`) | — | — |
 | Google Maps | **No requiere recurso en Azure** (lo consume la app móvil) | — | — |
 
@@ -80,7 +80,7 @@ Ordenadas de más a menos importante y agrupadas por tema.
 
 | # | Tema | Situación | Qué se necesita |
 |---|---|---|---|
-| D-8 | Panel admin (Static Web Apps) | En el repo solo existe el mockup `22-admin-panel.html` y la consola de pruebas que ya sirve el backend en `/console/`. No hay una app web de administración que consuma la API. | Confirmar qué se despliega en SWA (y cuándo). Mientras tanto, la consola `/console/` del backend funciona como herramienta de pruebas. |
+| D-8 | Panel admin | ✅ Resuelto: el panel vive en `h2togo-backend/src/main/resources/static/admin/` y el backend lo sirve en `/admin/`. Viaja en la misma imagen, así que se publica con cada despliegue del backend. | Nada. Static Web Apps queda descartado (costaría un recurso más y obligaría a configurar CORS). |
 | D-9 | Application Insights | Está en el diagrama, pero requiere agregar el agente Java al `Dockerfile` y consume memoria extra (~100 MB), lo que puede obligar a subir el backend a 0.75 vCPU/1.5 GiB. | Decidir si se agrega ahora o después de que lo básico funcione (recomendado: después). |
 
 > **Fuera de alcance (informativo, no bloquea el despliegue):** `PushService` real con FCM no está
@@ -516,6 +516,7 @@ curl -s https://$API_FQDN/api/v1/health
 # 2. Swagger UI y consola de pruebas (navegador)
 echo "https://$API_FQDN/swagger-ui.html"
 echo "https://$API_FQDN/console/"
+echo "https://$API_FQDN/admin/"
 
 # 3. WebSocket: el handshake debe responder "HTTP/1.1 101 Switching Protocols"
 curl -s -i --http1.1 -N -m 5 \
@@ -660,16 +661,16 @@ stages:
 
 ---
 
-## Paso 13 — Panel admin en Static Web Apps · ⚠️ PENDIENTE D-8
+## Paso 13 — Panel admin
 
-No se ejecuta hasta saber qué se publica. Cuando se defina:
+No hay recurso extra: el panel es una página estática dentro del jar del backend y se publica con
+cada `desplegar-backend.ps1` (o el pipeline del Paso 12).
 
-- Plan **Free** ($0). SWA solo existe en algunas regiones; debe coincidir con las permitidas (D-7).
-- Agregar su URL (`https://<nombre>.azurestaticapps.net`) a `H2TOGO_CORS_ALLOWED_ORIGINS`:
-  ```bash
-  az containerapp update -n $API_APP -g $RG \
-    --set-env-vars H2TOGO_CORS_ALLOWED_ORIGINS="https://<nombre>.azurestaticapps.net"
-  ```
+- URL: `https://$API_FQDN/admin/` (hoy: https://h2togo-api.orangecliff-485fd1d3.eastus.azurecontainerapps.io/admin/)
+- Acceso: cualquier cuenta con rol `admin`. Las llamadas a `/api/v1/admin/**` exigen ese rol.
+- Al estar en el mismo origen que la API **no hace falta tocar** `H2TOGO_CORS_ALLOWED_ORIGINS`.
+- Sesión única por cuenta (RN-018): si el admin ya tiene sesión abierta en otro lado, el panel pide
+  confirmación antes de cerrarla.
 
 ---
 

@@ -1,8 +1,8 @@
 package com.h2togo.backend.admin;
 
+import com.h2togo.backend.admin.dto.PedidoAdminFila;
 import com.h2togo.backend.common.PagedResponse;
 import com.h2togo.backend.common.enums.EstadoPedido;
-import com.h2togo.backend.pedidos.dto.PedidoResumen;
 import java.time.OffsetDateTime;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -24,14 +24,17 @@ public class AdminPedidosController {
     }
 
     @GetMapping
-    public PagedResponse<PedidoResumen> historial(
+    public PagedResponse<PedidoAdminFila> historial(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime hasta,
             @RequestParam(required = false) EstadoPedido estado,
             @RequestParam(required = false) Integer idCliente,
             @RequestParam(required = false) Integer idRepartidor,
             @RequestParam(required = false) Integer idNegocio,
+            @RequestParam(required = false) String cliente,
+            @RequestParam(required = false) String repartidor,
             @PageableDefault(size = 20) Pageable pageable) {
-        return service.historial(desde, hasta, estado, idCliente, idRepartidor, idNegocio, pageable);
+        return service.historial(desde, hasta, estado, idCliente, idRepartidor, idNegocio,
+                cliente, repartidor, pageable);
     }
 }

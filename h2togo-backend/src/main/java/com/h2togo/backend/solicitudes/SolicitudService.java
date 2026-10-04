@@ -74,12 +74,6 @@ public class SolicitudService {
 
     // ---------------------------------------------------------------- CU-021: resolver (admin)
 
-    @Transactional(readOnly = true)
-    public List<SolicitudResponse> pendientes(EstadoSolicitud estado) {
-        return solicitudRepository.findByEstado(estado == null ? EstadoSolicitud.pendiente : estado)
-                .stream().map(SolicitudService::toResponse).toList();
-    }
-
     @Transactional
     public SolicitudResponse resolver(int idAdmin, int idSolicitud, ResolucionRequest req) {
         SolicitudCambioPerfil s = solicitudRepository.findById(idSolicitud)

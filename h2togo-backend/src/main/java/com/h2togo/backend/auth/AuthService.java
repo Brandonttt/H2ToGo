@@ -21,7 +21,9 @@ import com.h2togo.backend.usuarios.RepartidorRepository;
 import com.h2togo.backend.usuarios.Usuario;
 import com.h2togo.backend.usuarios.UsuarioRepository;
 import java.security.SecureRandom;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -157,69 +159,74 @@ public class AuthService {
         repartidorRepository.save(r);
 
         if (jdbc != null) {
-            String calle = (n.calle() != null && !n.calle().isBlank()) ? n.calle() : "Av. Insurgentes Sur";
-            String numExt = (n.numeroExterior() != null && !n.numeroExterior().isBlank()) ? n.numeroExterior() : "1200";
-            String colonia = (n.colonia() != null && !n.colonia().isBlank()) ? n.colonia() : "Del Valle";
-            String cp = (n.codigoPostal() != null && !n.codigoPostal().isBlank()) ? n.codigoPostal() : "03100";
-            String refs = (n.referencias() != null && !n.referencias().isBlank()) ? n.referencias() : "Base registrada al dar de alta la purificadora";
-            double lat = (n.lat() != null && n.lat() != 0.0) ? n.lat() : 19.376692;
-            double lon = (n.lon() != null && n.lon() != 0.0) ? n.lon() : -99.165057;
-
-            String horaAp = (n.horarioApertura() != null && !n.horarioApertura().isBlank()) ? n.horarioApertura() : "08:00";
-            String horaCi = (n.horarioCierre() != null && !n.horarioCierre().isBlank()) ? n.horarioCierre() : "20:00";
-
-            MapSqlParameterSource params = new MapSqlParameterSource()
-                    .addValue("negId", negocio.getId())
-                    .addValue("calle", calle)
-                    .addValue("numExt", numExt)
-                    .addValue("colonia", colonia)
-                    .addValue("cp", cp)
-                    .addValue("refs", refs)
-                    .addValue("lat", lat)
-                    .addValue("lon", lon)
-                    .addValue("horaAp", horaAp)
-                    .addValue("horaCi", horaCi);
-
-            jdbc.update("""
-                    UPDATE negocios SET
-                        calle = :calle,
-                        numero_exterior = :numExt,
-                        colonia = :colonia,
-                        codigo_postal = :cp,
-                        referencias = :refs,
-                        ubicacion_base = ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
-                    WHERE id_negocio = :negId
-                    """, params);
-
-            jdbc.update("""
-                    INSERT INTO productos_negocio (id_negocio, id_marca, precio, precio_envase, capacidad_maxima, activo)
-                    VALUES 
-                      (:negId, 1, 45.00, 80.00, 50, true),
-                      (:negId, 2, 48.00, 85.00, 40, true),
-                      (:negId, 3, 42.00, 75.00, 30, true)
-                    ON CONFLICT DO NOTHING
-                    """, params);
-
-            jdbc.update("""
-                    INSERT INTO horarios_negocio (id_negocio, dia_semana, hora_apertura, hora_cierre, cerrado)
-                    VALUES 
-                      (:negId, 1, :horaAp, :horaCi, false),
-                      (:negId, 2, :horaAp, :horaCi, false),
-                      (:negId, 3, :horaAp, :horaCi, false),
-                      (:negId, 4, :horaAp, :horaCi, false),
-                      (:negId, 5, :horaAp, :horaCi, false),
-                      (:negId, 6, :horaAp, '18:00', false),
-                      (:negId, 7, NULL, NULL, true)
-                    ON CONFLICT DO NOTHING
-                    """, params);
-
-            jdbc.update("""
-                    INSERT INTO vehiculos_negocio (id_negocio, tipo_vehiculo, marca, modelo, color, placas, capacidad_garrafones, activo)
-                    VALUES (:negId, 'motocicleta', 'Italika', 'FT150', 'Rojo', 'ABC1234', 30, true) ON CONFLICT DO NOTHING
-                    """, params);
+            guardarDireccionBase(negocio.getId(), n);
+            guardarHorario(negocio.getId(), n);
         }
+        // Productos y vehículos NO se siembran: el dueño los solicita después
+        // (AGREGAR_PRODUCTO / AGREGAR_VEHICULO) y el admin los aprueba (RN-020).
 
         return negocio.getId();
+    }
+
+    /**
+     * Guarda la dirección base solo si viene completa (el CHECK del esquema exige todo o nada).
+     * La app no captura número exterior, así que se registra "S/N" en ese caso.
+     */
+    private void guardarDireccionBase(int idNegocio, RegistroRequest.NegocioRegistroRequest n) {
+        if (vacio(n.calle()) || vacio(n.colonia()) || vacio(n.codigoPostal()) || n.lat() == null || n.lon() == null) {
+            return;
+        }
+        jdbc.update("""
+                UPDATE negocios SET calle = :calle, numero_exterior = :numExt, colonia = :colonia,
+                    codigo_postal = :cp, referencias = :refs,
+                    ubicacion_base = ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
+                WHERE id_negocio = :negId""", new MapSqlParameterSource()
+                .addValue("negId", idNegocio)
+                .addValue("calle", n.calle().trim())
+                .addValue("numExt", vacio(n.numeroExterior()) ? "S/N" : n.numeroExterior().trim())
+                .addValue("colonia", n.colonia().trim())
+                .addValue("cp", n.codigoPostal().trim())
+                .addValue("refs", vacio(n.referencias()) ? null : n.referencias().trim())
+                .addValue("lat", n.lat())
+                .addValue("lon", n.lon()));
+    }
+
+    /** Si se indicó horario, lo aplica de lunes a sábado; el domingo queda cerrado. */
+    private void guardarHorario(int idNegocio, RegistroRequest.NegocioRegistroRequest n) {
+        if (vacio(n.horarioApertura()) || vacio(n.horarioCierre())) {
+            return;
+        }
+        LocalTime apertura = parsearHora(n.horarioApertura());
+        LocalTime cierre = parsearHora(n.horarioCierre());
+        if (!cierre.isAfter(apertura)) {
+            throw new BusinessRuleException("HORARIO_INVALIDO", "La hora de cierre debe ser posterior a la de apertura.");
+        }
+        var params = new MapSqlParameterSource()
+                .addValue("negId", idNegocio).addValue("ap", apertura).addValue("ci", cierre);
+        jdbc.update("""
+                INSERT INTO horarios_negocio (id_negocio, dia_semana, hora_apertura, hora_cierre, cerrado)
+                SELECT :negId, d, :ap, :ci, false FROM generate_series(1, 6) AS d
+                ON CONFLICT DO NOTHING""", params);
+        jdbc.update("""
+                INSERT INTO horarios_negocio (id_negocio, dia_semana, hora_apertura, hora_cierre, cerrado)
+                VALUES (:negId, 7, NULL, NULL, true) ON CONFLICT DO NOTHING""", params);
+    }
+
+    /** Acepta "8:00", "08:00" u "08:00:00". */
+    private static LocalTime parsearHora(String valor) {
+        String v = valor.trim();
+        if (v.matches("\\d:\\d{2}(:\\d{2})?")) {
+            v = "0" + v;
+        }
+        try {
+            return LocalTime.parse(v);
+        } catch (DateTimeParseException e) {
+            throw new BusinessRuleException("HORARIO_INVALIDO", "Horario inválido: '" + valor + "'. Usa el formato HH:mm.");
+        }
+    }
+
+    private static boolean vacio(String s) {
+        return s == null || s.isBlank();
     }
 
     /** CU-001: valida el OTP y su vigencia → telefono_verificado = true (RN-002). */

@@ -3,6 +3,7 @@ package com.h2togo.backend.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.h2togo.backend.usuarios.Usuario;
@@ -13,6 +14,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -39,6 +42,9 @@ class AuthFlowIT {
             .withCopyFileToContainer(
                     MountableFile.forHostPath("../H2ToGo_v6_postgresql.sql"),
                     "/docker-entrypoint-initdb.d/01_schema.sql");
+
+    @Autowired
+    private NamedParameterJdbcTemplate jdbc;
 
     @Autowired
     private MockMvc mvc;
@@ -132,5 +138,41 @@ class AuthFlowIT {
     @Test
     void accesoSinTokenDevuelve401() throws Exception {
         mvc.perform(get("/api/v1/admin/pedidos")).andExpect(status().isUnauthorized());
+    }
+    @Test
+    void registroDeDuenoGuardaDireccionYHorarioSinDatosFicticios() throws Exception {
+        String cuerpo = mvc.perform(post("/api/v1/auth/registro").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Dora","apellidos":"Dueña","correo":"dora@test.mx","password":"password123",
+                                 "telefono":"5559870001","rol":"repartidor",
+                                 "negocio":{"nombreComercial":"Agua Dora","calle":"Pilares","colonia":"Del Valle",
+                                            "codigoPostal":"03100","lat":19.372,"lon":-99.178,
+                                            "horarioApertura":"8:00","horarioCierre":"19:30"}}"""))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        int idNegocio = com.jayway.jsonpath.JsonPath.read(cuerpo, "$.idNegocio");
+        var p = new MapSqlParameterSource("id", idNegocio);
+
+        // Sin número exterior la dirección se guarda como "S/N" (el esquema exige dirección completa).
+        assertThat(jdbc.queryForObject("SELECT numero_exterior FROM negocios WHERE id_negocio = :id", p, String.class))
+                .isEqualTo("S/N");
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM horarios_negocio
+                WHERE id_negocio = :id AND NOT cerrado AND hora_apertura = '08:00' AND hora_cierre = '19:30'""",
+                p, Integer.class)).isEqualTo(6);
+        // Productos y vehículos se solicitan después (RN-020): nada sembrado.
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM productos_negocio WHERE id_negocio = :id", p, Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM vehiculos_negocio WHERE id_negocio = :id", p, Integer.class)).isZero();
+    }
+
+    @Test
+    void registroConHorarioInvalidoDevuelve422() throws Exception {
+        mvc.perform(post("/api/v1/auth/registro").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"E","apellidos":"F","correo":"horario@test.mx","password":"password123",
+                                 "telefono":"5559870002","rol":"repartidor",
+                                 "negocio":{"nombreComercial":"Agua Mala","horarioApertura":"20:00","horarioCierre":"08:00"}}"""))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("HORARIO_INVALIDO"));
     }
 }

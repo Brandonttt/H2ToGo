@@ -1,5 +1,6 @@
 package com.h2togo.backend.admin;
 
+import com.h2togo.backend.admin.dto.SolicitudAdminFila;
 import com.h2togo.backend.common.enums.EstadoSolicitud;
 import com.h2togo.backend.security.SecurityUtils;
 import com.h2togo.backend.solicitudes.SolicitudService;
@@ -21,14 +22,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminSolicitudesController {
 
     private final SolicitudService solicitudService;
+    private final AdminConsultasService consultas;
 
-    public AdminSolicitudesController(SolicitudService solicitudService) {
+    public AdminSolicitudesController(SolicitudService solicitudService, AdminConsultasService consultas) {
         this.solicitudService = solicitudService;
+        this.consultas = consultas;
     }
 
+    /** Sin {@code estado} devuelve las pendientes; con {@code todas=true} ignora el estado. */
     @GetMapping
-    public List<SolicitudResponse> listar(@RequestParam(required = false) EstadoSolicitud estado) {
-        return solicitudService.pendientes(estado);
+    public List<SolicitudAdminFila> listar(
+            @RequestParam(required = false) EstadoSolicitud estado,
+            @RequestParam(defaultValue = "false") boolean todas) {
+        if (todas) {
+            return consultas.solicitudes(null);
+        }
+        return consultas.solicitudes(estado == null ? EstadoSolicitud.pendiente : estado);
     }
 
     @PostMapping("/{id}/resolucion")

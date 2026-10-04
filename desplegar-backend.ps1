@@ -84,4 +84,5 @@ Write-Host "==========================================================" -Foregro
 Write-Host " Despliegue completado con exito: $Tag" -ForegroundColor Green
 Write-Host " URL API: https://h2togo-api.orangecliff-485fd1d3.eastus.azurecontainerapps.io/api/v1/" -ForegroundColor White
 Write-Host " Swagger: https://h2togo-api.orangecliff-485fd1d3.eastus.azurecontainerapps.io/swagger-ui.html" -ForegroundColor White
+Write-Host " Panel admin: https://h2togo-api.orangecliff-485fd1d3.eastus.azurecontainerapps.io/admin/" -ForegroundColor White
 Write-Host "==========================================================" -ForegroundColor Cyan

@@ -81,7 +81,11 @@ public class SecurityConfig {
                                 // las llamadas a la API que hace siguen exigiendo token/rol.
                                 "/",
                                 "/console",
-                                "/console/**")
+                                "/console/**",
+                                // Panel web de administración: los estáticos son públicos; los datos
+                                // los sirve /api/v1/admin/**, que exige rol ADMIN.
+                                "/admin",
+                                "/admin/**")
                         .permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/clientes/**").hasRole("CLIENTE")
