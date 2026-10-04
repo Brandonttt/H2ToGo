@@ -37,7 +37,23 @@ data class PedidoResponse(
     @SerializedName("fechaProgramada") val fechaProgramada: String?,
     @SerializedName("fechaCreacion") val fechaCreacion: String?,
     @SerializedName("detalles") val detalles: List<DetalleResponse>?,
-    @SerializedName("historial") val historial: List<HistorialResponse>?
+    @SerializedName("historial") val historial: List<HistorialResponse>?,
+    @SerializedName("nombreCliente") val nombreCliente: String? = null,
+    @SerializedName("telefonoCliente") val telefonoCliente: String? = null,
+    @SerializedName("direccionTexto") val direccionTexto: String? = null,
+    @SerializedName("latEntrega") val latEntrega: Double? = null,
+    @SerializedName("lonEntrega") val lonEntrega: Double? = null
+)
+
+data class RouteResponse(
+    @SerializedName("encontrada") val encontrada: Boolean = false,
+    @SerializedName("distanciaTotalKm") val distanciaTotalKm: Double = 0.0,
+    @SerializedName("coordenadas") val coordenadas: List<CoordenadaDto> = emptyList()
+)
+
+data class CoordenadaDto(
+    @SerializedName("lat") val lat: Double = 0.0,
+    @SerializedName("lon") val lon: Double = 0.0
 )
 
 data class DetalleResponse(
@@ -71,7 +87,10 @@ data class PedidoDisponibleResponse(
     @SerializedName("direccionResumen") private val _direccionResumen: String? = null,
     @SerializedName("colonia") val colonia: String? = null,
     @SerializedName("tipoSolicitud") val tipoSolicitud: String? = null,
-    @SerializedName("detalles") val detalles: List<DetalleResponse>? = null
+    @SerializedName("detalles") val detalles: List<DetalleResponse>? = null,
+    @SerializedName("telefonoCliente") val telefonoCliente: String? = null,
+    @SerializedName("latEntrega") val latEntrega: Double? = null,
+    @SerializedName("lonEntrega") val lonEntrega: Double? = null
 ) {
     val id: Int
         get() = idPedido ?: _id ?: 0

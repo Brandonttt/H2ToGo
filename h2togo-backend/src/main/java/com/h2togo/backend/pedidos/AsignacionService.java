@@ -55,7 +55,10 @@ public class AsignacionService {
                        ST_Distance(d.ubicacion, r.ubicacion_actual) AS distancia_m,
                        p.garrafones_totales, d.colonia, p.tipo_solicitud, p.total_pagar,
                        CONCAT(u.nombre, ' ', u.apellidos) AS nombre_cliente,
-                       CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion
+                       u.telefono AS telefono_cliente,
+                       CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion,
+                       ST_Y(d.ubicacion::geometry) AS lat,
+                       ST_X(d.ubicacion::geometry) AS lon
                 FROM pedidos p
                 JOIN direcciones_clientes d ON d.id_direccion = p.id_direccion_entrega
                 JOIN repartidores r ON r.id_usuario = :rep
@@ -80,6 +83,8 @@ public class AsignacionService {
         for (Map<String, Object> row : rows) {
             Integer id = (Integer) row.get("id_pedido");
             Number dist = (Number) row.get("distancia_m");
+            Number lat = (Number) row.get("lat");
+            Number lon = (Number) row.get("lon");
             salida.add(new PedidoDisponibleResponse(
                     id, dist == null ? null : dist.doubleValue(),
                     (Integer) row.get("garrafones_totales"), (String) row.get("colonia"),
@@ -87,7 +92,10 @@ public class AsignacionService {
                     (BigDecimal) row.get("total_pagar"),
                     detalles.getOrDefault(id, List.of()),
                     (String) row.get("nombre_cliente"),
-                    (String) row.get("direccion")));
+                    (String) row.get("direccion"),
+                    (String) row.get("telefono_cliente"),
+                    lat == null ? null : lat.doubleValue(),
+                    lon == null ? null : lon.doubleValue()));
         }
         return salida;
     }
@@ -326,6 +334,38 @@ public class AsignacionService {
 
     private PedidoResponse respuesta(int idPedido) {
         Pedido p = pedidoRepository.findById(idPedido).orElseThrow();
-        return PedidoMapper.toResponse(p);
+        return enriquecer(PedidoMapper.toResponse(p), idPedido);
+    }
+
+    private PedidoResponse enriquecer(PedidoResponse base, int idPedido) {
+        try {
+            Map<String, Object> extra = jdbc.queryForMap("""
+                    SELECT CONCAT(u.nombre, ' ', u.apellidos) AS nombre_cliente,
+                           u.telefono AS telefono_cliente,
+                           CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion,
+                           ST_Y(d.ubicacion::geometry) AS lat,
+                           ST_X(d.ubicacion::geometry) AS lon
+                    FROM pedidos p
+                    JOIN usuarios u ON u.id_usuario = p.id_cliente
+                    LEFT JOIN direcciones_clientes d ON d.id_direccion = p.id_direccion_entrega
+                    WHERE p.id_pedido = :id""",
+                    new MapSqlParameterSource("id", idPedido));
+            Number lat = (Number) extra.get("lat");
+            Number lon = (Number) extra.get("lon");
+            return new PedidoResponse(
+                    base.id(), base.estado(), base.tipoSolicitud(), base.idNegocioSolicitado(),
+                    base.idRepartidor(), base.idDireccionEntrega(), base.precioMaximoGarrafon(),
+                    base.totalPagar(), base.garrafonesTotales(), base.indicaciones(),
+                    base.esProgramado(), base.fechaProgramada(), base.fechaCreacion(),
+                    base.detalles(), base.historial(),
+                    (String) extra.get("nombre_cliente"),
+                    (String) extra.get("telefono_cliente"),
+                    (String) extra.get("direccion"),
+                    lat == null ? null : lat.doubleValue(),
+                    lon == null ? null : lon.doubleValue()
+            );
+        } catch (Exception e) {
+            return base;
+        }
     }
 }

@@ -24,6 +24,16 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
     private val _pedidoEnRuta = MutableStateFlow<PedidoResponse?>(null)
     val pedidoEnRuta: StateFlow<PedidoResponse?> = _pedidoEnRuta.asStateFlow()
 
+    private val _pedidoDisponibleSeleccionado = MutableStateFlow<PedidoDisponibleResponse?>(null)
+    val pedidoDisponibleSeleccionado: StateFlow<PedidoDisponibleResponse?> = _pedidoDisponibleSeleccionado.asStateFlow()
+
+    private val _rutaCalculada = MutableStateFlow<com.htogo.app.data.dto.RouteResponse?>(null)
+    val rutaCalculada: StateFlow<com.htogo.app.data.dto.RouteResponse?> = _rutaCalculada.asStateFlow()
+
+    fun setPedidoDisponibleSeleccionado(pedido: PedidoDisponibleResponse?) {
+        _pedidoDisponibleSeleccionado.value = pedido
+    }
+
     private val _miNegocio = MutableStateFlow<com.htogo.app.data.dto.PerfilNegocioResponse?>(null)
     val miNegocio: StateFlow<com.htogo.app.data.dto.PerfilNegocioResponse?> = _miNegocio.asStateFlow()
 
@@ -327,6 +337,7 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
 
     fun aceptarPedido(
         id: Int,
+        pedidoDisponible: PedidoDisponibleResponse? = null,
         onSuccess: (PedidoResponse) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -334,6 +345,9 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
             _isLoading.value = true
             _errorMessage.value = null
             try {
+                if (pedidoDisponible != null) {
+                    _pedidoDisponibleSeleccionado.value = pedidoDisponible
+                }
                 val resp = apiClient.repartidorApi.aceptarPedido(id)
                 if (resp.isSuccessful && resp.body() != null) {
                     val pedido = resp.body()!!
@@ -353,6 +367,25 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                 onError(err)
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun cargarRutaPedido(
+        id: Int,
+        latRep: Double = 19.376692,
+        lonRep: Double = -99.165057
+    ) {
+        viewModelScope.launch {
+            try {
+                // Actualiza ubicación primero para evitar 422 SIN_UBICACION
+                apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to latRep, "lon" to lonRep))
+                val resp = apiClient.repartidorApi.obtenerRuta(id)
+                if (resp.isSuccessful && resp.body() != null) {
+                    _rutaCalculada.value = resp.body()
+                }
+            } catch (_: Exception) {
+                // Silencioso, la vista mostrará polyline directa si no hay grafo cargado
             }
         }
     }
@@ -394,6 +427,8 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                 val resp = apiClient.repartidorApi.finalizarEntrega(id, payload)
                 if (resp.isSuccessful && resp.body() != null) {
                     _pedidoEnRuta.value = null
+                    _pedidoDisponibleSeleccionado.value = null
+                    _rutaCalculada.value = null
                     cargarPedidosDisponibles()
                     cargarMisEntregas()
                     cargarInventarios()

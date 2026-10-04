@@ -38,6 +38,7 @@ import com.htogo.app.data.dto.CargaItemDto
 import com.htogo.app.data.dto.DetalleResponse
 import com.htogo.app.data.dto.InventarioBaseResponse
 import com.htogo.app.data.dto.InventarioVehiculoResponse
+import com.htogo.app.data.dto.PedidoDisponibleResponse
 import com.htogo.app.ui.RepartidorViewModel
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
@@ -57,7 +58,11 @@ data class PedidoDisponible(
     val tipo: TipoPedido = TipoPedido.DIRECTO,
     val detalles: List<DetalleResponse> = emptyList(),
     val garrafonesTotales: Int = 1,
-    val esPrioritario: Boolean = false
+    val esPrioritario: Boolean = false,
+    val telefono: String? = null,
+    val latEntrega: Double? = null,
+    val lonEntrega: Double? = null,
+    val rawResponse: PedidoDisponibleResponse? = null
 )
 
 enum class StockStatus { SUFICIENTE_VEHICULO, REQUIERE_BASE, INSUFICIENTE }
@@ -202,7 +207,11 @@ fun PedidosDisponiblesScreen(
                     tipo = if (p.tipoSolicitud?.equals("abierta", ignoreCase = true) == true) TipoPedido.ABIERTO else TipoPedido.DIRECTO,
                     detalles = p.detalles ?: emptyList(),
                     garrafonesTotales = p.garrafonesTotales,
-                    esPrioritario = false
+                    esPrioritario = false,
+                    telefono = p.telefonoCliente,
+                    latEntrega = p.latEntrega,
+                    lonEntrega = p.lonEntrega,
+                    rawResponse = p
                 )
             }
         } else {
@@ -333,6 +342,7 @@ fun PedidosDisponiblesScreen(
                             onSuccess = {
                                 repartidorViewModel.aceptarPedido(
                                     id = pedidoIdInt,
+                                    pedidoDisponible = pedido.rawResponse,
                                     onSuccess = { resp ->
                                         isAceptando = false
                                         Toast.makeText(
@@ -357,6 +367,7 @@ fun PedidosDisponiblesScreen(
                     } else {
                         repartidorViewModel.aceptarPedido(
                             id = pedidoIdInt,
+                            pedidoDisponible = pedido.rawResponse,
                             onSuccess = { resp ->
                                 isAceptando = false
                                 Toast.makeText(

@@ -1,5 +1,8 @@
 package com.htogo.app.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -31,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.htogo.app.ui.RepartidorViewModel
+import com.htogo.app.ui.components.OsmRouteMapView
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
 import kotlinx.coroutines.delay
@@ -41,13 +46,18 @@ data class EntregaActiva(
     val pedidoId: String,
     val cliente: String,
     val inicialesCliente: String,
+    val telefono: String?,
     val direccion: String,
     val notas: String,
     val productos: String,
     val total: Double,
     val kmRestantes: Double,
     val entregaActual: Int,
-    val totalEntregas: Int
+    val totalEntregas: Int,
+    val latOrigen: Double = 19.376692,
+    val lonOrigen: Double = -99.165057,
+    val latDestino: Double = 19.38204,
+    val lonDestino: Double = -99.16202
 )
 
 enum class MotivoNoEntrega(val titulo: String, val subtitulo: String) {
@@ -64,35 +74,99 @@ fun RutaEntregaScreen(
     repartidorViewModel: RepartidorViewModel = viewModel()
 ) {
     val livePedidoEnRuta by repartidorViewModel.pedidoEnRuta.collectAsState()
+    val livePedidoDisponible by repartidorViewModel.pedidoDisponibleSeleccionado.collectAsState()
+    val liveRutaCalculada by repartidorViewModel.rutaCalculada.collectAsState()
     val isLoading by repartidorViewModel.isLoading.collectAsState()
+    val context = LocalContext.current
 
-    val entrega = remember(livePedidoEnRuta) {
-        if (livePedidoEnRuta != null) {
-            val p = livePedidoEnRuta!!
-            EntregaActiva(
-                pedidoId = p.id.toString(),
-                cliente = "Cliente H2ToGo",
-                inicialesCliente = "C",
-                direccion = "Insurgentes Sur, Benito Juárez, CDMX",
-                notas = p.indicaciones ?: "Entregar con cuidado",
-                productos = "${p.garrafonesTotales ?: 1} × Garrafón 20 L",
-                total = p.totalPagar ?: 45.0,
-                kmRestantes = 1.2,
-                entregaActual = 1,
-                totalEntregas = 1
-            )
+    val entrega = remember(livePedidoEnRuta, livePedidoDisponible, liveRutaCalculada) {
+        val pEnRuta = livePedidoEnRuta
+        val pDisp = livePedidoDisponible
+
+        val idStr = pEnRuta?.id?.toString() ?: pDisp?.id?.toString() ?: "1287"
+        val nombre = pEnRuta?.nombreCliente?.takeIf { it.isNotBlank() }
+            ?: pDisp?.nombreCliente?.takeIf { it.isNotBlank() }
+            ?: "Cliente H2ToGo"
+
+        val iniciales = nombre.split(" ")
+            .filter { it.isNotBlank() }
+            .take(2)
+            .map { it.first().uppercaseChar() }
+            .joinToString("")
+            .ifEmpty { "C" }
+
+        val tel = pEnRuta?.telefonoCliente ?: pDisp?.telefonoCliente
+
+        val dir = pEnRuta?.direccionTexto?.takeIf { it.isNotBlank() }
+            ?: pDisp?.direccionResumen?.takeIf { it.isNotBlank() }
+            ?: "Insurgentes Sur, Benito Juárez, CDMX"
+
+        val notasTxt = pEnRuta?.indicaciones?.takeIf { it.isNotBlank() }
+            ?: "Entregar en domicilio especificado"
+
+        val prods = when {
+            !pEnRuta?.detalles.isNullOrEmpty() -> {
+                pEnRuta!!.detalles!!.joinToString(", ") { d ->
+                    "${d.cantidad} × ${d.nombreMarca ?: "Garrafón 20 L"}"
+                }
+            }
+            !pDisp?.detalles.isNullOrEmpty() -> {
+                pDisp!!.detalles!!.joinToString(", ") { d ->
+                    "${d.cantidad} × ${d.nombreMarca ?: "Garrafón 20 L"}"
+                }
+            }
+            (pEnRuta?.garrafonesTotales ?: 0) > 0 -> {
+                "${pEnRuta!!.garrafonesTotales} × Garrafón 20 L"
+            }
+            (pDisp?.garrafonesTotales ?: 0) > 0 -> {
+                "${pDisp!!.garrafonesTotales} × Garrafón 20 L"
+            }
+            else -> "2 × Garrafón 20 L"
+        }
+
+        val totalMonto = pEnRuta?.totalPagar ?: pDisp?.totalEstimado ?: 90.0
+
+        val latDest = pEnRuta?.latEntrega ?: pDisp?.latEntrega ?: 19.38204
+        val lonDest = pEnRuta?.lonEntrega ?: pDisp?.lonEntrega ?: -99.16202
+
+        val km = if (liveRutaCalculada != null && liveRutaCalculada!!.encontrada && liveRutaCalculada!!.distanciaTotalKm > 0) {
+            liveRutaCalculada!!.distanciaTotalKm
+        } else if (pDisp?.distanciaKm != null && pDisp.distanciaKm > 0) {
+            pDisp.distanciaKm
         } else {
-            EntregaActiva(
-                pedidoId = "HG-1287",
-                cliente = "Andrea Martínez",
-                inicialesCliente = "A",
-                direccion = "Insurgentes Sur 1234, Int. 4B · Del Valle, Benito Juárez",
-                notas = "Edificio azul, frente al parque. Tocar timbre 4B.",
-                productos = "3 × Ciel 20 L",
-                total = 135.0,
-                kmRestantes = 1.2,
-                entregaActual = 1,
-                totalEntregas = 3
+            1.2
+        }
+
+        EntregaActiva(
+            pedidoId = idStr,
+            cliente = nombre,
+            inicialesCliente = iniciales,
+            telefono = tel,
+            direccion = dir,
+            notas = notasTxt,
+            productos = prods,
+            total = totalMonto,
+            kmRestantes = km,
+            entregaActual = 1,
+            totalEntregas = 1,
+            latOrigen = 19.376692,
+            lonOrigen = -99.165057,
+            latDestino = latDest,
+            lonDestino = lonDest
+        )
+    }
+
+    val routePoints = remember(liveRutaCalculada) {
+        liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) } ?: emptyList()
+    }
+
+    LaunchedEffect(entrega.pedidoId) {
+        val idInt = entrega.pedidoId.toIntOrNull()
+        if (idInt != null) {
+            repartidorViewModel.cargarRutaPedido(
+                id = idInt,
+                latRep = entrega.latOrigen,
+                lonRep = entrega.lonOrigen
             )
         }
     }
@@ -115,13 +189,17 @@ fun RutaEntregaScreen(
 
     Scaffold(containerColor = HToGoColors.Background) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            Box(
-                Modifier.fillMaxSize().background(Color(0xFFDDE7EE)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("[ Mapa con ruta del repartidor ]", color = HToGoColors.TextSecondary)
-            }
+            // Mapa interactivo con la ruta del repartidor
+            OsmRouteMapView(
+                originLat = entrega.latOrigen,
+                originLon = entrega.lonOrigen,
+                destLat = entrega.latDestino,
+                destLon = entrega.lonDestino,
+                routePoints = routePoints,
+                modifier = Modifier.fillMaxSize()
+            )
 
+            // Header superior flotante
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -140,6 +218,7 @@ fun RutaEntregaScreen(
                 FloatingIconButton(Icons.Filled.MoreVert, {})
             }
 
+            // Tarjeta inferior con información del pedido
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -156,7 +235,11 @@ fun RutaEntregaScreen(
                             onClick = {
                                 val idInt = entrega.pedidoId.toIntOrNull()
                                 if (idInt != null) {
-                                    repartidorViewModel.marcarEnCamino(idInt)
+                                    repartidorViewModel.marcarEnCamino(
+                                        id = idInt,
+                                        lat = entrega.latOrigen,
+                                        lon = entrega.lonOrigen
+                                    )
                                 }
                                 estado = EstadoRuta.LLEGADO
                             },
@@ -237,10 +320,12 @@ fun RutaEntregaScreen(
                             id = idInt,
                             esEntregado = true,
                             onSuccess = {
+                                Toast.makeText(context, "¡Entrega completada con éxito!", Toast.LENGTH_SHORT).show()
                                 mostrarModalEntregado = false
                                 onCompletada()
                             },
-                            onError = {
+                            onError = { err ->
+                                Toast.makeText(context, err, Toast.LENGTH_LONG).show()
                                 mostrarModalEntregado = false
                                 onCompletada()
                             }
@@ -262,10 +347,12 @@ fun RutaEntregaScreen(
                             id = idInt,
                             esEntregado = false,
                             onSuccess = {
+                                Toast.makeText(context, "Entrega reportada como no realizada", Toast.LENGTH_SHORT).show()
                                 mostrarModalNoEntregado = false
                                 onCompletada()
                             },
-                            onError = {
+                            onError = { err ->
+                                Toast.makeText(context, err, Toast.LENGTH_LONG).show()
                                 mostrarModalNoEntregado = false
                                 onCompletada()
                             }
@@ -327,7 +414,8 @@ private fun StepPill(estado: EstadoRuta, pedidoId: String, actual: Int, total: I
                 Text(
                     "Entrega $actual de $total · #$pedidoId",
                     color = textColor,
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
@@ -336,6 +424,7 @@ private fun StepPill(estado: EstadoRuta, pedidoId: String, actual: Int, total: I
 
 @Composable
 private fun EnRutaSheet(entrega: EntregaActiva) {
+    val context = LocalContext.current
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -375,7 +464,7 @@ private fun EnRutaSheet(entrega: EntregaActiva) {
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "%.1f km restantes".format(entrega.kmRestantes),
+                        "%.2f km restantes".format(entrega.kmRestantes),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = HToGoColors.Primary
@@ -387,7 +476,18 @@ private fun EnRutaSheet(entrega: EntregaActiva) {
                     )
                 }
                 Button(
-                    onClick = {},
+                    onClick = {
+                        try {
+                            val uri = Uri.parse("google.navigation:q=${entrega.latDestino},${entrega.lonDestino}")
+                            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                                setPackage("com.google.android.apps.maps")
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {
+                            val fallbackUri = Uri.parse("geo:${entrega.latDestino},${entrega.lonDestino}?q=${entrega.latDestino},${entrega.lonDestino}(${Uri.encode(entrega.cliente)})")
+                            context.startActivity(Intent(Intent.ACTION_VIEW, fallbackUri))
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                 ) {
                     Icon(Icons.Filled.Navigation, null, modifier = Modifier.size(14.dp))
@@ -504,6 +604,7 @@ private fun LlegadoSheet(entrega: EntregaActiva, segundos: Int) {
 
 @Composable
 private fun ClienteCard(entrega: EntregaActiva, accent: Color) {
+    val context = LocalContext.current
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = HToGoColors.Background,
@@ -529,9 +630,10 @@ private fun ClienteCard(entrega: EntregaActiva, accent: Color) {
                     color = HToGoColors.TextPrimary
                 )
                 Text(
-                    "Cliente",
-                    fontSize = 12.sp,
-                    color = HToGoColors.TextSecondary
+                    entrega.direccion,
+                    fontSize = 11.sp,
+                    color = HToGoColors.TextSecondary,
+                    maxLines = 1
                 )
             }
             Box(
@@ -539,7 +641,18 @@ private fun ClienteCard(entrega: EntregaActiva, accent: Color) {
                     .size(42.dp)
                     .clip(RoundedCornerShape(50))
                     .background(HToGoColors.StatusEntregado)
-                    .clickable { },
+                    .clickable {
+                        if (!entrega.telefono.isNullOrBlank()) {
+                            try {
+                                val callIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${entrega.telefono}"))
+                                context.startActivity(callIntent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "No se pudo iniciar llamada: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "Teléfono de cliente no disponible", Toast.LENGTH_SHORT).show()
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Filled.Call, null, tint = Color.White)

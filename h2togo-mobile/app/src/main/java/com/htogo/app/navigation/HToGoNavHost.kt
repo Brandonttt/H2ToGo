@@ -38,6 +38,7 @@ import kotlinx.coroutines.delay
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.htogo.app.ui.AuthViewModel
 import com.htogo.app.ui.ClienteViewModel
+import com.htogo.app.ui.RepartidorViewModel
 
 @Composable
 fun HToGoNavHost(
@@ -46,6 +47,7 @@ fun HToGoNavHost(
 ) {
     val authViewModel: AuthViewModel = viewModel()
     val clienteViewModel: ClienteViewModel = viewModel()
+    val repartidorViewModel: RepartidorViewModel = viewModel()
     val context = LocalContext.current
     val sessionManager = remember { SessionManager.getInstance(context) }
     val apiClient = remember { ApiClient.getInstance(context) }
@@ -278,13 +280,15 @@ fun HToGoNavHost(
                 onRuta             = { navController.navigate(HToGoRoutes.RUTA_ENTREGA) },
                 onPedidoProgramado = { navController.navigate(HToGoRoutes.PEDIDO_PROGRAMADO) },
                 onSwitchRol        = { navController.navigate(HToGoRoutes.HOME_CLIENTE) },
-                onPedidosDisponibles = { navController.navigate(HToGoRoutes.PEDIDOS_DISPONIBLES) }
+                onPedidosDisponibles = { navController.navigate(HToGoRoutes.PEDIDOS_DISPONIBLES) },
+                repartidorViewModel = repartidorViewModel
             )
         }
         composable(HToGoRoutes.PEDIDOS_DISPONIBLES) {
             PedidosDisponiblesScreen(
                 onBack     = { navController.popBackStack() },
-                onAceptar  = { navController.navigate(HToGoRoutes.RUTA_ENTREGA) }
+                onAceptar  = { navController.navigate(HToGoRoutes.RUTA_ENTREGA) },
+                repartidorViewModel = repartidorViewModel
             )
         }
         composable(HToGoRoutes.PEDIDO_PROGRAMADO) {
@@ -299,7 +303,8 @@ fun HToGoNavHost(
                 onInicio  = { navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
                 onIngresos = { navController.navigate(HToGoRoutes.INGRESOS) },
                 onPerfil  = { navController.navigate(HToGoRoutes.PERFIL_REPARTIDOR) },
-                onProductosPrecios = { navController.navigate(HToGoRoutes.PRODUCTOS_PRECIOS) }
+                onProductosPrecios = { navController.navigate(HToGoRoutes.PRODUCTOS_PRECIOS) },
+                repartidorViewModel = repartidorViewModel
             )
         }
         composable(HToGoRoutes.PRODUCTOS_PRECIOS) {
@@ -310,7 +315,8 @@ fun HToGoNavHost(
         composable(HToGoRoutes.RUTA_ENTREGA) {
             RutaEntregaScreen(
                 onBack       = { navController.popBackStack() },
-                onCompletada = { navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) }
+                onCompletada = { navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
+                repartidorViewModel = repartidorViewModel
             )
         }
         composable(HToGoRoutes.INGRESOS) {
@@ -318,7 +324,8 @@ fun HToGoNavHost(
                 onBack    = { navController.popBackStack() },
                 onInicio  = { navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
                 onNegocio = { navController.navigate(HToGoRoutes.INVENTARIO) },
-                onPerfil  = { navController.navigate(HToGoRoutes.PERFIL_REPARTIDOR) }
+                onPerfil  = { navController.navigate(HToGoRoutes.PERFIL_REPARTIDOR) },
+                repartidorViewModel = repartidorViewModel
             )
         }
         composable(HToGoRoutes.PERFIL_REPARTIDOR) {
@@ -333,7 +340,8 @@ fun HToGoNavHost(
                 },
                 onInicio  = { navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
                 onNegocio = { navController.navigate(HToGoRoutes.INVENTARIO) },
-                onIngresos = { navController.navigate(HToGoRoutes.INGRESOS) }
+                onIngresos = { navController.navigate(HToGoRoutes.INGRESOS) },
+                repartidorViewModel = repartidorViewModel
             )
         }
     }

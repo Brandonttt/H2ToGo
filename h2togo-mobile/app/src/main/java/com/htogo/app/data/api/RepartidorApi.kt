@@ -2,6 +2,7 @@ package com.htogo.app.data.api
 
 import com.htogo.app.data.dto.PedidoDisponibleResponse
 import com.htogo.app.data.dto.PedidoResponse
+import com.htogo.app.data.dto.RouteResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -31,6 +32,9 @@ interface RepartidorApi {
 
     @PUT("repartidores/me/ubicacion")
     suspend fun reportarUbicacion(@Body ubicacion: Map<String, Double>): Response<Unit>
+
+    @GET("pedidos/{id}/ruta")
+    suspend fun obtenerRuta(@Path("id") id: Int): Response<RouteResponse>
 
     @GET("repartidores/me/entregas")
     suspend fun obtenerMisEntregas(
