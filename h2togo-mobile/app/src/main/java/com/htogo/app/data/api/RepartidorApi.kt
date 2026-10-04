@@ -37,4 +37,9 @@ interface RepartidorApi {
         @retrofit2.http.Query("page") page: Int = 0,
         @retrofit2.http.Query("size") size: Int = 20
     ): Response<com.htogo.app.data.dto.PagedResponseDto<com.htogo.app.data.dto.PedidoResumenDto>>
+
+    @POST("repartidores/me/jornada")
+    suspend fun iniciarJornada(
+        @Body request: com.htogo.app.data.dto.IniciarJornadaRequest
+    ): Response<com.htogo.app.data.dto.JornadaResponse>
 }

@@ -117,12 +117,20 @@ public class InventarioService {
         return new InventarioBaseResponse(lotes);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public InventarioVehiculoResponse inventarioVehiculo(int idRepartidor) {
         Repartidor r = repartidor(idRepartidor);
         Integer idVehiculo = r.getIdVehiculoActual();
         if (idVehiculo == null) {
-            throw new BusinessRuleException("SIN_JORNADA", "El repartidor no tiene una jornada activa.");
+            List<VehiculoNegocio> vehiculos = vehiculoRepository.findByIdNegocioAndActivoTrue(r.getIdNegocio());
+            if (!vehiculos.isEmpty()) {
+                idVehiculo = vehiculos.get(0).getId();
+                r.setIdVehiculoActual(idVehiculo);
+                r.setEstadoOperativo(true);
+                repartidorRepository.saveAndFlush(r);
+            } else {
+                return new InventarioVehiculoResponse(null, 30, 0, 30, List.of());
+            }
         }
         int capacidad = vehiculo(idVehiculo).getCapacidadGarrafones();
         List<InventarioItem> lotes = jdbc.query("""
@@ -144,8 +152,25 @@ public class InventarioService {
     public InventarioVehiculoResponse cargarVehiculo(int idRepartidor, List<CargaItem> cargas) {
         Repartidor r = repartidor(idRepartidor);
         if (r.getIdVehiculoActual() == null) {
-            throw new BusinessRuleException("SIN_JORNADA",
-                    "Debe iniciar jornada (seleccionar vehículo) antes de cargar.");
+            List<VehiculoNegocio> vehiculos = vehiculoRepository.findByIdNegocioAndActivoTrue(r.getIdNegocio());
+            VehiculoNegocio veh;
+            if (!vehiculos.isEmpty()) {
+                veh = vehiculos.get(0);
+            } else {
+                veh = new VehiculoNegocio();
+                veh.setIdNegocio(r.getIdNegocio());
+                veh.setTipoVehiculo(com.h2togo.backend.common.enums.TipoVehiculo.camioneta);
+                veh.setMarca("Vehículo de Reparto");
+                veh.setModelo("Estándar");
+                veh.setColor("Blanco");
+                veh.setPlacas("REP-001");
+                veh.setCapacidadGarrafones(30);
+                veh.setActivo(true);
+                veh = vehiculoRepository.save(veh);
+            }
+            r.setIdVehiculoActual(veh.getId());
+            r.setEstadoOperativo(true);
+            repartidorRepository.saveAndFlush(r);
         }
         ejecutarCarga(r, cargas);
         return inventarioVehiculo(idRepartidor);

@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,11 +28,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.htogo.app.data.dto.CargaItemDto
+import com.htogo.app.data.dto.DetalleResponse
+import com.htogo.app.data.dto.InventarioBaseResponse
+import com.htogo.app.data.dto.InventarioVehiculoResponse
 import com.htogo.app.ui.RepartidorViewModel
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
@@ -49,10 +55,110 @@ data class PedidoDisponible(
     val distanciaKm: Double,
     val tiempoEstimadoMin: Int,
     val tipo: TipoPedido = TipoPedido.DIRECTO,
+    val detalles: List<DetalleResponse> = emptyList(),
+    val garrafonesTotales: Int = 1,
     val esPrioritario: Boolean = false
 )
 
 enum class StockStatus { SUFICIENTE_VEHICULO, REQUIERE_BASE, INSUFICIENTE }
+
+data class StockInfo(
+    val status: StockStatus,
+    val titulo: String,
+    val descripcion: String,
+    val faltantesParaCargar: List<CargaItemDto> = emptyList()
+)
+
+private fun evaluarStockPedido(
+    pedido: PedidoDisponible,
+    vehiculo: InventarioVehiculoResponse?,
+    base: InventarioBaseResponse?
+): StockInfo {
+    if (pedido.detalles.isNotEmpty()) {
+        var todosCubiertosEnVehiculo = true
+        var todosCubiertosConBase = true
+        val faltantes = mutableListOf<CargaItemDto>()
+        val detallesDesglose = mutableListOf<String>()
+
+        for (d in pedido.detalles) {
+            val cantRequerida = d.cantidad
+            val idMarca = d.idMarca
+            val nombreMarca = d.nombreMarca ?: "Garrafón 20 L"
+
+            val dispVeh = vehiculo?.lotes
+                ?.filter { it.idMarca == idMarca }
+                ?.sumOf { it.cantidadActual - (it.cantidadApartada ?: 0) } ?: 0
+
+            val dispBase = base?.lotes
+                ?.filter { it.idMarca == idMarca }
+                ?.sumOf { it.cantidadActual } ?: 0
+
+            if (dispVeh < cantRequerida) {
+                todosCubiertosEnVehiculo = false
+                val falta = cantRequerida - dispVeh
+                if (dispVeh + dispBase < cantRequerida) {
+                    todosCubiertosConBase = false
+                } else {
+                    faltantes.add(CargaItemDto(idMarca = idMarca, cantidad = falta))
+                }
+                detallesDesglose.add("$nombreMarca: $dispVeh en vehículo, $dispBase en base (se requieren $cantRequerida)")
+            } else {
+                detallesDesglose.add("$nombreMarca: $dispVeh en vehículo (suficiente)")
+            }
+        }
+
+        return when {
+            todosCubiertosEnVehiculo -> StockInfo(
+                status = StockStatus.SUFICIENTE_VEHICULO,
+                titulo = "Stock disponible",
+                descripcion = "Cuentas con garrafones suficientes en tu vehículo: ${detallesDesglose.joinToString("; ")}"
+            )
+            todosCubiertosConBase -> StockInfo(
+                status = StockStatus.REQUIERE_BASE,
+                titulo = "Carga adicional requerida",
+                descripcion = "Faltan unidades en tu vehículo pero hay stock en base: ${detallesDesglose.joinToString("; ")}. Puedes cargar y aceptar directamente.",
+                faltantesParaCargar = faltantes
+            )
+            else -> StockInfo(
+                status = StockStatus.INSUFICIENTE,
+                titulo = "Sin stock suficiente",
+                descripcion = "No hay stock suficiente entre tu vehículo y la base: ${detallesDesglose.joinToString("; ")}"
+            )
+        }
+    } else {
+        val totalRequerido = maxOf(1, pedido.garrafonesTotales)
+        val dispVeh = vehiculo?.lotes?.sumOf { it.cantidadActual - (it.cantidadApartada ?: 0) }
+            ?: (vehiculo?.ocupado ?: 0)
+        val dispBase = base?.lotes?.sumOf { it.cantidadActual } ?: 0
+
+        return when {
+            dispVeh >= totalRequerido -> StockInfo(
+                status = StockStatus.SUFICIENTE_VEHICULO,
+                titulo = "Stock disponible",
+                descripcion = "Tienes $dispVeh garrafones disponibles en tu vehículo (requeridos: $totalRequerido)."
+            )
+            (dispVeh + dispBase) >= totalRequerido -> {
+                val falta = totalRequerido - dispVeh
+                val primerLoteBase = base?.lotes?.firstOrNull { it.cantidadActual > 0 }
+                val listaFalta = if (primerLoteBase != null) {
+                    listOf(CargaItemDto(idMarca = primerLoteBase.idMarca, cantidad = falta))
+                } else emptyList()
+
+                StockInfo(
+                    status = StockStatus.REQUIERE_BASE,
+                    titulo = "Carga adicional requerida",
+                    descripcion = "Tienes $dispVeh en vehículo y $dispBase en base. Carga $falta garrafones adicionales de la base.",
+                    faltantesParaCargar = listaFalta
+                )
+            }
+            else -> StockInfo(
+                status = StockStatus.INSUFICIENTE,
+                titulo = "Sin stock suficiente",
+                descripcion = "Tienes $dispVeh en vehículo y $dispBase en base. No es suficiente para los $totalRequerido solicitados."
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,26 +168,40 @@ fun PedidosDisponiblesScreen(
     repartidorViewModel: RepartidorViewModel = viewModel()
 ) {
     val liveDisponibles by repartidorViewModel.pedidosDisponibles.collectAsState()
+    val liveVehiculo by repartidorViewModel.inventarioVehiculo.collectAsState()
+    val liveBase by repartidorViewModel.inventarioBase.collectAsState()
     val isLoading by repartidorViewModel.isLoading.collectAsState()
     val errorMsg by repartidorViewModel.errorMessage.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         repartidorViewModel.cargarPedidosDisponibles()
+        repartidorViewModel.cargarInventarios()
     }
 
     val pedidos = remember(liveDisponibles) {
         if (liveDisponibles.isNotEmpty()) {
             liveDisponibles.map { p ->
+                val productosTexto = if (!p.detalles.isNullOrEmpty()) {
+                    p.detalles.joinToString(", ") { d ->
+                        "${d.cantidad} × ${d.nombreMarca ?: "Garrafón 20 L"}"
+                    }
+                } else {
+                    "${p.garrafonesTotales} × Garrafón 20 L"
+                }
+
                 PedidoDisponible(
                     id = p.id.toString(),
-                    cliente = "Cliente H2ToGo",
-                    direccion = p.direccionResumen ?: "Benito Juárez, CDMX",
-                    colonia = "Zona Cobertura",
-                    productos = "${p.garrafonesTotales} × Garrafón 20 L",
+                    cliente = if (!p.nombreCliente.isNullOrBlank()) p.nombreCliente else "Cliente",
+                    direccion = p.direccionResumen,
+                    colonia = p.colonia ?: "Zona Cobertura",
+                    productos = productosTexto,
                     total = p.totalEstimado ?: 45.0,
-                    distanciaKm = p.distanciaKm ?: 1.5,
-                    tiempoEstimadoMin = p.tiempoEstimadoMinutos ?: 10,
-                    tipo = TipoPedido.DIRECTO,
+                    distanciaKm = p.distanciaKm,
+                    tiempoEstimadoMin = p.tiempoEstimadoMinutos ?: maxOf(5, (p.distanciaKm * 5).toInt()),
+                    tipo = if (p.tipoSolicitud?.equals("abierta", ignoreCase = true) == true) TipoPedido.ABIERTO else TipoPedido.DIRECTO,
+                    detalles = p.detalles ?: emptyList(),
+                    garrafonesTotales = p.garrafonesTotales,
                     esPrioritario = false
                 )
             }
@@ -91,7 +211,7 @@ fun PedidosDisponiblesScreen(
     }
 
     var pedidoSeleccionado by remember { mutableStateOf<PedidoDisponible?>(null) }
-    var stockSimulado by remember { mutableStateOf(StockStatus.SUFICIENTE_VEHICULO) }
+    var isAceptando by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = HToGoColors.Background,
@@ -193,28 +313,66 @@ fun PedidosDisponiblesScreen(
     }
 
     pedidoSeleccionado?.let { pedido ->
+        val stockInfo = remember(pedido, liveVehiculo, liveBase) {
+            evaluarStockPedido(pedido, liveVehiculo, liveBase)
+        }
         AceptarPedidoDialog(
             pedido = pedido,
-            stock = stockSimulado,
-            onCambiarStock = {
-                stockSimulado = when (stockSimulado) {
-                    StockStatus.SUFICIENTE_VEHICULO -> StockStatus.REQUIERE_BASE
-                    StockStatus.REQUIERE_BASE -> StockStatus.INSUFICIENTE
-                    StockStatus.INSUFICIENTE -> StockStatus.SUFICIENTE_VEHICULO
-                }
+            stockInfo = stockInfo,
+            isAceptando = isAceptando,
+            onDismiss = {
+                if (!isAceptando) pedidoSeleccionado = null
             },
-            onDismiss = { pedidoSeleccionado = null },
             onConfirm = {
                 val pedidoIdInt = pedido.id.toIntOrNull()
                 if (pedidoIdInt != null) {
-                    repartidorViewModel.aceptarPedido(
-                        id = pedidoIdInt,
-                        onSuccess = {
-                            pedidoSeleccionado = null
-                            onAceptar()
-                        },
-                        onError = { }
-                    )
+                    isAceptando = true
+                    if (stockInfo.status == StockStatus.REQUIERE_BASE && stockInfo.faltantesParaCargar.isNotEmpty()) {
+                        repartidorViewModel.cargarVehiculo(
+                            cargas = stockInfo.faltantesParaCargar,
+                            onSuccess = {
+                                repartidorViewModel.aceptarPedido(
+                                    id = pedidoIdInt,
+                                    onSuccess = { resp ->
+                                        isAceptando = false
+                                        Toast.makeText(
+                                            context,
+                                            "Se cargaron garrafones y se aceptó el pedido #${resp.id}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        pedidoSeleccionado = null
+                                        onAceptar()
+                                    },
+                                    onError = { err ->
+                                        isAceptando = false
+                                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                                    }
+                                )
+                            },
+                            onError = { err ->
+                                isAceptando = false
+                                Toast.makeText(context, "Error al cargar de base: $err", Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    } else {
+                        repartidorViewModel.aceptarPedido(
+                            id = pedidoIdInt,
+                            onSuccess = { resp ->
+                                isAceptando = false
+                                Toast.makeText(
+                                    context,
+                                    "Pedido #${resp.id} aceptado correctamente",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                pedidoSeleccionado = null
+                                onAceptar()
+                            },
+                            onError = { err ->
+                                isAceptando = false
+                                Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    }
                 } else {
                     pedidoSeleccionado = null
                     onAceptar()
@@ -293,7 +451,7 @@ private fun PedidoDisponibleCard(
                 Column(Modifier.weight(1f)) {
                     Text("#${pedido.id}", fontSize = 11.sp, color = HToGoColors.TextSecondary)
                     Text(
-                        pedido.cliente,
+                        "Cliente: ${pedido.cliente}",
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 15.sp,
                         color = HToGoColors.TextPrimary
@@ -362,7 +520,7 @@ private fun PedidoDisponibleCard(
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    "%.1f km".format(pedido.distanciaKm),
+                    "%.2f km".format(pedido.distanciaKm),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = HToGoColors.TextPrimary
@@ -400,13 +558,13 @@ private fun PedidoDisponibleCard(
 @Composable
 private fun AceptarPedidoDialog(
     pedido: PedidoDisponible,
-    stock: StockStatus,
-    onCambiarStock: () -> Unit,
+    stockInfo: StockInfo,
+    isAceptando: Boolean,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isAceptando) onDismiss() },
         title = {
             Text("¿Aceptar este pedido?", fontWeight = FontWeight.SemiBold)
         },
@@ -419,7 +577,7 @@ private fun AceptarPedidoDialog(
                 ) {
                     Column(Modifier.padding(12.dp)) {
                         Text(
-                            "#${pedido.id} · ${pedido.cliente}",
+                            "#${pedido.id} · Cliente: ${pedido.cliente}",
                             fontSize = 12.sp,
                             color = HToGoColors.TextSecondary
                         )
@@ -447,61 +605,63 @@ private fun AceptarPedidoDialog(
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                StockNotice(stock)
-                Spacer(Modifier.height(8.dp))
-                TextButton(onClick = onCambiarStock) {
-                    Text(
-                        "(demo) cambiar estado de stock",
-                        fontSize = 11.sp,
-                        color = HToGoColors.TextTertiary
-                    )
-                }
+                StockNotice(stockInfo)
             }
         },
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                enabled = stock != StockStatus.INSUFICIENTE,
+                enabled = stockInfo.status != StockStatus.INSUFICIENTE && !isAceptando,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = HToGoColors.Primary,
                     disabledContainerColor = HToGoColors.OutlineSoft,
                     disabledContentColor = HToGoColors.TextTertiary
                 )
             ) {
-                Icon(Icons.Filled.Check, null)
-                Spacer(Modifier.width(4.dp))
-                Text("Aceptar pedido")
+                if (isAceptando) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Procesando...", fontSize = 13.sp)
+                } else {
+                    Icon(Icons.Filled.Check, null)
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        if (stockInfo.status == StockStatus.REQUIERE_BASE) "Cargar de base y aceptar"
+                        else "Aceptar pedido"
+                    )
+                }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isAceptando
+            ) { Text("Cancelar") }
         }
     )
 }
 
 @Composable
-private fun StockNotice(stock: StockStatus) {
-    val (bgColor, accent, icon, title, body) = when (stock) {
-        StockStatus.SUFICIENTE_VEHICULO -> Quintuple(
+private fun StockNotice(stockInfo: StockInfo) {
+    val (bgColor, accent, icon) = when (stockInfo.status) {
+        StockStatus.SUFICIENTE_VEHICULO -> Triple(
             HToGoColors.StatusEntregado.copy(alpha = .10f),
             HToGoColors.StatusEntregado,
-            Icons.Filled.CheckCircle,
-            "Stock disponible",
-            "Tienes 5 garrafones de Ciel en tu vehículo (suficiente)"
+            Icons.Filled.CheckCircle
         )
-        StockStatus.REQUIERE_BASE -> Quintuple(
+        StockStatus.REQUIERE_BASE -> Triple(
             HToGoColors.AccentAmber.copy(alpha = .12f),
             HToGoColors.AccentAmber,
-            Icons.Filled.Warning,
-            "Carga adicional requerida",
-            "Solo tienes 2 en tu vehículo. Tendrás que cargar 1 más desde la base antes de salir."
+            Icons.Filled.Warning
         )
-        StockStatus.INSUFICIENTE -> Quintuple(
+        StockStatus.INSUFICIENTE -> Triple(
             HToGoColors.AccentRose.copy(alpha = .12f),
             HToGoColors.AccentRose,
-            Icons.Filled.Cancel,
-            "Sin stock suficiente",
-            "No hay stock suficiente entre tu vehículo y la base"
+            Icons.Filled.Cancel
         )
     }
     Surface(
@@ -514,14 +674,14 @@ private fun StockNotice(stock: StockStatus) {
             Spacer(Modifier.width(10.dp))
             Column {
                 Text(
-                    title,
+                    stockInfo.titulo,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = accent
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    body,
+                    stockInfo.descripcion,
                     fontSize = 12.sp,
                     color = HToGoColors.TextPrimary
                 )

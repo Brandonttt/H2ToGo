@@ -223,7 +223,7 @@ fun HomeClienteScreen(
                 livePurificadoras.forEach { p ->
                     PurificadoraMini(
                         nombre = p.nombreComercial,
-                        distancia = "${p.distanciaKm} km",
+                        distancia = String.format(java.util.Locale.US, "%.2f km", p.distanciaKm),
                         onAbrir = {
                             clienteViewModel.purificadoraSeleccionadaId = p.id
                             clienteViewModel.purificadoraSeleccionadaNombre = p.nombreComercial

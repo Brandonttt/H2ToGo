@@ -127,7 +127,7 @@ fun BuscarPurificadorasScreen(
                 val distTexto = if (distKm < 1.0) {
                     "${(distKm * 1000).toInt().coerceAtLeast(100)} m"
                 } else {
-                    String.format(java.util.Locale.US, "%.1f km", distKm)
+                    String.format(java.util.Locale.US, "%.2f km", distKm)
                 }
 
                 PurificadoraResumen(

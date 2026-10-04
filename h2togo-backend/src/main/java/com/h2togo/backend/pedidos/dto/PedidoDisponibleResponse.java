@@ -12,6 +12,13 @@ public record PedidoDisponibleResponse(
         String colonia,
         TipoSolicitudPedido tipoSolicitud,
         BigDecimal totalEstimado,
-        List<DetalleResponse> detalles
+        List<DetalleResponse> detalles,
+        String nombreCliente,
+        String direccion
 ) {
+    public PedidoDisponibleResponse(Integer idPedido, Double distanciaM, Integer garrafonesTotales,
+                                    String colonia, TipoSolicitudPedido tipoSolicitud,
+                                    BigDecimal totalEstimado, List<DetalleResponse> detalles) {
+        this(idPedido, distanciaM, garrafonesTotales, colonia, tipoSolicitud, totalEstimado, detalles, null, null);
+    }
 }

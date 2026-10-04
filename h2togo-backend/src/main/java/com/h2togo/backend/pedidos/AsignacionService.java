@@ -9,6 +9,8 @@ import com.h2togo.backend.pedidos.dto.PedidoDisponibleResponse;
 import com.h2togo.backend.pedidos.dto.PedidoResponse;
 import com.h2togo.backend.usuarios.Repartidor;
 import com.h2togo.backend.usuarios.RepartidorRepository;
+import com.h2togo.backend.vehiculos.VehiculoNegocio;
+import com.h2togo.backend.vehiculos.VehiculoNegocioRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,13 +32,16 @@ public class AsignacionService {
     private final PedidoRepository pedidoRepository;
     private final RepartidorRepository repartidorRepository;
     private final PushService pushService;
+    private final VehiculoNegocioRepository vehiculoRepository;
 
     public AsignacionService(NamedParameterJdbcTemplate jdbc, PedidoRepository pedidoRepository,
-            RepartidorRepository repartidorRepository, PushService pushService) {
+            RepartidorRepository repartidorRepository, PushService pushService,
+            VehiculoNegocioRepository vehiculoRepository) {
         this.jdbc = jdbc;
         this.pedidoRepository = pedidoRepository;
         this.repartidorRepository = repartidorRepository;
         this.pushService = pushService;
+        this.vehiculoRepository = vehiculoRepository;
     }
 
     // ---------------------------------------------------------------- CU-010: disponibles
@@ -48,10 +53,13 @@ public class AsignacionService {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT p.id_pedido,
                        ST_Distance(d.ubicacion, r.ubicacion_actual) AS distancia_m,
-                       p.garrafones_totales, d.colonia, p.tipo_solicitud, p.total_pagar
+                       p.garrafones_totales, d.colonia, p.tipo_solicitud, p.total_pagar,
+                       CONCAT(u.nombre, ' ', u.apellidos) AS nombre_cliente,
+                       CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion
                 FROM pedidos p
                 JOIN direcciones_clientes d ON d.id_direccion = p.id_direccion_entrega
                 JOIN repartidores r ON r.id_usuario = :rep
+                JOIN usuarios u ON u.id_usuario = p.id_cliente
                 WHERE p.estado_actual = 'pendiente' AND d.en_zona_cobertura
                   AND ( p.id_negocio_solicitado = r.id_negocio
                      OR ( p.tipo_solicitud = 'abierta' AND NOT EXISTS (
@@ -77,7 +85,9 @@ public class AsignacionService {
                     (Integer) row.get("garrafones_totales"), (String) row.get("colonia"),
                     com.h2togo.backend.common.enums.TipoSolicitudPedido.valueOf((String) row.get("tipo_solicitud")),
                     (BigDecimal) row.get("total_pagar"),
-                    detalles.getOrDefault(id, List.of())));
+                    detalles.getOrDefault(id, List.of()),
+                    (String) row.get("nombre_cliente"),
+                    (String) row.get("direccion")));
         }
         return salida;
     }
@@ -89,7 +99,25 @@ public class AsignacionService {
         Repartidor r = repartidorRepository.findById(idRepartidor)
                 .orElseThrow(() -> new NotFoundException("REPARTIDOR_NO_ENCONTRADO", "No es repartidor."));
         if (r.getIdVehiculoActual() == null || !r.isEstadoOperativo()) {
-            throw new BusinessRuleException("SIN_JORNADA", "Debes iniciar jornada con un vehículo (RN-014).");
+            List<VehiculoNegocio> vehiculos = vehiculoRepository.findByIdNegocioAndActivoTrue(r.getIdNegocio());
+            VehiculoNegocio veh;
+            if (!vehiculos.isEmpty()) {
+                veh = vehiculos.get(0);
+            } else {
+                veh = new VehiculoNegocio();
+                veh.setIdNegocio(r.getIdNegocio());
+                veh.setTipoVehiculo(com.h2togo.backend.common.enums.TipoVehiculo.camioneta);
+                veh.setMarca("Vehículo de Reparto");
+                veh.setModelo("Estándar");
+                veh.setColor("Blanco");
+                veh.setPlacas("REP-001");
+                veh.setCapacidadGarrafones(30);
+                veh.setActivo(true);
+                veh = vehiculoRepository.save(veh);
+            }
+            r.setIdVehiculoActual(veh.getId());
+            r.setEstadoOperativo(true);
+            repartidorRepository.saveAndFlush(r);
         }
         int idVehiculo = r.getIdVehiculoActual();
         int idNegocio = r.getIdNegocio();

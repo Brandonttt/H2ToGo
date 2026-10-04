@@ -48,3 +48,14 @@ data class LoteResponse(
     @SerializedName("fechaCaducidad") val fechaCaducidad: String,
     @SerializedName("cantidadActual") val cantidadActual: Int
 )
+
+data class IniciarJornadaRequest(
+    @SerializedName("idVehiculo") val idVehiculo: Int,
+    @SerializedName("cargaInicial") val cargaInicial: List<CargaItemDto>? = null
+)
+
+data class JornadaResponse(
+    @SerializedName("idVehiculo") val idVehiculo: Int,
+    @SerializedName("disponible") val disponible: Boolean,
+    @SerializedName("inventario") val inventario: InventarioVehiculoResponse? = null
+)

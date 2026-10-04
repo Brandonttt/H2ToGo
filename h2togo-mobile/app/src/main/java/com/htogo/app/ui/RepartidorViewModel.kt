@@ -172,6 +172,43 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    fun iniciarJornada(
+        idVehiculo: Int,
+        cargasIniciales: List<com.htogo.app.data.dto.CargaItemDto>? = null,
+        onSuccess: (com.htogo.app.data.dto.JornadaResponse) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val resp = apiClient.repartidorApi.iniciarJornada(
+                    com.htogo.app.data.dto.IniciarJornadaRequest(
+                        idVehiculo = idVehiculo,
+                        cargaInicial = cargasIniciales
+                    )
+                )
+                if (resp.isSuccessful && resp.body() != null) {
+                    val body = resp.body()!!
+                    if (body.inventario != null) {
+                        _inventarioVehiculo.value = body.inventario
+                    } else {
+                        cargarInventarioVehiculo()
+                    }
+                    cargarInventarioBase()
+                    onSuccess(body)
+                } else {
+                    val err = parseError(resp.errorBody()?.string())
+                        ?: "Error al iniciar jornada (${resp.code()})"
+                    onError(err)
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de red al iniciar jornada")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     fun cargarVehiculo(
         cargas: List<com.htogo.app.data.dto.CargaItemDto>,
         onSuccess: (com.htogo.app.data.dto.InventarioVehiculoResponse) -> Unit,
@@ -188,6 +225,31 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                 } else {
                     val err = parseError(resp.errorBody()?.string())
                         ?: "No se pudo cargar el vehículo (${resp.code()})"
+                    
+                    // Si el backend pide iniciar jornada / seleccionar vehículo, auto-iniciar con el vehículo del negocio
+                    val vehiculoId = _miNegocio.value?.vehiculoPrincipal?.id
+                        ?: _miNegocio.value?.vehiculos?.firstOrNull()?.id
+                    
+                    if (vehiculoId != null && (err.contains("jornada", ignoreCase = true) || err.contains("vehículo", ignoreCase = true) || err.contains("vehiculo", ignoreCase = true))) {
+                        try {
+                            val jornadaResp = apiClient.repartidorApi.iniciarJornada(
+                                com.htogo.app.data.dto.IniciarJornadaRequest(
+                                    idVehiculo = vehiculoId,
+                                    cargaInicial = cargas
+                                )
+                            )
+                            if (jornadaResp.isSuccessful && jornadaResp.body() != null) {
+                                cargarInventarios()
+                                val inv = jornadaResp.body()!!.inventario ?: _inventarioVehiculo.value
+                                if (inv != null) {
+                                    onSuccess(inv)
+                                    return@launch
+                                }
+                            }
+                        } catch (e: Exception) {
+                            // continúa al error normal
+                        }
+                    }
                     onError(err)
                 }
             } catch (e: Exception) {

@@ -59,13 +59,29 @@ data class CancelacionRequest(
 )
 
 data class PedidoDisponibleResponse(
-    @SerializedName("id") val id: Int,
-    @SerializedName("garrafonesTotales") val garrafonesTotales: Int,
-    @SerializedName("distanciaKm") val distanciaKm: Double?,
-    @SerializedName("tiempoEstimadoMinutos") val tiempoEstimadoMinutos: Int?,
-    @SerializedName("totalEstimado") val totalEstimado: Double?,
-    @SerializedName("direccionResumen") val direccionResumen: String?
-)
+    @SerializedName("idPedido") val idPedido: Int? = null,
+    @SerializedName("id") private val _id: Int? = null,
+    @SerializedName("garrafonesTotales") val garrafonesTotales: Int = 1,
+    @SerializedName("distanciaM") val distanciaM: Double? = null,
+    @SerializedName("distanciaKm") private val _distanciaKm: Double? = null,
+    @SerializedName("tiempoEstimadoMinutos") val tiempoEstimadoMinutos: Int? = null,
+    @SerializedName("totalEstimado") val totalEstimado: Double? = null,
+    @SerializedName("nombreCliente") val nombreCliente: String? = null,
+    @SerializedName("direccion") val direccion: String? = null,
+    @SerializedName("direccionResumen") private val _direccionResumen: String? = null,
+    @SerializedName("colonia") val colonia: String? = null,
+    @SerializedName("tipoSolicitud") val tipoSolicitud: String? = null,
+    @SerializedName("detalles") val detalles: List<DetalleResponse>? = null
+) {
+    val id: Int
+        get() = idPedido ?: _id ?: 0
+
+    val distanciaKm: Double
+        get() = _distanciaKm ?: ((distanciaM ?: 1500.0) / 1000.0)
+
+    val direccionResumen: String
+        get() = direccion ?: _direccionResumen ?: colonia ?: "Zona Cobertura"
+}
 
 data class PedidoResumenDto(
     @SerializedName("id") val id: Int,
