@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.h2togo.backend.common.BusinessRuleException;
 import com.h2togo.backend.common.ConflictException;
 import com.h2togo.backend.common.NotFoundException;
+import com.h2togo.backend.common.enums.CodigoCambioPerfil;
 import com.h2togo.backend.common.enums.EstadoSolicitud;
 import com.h2togo.backend.negocios.Negocio;
 import com.h2togo.backend.negocios.NegocioRepository;
@@ -53,6 +54,9 @@ public class SolicitudService {
     @Transactional
     public SolicitudResponse crear(int idRepartidor, SolicitudRequest req) {
         Negocio negocio = negocioComoDueno(idRepartidor); // RN-021
+        if (req.codigoCambio() == CodigoCambioPerfil.AGREGAR_PRODUCTO) {
+            validarAgregarProducto(negocio.getId(), req.valorNuevo());
+        }
 
         SolicitudCambioPerfil s = new SolicitudCambioPerfil();
         s.setCodigoCambio(req.codigoCambio());
@@ -70,6 +74,23 @@ public class SolicitudService {
     public List<SolicitudResponse> misSolicitudes(int idRepartidor) {
         int idNegocio = negocioDelRepartidor(idRepartidor).getId();
         return solicitudRepository.findByIdNegocio(idNegocio).stream().map(SolicitudService::toResponse).toList();
+    }
+
+    /**
+     * El dueño retira una solicitud que el admin aún no revisa. Se borra la fila: no hay estado
+     * "cancelada" en el esquema y una solicitud pendiente todavía no cambió nada. Las de otro
+     * negocio responden 404 para no revelar que existen.
+     */
+    @Transactional
+    public void cancelar(int idRepartidor, int idSolicitud) {
+        Negocio negocio = negocioComoDueno(idRepartidor); // RN-021
+        SolicitudCambioPerfil s = solicitudRepository.findById(idSolicitud)
+                .filter(x -> x.getIdNegocio().equals(negocio.getId()))
+                .orElseThrow(() -> new NotFoundException("SOLICITUD_NO_ENCONTRADA", "Solicitud no encontrada."));
+        if (s.getEstado() != EstadoSolicitud.pendiente) {
+            throw new ConflictException("SOLICITUD_YA_RESUELTA", "La solicitud ya fue resuelta; no se puede cancelar.");
+        }
+        solicitudRepository.delete(s);
     }
 
     // ---------------------------------------------------------------- CU-021: resolver (admin)
@@ -148,6 +169,38 @@ public class SolicitudService {
                     new MapSqlParameterSource().addValue("neg", idNegocio).addValue("marca", intg(v, "idMarca"))
                             .addValue("precio", bdec(v, "precio")).addValue("precioEnvase", bdec(v, "precioEnvase"))
                             .addValue("cap", intg(v, "capacidadMaxima")));
+        }
+    }
+
+    /**
+     * Valida al crear lo que el INSERT de la aprobación va a necesitar; si no, el error saldría
+     * hasta que el admin aprueba. {@code valorNuevo} puede traer campos extra (p. ej. el nombre
+     * de la marca para mostrarlo); solo se usan los que inserta {@link #aplicarCambio}.
+     */
+    private void validarAgregarProducto(int idNegocio, Map<String, Object> v) {
+        Integer idMarca = v.get("idMarca") instanceof Number n ? n.intValue() : null;
+        BigDecimal precio = v.get("precio") instanceof Number n ? new BigDecimal(n.toString()) : null;
+        BigDecimal precioEnvase = v.get("precioEnvase") instanceof Number n ? new BigDecimal(n.toString()) : null;
+        Integer capacidad = v.get("capacidadMaxima") instanceof Number n ? n.intValue() : null;
+        if (idMarca == null || precio == null || precioEnvase == null || capacidad == null
+                || precio.signum() <= 0 || precioEnvase.signum() < 0 || capacidad <= 0) {
+            throw new BusinessRuleException("PRODUCTO_INVALIDO",
+                    "Agregar producto requiere idMarca, precio (> 0), precioEnvase (≥ 0) y capacidadMaxima (> 0).");
+        }
+        var p = new MapSqlParameterSource().addValue("marca", idMarca).addValue("neg", idNegocio);
+        Boolean marcaActiva = jdbc.query("SELECT activo FROM marcas WHERE id_marca = :marca", p,
+                rs -> rs.next() ? rs.getBoolean(1) : null);
+        if (!Boolean.TRUE.equals(marcaActiva)) {
+            throw new NotFoundException("MARCA_NO_ENCONTRADA", "La marca no existe o está inactiva.");
+        }
+        Integer yaExiste = jdbc.queryForObject("""
+                SELECT (SELECT COUNT(*) FROM productos_negocio WHERE id_negocio = :neg AND id_marca = :marca)
+                     + (SELECT COUNT(*) FROM solicitudes_cambio_perfil
+                        WHERE id_negocio = :neg AND estado = 'pendiente' AND codigo_cambio = 'AGREGAR_PRODUCTO'
+                          AND (valor_nuevo::jsonb ->> 'idMarca')::int = :marca)""", p, Integer.class);
+        if (yaExiste != null && yaExiste > 0) {
+            throw new ConflictException("PRODUCTO_YA_EN_CATALOGO",
+                    "Esa marca ya está en tu catálogo o tiene una solicitud pendiente.");
         }
     }
 

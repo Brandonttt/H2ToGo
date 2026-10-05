@@ -41,6 +41,7 @@ class ApiClient private constructor(context: Context) {
     val negociosApi: NegociosApi = retrofit.create(NegociosApi::class.java)
     val repartidorApi: RepartidorApi = retrofit.create(RepartidorApi::class.java)
     val inventarioApi: InventarioApi = retrofit.create(InventarioApi::class.java)
+    val solicitudesApi: SolicitudesApi = retrofit.create(SolicitudesApi::class.java)
 
     companion object {
         @Volatile

@@ -51,11 +51,69 @@ private data class ProductoCatalogo(
 )
 
 private data class SolicitudPendiente(
-    val id: String,
+    val id: Int,
     val tipo: String,
     val descripcion: String,
-    val fecha: String
+    val fecha: String,
+    val pendiente: Boolean,
+    val comentarioAdmin: String?
 )
+
+private val TIPOS_SOLICITUD = mapOf(
+    "AGREGAR_PRODUCTO" to "Agregar producto",
+    "AGREGAR_VEHICULO" to "Agregar vehículo",
+    "DATOS_VEHICULO" to "Datos de vehículo",
+    "ELIMINAR_VEHICULO" to "Eliminar vehículo",
+    "NOMBRE_NEGOCIO" to "Nombre del negocio",
+    "DIRECCION_BASE" to "Dirección base",
+    "FOTO_PERFIL" to "Foto de perfil"
+)
+
+/** Pendientes y rechazadas (para que el dueño vea el motivo); las aprobadas ya están en el catálogo. */
+private fun aTarjeta(s: com.htogo.app.data.dto.SolicitudResponse): SolicitudPendiente? {
+    if (s.estado != "pendiente" && s.estado != "rechazado") return null
+    val v: Map<*, *> = try {
+        com.google.gson.Gson().fromJson(s.valorNuevo, Map::class.java) ?: emptyMap<String, Any>()
+    } catch (e: Exception) {
+        emptyMap<String, Any>()
+    }
+    fun num(k: String) = (v[k] as? Number)?.let { if (it.toDouble() % 1.0 == 0.0) it.toInt().toString() else it.toString() }
+    val descripcion = when (s.codigoCambio) {
+        "AGREGAR_PRODUCTO" -> listOfNotNull(
+            v["marca"]?.toString(),
+            num("precio")?.let { "$$it" },
+            num("precioEnvase")?.let { "envase $$it" }
+        ).joinToString(" · ")
+        "NOMBRE_NEGOCIO" -> v["nombreComercial"]?.toString() ?: ""
+        else -> v.entries.joinToString(" · ") { "${it.value}" }
+    }
+    return SolicitudPendiente(
+        id = s.id,
+        tipo = TIPOS_SOLICITUD[s.codigoCambio] ?: s.codigoCambio,
+        descripcion = descripcion,
+        fecha = haceCuanto(s.fechaSolicitud),
+        pendiente = s.estado == "pendiente",
+        comentarioAdmin = s.comentarioAdmin
+    )
+}
+
+/** "Hace 5 min" a partir de un ISO-8601 con zona (minSdk 24: sin java.time). */
+private fun haceCuanto(iso: String): String {
+    return try {
+        val limpio = iso.replace(Regex("\\.\\d+"), "").replace("Z", "+00:00")
+        val fecha = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US).parse(limpio)
+            ?: return ""
+        val min = (System.currentTimeMillis() - fecha.time) / 60000
+        when {
+            min < 1 -> "Hace un momento"
+            min < 60 -> "Hace $min min"
+            min < 60 * 24 -> "Hace ${min / 60} h"
+            else -> "Hace ${min / (60 * 24)} días"
+        }
+    } catch (e: Exception) {
+        ""
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,8 +125,13 @@ fun ProductosPreciosScreen(
     val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance(context) }
     val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
 
+    val solicitudes by repartidorViewModel.solicitudes.collectAsState()
+    val marcas by repartidorViewModel.marcas.collectAsState()
+
     LaunchedEffect(Unit) {
         repartidorViewModel.cargarMiNegocio()
+        repartidorViewModel.cargarSolicitudes()
+        repartidorViewModel.cargarMarcas()
     }
 
     val nombreNegocio = liveMiNegocio?.nombreComercial ?: sessionManager.obtenerNombreNegocio() ?: "Mi negocio"
@@ -96,24 +159,25 @@ fun ProductosPreciosScreen(
                     )
                 }
             } else {
-                listOf(
-                    ProductoCatalogo("p1", "AGU", "Agua Purificada", "20 L", 45, true, "Proveedor oficial", HToGoColors.Primary)
-                )
+                emptyList<ProductoCatalogo>()
             }
         )
     }
-    var pendientes by remember {
-        mutableStateOf(
-            listOf(
-                SolicitudPendiente(
-                    "SOL-0119",
-                    "Agregar producto",
-                    "Santorini · 20 L · $40 — Proveedor Aqua MX",
-                    "Hace 2 días"
-                )
-            )
-        )
+    val pendientes = remember(solicitudes) { solicitudes.mapNotNull(::aTarjeta) }
+    // Marcas que ya están en el catálogo o tienen una solicitud pendiente: no se pueden volver a pedir.
+    val marcasOcupadas = remember(backendProductos, solicitudes) {
+        val enCatalogo = backendProductos.orEmpty().map { it.idMarca }
+        val pedidas = solicitudes.filter { it.estado == "pendiente" && it.codigoCambio == "AGREGAR_PRODUCTO" }
+            .mapNotNull {
+                try {
+                    (com.google.gson.Gson().fromJson(it.valorNuevo, Map::class.java)["idMarca"] as? Number)?.toInt()
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        (enCatalogo + pedidas).toSet()
     }
+    var enviando by remember { mutableStateOf(false) }
 
     var editandoPrecio by remember { mutableStateOf<ProductoCatalogo?>(null) }
     var mostrarAgregar by remember { mutableStateOf(false) }
@@ -180,6 +244,16 @@ fun ProductosPreciosScreen(
         ) {
             item { ReglasCard() }
             item { SectionTitle("Catálogo activo · ${productos.size} productos") }
+            if (productos.isEmpty()) {
+                item {
+                    Text(
+                        "Aún no tienes productos. Agrega el primero; aparecerá aquí cuando el admin lo apruebe.",
+                        fontSize = 12.sp,
+                        color = HToGoColors.TextSecondary,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
+            }
             items(productos, key = { it.id }) { p ->
                 ProductoCard(p) { editandoPrecio = p }
             }
@@ -189,12 +263,15 @@ fun ProductosPreciosScreen(
             if (pendientes.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(4.dp))
-                    SectionTitle("Esperando aprobación · ${pendientes.size}")
+                    SectionTitle("Solicitudes al admin · ${pendientes.size}")
                 }
                 items(pendientes, key = { it.id }) { s ->
                     PendienteCard(s) { id ->
-                        pendientes = pendientes.filterNot { it.id == id }
-                        toast = ToastInfo("Solicitud cancelada", success = false)
+                        repartidorViewModel.cancelarSolicitud(
+                            id,
+                            onSuccess = { toast = ToastInfo("Solicitud cancelada", success = false) },
+                            onError = { msg -> toast = ToastInfo(msg, success = false, error = true) }
+                        )
                     }
                 }
             }
@@ -229,18 +306,26 @@ fun ProductosPreciosScreen(
 
     if (mostrarAgregar) {
         AgregarProductoDialog(
+            marcas = marcas.filterNot { it.id in marcasOcupadas },
+            enviando = enviando,
             onDismiss = { mostrarAgregar = false },
-            onEnviar = { marca, capacidad, precio, proveedor ->
-                pendientes = pendientes + SolicitudPendiente(
-                    id = "SOL-${(120..999).random()}",
-                    tipo = "Agregar producto",
-                    descripcion = "$marca · $capacidad · $$precio — $proveedor",
-                    fecha = "Hace un momento"
-                )
-                mostrarAgregar = false
-                toast = ToastInfo(
-                    "Solicitud enviada al admin · pendiente de aprobación",
-                    success = false
+            onEnviar = { marca, precio, precioEnvase, capacidad ->
+                enviando = true
+                repartidorViewModel.solicitarProducto(
+                    idMarca = marca.id,
+                    nombreMarca = marca.nombre,
+                    precio = precio.toDouble(),
+                    precioEnvase = precioEnvase.toDouble(),
+                    capacidadMaxima = capacidad,
+                    onSuccess = {
+                        enviando = false
+                        mostrarAgregar = false
+                        toast = ToastInfo("Solicitud enviada al admin · pendiente de aprobación", success = false)
+                    },
+                    onError = { msg ->
+                        enviando = false
+                        toast = ToastInfo(msg, success = false, error = true)
+                    }
                 )
             }
         )
@@ -480,11 +565,12 @@ private fun AgregarProductoBtn(onClick: () -> Unit) {
 }
 
 @Composable
-private fun PendienteCard(s: SolicitudPendiente, onCancelar: (String) -> Unit) {
+private fun PendienteCard(s: SolicitudPendiente, onCancelar: (Int) -> Unit) {
+    val acento = if (s.pendiente) HToGoColors.AccentAmber else HToGoColors.AccentRose
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = HToGoColors.AccentAmber.copy(alpha = .08f),
-        border = BorderStroke(1.dp, HToGoColors.AccentAmber.copy(alpha = .4f)),
+        color = acento.copy(alpha = .08f),
+        border = BorderStroke(1.dp, acento.copy(alpha = .4f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -495,12 +581,12 @@ private fun PendienteCard(s: SolicitudPendiente, onCancelar: (String) -> Unit) {
                 Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(HToGoColors.AccentAmber.copy(alpha = .18f)),
+                    .background(acento.copy(alpha = .18f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Filled.PendingActions, null,
-                    tint = HToGoColors.AccentAmber,
+                    tint = acento,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -515,7 +601,7 @@ private fun PendienteCard(s: SolicitudPendiente, onCancelar: (String) -> Unit) {
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "#${s.id}",
+                        "#SOL-${s.id.toString().padStart(4, '0')}",
                         fontSize = 10.sp,
                         color = HToGoColors.TextTertiary
                     )
@@ -527,19 +613,23 @@ private fun PendienteCard(s: SolicitudPendiente, onCancelar: (String) -> Unit) {
                     lineHeight = 15.sp
                 )
                 Text(
-                    "${s.fecha} · esperando admin",
+                    if (s.pendiente) "${s.fecha} · esperando admin"
+                    else "Rechazada" + (s.comentarioAdmin?.let { ": $it" } ?: ""),
                     fontSize = 10.sp,
-                    color = HToGoColors.AccentAmber,
-                    fontWeight = FontWeight.SemiBold
+                    color = acento,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 13.sp
                 )
             }
-            TextButton(onClick = { onCancelar(s.id) }) {
-                Text(
-                    "Cancelar",
-                    fontSize = 12.sp,
-                    color = HToGoColors.AccentRose,
-                    fontWeight = FontWeight.SemiBold
-                )
+            if (s.pendiente) {
+                TextButton(onClick = { onCancelar(s.id) }) {
+                    Text(
+                        "Cancelar",
+                        fontSize = 12.sp,
+                        color = HToGoColors.AccentRose,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }
@@ -681,18 +771,24 @@ private fun EditarPrecioDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AgregarProductoDialog(
+    marcas: List<com.htogo.app.data.dto.MarcaResponse>,
+    enviando: Boolean,
     onDismiss: () -> Unit,
-    onEnviar: (marca: String, capacidad: String, precio: Int, proveedor: String) -> Unit
+    onEnviar: (marca: com.htogo.app.data.dto.MarcaResponse, precio: Int, precioEnvase: Int, capacidad: Int) -> Unit
 ) {
-    var marca by remember { mutableStateOf("") }
-    var capacidad by remember { mutableStateOf("20 L") }
+    var marca by remember { mutableStateOf<com.htogo.app.data.dto.MarcaResponse?>(null) }
+    var menuAbierto by remember { mutableStateOf(false) }
     var precioStr by remember { mutableStateOf("") }
-    var proveedor by remember { mutableStateOf("") }
+    var envaseStr by remember { mutableStateOf("80") }
+    var capacidadStr by remember { mutableStateOf("50") }
     val precioInt = precioStr.toIntOrNull()
-    val valido = marca.isNotBlank() && capacidad.isNotBlank() &&
-        precioInt != null && precioInt in 20..120 && proveedor.isNotBlank()
+    val envaseInt = envaseStr.toIntOrNull()
+    val capacidadInt = capacidadStr.toIntOrNull()
+    val valido = marca != null && precioInt != null && precioInt in 20..120 &&
+        envaseInt != null && envaseInt >= 0 && capacidadInt != null && capacidadInt > 0
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -717,52 +813,50 @@ private fun AgregarProductoDialog(
                     color = HToGoColors.TextSecondary
                 )
                 Spacer(Modifier.height(14.dp))
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = HToGoColors.AccentAmber.copy(alpha = .12f),
-                    modifier = Modifier.fillMaxWidth()
+                ExposedDropdownMenuBox(
+                    expanded = menuAbierto,
+                    onExpandedChange = { if (marcas.isNotEmpty()) menuAbierto = it }
                 ) {
-                    Row(
-                        Modifier.padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Filled.HourglassTop, null,
-                            tint = HToGoColors.AccentAmber,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "Tiempo promedio de aprobación: 4 h",
-                            fontSize = 11.sp,
-                            color = HToGoColors.TextPrimary
-                        )
+                    OutlinedTextField(
+                        value = marca?.nombre ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Marca del producto") },
+                        placeholder = { Text(if (marcas.isEmpty()) "No hay marcas disponibles" else "Elige una marca") },
+                        leadingIcon = { Icon(Icons.Filled.WaterDrop, null) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuAbierto) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    ExposedDropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
+                        marcas.forEach { m ->
+                            DropdownMenuItem(
+                                text = { Text(m.nombre) },
+                                onClick = { marca = m; menuAbierto = false }
+                            )
+                        }
                     }
                 }
-                Spacer(Modifier.height(14.dp))
-                OutlinedTextField(
-                    value = marca,
-                    onValueChange = { marca = it.take(40) },
-                    label = { Text("Marca del producto") },
-                    leadingIcon = { Icon(Icons.Filled.WaterDrop, null) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = capacidad,
-                        onValueChange = { capacidad = it.take(10) },
-                        label = { Text("Capacidad") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    OutlinedTextField(
                         value = precioStr,
                         onValueChange = { raw -> precioStr = raw.filter(Char::isDigit).take(3) },
-                        label = { Text("Precio") },
+                        label = { Text("Precio agua") },
+                        leadingIcon = { Text("$", fontSize = 14.sp, fontWeight = FontWeight.Bold) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = precioStr.isNotEmpty() && (precioInt == null || precioInt !in 20..120)
+                    )
+                    OutlinedTextField(
+                        value = envaseStr,
+                        onValueChange = { raw -> envaseStr = raw.filter(Char::isDigit).take(3) },
+                        label = { Text("Envase") },
                         leadingIcon = { Text("$", fontSize = 14.sp, fontWeight = FontWeight.Bold) },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
@@ -770,14 +864,22 @@ private fun AgregarProductoDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
+                Text(
+                    "Agua: si el cliente trae su garrafón ($20 – $120). Envase: cargo extra si no lo trae.",
+                    fontSize = 11.sp,
+                    color = HToGoColors.TextSecondary,
+                    lineHeight = 14.sp,
+                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = proveedor,
-                    onValueChange = { proveedor = it.take(50) },
-                    label = { Text("Proveedor / distribuidor") },
+                    value = capacidadStr,
+                    onValueChange = { raw -> capacidadStr = raw.filter(Char::isDigit).take(4) },
+                    label = { Text("Capacidad máxima en base (garrafones)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 Spacer(Modifier.height(18.dp))
                 Row(
@@ -793,24 +895,25 @@ private fun AgregarProductoDialog(
                     ) { Text("Cancelar") }
                     Button(
                         onClick = {
-                            if (precioInt != null) {
-                                onEnviar(marca.trim(), capacidad.trim(), precioInt, proveedor.trim())
+                            val m = marca
+                            if (m != null && precioInt != null && envaseInt != null && capacidadInt != null) {
+                                onEnviar(m, precioInt, envaseInt, capacidadInt)
                             }
                         },
-                        enabled = valido,
+                        enabled = valido && !enviando,
                         modifier = Modifier
                             .weight(1f)
                             .height(46.dp),
                         shape = RoundedCornerShape(23.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentAmber)
-                    ) { Text("Enviar a aprobación", fontWeight = FontWeight.SemiBold) }
+                    ) { Text(if (enviando) "Enviando…" else "Enviar a aprobación", fontWeight = FontWeight.SemiBold) }
                 }
             }
         }
     }
 }
 
-private data class ToastInfo(val mensaje: String, val success: Boolean)
+private data class ToastInfo(val mensaje: String, val success: Boolean, val error: Boolean = false)
 
 @Composable
 private fun ToastSnackbar(toast: ToastInfo) {
@@ -822,7 +925,11 @@ private fun ToastSnackbar(toast: ToastInfo) {
     ) {
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = if (toast.success) HToGoColors.AccentEmerald else HToGoColors.AccentAmber,
+            color = when {
+                toast.error -> HToGoColors.AccentRose
+                toast.success -> HToGoColors.AccentEmerald
+                else -> HToGoColors.AccentAmber
+            },
             shadowElevation = 6.dp
         ) {
             Row(

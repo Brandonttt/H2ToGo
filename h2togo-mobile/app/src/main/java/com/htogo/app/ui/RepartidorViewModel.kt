@@ -53,6 +53,10 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
     private val _marcas = MutableStateFlow<List<com.htogo.app.data.dto.MarcaResponse>>(emptyList())
     val marcas: StateFlow<List<com.htogo.app.data.dto.MarcaResponse>> = _marcas.asStateFlow()
 
+    // Solicitudes de cambio del negocio (CU-020)
+    private val _solicitudes = MutableStateFlow<List<com.htogo.app.data.dto.SolicitudResponse>>(emptyList())
+    val solicitudes: StateFlow<List<com.htogo.app.data.dto.SolicitudResponse>> = _solicitudes.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -94,6 +98,74 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                 }
             } catch (e: Exception) {
                 // Silencioso
+            }
+        }
+    }
+
+    fun cargarSolicitudes() {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.solicitudesApi.misSolicitudes()
+                if (resp.isSuccessful && resp.body() != null) {
+                    _solicitudes.value = resp.body()!!.sortedByDescending { it.fechaSolicitud }
+                }
+            } catch (e: Exception) {
+                // Silencioso
+            }
+        }
+    }
+
+    /** CU-020: pide al admin agregar una marca al catálogo del negocio (RN-020). */
+    fun solicitarProducto(
+        idMarca: Int,
+        nombreMarca: String,
+        precio: Double,
+        precioEnvase: Double,
+        capacidadMaxima: Int,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.solicitudesApi.crear(
+                    com.htogo.app.data.dto.SolicitudRequest(
+                        codigoCambio = "AGREGAR_PRODUCTO",
+                        // "marca" solo es informativo (el panel lo muestra); el backend usa idMarca.
+                        valorNuevo = mapOf(
+                            "idMarca" to idMarca,
+                            "marca" to nombreMarca,
+                            "precio" to precio,
+                            "precioEnvase" to precioEnvase,
+                            "capacidadMaxima" to capacidadMaxima
+                        )
+                    )
+                )
+                if (resp.isSuccessful) {
+                    cargarSolicitudes()
+                    onSuccess()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de red al enviar la solicitud")
+            }
+        }
+    }
+
+    fun cancelarSolicitud(id: Int, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.solicitudesApi.cancelar(id)
+                if (resp.isSuccessful) {
+                    _solicitudes.value = _solicitudes.value.filterNot { it.id == id }
+                    onSuccess()
+                } else {
+                    // 409: el admin la resolvió mientras tanto; refrescar para mostrar su estado real.
+                    cargarSolicitudes()
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo cancelar (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de red al cancelar la solicitud")
             }
         }
     }

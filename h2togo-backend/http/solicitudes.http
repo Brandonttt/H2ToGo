@@ -21,6 +21,10 @@ Content-Type: application/json
 { "codigoCambio": "AGREGAR_PRODUCTO",
   "valorNuevo": { "idMarca": 1, "precio": 28.00, "precioEnvase": 35.00, "capacidadMaxima": 500 } }
 
+### CU-020 — Cancelar una solicitud pendiente (204; 409 si ya fue resuelta).
+DELETE {{host}}/api/v1/solicitudes/1
+Authorization: Bearer {{tokenDueno}}
+
 ### CU-020 — Agregar vehículo (requiere aprobación).
 POST {{host}}/api/v1/solicitudes
 Authorization: Bearer {{tokenDueno}}
