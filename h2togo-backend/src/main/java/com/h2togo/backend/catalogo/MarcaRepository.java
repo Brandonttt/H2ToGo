@@ -8,5 +8,7 @@ public interface MarcaRepository extends JpaRepository<Marca, Integer> {
 
     Optional<Marca> findByNombre(String nombre);
 
+    Optional<Marca> findByNombreIgnoreCase(String nombre);
+
     List<Marca> findByActivoTrue();
 }

@@ -277,6 +277,7 @@
       <a href="#/usuarios" data-view="usuarios"><span class="ms">group</span>Usuarios</a>
       <a href="#/pedidos" data-view="pedidos"><span class="ms">receipt_long</span>Historial de pedidos</a>
       <a href="#/solicitudes" data-view="solicitudes"><span class="ms">approval</span>Solicitudes de cambio<span class="count hidden" id="navSolCount"></span></a>
+      <a href="#/marcas" data-view="marcas"><span class="ms">water_drop</span>Catálogo de marcas</a>
     </nav>
     <div class="me">
       <div class="avatar" id="meAvatar">—</div>
@@ -428,6 +429,35 @@
         </table></div>
         <div class="pager"><span id="sCount">—</span>
           <span class="right" style="display:flex;align-items:center;gap:6px"><span class="ms" style="font-size:16px">info</span>Las aprobaciones se aplican de inmediato al perfil del negocio (RN-020).</span></div>
+      </div>
+    </section>
+
+    <!-- ============ MARCAS ============ -->
+    <section class="view hidden" id="view-marcas">
+      <div class="card mb">
+        <div class="card-h">
+          <div>
+            <h3>Catálogo global de marcas de agua</h3>
+            <p>Marcas disponibles para que las purificadoras agreguen productos y precios a su catálogo</p>
+          </div>
+          <div class="right">
+            <button class="btn primary" id="btnNuevaMarca"><span class="ms">add</span>Nueva marca</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="toolbar">
+          <div style="flex:1;max-width:320px">
+            <input class="input" id="mFiltro" placeholder="Filtrar por nombre de marca...">
+          </div>
+          <div class="right">
+            <span class="sub" id="mCount">—</span>
+          </div>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th style="width:80px">ID</th><th>Nombre de la marca</th><th style="width:130px">Estado</th><th class="r" style="width:140px">Acciones</th></tr></thead>
+          <tbody id="mRows"></tbody>
+        </table></div>
       </div>
     </section>
   </main>
@@ -622,12 +652,14 @@ const VISTAS = {
   usuarios:    { titulo: 'Usuarios', sub: () => 'Altas, bajas y reactivación de cuentas (CU-014/015)', cargar: q => cargarUsuarios(q) },
   pedidos:     { titulo: 'Historial de pedidos', sub: () => 'Consulta global con filtros (CU-016)', cargar: () => cargarPedidos() },
   solicitudes: { titulo: 'Solicitudes de cambio', sub: () => 'Revisión de cambios de perfil de negocios (CU-021)', cargar: () => cargarSolicitudes() },
+  marcas:      { titulo: 'Catálogo de marcas', sub: () => 'Gestión de marcas globales para productos de purificadoras', cargar: () => cargarMarcasAdmin() },
 };
 const state = {
   vista: null, timer: null, dash: null, serieDias: 30, map: null, mapLayer: null,
   u: { tab: '', q: '', page: 0, size: 15 },
   p: { page: 0, size: 20, filtros: { rango: '7', estado: '', cliente: '', repartidor: '' }, total: 0 },
   s: { tab: 'pendiente', tipo: '', data: [] },
+  m: { data: [], filtro: '' },
 };
 
 function route() {
@@ -1253,6 +1285,92 @@ function modalSolicitud(s) {
 }
 
 /* =====================================================================
+ * MARCAS
+ * ===================================================================== */
+async function cargarMarcasAdmin() {
+  $('#mRows').innerHTML = loadingRows(4);
+  try {
+    state.m.data = await api('/admin/marcas');
+    renderizarMarcas();
+  } catch (e) {
+    if (e.status !== 401) $('#mRows').innerHTML = emptyRow(4, errMsg(e), 'error');
+  }
+}
+
+function renderizarMarcas() {
+  const query = (state.m.filtro || '').toLowerCase().trim();
+  const marcas = (state.m.data || []).filter(m => !query || m.nombre.toLowerCase().includes(query));
+  $('#mCount').textContent = `${marcas.length} de ${state.m.data.length} marcas`;
+  if (!marcas.length) {
+    $('#mRows').innerHTML = emptyRow(4, query ? 'No se encontraron marcas con ese filtro.' : 'No hay marcas registradas.', 'water_drop');
+    return;
+  }
+  $('#mRows').innerHTML = marcas.map(m => `
+    <tr>
+      <td><b class="num">#${m.id}</b></td>
+      <td><b style="font-size:14px">${esc(m.nombre)}</b></td>
+      <td>${m.activo ? '<span class="badge t-ok">Activo</span>' : '<span class="badge t-slate">Inactivo</span>'}</td>
+      <td class="r">
+        <button class="btn sm ${m.activo ? 'ghost' : 'ok'}" onclick="toggleEstadoMarca(${m.id}, '${esc(m.nombre)}', ${m.activo})">
+          <span class="ms">${m.activo ? 'block' : 'check'}</span>${m.activo ? 'Desactivar' : 'Activar'}
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function toggleEstadoMarca(id, nombre, activoActual) {
+  const nuevoEstado = !activoActual;
+  const ok = await confirmar({
+    titulo: nuevoEstado ? 'Activar marca' : 'Desactivar marca',
+    texto: nuevoEstado
+      ? `La marca "${nombre}" volverá a estar disponible para que las purificadoras la agreguen a sus productos.`
+      : `La marca "${nombre}" ya no aparecerá como opción para nuevos productos en las purificadoras.`,
+    boton: nuevoEstado ? 'Activar' : 'Desactivar',
+    icon: nuevoEstado ? 'check_circle' : 'block',
+    tipo: nuevoEstado ? 'ok' : 'danger'
+  });
+  if (!ok) return;
+  try {
+    await api(`/admin/marcas/${id}/estado`, { method: 'PUT', body: { activo: nuevoEstado } });
+    toast(nuevoEstado ? `Marca "${nombre}" activada.` : `Marca "${nombre}" desactivada.`);
+    cargarMarcasAdmin();
+  } catch (e) {
+    toast(errMsg(e), 'err');
+  }
+}
+
+function modalNuevaMarca() {
+  const m = abrirModal(`
+    <div class="modal-h">
+      <div class="chip-ic t-brand" style="width:38px;height:38px;border-radius:10px"><span class="ms">water_drop</span></div>
+      <div><h3>Nueva marca de agua</h3><p>Se agregará al catálogo global disponible para todas las purificadoras.</p></div>
+    </div>
+    <form id="fMarca" class="modal-b">
+      <div>
+        <label class="f">Nombre de la marca *</label>
+        <input class="input" name="nombre" placeholder="Ej. Bonafont 20L, Ciel 20L, Santorini 20L" required maxlength="100">
+      </div>
+      <div class="err-msg hidden" data-err></div>
+    </form>
+    <div class="modal-f">
+      <button class="btn" data-close>Cancelar</button>
+      <button class="btn primary" form="fMarca" type="submit"><span class="ms">save</span>Guardar marca</button>
+    </div>
+  `);
+
+  $('#fMarca', m).onsubmit = e => {
+    e.preventDefault();
+    const nombre = e.target.nombre.value.trim();
+    if (!nombre) return;
+    enviar(m, () => api('/admin/marcas', { method: 'POST', body: { nombre } }), () => {
+      toast(`Marca "${nombre}" creada exitosamente.`);
+      cargarMarcasAdmin();
+    });
+  };
+}
+
+/* =====================================================================
  * Modales, paginación y helpers de UI
  * ===================================================================== */
 function abrirModal(html, size = '') {
@@ -1326,6 +1444,8 @@ $$('#serieSeg button').forEach(b => b.addEventListener('click', () => {
 }));
 document.addEventListener('click', e => { if (document.body.classList.contains('nav-open') && !e.target.closest('aside,#menuBtn')) document.body.classList.remove('nav-open'); });
 window.addEventListener('hashchange', () => { if (sesion) route(); });
+$('#btnNuevaMarca').addEventListener('click', modalNuevaMarca);
+$('#mFiltro').addEventListener('input', debounce(e => { state.m.filtro = e.target.value; renderizarMarcas(); }, 150));
 
 ligarEtiquetas();
 if (sesion?.token) iniciarApp(); else $('#login').classList.remove('hidden');
