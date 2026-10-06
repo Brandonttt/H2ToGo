@@ -177,6 +177,39 @@ fun InventarioVehiculoScreen(
         }
     }
 
+    // Para registrar lotes: TODO el catálogo del negocio (no solo las marcas que ya tienen lotes),
+    // con lo que hay en base y la capacidad máxima reales de cada marca (CAPACIDAD_BASE_EXCEDIDA).
+    val opcionesLote = remember(liveMiNegocio, liveBase, marcasBase) {
+        val productos = liveMiNegocio?.productos?.filter { it.activo }
+        if (productos.isNullOrEmpty()) {
+            marcasBase
+        } else {
+            productos.mapIndexed { idx, p ->
+                val lotes = liveBase?.lotes.orEmpty().filter { it.idMarca == p.idMarca && it.cantidadActual > 0 }
+                MarcaBaseStock(
+                    id = p.idMarca.toString(),
+                    codigo = p.marca.take(3).uppercase(),
+                    nombre = p.marca,
+                    capacidad = "20 L",
+                    precio = p.precio,
+                    proveedor = "",
+                    enBase = lotes.sumOf { it.cantidadActual },
+                    maximoBase = p.capacidadMaxima,
+                    accent = if (idx % 2 == 0) HToGoColors.Primary else HToGoColors.AccentEmerald,
+                    lotes = lotes.sortedBy { it.fechaCaducidad }.map { item ->
+                        Lote(
+                            codigo = "L-${item.idLote}",
+                            cantidad = item.cantidadActual,
+                            fechaCaducidad = item.fechaCaducidad,
+                            diasParaCaducar = diasHasta(item.fechaCaducidad)
+                        )
+                    }
+                )
+            }
+        }
+    }
+    var registrandoLote by remember { mutableStateOf(false) }
+
     val marcasVehiculo = remember(liveVehiculo) {
         val lotes = liveVehiculo?.lotes
         if (!lotes.isNullOrEmpty()) {
@@ -423,18 +456,29 @@ fun InventarioVehiculoScreen(
 
     if (showRegistrarEntrada) {
         RegistrarEntradaDialog(
-            marcas = marcasBase,
+            marcas = opcionesLote,
+            registrando = registrandoLote,
             onDismiss = { showRegistrarEntrada = false },
-            onRegistrar = { idMarca, cant, fecha ->
+            onRegistrar = { idMarca, cant, fecha, codigo ->
+                registrandoLote = true
                 repartidorViewModel.registrarLote(
                     request = LoteEntradaRequest(
                         idMarca = idMarca,
                         cantidad = cant,
                         fechaCaducidad = fecha,
-                        proveedor = "Proveedor oficial"
+                        // El backend no tiene columna de código: se conserva en las notas del movimiento.
+                        notas = codigo.takeIf { it.isNotBlank() }?.let { "Código de lote del proveedor: $it" }
                     ),
-                    onSuccess = { showRegistrarEntrada = false },
-                    onError = { showRegistrarEntrada = false }
+                    onSuccess = {
+                        registrandoLote = false
+                        showRegistrarEntrada = false
+                        Toast.makeText(context, "Lote registrado", Toast.LENGTH_SHORT).show()
+                    },
+                    onError = { err ->
+                        // Se queda abierto para corregir (p. ej. caducidad o capacidad).
+                        registrandoLote = false
+                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                    }
                 )
             }
         )
@@ -1055,23 +1099,49 @@ private fun VField(label: String, value: String, modifier: Modifier = Modifier, 
     }
 }
 
+/** Días desde hoy hasta una fecha ISO (yyyy-MM-dd); 0 si no se puede leer. */
+private fun diasHasta(fechaIso: String): Int = try {
+    val fecha = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(fechaIso.take(10))
+    if (fecha == null) 0 else ((fecha.time - System.currentTimeMillis()) / 86_400_000L).toInt()
+} catch (e: Exception) {
+    0
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RegistrarEntradaDialog(
     marcas: List<MarcaBaseStock>,
+    registrando: Boolean,
     onDismiss: () -> Unit,
-    onRegistrar: (idMarca: Int, cantidad: Int, fechaCaducidad: String) -> Unit = { _, _, _ -> }
+    onRegistrar: (idMarca: Int, cantidad: Int, fechaCaducidadIso: String, codigoLote: String) -> Unit
 ) {
-    var seleccionada by remember { mutableStateOf(marcas.firstOrNull()?.id ?: "") }
-    val seleccionMarca = marcas.firstOrNull { it.id == seleccionada } ?: marcas.first()
-    var cantidad by remember { mutableStateOf(10) }
-    var codigoLote by remember { mutableStateOf("L-2026-05-001") }
+    var seleccionada by remember { mutableStateOf(marcas.firstOrNull()?.id) }
+    var menuAbierto by remember { mutableStateOf(false) }
+    val seleccionMarca = marcas.firstOrNull { it.id == seleccionada }
+    val libres = seleccionMarca?.let { maxOf(0, it.maximoBase - it.enBase) } ?: 0
+    var cantidad by remember { mutableStateOf(1) }
+    LaunchedEffect(seleccionada, libres) { cantidad = cantidad.coerceIn(minOf(1, libres), maxOf(libres, 0)) }
+    var codigoLote by remember { mutableStateOf("") }
     var fechaCaducidadValue by remember {
         mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(""))
     }
     val fechaCaducidad = fechaCaducidadValue.text
-    val caducidadValida = fechaCaducidad.length == 10
+    // RN-030: la caducidad debe ser posterior a hoy + 7 días (el backend también lo valida).
+    val fechaIso = fechaCaducidad.split("/").takeIf { it.size == 3 && fechaCaducidad.length == 10 }
+        ?.let { (d, m, y) -> "$y-$m-$d" }
+    val diasCaducidad = fechaIso?.let(::diasHasta)
+    val caducidadValida = diasCaducidad != null && diasCaducidad > 7
     val context = androidx.compose.ui.platform.LocalContext.current
-    Dialog(onDismissRequest = onDismiss) {
+
+    val motivoDeshabilitado = when {
+        seleccionMarca == null -> "Elige una marca del catálogo"
+        libres <= 0 -> "La base ya está llena para esta marca"
+        fechaIso == null -> "Indica la fecha de caducidad"
+        !caducidadValida -> "La caducidad debe ser de más de 7 días"
+        else -> null
+    }
+
+    Dialog(onDismissRequest = { if (!registrando) onDismiss() }) {
         Surface(
             shape = RoundedCornerShape(20.dp),
             color = Color.White,
@@ -1089,43 +1159,64 @@ private fun RegistrarEntradaDialog(
                     fontSize = 13.sp, color = HToGoColors.TextSecondary
                 )
                 Spacer(Modifier.height(14.dp))
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(HToGoColors.PrimarySoft)
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Filled.Warehouse, null, tint = HToGoColors.Primary)
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text("Destino: Base del negocio", fontSize = 13.sp, color = HToGoColors.PrimaryDark, fontWeight = FontWeight.SemiBold)
-                        Text("38 / 50 ocupados · 12 espacios libres", fontSize = 11.sp, color = HToGoColors.TextSecondary)
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
                 Text("MARCA (CATÁLOGO)", fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    marcas.forEach { m ->
-                        val sel = m.id == seleccionada
-                        Row(
-                            Modifier
+                if (marcas.isEmpty()) {
+                    Text(
+                        "Tu negocio aún no tiene productos en el catálogo. Agrégalos en Productos y precios.",
+                        fontSize = 12.sp, color = HToGoColors.AccentRose
+                    )
+                } else {
+                    ExposedDropdownMenuBox(expanded = menuAbierto, onExpandedChange = { menuAbierto = it }) {
+                        OutlinedTextField(
+                            value = seleccionMarca?.let { "${it.nombre} · ${it.capacidad}" } ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            placeholder = { Text("Elige una marca") },
+                            leadingIcon = { Icon(Icons.Filled.WaterDrop, null, tint = HToGoColors.Primary) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuAbierto) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .border(
-                                    1.dp,
-                                    if (sel) HToGoColors.Primary else HToGoColors.OutlineSoft,
-                                    RoundedCornerShape(10.dp)
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        )
+                        ExposedDropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
+                            marcas.forEach { m ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text("${m.nombre} · ${m.capacidad}", fontWeight = FontWeight.Medium)
+                                            Text(
+                                                "${m.enBase} / ${m.maximoBase} en base",
+                                                fontSize = 11.sp, color = HToGoColors.TextSecondary
+                                            )
+                                        }
+                                    },
+                                    onClick = { seleccionada = m.id; menuAbierto = false }
                                 )
-                                .background(if (sel) HToGoColors.PrimaryWash else Color.White)
-                                .clickable { seleccionada = m.id }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("${m.nombre} · ${m.capacidad}", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                            if (sel) Icon(Icons.Filled.CheckCircle, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+                if (seleccionMarca != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (libres > 0) HToGoColors.PrimarySoft else HToGoColors.AccentRose.copy(alpha = .12f))
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.Warehouse, null, tint = if (libres > 0) HToGoColors.Primary else HToGoColors.AccentRose)
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text("Destino: Base del negocio", fontSize = 13.sp, color = HToGoColors.PrimaryDark, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "${seleccionMarca.enBase} / ${seleccionMarca.maximoBase} ocupados · $libres espacios libres",
+                                fontSize = 11.sp, color = HToGoColors.TextSecondary
+                            )
                         }
                     }
                 }
@@ -1134,13 +1225,14 @@ private fun RegistrarEntradaDialog(
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = codigoLote,
-                    onValueChange = { codigoLote = it.take(20) },
-                    label = { Text("Código de lote") },
+                    onValueChange = { codigoLote = it.take(30) },
+                    label = { Text("Código de lote (opcional)") },
+                    placeholder = { Text("Ej. L-2026-05-001") },
                     leadingIcon = { Icon(Icons.Filled.QrCode2, null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    supportingText = { Text("Identificador del proveedor (ej. L-2026-05-001)") }
+                    supportingText = { Text("Identificador impreso por el proveedor") }
                 )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
@@ -1159,10 +1251,9 @@ private fun RegistrarEntradaDialog(
                         )
                     },
                     label = { Text("Fecha de caducidad") },
-                    leadingIcon = { Icon(Icons.Filled.CalendarMonth, null) },
                     trailingIcon = {
                         IconButton(onClick = {
-                            val cal = java.util.Calendar.getInstance()
+                            val cal = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_MONTH, 30) }
                             android.app.DatePickerDialog(
                                 context,
                                 { _, y, m, d ->
@@ -1175,7 +1266,9 @@ private fun RegistrarEntradaDialog(
                                 cal.get(java.util.Calendar.YEAR),
                                 cal.get(java.util.Calendar.MONTH),
                                 cal.get(java.util.Calendar.DAY_OF_MONTH)
-                            ).show()
+                            ).apply {
+                                datePicker.minDate = System.currentTimeMillis() + 8 * 86_400_000L
+                            }.show()
                         }) {
                             Icon(Icons.Filled.CalendarMonth, contentDescription = "Seleccionar fecha", tint = HToGoColors.Primary)
                         }
@@ -1187,17 +1280,15 @@ private fun RegistrarEntradaDialog(
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                     ),
-                    isError = fechaCaducidad.isNotEmpty() && !caducidadValida,
+                    isError = fechaCaducidad.length == 10 && !caducidadValida,
                     supportingText = {
                         Text(
-                            if (fechaCaducidad.isNotEmpty() && !caducidadValida)
-                                "Formato: DD/MM/AAAA"
-                            else
-                                "Toca el icono para abrir calendario o escribe DD/MM/AAAA"
+                            if (fechaCaducidad.length == 10 && !caducidadValida) "Debe caducar en más de 7 días (RN-030)"
+                            else "Escribe DD/MM/AAAA o toca el calendario"
                         )
                     }
                 )
-                if (seleccionMarca.lotes.isNotEmpty()) {
+                if (seleccionMarca != null && seleccionMarca.lotes.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     Surface(
                         shape = RoundedCornerShape(12.dp),
@@ -1233,37 +1324,51 @@ private fun RegistrarEntradaDialog(
                         }
                     }
                 }
-                Spacer(Modifier.height(14.dp))
-                Text("CANTIDAD DEL LOTE", fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold)
-                QtyStepper(cantidad, max = 12) { cantidad = it }
-                Text(
-                    "Máximo 12 (espacio disponible en base)",
-                    fontSize = 11.sp, color = HToGoColors.TextSecondary,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                Spacer(Modifier.height(18.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp),
-                        shape = RoundedCornerShape(23.dp)
-                    ) { Text("Cancelar") }
-                    Button(
-                        onClick = {
-                            val parts = fechaCaducidad.split("/")
-                            val fechaIso = if (parts.size == 3) "${parts[2]}-${parts[1]}-${parts[0]}" else "2026-12-31"
-                            onRegistrar(seleccionMarca.id.toIntOrNull() ?: 1, cantidad, fechaIso)
-                        },
-                        enabled = caducidadValida && cantidad > 0,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp),
-                        shape = RoundedCornerShape(23.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                    ) { Text("Registrar lote", fontWeight = FontWeight.SemiBold) }
+                if (libres > 0) {
+                    Spacer(Modifier.height(14.dp))
+                    Text("CANTIDAD DEL LOTE", fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold)
+                    QtyStepper(cantidad, max = libres) { cantidad = it.coerceAtLeast(1) }
+                    Text(
+                        "Máximo $libres (espacio disponible en base para esta marca)",
+                        fontSize = 11.sp, color = HToGoColors.TextSecondary,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
+                Spacer(Modifier.height(18.dp))
+                // Botones apilados: con letra grande el texto no se parte en dos líneas.
+                Button(
+                    onClick = {
+                        val m = seleccionMarca ?: return@Button
+                        onRegistrar(m.id.toInt(), cantidad, fechaIso ?: return@Button, codigoLote.trim())
+                    },
+                    enabled = motivoDeshabilitado == null && !registrando,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(25.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                ) {
+                    if (registrando) {
+                        CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (registrando) "Registrando…" else "Registrar lote", fontWeight = FontWeight.SemiBold, maxLines = 1)
+                }
+                if (motivoDeshabilitado != null) {
+                    Text(
+                        motivoDeshabilitado,
+                        fontSize = 11.sp, color = HToGoColors.TextSecondary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !registrando,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Cancelar") }
             }
         }
     }

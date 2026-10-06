@@ -218,7 +218,13 @@ fun HToGoNavHost(
         composable(HToGoRoutes.PERFIL_PURIFICADORA) {
             PerfilPurificadoraScreen(
                 onBack           = { navController.popBackStack() },
-                onPedir          = { navController.navigate(HToGoRoutes.NUEVO_PEDIDO) },
+                // Si se vino desde "Cambiar" en Nuevo pedido, reemplaza esa pantalla en vez de apilar otra.
+                onPedir          = {
+                    navController.navigate(HToGoRoutes.NUEVO_PEDIDO) {
+                        popUpTo(HToGoRoutes.NUEVO_PEDIDO) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
                 clienteViewModel = clienteViewModel
             )
         }
@@ -240,13 +246,16 @@ fun HToGoNavHost(
                         popUpTo(HToGoRoutes.HOME_CLIENTE)
                     }
                 },
+                onElegirPurificadora = { navController.navigate(HToGoRoutes.BUSCAR_PURIFICADORAS) },
                 clienteViewModel = clienteViewModel
             )
         }
         composable(HToGoRoutes.ASIGNANDO) {
             AsignandoRepartidorScreen(
+                onBack     = { navController.popBackStack(HToGoRoutes.HOME_CLIENTE, inclusive = false) },
                 onCancel   = { navController.popBackStack(HToGoRoutes.HOME_CLIENTE, inclusive = false) },
-                onAsignado = { navController.navigateAndClear(HToGoRoutes.seguimiento(clienteViewModel.pedidoActivo.value?.id)) }
+                onAsignado = { navController.navigateAndClear(HToGoRoutes.seguimiento(clienteViewModel.pedidoActivo.value?.id)) },
+                clienteViewModel = clienteViewModel
             )
         }
         composable(
@@ -321,7 +330,7 @@ fun HToGoNavHost(
                 onIngresos         = { navController.navigate(HToGoRoutes.INGRESOS) },
                 onPerfil           = { navController.navigate(HToGoRoutes.PERFIL_REPARTIDOR) },
                 onRuta             = { navController.navigate(HToGoRoutes.RUTA_ENTREGA) },
-                onPedidoProgramado = { navController.navigate(HToGoRoutes.PEDIDO_PROGRAMADO) },
+                onPedidoProgramado = { id -> navController.navigate(HToGoRoutes.pedidoProgramado(id)) },
                 onSwitchRol        = { navController.navigate(HToGoRoutes.HOME_CLIENTE) },
                 onPedidosDisponibles = { navController.navigate(HToGoRoutes.PEDIDOS_DISPONIBLES) },
                 repartidorViewModel = repartidorViewModel
@@ -334,10 +343,21 @@ fun HToGoNavHost(
                 repartidorViewModel = repartidorViewModel
             )
         }
-        composable(HToGoRoutes.PEDIDO_PROGRAMADO) {
+        composable(
+            HToGoRoutes.PEDIDO_PROGRAMADO,
+            arguments = listOf(navArgument("idPedido") { type = NavType.IntType })
+        ) { entry ->
+            val idPedido = entry.arguments?.getInt("idPedido") ?: 0
+            LaunchedEffect(idPedido) { repartidorViewModel.cargarPedidoEnRuta(idPedido) }
+            val pedidoEnRuta by repartidorViewModel.pedidoEnRuta.collectAsState()
+            val marcas by repartidorViewModel.marcas.collectAsState()
             SolicitudPedidoProgramadoScreen(
+                // Solo el pedido pedido: evita mostrar un instante el detalle anterior.
+                pedido        = pedidoEnRuta?.takeIf { it.id == idPedido },
+                nombresMarca  = marcas.associate { it.id to it.nombre },
                 onBack        = { navController.popBackStack() },
-                onIniciarRuta = { navController.navigateAndClear(HToGoRoutes.RUTA_ENTREGA) }
+                // Sin limpiar la pila: la flecha de la ruta regresa a este detalle.
+                onIniciarRuta = { navController.navigate(HToGoRoutes.RUTA_ENTREGA) }
             )
         }
         composable(HToGoRoutes.INVENTARIO) {
@@ -357,7 +377,8 @@ fun HToGoNavHost(
         }
         composable(HToGoRoutes.RUTA_ENTREGA) {
             RutaEntregaScreen(
-                onBack       = { navController.popBackStack() },
+                // Si se llegó sin pantalla previa (p. ej. desde una notificación), vuelve al inicio.
+                onBack       = { if (!navController.popBackStack()) navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
                 onCompletada = { navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
                 repartidorViewModel = repartidorViewModel
             )

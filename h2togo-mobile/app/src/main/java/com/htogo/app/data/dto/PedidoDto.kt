@@ -18,7 +18,8 @@ data class ProgramadoDto(
 
 data class DetallePedidoRequest(
     @SerializedName("idMarca") val idMarca: Int,
-    @SerializedName("cantidad") val cantidad: Int,
+    // El backend lo manda como "cantidadSolicitada"; "cantidad" se acepta por compatibilidad.
+    @SerializedName(value = "cantidad", alternate = ["cantidadSolicitada"]) val cantidad: Int,
     @SerializedName("tieneEnvase") val tieneEnvase: Boolean
 )
 

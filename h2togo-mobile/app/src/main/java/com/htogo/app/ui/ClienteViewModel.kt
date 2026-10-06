@@ -66,13 +66,6 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
     var purificadoraSeleccionadaRating: Float? = null
     var purificadoraSeleccionadaResenas: Int? = null
 
-    init {
-        cargarMarcas()
-        cargarDirecciones()
-        cargarHistorial()
-        // Benito Juárez centro por defecto: 19.376692, -99.165057
-        buscarPurificadoras(19.376692, -99.165057)
-    }
 
     fun cargarHistorial() {
         viewModelScope.launch {
@@ -425,5 +418,32 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
         } catch (e: Exception) {
             null
         }
+    }
+
+    // Al final de la clase: debe correr después de inicializar todos los StateFlow de arriba.
+    // El ViewModel se crea al abrir la app (antes del login), así que no basta con cargar una vez:
+    // se recarga cada vez que cambia la sesión y se limpia al cerrarla (evita ver datos de otra cuenta).
+    init {
+        viewModelScope.launch {
+            sessionManager.token.collect { token ->
+                if (token.isNullOrBlank()) limpiarDatosDeSesion() else recargarDatosDeSesion()
+            }
+        }
+    }
+
+    private fun recargarDatosDeSesion() {
+        cargarMarcas()
+        cargarDirecciones()
+        cargarHistorial()
+        // Benito Juárez centro por defecto: 19.376692, -99.165057
+        buscarPurificadoras(19.376692, -99.165057)
+    }
+
+    private fun limpiarDatosDeSesion() {
+        detenerRastreo()
+        _direcciones.value = emptyList()
+        _historial.value = emptyList()
+        _pedidoActivo.value = null
+        _ubicacionRepartidor.value = null
     }
 }

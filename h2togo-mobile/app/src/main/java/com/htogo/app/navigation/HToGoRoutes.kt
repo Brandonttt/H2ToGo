@@ -33,5 +33,6 @@ object HToGoRoutes {
     const val RUTA_ENTREGA       = "ruta"          // 12
     const val INGRESOS           = "ingresos"      // 13 (antes "ganancias")
     const val PERFIL_REPARTIDOR  = "perfil_r"      // 14
-    const val PEDIDO_PROGRAMADO  = "ped_prog"      // 15 — detalle de pedido apartado
+    const val PEDIDO_PROGRAMADO  = "ped_prog/{idPedido}" // 15 — detalle de pedido apartado
+    fun pedidoProgramado(idPedido: Int) = "ped_prog/$idPedido"
 }

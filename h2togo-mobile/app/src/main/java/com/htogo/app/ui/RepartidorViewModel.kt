@@ -63,13 +63,6 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    init {
-        cargarPedidosDisponibles()
-        cargarInventarios()
-        cargarMarcas()
-        cargarMiNegocio()
-        cargarMisEntregas()
-    }
 
     fun cargarMiNegocio() {
         viewModelScope.launch {
@@ -480,9 +473,8 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    /** Recupera el pedido en ruta tras reiniciarse la app (p. ej. desde la notificación de entrega). */
+    /** Carga el detalle real de un pedido del repartidor (pedido apartado, o tras reiniciarse la app). */
     fun cargarPedidoEnRuta(idPedido: Int) {
-        if (_pedidoEnRuta.value?.id == idPedido) return
         viewModelScope.launch {
             try {
                 val resp = apiClient.pedidosApi.obtenerDetallePedido(idPedido)
@@ -574,5 +566,37 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         } catch (e: Exception) {
             null
         }
+    }
+
+    // Al final de la clase: debe correr después de inicializar todos los StateFlow de arriba.
+    // Igual que ClienteViewModel: recarga al iniciar sesión y limpia al cerrarla.
+    init {
+        viewModelScope.launch {
+            sessionManager.token.collect { token ->
+                if (token.isNullOrBlank()) limpiarDatosDeSesion() else recargarDatosDeSesion()
+            }
+        }
+    }
+
+    private fun recargarDatosDeSesion() {
+        cargarPedidosDisponibles()
+        cargarInventarios()
+        cargarMarcas()
+        cargarMiNegocio()
+        cargarMisEntregas()
+    }
+
+    private fun limpiarDatosDeSesion() {
+        _pedidosDisponibles.value = emptyList()
+        _pedidoEnRuta.value = null
+        _pedidoDisponibleSeleccionado.value = null
+        _rutaCalculada.value = null
+        _miNegocio.value = null
+        _misEntregas.value = emptyList()
+        _totalEntregas.value = 0
+        _inventarioBase.value = null
+        _inventarioVehiculo.value = null
+        _solicitudes.value = emptyList()
+        detenerNavegacion()
     }
 }

@@ -86,7 +86,9 @@ fun RutaEntregaScreen(
     val isLoading by repartidorViewModel.isLoading.collectAsState()
     val context = LocalContext.current
 
-    val entrega = remember(livePedidoEnRuta, livePedidoDisponible) {
+    val marcas by repartidorViewModel.marcas.collectAsState()
+    val nombresMarca = remember(marcas) { marcas.associate { it.id to it.nombre } }
+    val entrega = remember(livePedidoEnRuta, livePedidoDisponible, nombresMarca) {
         val pEnRuta = livePedidoEnRuta
         val pDisp = livePedidoDisponible
 
@@ -114,12 +116,12 @@ fun RutaEntregaScreen(
         val prods = when {
             !pEnRuta?.detalles.isNullOrEmpty() -> {
                 pEnRuta!!.detalles!!.joinToString(", ") { d ->
-                    "${d.cantidad} × ${d.nombreMarca ?: "Garrafón 20 L"}"
+                    "${d.cantidad} × ${d.nombreMarca ?: nombresMarca[d.idMarca] ?: "Garrafón 20 L"}"
                 }
             }
             !pDisp?.detalles.isNullOrEmpty() -> {
                 pDisp!!.detalles!!.joinToString(", ") { d ->
-                    "${d.cantidad} × ${d.nombreMarca ?: "Garrafón 20 L"}"
+                    "${d.cantidad} × ${d.nombreMarca ?: nombresMarca[d.idMarca] ?: "Garrafón 20 L"}"
                 }
             }
             (pEnRuta?.garrafonesTotales ?: 0) > 0 -> {

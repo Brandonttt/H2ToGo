@@ -4,7 +4,10 @@ import android.content.Context
 import android.content.SharedPreferences
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Gestor de sesión local del usuario.
@@ -34,6 +37,8 @@ class SessionManager(context: Context) {
         )
         val sesionExpiradaFlow = _sesionExpiradaFlow.asSharedFlow()
 
+        private val _token = MutableStateFlow<String?>(null)
+
         @Volatile
         private var instance: SessionManager? = null
 
@@ -44,7 +49,18 @@ class SessionManager(context: Context) {
         }
     }
 
+    init {
+        _token.value = prefs.getString(KEY_TOKEN, null)
+    }
+
+    /**
+     * Token de la sesión actual (null sin sesión). Los ViewModels lo observan para cargar los
+     * datos del usuario al iniciar sesión y limpiarlos al cerrarla.
+     */
+    val token: StateFlow<String?> get() = _token.asStateFlow()
+
     fun guardarSesion(token: String, rol: String, idUsuario: Int, nombre: String, correo: String, telefono: String = "") {
+        _token.value = token
         prefs.edit()
             .putString(KEY_TOKEN, token)
             .putString(KEY_ROL, rol)
@@ -102,6 +118,7 @@ class SessionManager(context: Context) {
 
     fun cerrarSesion() {
         prefs.edit().clear().apply()
+        _token.value = null
     }
 
     fun notificarSesionExpirada(motivo: String = "Tu sesión ha expirado porque se inició sesión en otro dispositivo.") {

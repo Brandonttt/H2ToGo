@@ -1,7 +1,10 @@
 package com.htogo.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notes
@@ -19,56 +23,97 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.htogo.app.data.dto.PedidoResponse
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
 
-data class PedidoProgramado(
-    val id: String,
-    val cliente: String,
-    val direccion: String,
-    val colonia: String,
+/** Datos del pedido ya listos para mostrar (formateados desde [PedidoResponse]). */
+private data class PedidoApartadoUi(
+    val id: Int,
+    val estado: String,
     val productos: String,
-    val cantidad: Int,
-    val total: Int,
-    val fechaProgramada: String,
-    val horaProgramada: String,
-    val notasCliente: String
+    val cliente: String,
+    val telefono: String?,
+    val direccion: String,
+    val notas: String,
+    val total: Double,
+    val programadoPara: String?
 )
 
-private val SAMPLE_PEDIDO = PedidoProgramado(
-    id = "HG-1290",
-    cliente = "María López",
-    direccion = "Calle Heriberto Frías 890, Int. 2A",
-    colonia = "Col. Nápoles, Benito Juárez",
-    productos = "Ciel · 20 L",
-    cantidad = 5,
-    total = 200,
-    fechaProgramada = "Lunes 26 de abril",
-    horaProgramada = "11:30 AM",
-    notasCliente = "Edificio blanco, dejar en recepción si no contesto. Preguntar por María."
-)
+private fun aUi(p: PedidoResponse, nombresMarca: Map<Int, String>): PedidoApartadoUi {
+    val productos = p.detalles.orEmpty().takeIf { it.isNotEmpty() }
+        ?.joinToString(", ") { d -> "${d.cantidad} × ${d.nombreMarca ?: nombresMarca[d.idMarca] ?: "Garrafón"} · 20 L" }
+        ?: "${p.garrafonesTotales ?: 0} × Garrafón · 20 L"
+    return PedidoApartadoUi(
+        id = p.id,
+        estado = p.estado.lowercase(),
+        productos = productos,
+        cliente = p.nombreCliente?.takeIf { it.isNotBlank() } ?: "Cliente",
+        telefono = p.telefonoCliente,
+        direccion = p.direccionTexto?.takeIf { it.isNotBlank() } ?: "Dirección no disponible",
+        notas = p.indicaciones?.takeIf { it.isNotBlank() } ?: "Sin indicaciones",
+        total = p.totalPagar ?: 0.0,
+        programadoPara = p.fechaProgramada?.takeIf { p.esProgramado }?.let(::fechaLegible)
+    )
+}
 
+/** "2026-04-26T11:30:00-06:00" → "Domingo 26 de abril · 11:30 a. m." (minSdk 24: sin java.time). */
+private fun fechaLegible(iso: String): String = try {
+    val limpio = iso.replace(Regex("\\.\\d+"), "").replace("Z", "+00:00")
+    val fecha = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US).parse(limpio)
+    val es = java.util.Locale("es", "MX")
+    val dia = java.text.SimpleDateFormat("EEEE d 'de' MMMM", es).format(fecha!!).replaceFirstChar { it.uppercase() }
+    val hora = java.text.SimpleDateFormat("h:mm a", es).format(fecha)
+    "$dia · $hora"
+} catch (e: Exception) {
+    iso.take(16).replace('T', ' ')
+}
+
+/**
+ * Pedido que el repartidor ya aceptó (apartado). Muestra el pedido real: [pedido] es null
+ * mientras se carga su detalle.
+ */
 @Composable
 fun SolicitudPedidoProgramadoScreen(
+    pedido: PedidoResponse? = null,
+    nombresMarca: Map<Int, String> = emptyMap(),
     onBack: () -> Unit = {},
     onIniciarRuta: () -> Unit = {}
 ) {
-    val pedido = SAMPLE_PEDIDO
+    val context = LocalContext.current
+    if (pedido == null) {
+        Box(Modifier.fillMaxSize().background(HToGoColors.Background), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = HToGoColors.Primary)
+        }
+        return
+    }
+    val ui = remember(pedido, nombresMarca) { aUi(pedido, nombresMarca) }
+    val enRuta = ui.estado == "asignado" || ui.estado == "en_camino"
+    val chip = when (ui.estado) {
+        "asignado" -> "Aceptado · Te lo apartaste"
+        "en_camino" -> "En camino"
+        "entregado" -> "Entregado"
+        "no_entregado" -> "No entregado"
+        "cancelado" -> "Cancelado por el cliente"
+        else -> ui.estado.replaceFirstChar { it.uppercase() }
+    }
 
     Scaffold(
         containerColor = HToGoColors.Background,
         bottomBar = {
-            Surface(color = Color.White, shadowElevation = 8.dp) {
+            if (enRuta) Surface(color = Color.White, shadowElevation = 8.dp) {
                 Column(
                     Modifier
                         .fillMaxWidth()
@@ -83,7 +128,10 @@ fun SolicitudPedidoProgramadoScreen(
                     ) {
                         Icon(Icons.Filled.PlayArrow, null, tint = Color.White)
                         Spacer(Modifier.width(6.dp))
-                        Text("Iniciar ruta", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (ui.estado == "en_camino") "Continuar ruta" else "Iniciar ruta",
+                            color = Color.White, fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
@@ -127,7 +175,7 @@ fun SolicitudPedidoProgramadoScreen(
                             Icon(Icons.Filled.CheckCircle, null, tint = Color.White, modifier = Modifier.size(13.dp))
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                "Aceptado · Te lo apartaste",
+                                chip,
                                 color = Color.White,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -155,14 +203,15 @@ fun SolicitudPedidoProgramadoScreen(
                         ) { Icon(Icons.Filled.WaterDrop, null, tint = HToGoColors.Primary) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Pedido #${pedido.id}", fontSize = 12.sp, color = HToGoColors.TextSecondary)
+                            Text("Pedido #${ui.id}", fontSize = 12.sp, color = HToGoColors.TextSecondary)
                             Text(
-                                "${pedido.cantidad} × ${pedido.productos}",
+                                ui.productos,
                                 fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                                 color = HToGoColors.TextPrimary
                             )
                         }
                     }
+                    if (ui.programadoPara != null) {
                     Spacer(Modifier.height(14.dp))
                     Row(
                         Modifier
@@ -179,11 +228,12 @@ fun SolicitudPedidoProgramadoScreen(
                                 fontSize = 11.sp, color = HToGoColors.TextSecondary,
                                 fontWeight = FontWeight.SemiBold)
                             Text(
-                                "${pedido.fechaProgramada} · ${pedido.horaProgramada}",
+                                ui.programadoPara,
                                 fontSize = 14.sp, fontWeight = FontWeight.Bold,
                                 color = HToGoColors.PrimaryDark
                             )
                         }
+                    }
                     }
                 }
             }
@@ -191,9 +241,14 @@ fun SolicitudPedidoProgramadoScreen(
             Spacer(Modifier.height(14.dp))
 
             SectionTitle("Detalle del cliente")
-            InfoRow(Icons.Filled.Person, "Cliente", pedido.cliente)
-            InfoRow(Icons.Filled.LocationOn, "Domicilio", "${pedido.direccion}\n${pedido.colonia}")
-            InfoRow(Icons.Filled.Notes, "Notas del cliente", pedido.notasCliente)
+            InfoRow(Icons.Filled.Person, "Cliente", ui.cliente)
+            if (!ui.telefono.isNullOrBlank()) {
+                InfoRow(Icons.Filled.Call, "Teléfono", ui.telefono, onClick = {
+                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${ui.telefono}")))
+                })
+            }
+            InfoRow(Icons.Filled.LocationOn, "Domicilio", ui.direccion)
+            InfoRow(Icons.Filled.Notes, "Notas del cliente", ui.notas)
 
             Spacer(Modifier.height(14.dp))
 
@@ -217,7 +272,7 @@ fun SolicitudPedidoProgramadoScreen(
                         Text("Cobrarás en efectivo",
                             fontSize = 12.sp, color = HToGoColors.TextSecondary)
                         Text(
-                            "$${pedido.total} MXN",
+                            "$%.0f MXN".format(ui.total),
                             fontSize = 24.sp, fontWeight = FontWeight.Bold,
                             color = HToGoColors.AccentEmerald
                         )
@@ -242,11 +297,12 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun InfoRow(icon: ImageVector, label: String, value: String) {
+private fun InfoRow(icon: ImageVector, label: String, value: String, onClick: (() -> Unit)? = null) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
@@ -278,5 +334,5 @@ private fun InfoRow(icon: ImageVector, label: String, value: String) {
 @Preview(showBackground = true, widthDp = 412, heightDp = 868)
 @Composable
 fun SolicitudPedidoProgramadoScreenPreview() {
-    HToGoTheme { SolicitudPedidoProgramadoScreen() }
+    HToGoTheme { SolicitudPedidoProgramadoScreen(pedido = null) }
 }

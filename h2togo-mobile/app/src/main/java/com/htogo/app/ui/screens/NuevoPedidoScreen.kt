@@ -53,24 +53,22 @@ private data class WaterBrand(
     val id: String,
     val name: String,
     val short: String,
-    val pricePerUnit: Int,
+    /** Precio del agua si el cliente entrega su garrafón vacío (RN-025). */
+    val price: Double,
+    /** Cargo adicional por el envase si el cliente no tiene garrafón (RN-031). */
+    val bottlePrice: Double,
     val color: Color
 )
+
+/** "$35" o "$35.50". */
+private fun dinero(v: Double): String =
+    if (v % 1.0 == 0.0) "$%.0f".format(v) else "$%.2f".format(v)
 
 private val SAMPLE_ADDRESSES = listOf(
     SavedAddress("a1", "Casa",        "Av. Insurgentes Sur 1234, Int. 4B, Col. Del Valle", Icons.Filled.Home, isDefault = true),
     SavedAddress("a2", "Oficina",     "Av. Universidad 567, Piso 8, Col. Narvarte",        Icons.Filled.Work),
     SavedAddress("a3", "Casa de mamá","Calle Heriberto Frías 890, Col. Nápoles",           Icons.Filled.Favorite)
 )
-
-private val SAMPLE_BRANDS = listOf(
-    WaterBrand("b1", "Ciel",      "CIE", 35, Color(0xFF0077B6)),
-    WaterBrand("b2", "Bonafont",  "BNF", 38, Color(0xFF1E40AF)),
-    WaterBrand("b3", "Epura",     "EPU", 36, Color(0xFF0EA5E9)),
-    WaterBrand("b4", "Santorini", "SAN", 30, Color(0xFF475569))
-)
-
-private const val PURIFICADORA_NAME = "Aguas Del Valle"
 
 //private enum class TipoPedido { DIRECTA, ABIERTO }
 
@@ -156,7 +154,7 @@ private fun BrandRow(
                     Column {
                         Text(b.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                             color = HToGoColors.TextPrimary)
-                        Text("$${b.pricePerUnit} / 20 L",
+                        Text("${dinero(b.price)} / 20 L",
                             fontSize = 11.sp,
                             fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
                             color = if (active) HToGoColors.Primary else HToGoColors.TextSecondary)
@@ -187,7 +185,7 @@ private fun QuantityCard(brand: WaterBrand, qty: Int, onQty: (Int) -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text("${brand.name} · Garrafón 20 L", fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary)
-                Text("$${brand.pricePerUnit} c/u", fontSize = 13.sp, color = HToGoColors.TextSecondary)
+                Text("${dinero(brand.price)} c/u", fontSize = 13.sp, color = HToGoColors.TextSecondary)
             }
             Row(
                 Modifier.background(HToGoColors.Background, RoundedCornerShape(99.dp)).padding(4.dp),
@@ -475,19 +473,26 @@ private fun NotesField(value: String, onChange: (String) -> Unit) {
             Spacer(Modifier.width(10.dp))
             BasicTextField(
                 value = value,
-                onValueChange = onChange,
+                onValueChange = { onChange(it.take(500)) }, // límite de indicaciones_entrega en la BD
                 singleLine = true,
                 textStyle = TextStyle(color = HToGoColors.TextPrimary, fontSize = 14.sp),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                decorationBox = { campo ->
+                    if (value.isEmpty()) {
+                        Text("Ej. tocar timbre, dejar en recepción (opcional)", fontSize = 14.sp, color = HToGoColors.TextTertiary)
+                    }
+                    campo()
+                }
             )
         }
     }
 }
 
 @Composable
-private fun ResumenCard(qty: Int, unit: Int = 35, envio: Int = 15) {
-    val sub = qty * unit
-    val total = sub + envio
+private fun ResumenCard(qty: Int, brand: WaterBrand, conGarrafon: Boolean) {
+    val agua = qty * brand.price
+    val envases = if (conGarrafon) 0.0 else qty * brand.bottlePrice
+    val total = agua + envases
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = HToGoColors.Surface,
@@ -495,12 +500,13 @@ private fun ResumenCard(qty: Int, unit: Int = 35, envio: Int = 15) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(14.dp)) {
-            ResumenRow("$qty × Garrafón 20 L", "$$sub.00")
-            ResumenRow("Envío", "$$envio.00")
+            ResumenRow("$qty × ${brand.name} 20 L", dinero(agua))
+            if (!conGarrafon) ResumenRow("$qty × envase nuevo", dinero(envases))
+            ResumenRow("Envío", "Sin costo")
             Divider(Modifier.padding(vertical = 8.dp), color = HToGoColors.OutlineSoft)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Total", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
-                Text("$$total.00", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = HToGoColors.Primary)
+                Text(dinero(total), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = HToGoColors.Primary)
             }
         }
     }
@@ -548,8 +554,9 @@ private fun NuevoPedidoTopBar(onBack: () -> Unit) {
 
 @Composable
 private fun CtaBar(
-    total: Int,
+    total: Double,
     canConfirm: Boolean = true,
+    textoBoton: String,
     onConfirm: () -> Unit
 ) {
     Surface(
@@ -564,14 +571,14 @@ private fun CtaBar(
             Column {
                 Text("TOTAL", fontSize = 11.sp, color = HToGoColors.TextSecondary, letterSpacing = 0.4.sp)
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text("$$total", fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                    Text(dinero(total), fontSize = 20.sp, fontWeight = FontWeight.Bold,
                         color = HToGoColors.TextPrimary)
                     Text(" MXN", fontSize = 13.sp, color = HToGoColors.TextSecondary)
                 }
             }
             Spacer(Modifier.width(12.dp))
             PrimaryCtaButton(
-                text = if (canConfirm) "Confirmar pedido" else "Agrega un domicilio",
+                text = textoBoton,
                 onClick = onConfirm,
                 enabled = canConfirm,
                 modifier = Modifier.weight(1f),
@@ -585,10 +592,27 @@ private fun CtaBar(
 fun NuevoPedidoScreen(
     onBack: () -> Unit = {},
     onConfirm: () -> Unit = {},
+    onElegirPurificadora: () -> Unit = {},
     clienteViewModel: ClienteViewModel = viewModel()
 ) {
-    val marcasDisponibles by clienteViewModel.marcas.collectAsState()
+    val purificadorasCercanas by clienteViewModel.purificadoras.collectAsState()
+    val perfil by clienteViewModel.perfilPurificadora.collectAsState()
+    // Sin purificadora elegida (p. ej. desde el botón "Nuevo pedido"), se usa la más cercana.
+    var purificadoraId by remember { mutableStateOf(clienteViewModel.purificadoraSeleccionadaId) }
+    LaunchedEffect(purificadorasCercanas) {
+        if (purificadoraId == null) {
+            purificadorasCercanas.minByOrNull { it.distanciaKm }?.let {
+                purificadoraId = it.id
+                clienteViewModel.purificadoraSeleccionadaId = it.id
+                clienteViewModel.purificadoraSeleccionadaNombre = it.nombreComercial
+            }
+        }
+    }
+    LaunchedEffect(purificadoraId) { purificadoraId?.let { clienteViewModel.cargarPerfilPurificadora(it) } }
+    val perfilActual = perfil?.takeIf { it.id == purificadoraId }
     val direccionesDisponibles by clienteViewModel.direcciones.collectAsState()
+    // Refresca al abrir: si se agregó un domicilio en otra pantalla, aparece aquí sin reiniciar la app.
+    LaunchedEffect(Unit) { clienteViewModel.cargarDirecciones() }
     val isLoading by clienteViewModel.isLoading.collectAsState()
     val errorMsg by clienteViewModel.errorMessage.collectAsState()
 
@@ -597,22 +621,18 @@ fun NuevoPedidoScreen(
     var lonParaDialog by remember { mutableStateOf<Double?>(null) }
     var calleParaDialog by remember { mutableStateOf<String?>(null) }
 
-    val brands = remember(marcasDisponibles) {
-        if (marcasDisponibles.isNotEmpty()) {
-            val colors = listOf(
-                Color(0xFF0077B6), Color(0xFF1E40AF), Color(0xFF0EA5E9), Color(0xFF475569)
+    // Solo las marcas que vende la purificadora elegida, con sus precios reales.
+    val brands = remember(perfilActual) {
+        val colors = listOf(Color(0xFF0077B6), Color(0xFF1E40AF), Color(0xFF0EA5E9), Color(0xFF475569))
+        perfilActual?.productos.orEmpty().filter { it.activo }.mapIndexed { idx, p ->
+            WaterBrand(
+                id = p.idMarca.toString(),
+                name = p.marca,
+                short = p.marca.take(3).uppercase(),
+                price = p.precio,
+                bottlePrice = p.precioEnvase,
+                color = colors[idx % colors.size]
             )
-            marcasDisponibles.mapIndexed { idx, m ->
-                WaterBrand(
-                    id = m.id.toString(),
-                    name = m.nombre,
-                    short = m.nombre.take(3).uppercase(),
-                    pricePerUnit = 35 + (idx * 2),
-                    color = colors[idx % colors.size]
-                )
-            }
-        } else {
-            SAMPLE_BRANDS
         }
     }
 
@@ -638,11 +658,12 @@ fun NuevoPedidoScreen(
     var qty by remember { mutableStateOf(3) }
     var selectedAddrId by remember { mutableStateOf("") }
     var selectedBrandId by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("Tocar timbre, dejar en recepción si no contesto") }
+    var notes by remember { mutableStateOf("") }
+    var conGarrafon by remember { mutableStateOf(true) }
 
     LaunchedEffect(brands) {
         if (selectedBrandId.isEmpty() || brands.none { it.id == selectedBrandId }) {
-            selectedBrandId = brands.firstOrNull()?.id ?: "b1"
+            selectedBrandId = brands.firstOrNull()?.id ?: ""
         }
     }
 
@@ -652,15 +673,19 @@ fun NuevoPedidoScreen(
         }
     }
 
-    val brand = brands.firstOrNull { it.id == selectedBrandId } ?: brands.firstOrNull() ?: SAMPLE_BRANDS.first()
-    val envio = 15
-    val unitPrice = brand.pricePerUnit
-    val total = qty * unitPrice + envio
+    val brand = brands.firstOrNull { it.id == selectedBrandId } ?: brands.firstOrNull()
+    // Mismo cálculo que el backend: agua + envase si el cliente no entrega garrafón. Sin envío.
+    val total = brand?.let { qty * (it.price + if (conGarrafon) 0.0 else it.bottlePrice) } ?: 0.0
     val selectedAddr = addresses.firstOrNull { it.id == selectedAddrId }
 
-    val purificadoraNombre = clienteViewModel.purificadoraSeleccionadaNombre ?: PURIFICADORA_NAME
-    val purificadoraId = clienteViewModel.purificadoraSeleccionadaId
-    val canConfirm = selectedAddr != null && !isLoading
+    val purificadoraNombre = perfilActual?.nombreComercial ?: clienteViewModel.purificadoraSeleccionadaNombre ?: "la purificadora"
+    val canConfirm = selectedAddr != null && brand != null && purificadoraId != null && !isLoading
+    val textoBoton = when {
+        purificadoraId == null -> "Elige una purificadora"
+        brand == null -> "Sin productos disponibles"
+        selectedAddr == null -> "Agrega un domicilio"
+        else -> "Confirmar pedido"
+    }
 
     fun ejecutarPedido() {
         if (selectedAddr == null) {
@@ -668,18 +693,19 @@ fun NuevoPedidoScreen(
             return
         }
         val addrIdInt = selectedAddr.id.toIntOrNull() ?: return
-        val brandIdInt = brand.id.toIntOrNull() ?: 1
+        val brandIdInt = brand?.id?.toIntOrNull() ?: return
+        val idNegocio = purificadoraId ?: return
 
         val request = PedidoCreateRequest(
-            tipoSolicitud = if (purificadoraId != null) "directa" else "directa",
-            idNegocio = purificadoraId ?: 1,
+            tipoSolicitud = "directa",
+            idNegocio = idNegocio,
             idDireccionEntrega = addrIdInt,
             indicaciones = notes.ifBlank { null },
             detalles = listOf(
                 DetallePedidoRequest(
                     idMarca = brandIdInt,
                     cantidad = qty,
-                    tieneEnvase = true
+                    tieneEnvase = conGarrafon
                 )
             )
         )
@@ -710,7 +736,7 @@ fun NuevoPedidoScreen(
                     }
                 }
             } else {
-                CtaBar(total = total, canConfirm = canConfirm, onConfirm = { ejecutarPedido() })
+                CtaBar(total = total, canConfirm = canConfirm, textoBoton = textoBoton, onConfirm = { ejecutarPedido() })
             }
         },
         containerColor = HToGoColors.Background
@@ -739,34 +765,81 @@ fun NuevoPedidoScreen(
                 }
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(14.dp))
+            // Purificadora a la que se le pide (directa): se puede cambiar.
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = HToGoColors.Surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, HToGoColors.OutlineSoft),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            ) {
+                Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Storefront, null, tint = HToGoColors.Primary, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Pedir a", fontSize = 11.sp, color = HToGoColors.TextSecondary)
+                        Text(
+                            if (purificadoraId == null) "Ninguna purificadora cerca" else purificadoraNombre,
+                            fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary
+                        )
+                        if (perfilActual != null && !perfilActual.abiertoAhora) {
+                            Text("Cerrada en este momento", fontSize = 11.sp, color = HToGoColors.AccentRose)
+                        }
+                    }
+                    TextButton(onClick = onElegirPurificadora) { Text(if (purificadoraId == null) "Elegir" else "Cambiar") }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
             SectionTitle("Marca de garrafón")
             Spacer(Modifier.height(10.dp))
-            BrandRow(
-                brands = brands,
-                selectedId = selectedBrandId,
-                onSelect = { selectedBrandId = it }
-            )
-            Row(
-                Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Filled.Storefront, null, tint = HToGoColors.TextTertiary,
-                    modifier = Modifier.size(13.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    "Marcas que vende $purificadoraNombre",
-                    fontSize = 11.sp, color = HToGoColors.TextTertiary
+            when {
+                purificadoraId != null && perfilActual == null -> Box(
+                    Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator(color = HToGoColors.Primary, modifier = Modifier.size(24.dp)) }
+                brands.isEmpty() -> Text(
+                    if (purificadoraId == null) "Elige una purificadora para ver sus marcas y precios."
+                    else "$purificadoraNombre no tiene productos disponibles por ahora.",
+                    fontSize = 13.sp, color = HToGoColors.TextSecondary,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                else -> BrandRow(
+                    brands = brands,
+                    selectedId = selectedBrandId,
+                    onSelect = { selectedBrandId = it }
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
-            SectionTitle("¿Cuántos garrafones?")
-            Spacer(Modifier.height(10.dp))
-            Column(Modifier.padding(horizontal = 16.dp)) {
-                QuantityCard(brand, qty) { qty = it }
-                Spacer(Modifier.height(12.dp))
-                PresetRow(qty) { qty = it }
+            if (brand != null) {
+                Spacer(Modifier.height(16.dp))
+                SectionTitle("¿Cuántos garrafones?")
+                Spacer(Modifier.height(10.dp))
+                Column(Modifier.padding(horizontal = 16.dp)) {
+                    QuantityCard(brand, qty) { qty = it }
+                    Spacer(Modifier.height(12.dp))
+                    PresetRow(qty) { qty = it }
+                    Spacer(Modifier.height(12.dp))
+                    // RN-031: si no entrega un garrafón vacío, paga también el envase.
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = HToGoColors.Surface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, HToGoColors.OutlineSoft),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Tengo garrafones vacíos para intercambiar", fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary)
+                                Text(
+                                    if (conGarrafon) "Solo pagas el agua"
+                                    else "Se suma el envase: ${dinero(brand.bottlePrice)} c/u",
+                                    fontSize = 11.sp, color = HToGoColors.TextSecondary
+                                )
+                            }
+                            Switch(checked = conGarrafon, onCheckedChange = { conGarrafon = it })
+                        }
+                    }
+                }
             }
 
             Spacer(Modifier.height(18.dp))
@@ -842,10 +915,12 @@ fun NuevoPedidoScreen(
             }
 
             Spacer(Modifier.height(18.dp))
-            SectionTitle("Resumen")
-            Spacer(Modifier.height(10.dp))
-            Box(Modifier.padding(horizontal = 16.dp)) {
-                ResumenCard(qty = qty, unit = unitPrice, envio = envio)
+            if (brand != null) {
+                SectionTitle("Resumen")
+                Spacer(Modifier.height(10.dp))
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    ResumenCard(qty = qty, brand = brand, conGarrafon = conGarrafon)
+                }
             }
             Spacer(Modifier.height(16.dp))
         }

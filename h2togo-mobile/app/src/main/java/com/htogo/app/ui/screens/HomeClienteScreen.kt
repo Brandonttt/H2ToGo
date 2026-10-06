@@ -55,6 +55,12 @@ fun HomeClienteScreen(
     clienteViewModel: ClienteViewModel = viewModel()
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    // "Nuevo pedido" genérico: sin purificadora fija, la pantalla elige la más cercana.
+    val nuevoPedidoSinPurificadora = {
+        clienteViewModel.purificadoraSeleccionadaId = null
+        clienteViewModel.purificadoraSeleccionadaNombre = null
+        onNuevoPedido()
+    }
     val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance(context) }
     val nombre = remember { sessionManager.obtenerNombre()?.substringBefore(" ")?.ifBlank { "Cliente" } ?: "Cliente" }
     var notificacionesActivas by remember { mutableStateOf(sessionManager.estanNotificacionesActivas()) }
@@ -75,7 +81,7 @@ fun HomeClienteScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = onNuevoPedido,
+                onClick = nuevoPedidoSinPurificadora,
                 containerColor = HToGoColors.Primary,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(28.dp),
@@ -209,7 +215,7 @@ fun HomeClienteScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 QuickActionTile(Icons.Filled.History, "Repetir último", "Historial", Modifier.weight(1f), onHistorial)
-                QuickActionTile(Icons.Filled.Schedule, "Nuevo pedido", "Directo", Modifier.weight(1f), onNuevoPedido)
+                QuickActionTile(Icons.Filled.Schedule, "Nuevo pedido", "Directo", Modifier.weight(1f), nuevoPedidoSinPurificadora)
             }
 
             Spacer(Modifier.height(24.dp))
@@ -237,9 +243,11 @@ fun HomeClienteScreen(
                     )
                 }
             } else {
-                PurificadoraMini("Aguas Del Valle", "0.8 km", onAbrirPurificadora, onNuevoPedido)
-                PurificadoraMini("HidroExpress BJ", "1.4 km", onAbrirPurificadora, onNuevoPedido)
-                PurificadoraMini("AquaPura Nápoles", "2.1 km", onAbrirPurificadora, onNuevoPedido)
+                Text(
+                    "No encontramos purificadoras con cobertura cerca de tu domicilio.",
+                    fontSize = 13.sp, color = HToGoColors.TextSecondary,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                )
             }
 
             Spacer(Modifier.height(96.dp))

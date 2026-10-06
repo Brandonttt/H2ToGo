@@ -49,7 +49,7 @@ fun HomeRepartidorScreen(
     onIngresos: () -> Unit = {},
     onPerfil: () -> Unit = {},
     onRuta: () -> Unit = {},
-    onPedidoProgramado: () -> Unit = {},
+    onPedidoProgramado: (idPedido: Int) -> Unit = {},
     onSwitchRol: () -> Unit = {},
     onPedidosDisponibles: () -> Unit = {},
     repartidorViewModel: RepartidorViewModel = viewModel()
@@ -420,7 +420,7 @@ fun HomeRepartidorScreen(
                         cant = "${p.garrafonesTotales ?: 1} garrafones",
                         monto = "$${p.totalPagar?.toInt() ?: 0}",
                         estado = chipEstado,
-                        onClick = onPedidoProgramado
+                        onClick = { onPedidoProgramado(p.id) }
                     )
                 }
             }

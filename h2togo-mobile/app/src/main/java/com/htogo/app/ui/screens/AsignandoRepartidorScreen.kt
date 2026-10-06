@@ -20,24 +20,87 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.htogo.app.ui.ClienteViewModel
 import com.htogo.app.ui.theme.HToGoColors
+import kotlinx.coroutines.delay
 import com.htogo.app.ui.theme.HToGoTheme
 
+/**
+ * Espera a que una purificadora acepte el pedido recién creado ([ClienteViewModel.pedidoActivo]).
+ * Consulta su estado cada 4 s: al quedar asignado abre el seguimiento; si se cancela, regresa.
+ */
 @Composable
 fun AsignandoRepartidorScreen(
+    onBack: () -> Unit = {},
     onCancel: () -> Unit = {},
-    onAsignado: () -> Unit = {}
+    onAsignado: () -> Unit = {},
+    clienteViewModel: ClienteViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val pedido by clienteViewModel.pedidoActivo.collectAsState()
+    val direcciones by clienteViewModel.direcciones.collectAsState()
+    val marcas by clienteViewModel.marcas.collectAsState()
+    val perfil by clienteViewModel.perfilPurificadora.collectAsState()
+    var cancelando by remember { mutableStateOf(false) }
+
+    val p = pedido
+    if (p == null) {
+        Box(Modifier.fillMaxSize().background(HToGoColors.Background), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = HToGoColors.Primary)
+        }
+        return
+    }
+    LaunchedEffect(p.id) {
+        while (true) {
+            delay(4_000)
+            clienteViewModel.cargarDetallePedido(p.id)
+        }
+    }
+    LaunchedEffect(p.estado) {
+        when (p.estado.lowercase()) {
+            "asignado", "en_camino", "entregado" -> onAsignado()
+            "cancelado", "no_entregado" -> onCancel()
+        }
+    }
+
+    val nombresMarca = remember(marcas) { marcas.associate { it.id to it.nombre } }
+    val items = p.detalles.orEmpty().takeIf { it.isNotEmpty() }
+        ?.joinToString(", ") { d -> "${d.cantidad} × ${d.nombreMarca ?: nombresMarca[d.idMarca] ?: "Garrafón"} 20 L" }
+        ?: "${p.garrafonesTotales ?: 0} × Garrafón 20 L"
+    val domicilio = p.direccionTexto ?: direcciones.firstOrNull { it.id == p.idDireccionEntrega }
+        ?.let { "${it.alias} · ${it.calle} ${it.numeroExterior}" } ?: "Tu domicilio"
+    val purificadora = perfil?.takeIf { it.id == p.idNegocioSolicitado }?.nombreComercial
+        ?: clienteViewModel.purificadoraSeleccionadaNombre ?: "La purificadora"
+
     AsignandoRepartidorScreen(
-        modoDirecto = true,
-        purificadoraName = "Aguas Del Valle",
-        candidatasCount = 4,
-        onCancel = onCancel,
-        onAsignado = onAsignado
+        modoDirecto = p.tipoSolicitud.equals("directa", ignoreCase = true),
+        purificadoraName = purificadora,
+        candidatasCount = 0,
+        orderId = p.id.toString(),
+        items = items,
+        address = domicilio,
+        total = p.totalPagar ?: 0.0,
+        precioMax = p.precioMaximoGarrafon ?: 0.0,
+        cancelando = cancelando,
+        onBack = onBack,
+        onCancel = {
+            cancelando = true
+            clienteViewModel.cancelarPedido(
+                id = p.id,
+                onSuccess = { cancelando = false; onCancel() },
+                onError = { err ->
+                    cancelando = false
+                    Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                }
+            )
+        }
     )
 }
 
@@ -49,11 +112,11 @@ fun AsignandoRepartidorScreen(
     orderId: String = "HG-1287",
     items: String = "3 × Ciel 20 L",
     address: String = "Casa · Insurgentes Sur 1234",
-    total: Int = 125,
-    precioMax: Int = 60,
+    total: Double = 125.0,
+    precioMax: Double = 60.0,
+    cancelando: Boolean = false,
     onBack: () -> Unit = {},
-    onCancel: () -> Unit = {},
-    onAsignado: () -> Unit = {}
+    onCancel: () -> Unit = {}
 ) {
     Box(Modifier.fillMaxSize().background(HToGoColors.Background)) {
         SearchingMap(
@@ -90,12 +153,15 @@ fun AsignandoRepartidorScreen(
             address = address,
             total = total,
             precioMax = precioMax,
+            cancelando = cancelando,
             onCancel = onCancel,
-            onAsignado = onAsignado,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
 }
+
+private fun dineroMx(v: Double): String =
+    if (v % 1.0 == 0.0) "$%.0f".format(v) else "$%.2f".format(v)
 
 @Composable
 private fun IconCircle(icon: ImageVector, onClick: () -> Unit) {
@@ -297,10 +363,10 @@ private fun AssignSheet(
     candidatasCount: Int,
     items: String,
     address: String,
-    total: Int,
-    precioMax: Int,
+    total: Double,
+    precioMax: Double,
+    cancelando: Boolean,
     onCancel: () -> Unit,
-    onAsignado: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -331,7 +397,7 @@ private fun AssignSheet(
                             Icon(Icons.Filled.AttachMoney, null, tint = Color(0xFFB45309),
                                 modifier = Modifier.size(13.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Pedido abierto · Precio máx \$$precioMax c/u",
+                            Text("Pedido abierto · Precio máx ${dineroMx(precioMax)} c/u",
                                 fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFFB45309))
                         }
@@ -366,7 +432,8 @@ private fun AssignSheet(
                             val heroSub = if (modoDirecto)
                                 "$purificadoraName está revisando tu pedido"
                             else
-                                "$candidatasCount purificadoras cumplen tu precio máximo"
+                                if (candidatasCount > 0) "$candidatasCount purificadoras cumplen tu precio máximo"
+                                else "Avisamos a las purificadoras que cumplen tu precio"
                             Text(heroTitle,
                                 fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
                                 color = HToGoColors.TextPrimary)
@@ -387,7 +454,8 @@ private fun AssignSheet(
                         val firstTitle = if (modoDirecto)
                             "Pedido recibido · $purificadoraName"
                         else
-                            "Pedido lanzado · Buscando entre $candidatasCount purificadoras"
+                            if (candidatasCount > 0) "Pedido lanzado · Buscando entre $candidatasCount purificadoras"
+                            else "Pedido lanzado · Buscando purificadora"
                         val firstTime = if (modoDirecto)
                             "Hace unos segundos · $purificadoraName"
                         else
@@ -409,19 +477,20 @@ private fun AssignSheet(
                 Spacer(Modifier.height(14.dp))
                 OrderRow("Pedido", items)
                 if (!modoDirecto) {
-                    OrderRow("Precio máx", "\$$precioMax c/u")
+                    OrderRow("Precio máx", "${dineroMx(precioMax)} c/u")
                 }
                 OrderRow("Domicilio", address)
                 Divider(Modifier.padding(vertical = 8.dp), color = HToGoColors.OutlineSoft)
                 OrderRow(
                     if (modoDirecto) "Total a pagar" else "Total máximo a pagar",
-                    "$$total MXN",
+                    "${dineroMx(total)} MXN",
                     valueColor = HToGoColors.Primary, bold = true
                 )
 
                 Spacer(Modifier.height(10.dp))
                 OutlinedButton(
                     onClick = onCancel,
+                    enabled = !cancelando,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     border = androidx.compose.foundation.BorderStroke(1.5.dp, HToGoColors.StatusCancelado),
@@ -429,7 +498,7 @@ private fun AssignSheet(
                 ) {
                     Icon(Icons.Filled.Close, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Cancelar pedido",
+                    Text(if (cancelando) "Cancelando…" else "Cancelar pedido",
                         fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
 
@@ -449,15 +518,7 @@ private fun AssignSheet(
                     Text(hint, fontSize = 11.sp, color = HToGoColors.TextSecondary)
                 }
 
-                Spacer(Modifier.height(12.dp))
-                TextButton(
-                    onClick = onAsignado,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Simular asignación",
-                        fontSize = 12.sp, color = HToGoColors.TextTertiary,
-                        fontWeight = FontWeight.Medium)
-                }
+
             }
         }
     }
