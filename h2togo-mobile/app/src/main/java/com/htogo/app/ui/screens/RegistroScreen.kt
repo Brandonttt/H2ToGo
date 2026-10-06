@@ -510,7 +510,7 @@ private fun BloquePurificadora(
             if (result != null) {
                 onLatChange(result.lat)
                 onLonChange(result.lon)
-                geocodeMessage = "✓ Ubicación colocada en el mapa"
+                geocodeMessage = GeocodingHelper.mensajeUbicacion(result)
                 if (!result.postcode.isNullOrBlank() && (cp.isBlank() || cp == "03100")) {
                     onCpChange(result.postcode)
                 }
@@ -688,7 +688,7 @@ private fun BloquePurificadora(
                                         if (result != null) {
                                             onLatChange(result.lat)
                                             onLonChange(result.lon)
-                                            geocodeMessage = "✓ Pin ubicado en el mapa"
+                                            geocodeMessage = GeocodingHelper.mensajeUbicacion(result)
                                             if (!result.postcode.isNullOrBlank() && (cp.isBlank() || cp == "03100")) {
                                                 onCpChange(result.postcode)
                                             }

@@ -79,7 +79,7 @@ fun AgregarDireccionDialog(
             if (result != null) {
                 lat = result.lat
                 lon = result.lon
-                geocodeMessage = "✓ Ubicación colocada en el mapa"
+                geocodeMessage = GeocodingHelper.mensajeUbicacion(result)
                 if (!result.postcode.isNullOrBlank() && (codigoPostal.isBlank() || codigoPostal == "03100")) {
                     codigoPostal = result.postcode
                 }
@@ -103,7 +103,8 @@ fun AgregarDireccionDialog(
             if (result != null) {
                 lat = result.lat
                 lon = result.lon
-                geocodeMessage = "✓ Pin ubicado: ${result.displayName.take(45)}..."
+                geocodeMessage = if (result.exacto) "✓ Pin ubicado: ${result.displayName.take(45)}..."
+                    else GeocodingHelper.mensajeUbicacion(result)
                 if (!result.postcode.isNullOrBlank()) {
                     codigoPostal = result.postcode
                 }

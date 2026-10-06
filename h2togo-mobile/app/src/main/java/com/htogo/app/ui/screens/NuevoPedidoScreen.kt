@@ -357,7 +357,8 @@ private fun MapConfirmCard(
                                         currentLat = res.lat
                                         currentLon = res.lon
                                         val formatted = "${res.road ?: searchQuery} ${res.houseNumber ?: ""}, Col. ${res.neighbourhood ?: ""}".trim().trim(',')
-                                        pinAddressText = formatted
+                                        // Sin número exacto el pin queda en la calle: se pide ajustarlo.
+                                        pinAddressText = if (res.exacto) formatted else "$formatted · ajusta el pin a tu puerta"
                                         onLocationSelected(res.lat, res.lon, formatted)
                                     }
                                     isSearching = false
