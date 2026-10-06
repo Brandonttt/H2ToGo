@@ -10,6 +10,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 
 interface AuthApi {
 
@@ -30,4 +31,8 @@ interface AuthApi {
 
     @GET("usuarios/me")
     suspend fun verificarSesion(): Response<Unit>
+
+    /** Token FCM del dispositivo para recibir notificaciones con la app cerrada. */
+    @PUT("usuarios/me/dispositivo")
+    suspend fun registrarDispositivo(@Body body: Map<String, String>): Response<Unit>
 }

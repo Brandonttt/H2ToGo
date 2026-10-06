@@ -1,6 +1,6 @@
 package com.h2togo.backend.scheduling;
 
-import com.h2togo.backend.notificaciones.PushService;
+import com.h2togo.backend.pedidos.AvisoNuevoPedido;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -24,12 +24,12 @@ public class PedidosProgramadosJob {
     private static final Logger log = LoggerFactory.getLogger(PedidosProgramadosJob.class);
 
     private final NamedParameterJdbcTemplate jdbc;
-    private final PushService pushService;
+    private final AvisoNuevoPedido avisoNuevoPedido;
     private final Clock clock;
 
-    public PedidosProgramadosJob(NamedParameterJdbcTemplate jdbc, PushService pushService, Clock clock) {
+    public PedidosProgramadosJob(NamedParameterJdbcTemplate jdbc, AvisoNuevoPedido avisoNuevoPedido, Clock clock) {
         this.jdbc = jdbc;
-        this.pushService = pushService;
+        this.avisoNuevoPedido = avisoNuevoPedido;
         this.clock = clock;
     }
 
@@ -50,23 +50,10 @@ public class PedidosProgramadosJob {
                     WHERE id_pedido = :id""", new MapSqlParameterSource("id", idPedido));
             jdbc.update("INSERT INTO historial_estados_pedido (id_pedido, estado) VALUES (:id, 'pendiente'::estado_pedido)",
                     new MapSqlParameterSource("id", idPedido));
-            notificarRepartidores((Integer) p.get("id_negocio_solicitado"));
+            avisoNuevoPedido.avisar(idPedido);
         }
         if (!listos.isEmpty()) {
             log.info("Pedidos programados activados: {}", listos.size());
-        }
-    }
-
-    private void notificarRepartidores(Integer idNegocio) {
-        if (idNegocio == null) {
-            return; // modalidad abierta: el filtrado por precio lo hace la lista de disponibles
-        }
-        List<Integer> reps = jdbc.queryForList(
-                "SELECT id_usuario FROM repartidores WHERE id_negocio = :neg",
-                new MapSqlParameterSource("neg", idNegocio), Integer.class);
-        for (Integer rep : reps) {
-            pushService.notificar(rep, "Nuevo pedido disponible",
-                    "Un pedido programado quedó disponible para asignarse.");
         }
     }
 }

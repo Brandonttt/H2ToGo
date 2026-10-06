@@ -9,6 +9,22 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/h2togo_v6}
     username: ${DB_USER:h2togo}
     password: ${DB_PASSWORD:h2togo}
+  # RabbitMQ: solo se usa con h2togo.mensajeria.habilitada=true (ver más abajo).
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        # Reintentos de entrega con espera exponencial (1 s, 2 s, 4 s); agotados, el mensaje se
+        # rechaza sin reencolar y RabbitMQ lo manda a la DLQ (h2togo.notificaciones.dlq).
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 4
+          initial-interval: 1s
+          multiplier: 2
   jpa:
     hibernate:
       ddl-auto: validate
@@ -30,6 +46,13 @@ springdoc:
 # Orígenes permitidos por CORS (panel web de administración).
 # Sobrescribir en despliegue con H2TOGO_CORS_ALLOWED_ORIGINS.
 h2togo:
+  mensajeria:
+    # true: las notificaciones viajan por RabbitMQ (producción). false: entrega directa en el
+    # mismo proceso, sin broker (desarrollo local y pruebas).
+    habilitada: ${H2TOGO_MENSAJERIA_HABILITADA:false}
+  fcm:
+    # JSON completo de la cuenta de servicio de Firebase. Vacío = FCM apagado (solo WebSocket).
+    credenciales-json: ${FCM_CREDENCIALES_JSON:}
   cors:
     allowed-origins: ${H2TOGO_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
   auth:

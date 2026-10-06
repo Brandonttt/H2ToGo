@@ -71,6 +71,20 @@
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
 
+        <!-- RabbitMQ (AMQP 0-9-1): cola de notificaciones con reintentos y DLQ -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- Credenciales de Google (OAuth2 de cuenta de servicio) para la API HTTP v1 de FCM.
+             Se usa en lugar de firebase-admin para no cargar su árbol de dependencias. -->
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
+            <version>1.33.1</version>
+        </dependency>
+
         <!-- Twilio SDK para el envío de SMS OTP en producción -->
         <dependency>
             <groupId>com.twilio.sdk</groupId>
@@ -135,6 +149,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-rabbitmq</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

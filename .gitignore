@@ -18,6 +18,10 @@ application-local.yaml
 secrets.properties
 azure-db*.yaml
 test-*.json
+# Firebase: configuración de la app y claves de cuenta de servicio (secretas)
+google-services.json
+*firebase-adminsdk*.json
+cuenta-servicio*.json
 
 # ---- IDE ----
 .idea/

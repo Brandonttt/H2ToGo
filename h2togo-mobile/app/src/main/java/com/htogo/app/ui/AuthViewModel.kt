@@ -13,6 +13,7 @@ import com.htogo.app.data.dto.RegistroRequest
 import com.htogo.app.data.dto.RegistroResponse
 import com.htogo.app.data.dto.SesionResponse
 import com.htogo.app.data.local.SessionManager
+import com.htogo.app.data.notificaciones.DispositivoFcm
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -100,6 +101,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                         correo = sesion.perfil.correo,
                         telefono = sesion.perfil.telefono
                     )
+                    DispositivoFcm.registrar(getApplication())
                     if (sesion.rol.equals("repartidor", ignoreCase = true)) {
                         try {
                             val negocioResp = apiClient.negociosApi.obtenerMiNegocio()
@@ -217,6 +219,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                                     correo = sesion.perfil.correo,
                                     telefono = sesion.perfil.telefono
                                 )
+                                DispositivoFcm.registrar(getApplication())
                                 _uiState.value = AuthUiState.Success(sesion)
                             }
                         } catch (e: Exception) {

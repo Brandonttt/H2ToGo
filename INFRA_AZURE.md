@@ -27,6 +27,7 @@ diagrama: **MariaDB → PostgreSQL 16 + PostGIS 3.4** (esquema v6).
 | Application Insights | Agente Java de App Insights | — | Paso 14 · ⚠️ PENDIENTE D-9 |
 | Azure Pipelines (build + deploy) | Pipeline YAML en Azure DevOps conectado al repo de GitHub | `azure-pipelines.yml` | Paso 12 · ⚠️ PENDIENTE D-7 |
 | Azure Static Web Apps (Panel Admin) | **No requiere recurso**: el backend sirve el panel en `/admin/` (mismo origen, sin CORS) | `h2togo-api` | Paso 13 |
+| Cola de mensajes (notificaciones) | **RabbitMQ** como Container App interna (`rabbitmq:3.13-management`, 0.25 vCPU / 0.5 GiB). Azure Service Bus no sirve: habla AMQP 1.0, no el protocolo de RabbitMQ | `h2togo-rabbitmq` | Paso 15 |
 | OpenStreetMap | **No requiere recurso**: el grafo va dentro del jar (`osm_data/sample_map.json`) | — | — |
 | Google Maps | **No requiere recurso en Azure** (lo consume la app móvil) | — | — |
 
@@ -692,6 +693,64 @@ Hacer solo cuando todo lo anterior funcione. Resumen de lo que implica (no ejecu
 3. En la Container App: variable `APPLICATIONINSIGHTS_CONNECTION_STRING` (como secreto) y agregar
    `-javaagent:/app/applicationinsights-agent.jar` al inicio de `JAVA_TOOL_OPTIONS`.
 4. Vigilar memoria: probablemente haya que subir el backend a `--cpu 0.75 --memory 1.5Gi`.
+
+---
+
+## Paso 15 — RabbitMQ y notificaciones push
+
+Las notificaciones (pedido asignado, en camino, cerca, entregado, nuevo pedido disponible,
+solicitud resuelta, lotes por caducar) ya no se envían dentro de la petición del usuario: el
+backend las publica en RabbitMQ **después del commit** y un consumidor las entrega.
+
+```
+servicio ──(after commit)──▶ exchange h2togo.eventos (topic, rk notificacion.push)
+                                   │
+                                   ▼
+                        cola h2togo.notificaciones ──▶ NotificacionesListener
+                                   │ 4 intentos (1 s, 2 s, 4 s)      ├─▶ WebSocket /user/queue/notificaciones (app abierta)
+                                   ▼ si todos fallan                 └─▶ FCM (app cerrada, si hay credenciales)
+                        DLQ h2togo.notificaciones.dlq (para revisar)
+```
+
+- Si la transacción se revierte, no se publica nada.
+- Si RabbitMQ está caído al publicar, el cambio de negocio **no** se revierte; se registra un error
+  en el log y esa notificación se pierde.
+- Sin RabbitMQ (`H2TOGO_MENSAJERIA_HABILITADA=false`, valor por defecto) la entrega es directa en el
+  mismo proceso: así corren el desarrollo local sin Docker y las pruebas.
+
+### 15.1 Crear RabbitMQ y conectar el backend (una sola vez)
+
+Primero despliega el backend con `desplegar-backend.ps1` (la imagen debe incluir el soporte de
+mensajería). Luego:
+
+```powershell
+./desplegar-rabbitmq.ps1
+```
+
+Crea `h2togo-rabbitmq` con ingress TCP **interno** en 5672 (no queda expuesto a internet), genera una
+contraseña y configura en `h2togo-api` las variables `H2TOGO_MENSAJERIA_HABILITADA`,
+`RABBITMQ_HOST/PORT/USER` y el secreto `RABBITMQ_PASSWORD`. Guarda la contraseña que imprime.
+
+**Verificación:** en `az containerapp logs show -n h2togo-api -g rg-h2togo --tail 80` aparece
+`Created new connection` de RabbitMQ y, al mover un pedido, líneas `[PUSH] usuario ...`.
+
+### 15.2 Activar Firebase Cloud Messaging (notificaciones con la app cerrada)
+
+Sin este paso las notificaciones llegan solo mientras la app está abierta (WebSocket).
+
+> Guía paso a paso para entregar a quien tenga la cuenta del equipo: [`docs/CONFIGURAR_FIREBASE.md`](docs/CONFIGURAR_FIREBASE.md).
+
+1. En <https://console.firebase.google.com> crea un proyecto (plan Spark, gratuito).
+2. **App Android:** agrega una app con el paquete `com.htogo.app`, descarga `google-services.json` y
+   colócalo en `h2togo-mobile/app/`. La app activa Firebase sola al compilar si el archivo existe.
+   No lo subas al repositorio (ya está en `.gitignore`).
+3. **Backend:** en *Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada*
+   descarga el JSON y ejecuta:
+   ```powershell
+   ./desplegar-rabbitmq.ps1 -Password "<la contraseña de 15.1>" -FcmCredenciales ./cuenta-servicio.json
+   ```
+   El JSON se guarda como secreto (`FCM_CREDENCIALES_JSON`, en base64). En los logs debe aparecer
+   `FCM habilitado para el proyecto ...`. Borra el archivo local después.
 
 ---
 

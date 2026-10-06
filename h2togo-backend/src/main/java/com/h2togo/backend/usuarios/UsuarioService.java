@@ -80,4 +80,12 @@ public class UsuarioService {
                 u.getTelefono(), u.getRol(), u.getUrlFotoPerfil(), u.isTelefonoVerificado(),
                 cliente, repartidor);
     }
+
+    @Transactional
+    public void registrarDispositivo(int idUsuario, String tokenFcm) {
+        Usuario u = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new NotFoundException("USUARIO_NO_ENCONTRADO", "Usuario no encontrado."));
+        u.setTokenFcm(tokenFcm);
+        usuarioRepository.save(u);
+    }
 }

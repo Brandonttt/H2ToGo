@@ -73,11 +73,13 @@ public class EntregaService {
 
         if (req.resultado() == Resultado.ENTREGADO) {
             entregar(idPedido, idRepartidor, idVehiculo, idCliente, idDireccion, idNegocio, req);
-            pushService.notificar(idCliente, "Pedido entregado", "Tu pedido fue entregado. ¡Gracias!");
+            pushService.notificar(idCliente, "Pedido entregado", "Tu pedido fue entregado. ¡Gracias!",
+                    Map.of("tipo", "pedido_entregado", "idPedido", String.valueOf(idPedido)));
         } else {
             noEntregar(idPedido, idCliente, req);
             pushService.notificar(idCliente, "Pedido no entregado",
-                    "Tu pedido no pudo entregarse: " + req.motivoNoEntrega());
+                    "Tu pedido no pudo entregarse: " + req.motivoNoEntrega(),
+                    Map.of("tipo", "pedido_no_entregado", "idPedido", String.valueOf(idPedido)));
         }
         proximidadService.olvidar(idPedido); // limpia el flag de proximidad al cerrar
         Pedido p = pedidoRepository.findById(idPedido).orElseThrow();

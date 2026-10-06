@@ -1,6 +1,7 @@
 package com.h2togo.backend.scheduling;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
@@ -122,6 +123,9 @@ class SchedulingFlowIT {
         jdbc.update("UPDATE pedidos SET fecha_programada = now() - interval '1 minute' WHERE id_pedido = :id",
                 new MapSqlParameterSource("id", idPedido));
 
+        // Solo se avisa a repartidores en línea (AvisoNuevoPedido).
+        jdbc.update("UPDATE repartidores SET estado_operativo = TRUE WHERE id_usuario = :id",
+                new MapSqlParameterSource("id", idRep));
         pedidosProgramadosJob.activar();
         pedidosProgramadosJob.activar(); // segunda pasada: no debe reactivar ni re-notificar
 
@@ -130,7 +134,7 @@ class SchedulingFlowIT {
                 new MapSqlParameterSource("id", idPedido), Boolean.class);
         assertThat(activado).isTrue();
         // El repartidor del negocio recibe exactamente un aviso.
-        verify(pushService, times(1)).notificar(eq(idRep), eq("Nuevo pedido disponible"), anyString());
+        verify(pushService, times(1)).notificar(eq(idRep), eq("Nuevo pedido disponible"), anyString(), anyMap());
     }
 
     @Test
@@ -194,7 +198,7 @@ class SchedulingFlowIT {
                 new MapSqlParameterSource("id", lote1.idLote()), Integer.class);
         assertThat(mermas).isEqualTo(1);
         // El dueño recibe aviso por el lote próximo a caducar.
-        verify(pushService, atLeastOnce()).notificar(eq(idRep), eq("Lotes por caducar"), anyString());
+        verify(pushService, atLeastOnce()).notificar(eq(idRep), eq("Lotes por caducar"), anyString(), anyMap());
     }
 
     private int seedProductoYHorario(String tokenDueno, int idNegocio) throws Exception {

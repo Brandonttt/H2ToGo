@@ -1,12 +1,19 @@
 package com.h2togo.backend.notificaciones;
 
+import java.util.Map;
+
 /**
- * Notificaciones push (FCM). El TT no fija credenciales del proyecto Firebase (§10 #4);
- * la interfaz aísla la implementación real (intercambiable por perfil), con impl {@code dev}
- * que registra en log para no bloquear el desarrollo.
+ * Notificaciones al usuario. Los servicios solo declaran qué avisar; la implementación decide
+ * cómo: {@link NotificacionesEnCola} las publica en RabbitMQ (producción) y
+ * {@link NotificacionesDirectas} las entrega en el mismo proceso (desarrollo y pruebas sin broker).
+ * En ambos casos el envío ocurre después del commit: si la transacción se revierte, no se avisa.
  */
 public interface PushService {
 
-    /** Envía una notificación push al usuario indicado (resuelve su token FCM la impl real). */
-    void notificar(int idUsuario, String titulo, String mensaje);
+    /** @param datos contexto para la app, p. ej. {@code tipo} e {@code idPedido}. */
+    void notificar(int idUsuario, String titulo, String mensaje, Map<String, String> datos);
+
+    default void notificar(int idUsuario, String titulo, String mensaje) {
+        notificar(idUsuario, titulo, mensaje, Map.of());
+    }
 }

@@ -1,5 +1,6 @@
 package com.h2togo.backend.tracking;
 
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -20,7 +21,7 @@ class ProximidadServiceTest {
         service.avisarProximidad(10, 99);
         service.avisarProximidad(10, 99); // segunda vez: no debe notificar de nuevo
 
-        verify(push, times(1)).notificar(eq(99), eq("Tu pedido está cerca"), anyString());
+        verify(push, times(1)).notificar(eq(99), eq("Tu pedido está cerca"), anyString(), anyMap());
     }
 
     @Test
@@ -32,6 +33,6 @@ class ProximidadServiceTest {
         service.olvidar(10);
         service.avisarProximidad(10, 99);
 
-        verify(push, times(2)).notificar(eq(99), anyString(), anyString());
+        verify(push, times(2)).notificar(eq(99), anyString(), anyString(), anyMap());
     }
 }

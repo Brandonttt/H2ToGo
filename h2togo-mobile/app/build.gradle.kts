@@ -4,6 +4,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Firebase (push con la app cerrada) es opcional: se activa al colocar app/google-services.json.
+// Sin el archivo la app compila igual y las notificaciones llegan solo por WebSocket.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.htogo.app"
     compileSdk = 35
@@ -74,6 +80,13 @@ dependencies {
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
+    // Notificaciones push (FCM)
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation("com.google.firebase:firebase-messaging")
+
+    // GPS del repartidor (FusedLocationProvider: mejor precisión y menos batería que LocationManager)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

@@ -1,7 +1,8 @@
 # Entorno completo del backend H2ToGo en Docker. Con Docker instalado NO hace falta
 # JDK ni Maven en la máquina: la imagen del backend se construye y ejecuta en contenedor.
 #
-#   docker compose up -d --build   → BD (con datos demo) + backend en http://localhost:8080
+#   docker compose up -d --build   → BD (con datos demo) + RabbitMQ + backend en http://localhost:8088
+#                                    (consola de RabbitMQ: http://localhost:15672, guest/guest)
 #   docker compose up -d db        → SOLO la base de datos (p. ej. para correr el backend a mano)
 #   docker compose logs -f app     → ver el arranque del backend (incluye el OTP en dev: [SMS-DEV])
 #   docker compose down            → detiene (conserva el volumen de datos)
@@ -31,6 +32,21 @@ services:
       timeout: 5s
       retries: 10
 
+  # Cola de notificaciones (exchange h2togo.eventos → cola h2togo.notificaciones → DLQ).
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: h2togo-rabbitmq
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_UI_PORT:-15672}:15672"
+    healthcheck:
+      # Como usuario rabbitmq (gosu): si el CLI corre como root antes de que el servidor cree
+      # su .erlang.cookie, lo crea con dueño root y RabbitMQ ya no arranca (eacces).
+      test: ["CMD", "gosu", "rabbitmq", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   app:
     build:
       context: .
@@ -39,12 +55,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: dev
       # Dentro de la red de compose la BD es el host "db", no localhost.
       DB_URL: jdbc:postgresql://db:5432/h2togo_v6
       DB_USER: h2togo
       DB_PASSWORD: h2togo
+      # Notificaciones por RabbitMQ (dentro de la red de compose el host es "rabbitmq").
+      H2TOGO_MENSAJERIA_HABILITADA: "true"
+      RABBITMQ_HOST: rabbitmq
     ports:
       # Puerto del host configurable (APP_PORT) por si el 8080 está ocupado.
       - "${APP_PORT:-8088}:8080"

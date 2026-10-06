@@ -165,7 +165,7 @@ public class AsignacionService {
         }
         insertarHistorial(idPedido, "asignado", null, null, null);
         pushService.notificar((Integer) pedido.get("id_cliente"), "Pedido asignado",
-                "Un repartidor tomó tu pedido y lo preparará para entrega.");
+                "Un repartidor tomó tu pedido y lo preparará para entrega.", datosPedido("pedido_asignado", idPedido));
 
         return respuesta(idPedido);
     }
@@ -183,11 +183,15 @@ public class AsignacionService {
                 new MapSqlParameterSource("id", idPedido));
         insertarHistorial(idPedido, "en_camino", null, lat, lon);
         pushService.notificar((Integer) pedido.get("id_cliente"), "Pedido en camino",
-                "Tu repartidor va en camino a tu domicilio.");
+                "Tu repartidor va en camino a tu domicilio.", datosPedido("pedido_en_camino", idPedido));
         return respuesta(idPedido);
     }
 
     // ---------------------------------------------------------------- Helpers
+
+    private static Map<String, String> datosPedido(String tipo, int idPedido) {
+        return Map.of("tipo", tipo, "idPedido", String.valueOf(idPedido));
+    }
 
     private Map<String, Object> cargarPedidoParaAceptar(int idPedido) {
         try {

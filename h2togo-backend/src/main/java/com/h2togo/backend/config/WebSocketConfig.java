@@ -9,9 +9,13 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 /**
- * WebSocket/STOMP para el rastreo de pedidos (CU-006). Handshake en {@code /ws} (token en el
- * CONNECT); el repartidor publica en {@code /app/pedidos/{id}/ubicacion} y el backend rebota a
- * {@code /topic/pedidos/{id}/ubicacion} para el cliente suscrito.
+ * WebSocket/STOMP. Handshake en {@code /ws} (token en el CONNECT). Dos usos:
+ * <ul>
+ *   <li>Rastreo (CU-006): el repartidor publica en {@code /app/pedidos/{id}/ubicacion} y el
+ *       backend rebota a {@code /topic/pedidos/{id}/ubicacion}.</li>
+ *   <li>Notificaciones en la app: cada usuario se suscribe a {@code /user/queue/notificaciones}
+ *       y solo recibe las suyas (destino de usuario de Spring).</li>
+ * </ul>
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -30,8 +34,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/topic");
+        registry.enableSimpleBroker("/topic", "/queue");
         registry.setApplicationDestinationPrefixes("/app");
+        registry.setUserDestinationPrefix("/user");
     }
 
     @Override

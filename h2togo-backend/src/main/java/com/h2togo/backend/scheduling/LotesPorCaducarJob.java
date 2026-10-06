@@ -65,7 +65,7 @@ public class LotesPorCaducarJob {
                 new MapSqlParameterSource().addValue("hoy", hoy).addValue("hoy7", hoy.plusDays(7)));
         for (Map<String, Object> row : porCaducar) {
             pushService.notificar((Integer) row.get("id_dueno"), "Lotes por caducar",
-                    "Tienes uno o más lotes que caducan en 7 días o menos.");
+                    "Tienes uno o más lotes que caducan en 7 días o menos.", Map.of("tipo", "lotes_por_caducar"));
         }
     }
 }

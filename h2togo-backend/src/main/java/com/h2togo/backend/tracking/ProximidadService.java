@@ -1,6 +1,7 @@
 package com.h2togo.backend.tracking;
 
 import com.h2togo.backend.notificaciones.PushService;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +23,8 @@ public class ProximidadService {
     public void avisarProximidad(int idPedido, int idCliente) {
         if (notificados.putIfAbsent(idPedido, Boolean.TRUE) == null) {
             pushService.notificar(idCliente, "Tu pedido está cerca",
-                    "El repartidor está a menos de 500 m de tu domicilio.");
+                    "El repartidor está a menos de 500 m de tu domicilio.",
+                    Map.of("tipo", "pedido_cerca", "idPedido", String.valueOf(idPedido)));
         }
     }
 

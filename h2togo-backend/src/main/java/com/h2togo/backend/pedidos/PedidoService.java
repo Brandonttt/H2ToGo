@@ -57,19 +57,22 @@ public class PedidoService {
     private final HorarioNegocioRepository horarioRepository;
     private final ProductoNegocioRepository productoRepository;
     private final NamedParameterJdbcTemplate jdbc;
+    private final AvisoNuevoPedido avisoNuevoPedido;
 
     @PersistenceContext
     private EntityManager em;
 
     public PedidoService(PedidoRepository pedidoRepository, DireccionClienteRepository direccionRepository,
             NegocioRepository negocioRepository, HorarioNegocioRepository horarioRepository,
-            ProductoNegocioRepository productoRepository, NamedParameterJdbcTemplate jdbc) {
+            ProductoNegocioRepository productoRepository, NamedParameterJdbcTemplate jdbc,
+            AvisoNuevoPedido avisoNuevoPedido) {
         this.pedidoRepository = pedidoRepository;
         this.direccionRepository = direccionRepository;
         this.negocioRepository = negocioRepository;
         this.horarioRepository = horarioRepository;
         this.productoRepository = productoRepository;
         this.jdbc = jdbc;
+        this.avisoNuevoPedido = avisoNuevoPedido;
     }
 
     // ---------------------------------------------------------------- CU-004: crear
@@ -105,6 +108,9 @@ public class PedidoService {
 
         pedidoRepository.saveAndFlush(pedido);
         em.refresh(pedido); // cargar fecha_creacion / fecha_cambio generados por la BD
+        if (!programado) {
+            avisoNuevoPedido.avisar(pedido.getId()); // los programados los avisa PedidosProgramadosJob
+        }
         return PedidoMapper.toResponse(pedido);
     }
 

@@ -220,9 +220,11 @@ public class SolicitudService {
     private void notificarDueno(SolicitudCambioPerfil s) {
         Integer idDueno = negocioRepository.findById(s.getIdNegocio()).map(Negocio::getIdDueno).orElse(null);
         if (idDueno != null) {
-            pushService.notificar(idDueno, "Solicitud " + s.getEstado(),
-                    "Tu solicitud de cambio fue " + s.getEstado()
-                            + (s.getComentarioAdmin() != null ? ": " + s.getComentarioAdmin() : "."));
+            String resultado = s.getEstado() == EstadoSolicitud.aprobado ? "aprobada" : "rechazada";
+            pushService.notificar(idDueno, "Solicitud " + resultado,
+                    "Tu solicitud de cambio fue " + resultado
+                            + (s.getComentarioAdmin() != null ? ": " + s.getComentarioAdmin() : "."),
+                    Map.of("tipo", "solicitud_resuelta", "idSolicitud", String.valueOf(s.getId())));
         }
     }
 
