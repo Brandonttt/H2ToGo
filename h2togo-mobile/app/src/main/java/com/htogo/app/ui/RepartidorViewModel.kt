@@ -443,30 +443,68 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun cargarRutaPedido(
-        id: Int,
-        latRep: Double = 19.376692,
-        lonRep: Double = -99.165057
-    ) {
+    // ---------------------------------------------------------------- Navegación (CU-011/CU-006)
+
+    private var origenRuta: com.htogo.app.data.location.Posicion? = null
+    private var ultimaRutaMs = 0L
+    private var calculandoRuta = false
+
+    /**
+     * Cada fix del GPS (lo reporta al backend [EntregaEnCursoService]): recalcula la ruta si el
+     * repartidor se movió más de 60 m desde el último cálculo, como mucho cada 20 s.
+     */
+    fun alMoverse(idPedido: Int, p: com.htogo.app.data.location.Posicion) {
+        if (calculandoRuta) return
+        val ahora = System.currentTimeMillis()
+        val origen = origenRuta
+        val recalcular = origen == null || (ahora - ultimaRutaMs >= 20_000 &&
+            com.htogo.app.data.location.UbicacionTracker.distanciaM(origen.lat, origen.lon, p.lat, p.lon) > 60)
+        if (!recalcular) return
+        calculandoRuta = true
         viewModelScope.launch {
             try {
-                // Actualiza ubicación primero para evitar 422 SIN_UBICACION
-                apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to latRep, "lon" to lonRep))
-                val resp = apiClient.repartidorApi.obtenerRuta(id)
+                // La ruta parte de la ubicación guardada en el backend: se reporta justo antes para
+                // no depender de que el servicio ya haya enviado este mismo fix.
+                apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to p.lat, "lon" to p.lon))
+                val resp = apiClient.repartidorApi.obtenerRuta(idPedido)
                 if (resp.isSuccessful && resp.body() != null) {
                     _rutaCalculada.value = resp.body()
+                    origenRuta = p
+                    ultimaRutaMs = ahora
                 }
             } catch (_: Exception) {
-                // Silencioso, la vista mostrará polyline directa si no hay grafo cargado
+                // Sin red: se reintenta con el siguiente fix del GPS.
+            } finally {
+                calculandoRuta = false
             }
         }
     }
 
+    /** Recupera el pedido en ruta tras reiniciarse la app (p. ej. desde la notificación de entrega). */
+    fun cargarPedidoEnRuta(idPedido: Int) {
+        if (_pedidoEnRuta.value?.id == idPedido) return
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.pedidosApi.obtenerDetallePedido(idPedido)
+                if (resp.isSuccessful && resp.body() != null) _pedidoEnRuta.value = resp.body()
+            } catch (_: Exception) {
+                // Sin red: la pantalla de ruta lo mostrará en cuanto haya datos.
+            }
+        }
+    }
+
+    /** Al salir de la pantalla de ruta: el próximo pedido empieza con ruta nueva. */
+    fun detenerNavegacion() {
+        origenRuta = null
+        ultimaRutaMs = 0L
+    }
+
     fun marcarEnCamino(
         id: Int,
-        lat: Double = 19.376692,
-        lon: Double = -99.165057,
-        onSuccess: (PedidoResponse) -> Unit = {}
+        lat: Double,
+        lon: Double,
+        onSuccess: (PedidoResponse) -> Unit = {},
+        onError: (String) -> Unit = {}
     ) {
         viewModelScope.launch {
             try {
@@ -474,33 +512,43 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                 if (resp.isSuccessful && resp.body() != null) {
                     _pedidoEnRuta.value = resp.body()!!
                     onSuccess(resp.body()!!)
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo iniciar el viaje (${resp.code()})")
                 }
             } catch (e: Exception) {
-                // Log
+                onError(e.localizedMessage ?: "Error de red al iniciar el viaje")
             }
         }
     }
 
+    /**
+     * CU-012. El backend exige la posición actual: para ENTREGADO valida que esté a ≤ 50 m del
+     * domicilio (RF-014); para NO_ENTREGADO exige el motivo.
+     */
     fun registrarResultadoEntrega(
         id: Int,
         esEntregado: Boolean,
+        lat: Double,
+        lon: Double,
+        motivoNoEntrega: String? = null,
         onSuccess: (PedidoResponse) -> Unit,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val payload: Map<String, Any> = if (esEntregado) {
-                    mapOf("resultado" to "entregado")
-                } else {
-                    mapOf("resultado" to "no_entregado", "motivo" to "Cliente no se presentó tras 10 minutos")
+                val payload = buildMap<String, Any> {
+                    put("resultado", if (esEntregado) "ENTREGADO" else "NO_ENTREGADO")
+                    put("lat", lat)
+                    put("lon", lon)
+                    if (!esEntregado) put("motivoNoEntrega", motivoNoEntrega ?: "Sin motivo")
                 }
-
                 val resp = apiClient.repartidorApi.finalizarEntrega(id, payload)
                 if (resp.isSuccessful && resp.body() != null) {
                     _pedidoEnRuta.value = null
                     _pedidoDisponibleSeleccionado.value = null
                     _rutaCalculada.value = null
+                    detenerNavegacion()
                     cargarPedidosDisponibles()
                     cargarMisEntregas()
                     cargarInventarios()
@@ -514,16 +562,6 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                 onError(e.localizedMessage ?: "Error de red al registrar entrega")
             } finally {
                 _isLoading.value = false
-            }
-        }
-    }
-
-    fun reportarUbicacion(lat: Double, lon: Double) {
-        viewModelScope.launch {
-            try {
-                apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to lat, "lon" to lon))
-            } catch (e: Exception) {
-                // Silencioso
             }
         }
     }

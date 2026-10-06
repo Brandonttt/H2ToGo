@@ -14,6 +14,13 @@ import com.htogo.app.data.dto.PedidoCreateRequest
 import com.htogo.app.data.dto.PedidoResponse
 import com.htogo.app.data.dto.PerfilNegocioResponse
 import com.htogo.app.data.dto.PedidoResumenDto
+import com.htogo.app.data.local.SessionManager
+import com.htogo.app.data.realtime.EventoStomp
+import com.htogo.app.data.realtime.StompCliente
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.takeWhile
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +29,7 @@ import kotlinx.coroutines.launch
 class ClienteViewModel(application: Application) : AndroidViewModel(application) {
 
     private val apiClient = ApiClient.getInstance(application)
+    private val sessionManager = SessionManager.getInstance(application)
     private val gson = Gson()
 
     // Catálogos
@@ -287,15 +295,94 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun cargarDetallePedido(id: Int) {
-        viewModelScope.launch {
-            try {
-                val resp = apiClient.pedidosApi.obtenerDetallePedido(id)
-                if (resp.isSuccessful && resp.body() != null) {
-                    _pedidoActivo.value = resp.body()!!
-                }
-            } catch (e: Exception) {
-                // Error
+        viewModelScope.launch { refrescarDetalle(id) }
+    }
+
+    private suspend fun refrescarDetalle(id: Int) {
+        try {
+            val resp = apiClient.pedidosApi.obtenerDetallePedido(id)
+            if (resp.isSuccessful && resp.body() != null) {
+                _pedidoActivo.value = resp.body()!!
             }
+        } catch (e: Exception) {
+            // Error
+        }
+    }
+
+    // ---------------------------------------------------------------- Rastreo en vivo (CU-006)
+
+    /** Posición del repartidor que llega por el tópico del pedido. */
+    data class UbicacionEnVivo(val lat: Double, val lon: Double)
+
+    private val _ubicacionRepartidor = MutableStateFlow<UbicacionEnVivo?>(null)
+    val ubicacionRepartidor: StateFlow<UbicacionEnVivo?> = _ubicacionRepartidor.asStateFlow()
+
+    private var rastreoJob: Job? = null
+
+    /**
+     * Mientras el pedido está activo: escucha el WebSocket (reconecta si se cae) y, cuando no hay
+     * conexión, consulta la última posición cada 10 s. Además refresca el estado del pedido cada
+     * 20 s para que la línea de tiempo avance (asignado → en camino → entregado) sin recargar.
+     */
+    fun iniciarRastreo(idPedido: Int) {
+        rastreoJob?.cancel()
+        _ubicacionRepartidor.value = null
+        val token = sessionManager.obtenerToken() ?: return
+        rastreoJob = viewModelScope.launch {
+            var conectado = false
+            launch {
+                while (isActive) {
+                    StompCliente.suscribir(StompCliente.topicoUbicacion(idPedido), token)
+                        .takeWhile { it !is EventoStomp.Desconectado }
+                        .collect { evento ->
+                            when (evento) {
+                                is EventoStomp.Conectado -> conectado = true
+                                is EventoStomp.Mensaje -> parsearUbicacion(evento.cuerpo)?.let { _ubicacionRepartidor.value = it }
+                                else -> Unit
+                            }
+                        }
+                    conectado = false
+                    delay(5_000) // reintento tras caída de red o rechazo del servidor
+                }
+            }
+            launch {
+                while (isActive) {
+                    if (!conectado) consultarUbicacion(idPedido)
+                    delay(10_000)
+                }
+            }
+            launch {
+                while (isActive) {
+                    delay(20_000)
+                    refrescarDetalle(idPedido)
+                    val estado = _pedidoActivo.value?.estado?.lowercase()
+                    if (estado in setOf("entregado", "no_entregado", "cancelado")) {
+                        _ubicacionRepartidor.value = null
+                        detenerRastreo() // pedido cerrado: corta WebSocket y consultas
+                    }
+                }
+            }
+        }
+    }
+
+    fun detenerRastreo() {
+        rastreoJob?.cancel()
+        rastreoJob = null
+    }
+
+    private fun parsearUbicacion(json: String): UbicacionEnVivo? = try {
+        val o = org.json.JSONObject(json)
+        UbicacionEnVivo(o.getDouble("lat"), o.getDouble("lon"))
+    } catch (e: Exception) {
+        null
+    }
+
+    private suspend fun consultarUbicacion(idPedido: Int) {
+        try {
+            val resp = apiClient.pedidosApi.ubicacionRepartidor(idPedido)
+            resp.body()?.let { _ubicacionRepartidor.value = UbicacionEnVivo(it.lat, it.lon) }
+        } catch (_: Exception) {
+            // Sin red: se reintenta en el siguiente ciclo.
         }
     }
 

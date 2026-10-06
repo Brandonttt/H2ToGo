@@ -11,22 +11,23 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Fallback REST para reportar la ubicación del repartidor (CU-006) en redes que bloquean
- * WebSocket. Misma lógica que el canal STOMP: persiste y evalúa proximidad. Rol REPARTIDOR.
+ * Reporte REST de la ubicación del repartidor (CU-006). Misma lógica que el canal STOMP:
+ * persiste, evalúa proximidad y la reenvía al cliente de cada pedido activo. Es la vía que usa
+ * la app, porque sobrevive mejor a redes móviles inestables que un WebSocket. Rol REPARTIDOR.
  */
 @RestController
 @RequestMapping("/api/v1/repartidores/me")
 public class UbicacionController {
 
-    private final UbicacionService ubicacionService;
+    private final RastreoService rastreoService;
 
-    public UbicacionController(UbicacionService ubicacionService) {
-        this.ubicacionService = ubicacionService;
+    public UbicacionController(RastreoService rastreoService) {
+        this.rastreoService = rastreoService;
     }
 
     @PutMapping("/ubicacion")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void reportar(@Valid @RequestBody UbicacionRequest request) {
-        ubicacionService.reportar(SecurityUtils.idActual(), request.lat(), request.lon());
+        rastreoService.publicar(SecurityUtils.idActual(), request.lat(), request.lon());
     }
 }

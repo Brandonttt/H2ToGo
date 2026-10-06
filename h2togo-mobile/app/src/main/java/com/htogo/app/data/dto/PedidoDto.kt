@@ -45,6 +45,12 @@ data class PedidoResponse(
     @SerializedName("lonEntrega") val lonEntrega: Double? = null
 )
 
+data class UbicacionRepartidorDto(
+    @SerializedName("lat") val lat: Double,
+    @SerializedName("lon") val lon: Double,
+    @SerializedName("timestamp") val timestamp: String?
+)
+
 data class RouteResponse(
     @SerializedName("encontrada") val encontrada: Boolean = false,
     @SerializedName("distanciaTotalKm") val distanciaTotalKm: Double = 0.0,

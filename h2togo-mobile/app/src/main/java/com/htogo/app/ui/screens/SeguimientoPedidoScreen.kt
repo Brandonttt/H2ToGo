@@ -32,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.htogo.app.ui.ClienteViewModel
 import com.htogo.app.ui.components.EstadoPedido
 import com.htogo.app.ui.components.EstadoPedidoChip
+import com.htogo.app.ui.components.OsmRouteMapView
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
 
@@ -537,12 +538,15 @@ fun SeguimientoPedidoScreen(
     clienteViewModel: ClienteViewModel = viewModel()
 ) {
     val livePedido by clienteViewModel.pedidoActivo.collectAsState()
+    val ubicacionRepartidor by clienteViewModel.ubicacionRepartidor.collectAsState()
 
     LaunchedEffect(pedidoId) {
         if (pedidoId != null) {
             clienteViewModel.cargarDetallePedido(pedidoId)
+            clienteViewModel.iniciarRastreo(pedidoId)
         }
     }
+    DisposableEffect(pedidoId) { onDispose { clienteViewModel.detenerRastreo() } }
 
     val order = remember(livePedido) {
         if (livePedido != null) {
@@ -607,7 +611,21 @@ fun SeguimientoPedidoScreen(
     }
 
     Box(Modifier.fillMaxSize().background(HToGoColors.Background)) {
-        MapMock(Modifier.fillMaxSize(), purificadoraName = order.purificadoraName)
+        val latDestino = livePedido?.latEntrega
+        val lonDestino = livePedido?.lonEntrega
+        if (latDestino != null && lonDestino != null) {
+            // Mapa real: domicilio + repartidor en vivo (WebSocket, con consultas de respaldo).
+            OsmRouteMapView(
+                originLat = ubicacionRepartidor?.lat,
+                originLon = ubicacionRepartidor?.lon,
+                destLat = latDestino,
+                destLon = lonDestino,
+                repartidorLabel = "Tu repartidor",
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            MapMock(Modifier.fillMaxSize(), purificadoraName = order.purificadoraName)
+        }
 
         Box(Modifier.fillMaxWidth().align(Alignment.TopCenter)) {
             FloatingTopBar(order.id, onBack)

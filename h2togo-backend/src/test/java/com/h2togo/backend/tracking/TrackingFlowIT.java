@@ -1,12 +1,15 @@
 package com.h2togo.backend.tracking;
 
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -86,7 +89,7 @@ class TrackingFlowIT {
 
     private static final double LAT = 19.372, LON = -99.178;
 
-    /** Deja un pedido en camino, asignado al repartidor, con domicilio en LAT/LON. Devuelve [idPedido, idCliente, idRep, tokenRep]. */
+    /** Deja un pedido en camino, asignado al repartidor, con domicilio en LAT/LON. Devuelve [idPedido, idCliente, idRep, tokenRep, tokenCli]. */
     private Object[] escenarioEnCamino(String sufijo) throws Exception {
         String correoCli = "trkc" + sufijo + "@test.mx";
         String cli = registro(correoCli, "55580" + sufijo, "cliente", null);
@@ -142,7 +145,7 @@ class TrackingFlowIT {
         mvc.perform(post("/api/v1/pedidos/" + idPedido + "/en-camino").header("Authorization", "Bearer " + tokenRep)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT + 0.05, LON)))
                 .andExpect(status().isOk());
-        return new Object[]{idPedido, idCliente, idRep, tokenRep};
+        return new Object[]{idPedido, idCliente, idRep, tokenRep, tokenCli};
     }
 
     @Test
@@ -155,13 +158,13 @@ class TrackingFlowIT {
         mvc.perform(put("/api/v1/repartidores/me/ubicacion").header("Authorization", "Bearer " + tokenRep)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT + 0.05, LON)))
                 .andExpect(status().isNoContent());
-        verify(pushService, never()).notificar(eq(idCliente), eq("Tu pedido está cerca"), anyString());
+        verify(pushService, never()).notificar(eq(idCliente), eq("Tu pedido está cerca"), anyString(), anyMap());
 
         // Cerca (en el domicilio): aviso una sola vez.
         mvc.perform(put("/api/v1/repartidores/me/ubicacion").header("Authorization", "Bearer " + tokenRep)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT, LON)))
                 .andExpect(status().isNoContent());
-        verify(pushService, times(1)).notificar(eq(idCliente), eq("Tu pedido está cerca"), anyString());
+        verify(pushService, times(1)).notificar(eq(idCliente), eq("Tu pedido está cerca"), anyString(), anyMap());
     }
 
     @Test
@@ -198,6 +201,88 @@ class TrackingFlowIT {
         Map<String, Object> msg = recibido.get(5, TimeUnit.SECONDS);
         assertThat(((Number) msg.get("lat")).doubleValue()).isEqualTo(LAT);
         session.disconnect();
+    }
+
+    @Test
+    void reporteRestSeReenviaAlClienteYConsultaDeUltimaUbicacion() throws Exception {
+        Object[] esc = escenarioEnCamino("3");
+        int idPedido = (int) esc[0];
+        String tokenRep = (String) esc[3];
+        String tokenCli = (String) esc[4];
+
+        StompSession sesionCli = conectar(tokenCli);
+        CompletableFuture<Map<String, Object>> recibido = suscribir(sesionCli, idPedido);
+        Thread.sleep(300); // da tiempo a que el SUBSCRIBE llegue antes de publicar
+
+        // La app del repartidor reporta por REST; el cliente lo recibe por el WebSocket.
+        mvc.perform(put("/api/v1/repartidores/me/ubicacion").header("Authorization", "Bearer " + tokenRep)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT + 0.01, LON)))
+                .andExpect(status().isNoContent());
+        assertThat(((Number) recibido.get(5, TimeUnit.SECONDS).get("lat")).doubleValue()).isEqualTo(LAT + 0.01);
+        sesionCli.disconnect();
+
+        mvc.perform(get("/api/v1/pedidos/" + idPedido + "/ubicacion-repartidor").header("Authorization", "Bearer " + tokenCli))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lat").value(LAT + 0.01));
+        // Otro cliente no puede consultarla.
+        Object[] otro = escenarioEnCamino("4");
+        mvc.perform(get("/api/v1/pedidos/" + idPedido + "/ubicacion-repartidor").header("Authorization", "Bearer " + otro[4]))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void ajenosNoPuedenVerNiPublicarLaUbicacion() throws Exception {
+        Object[] esc = escenarioEnCamino("5");
+        int idPedido = (int) esc[0];
+        String tokenRep = (String) esc[3];
+        String tokenCli = (String) esc[4];
+        Object[] otro = escenarioEnCamino("6");
+
+        // Un cliente ajeno se suscribe: el servidor rechaza el SUBSCRIBE y no recibe nada.
+        StompSession sesionAjena = conectar((String) otro[4]);
+        CompletableFuture<Map<String, Object>> espia = suscribir(sesionAjena, idPedido);
+        // El cliente dueño intenta publicar una ubicación falsa: se ignora.
+        StompSession sesionCli = conectar(tokenCli);
+        CompletableFuture<Map<String, Object>> legitimo = suscribir(sesionCli, idPedido);
+        Thread.sleep(300);
+        sesionCli.send("/app/pedidos/" + idPedido + "/ubicacion", Map.of("lat", 1.0, "lon", 1.0));
+        Thread.sleep(500);
+        assertThat(legitimo).isNotDone();
+
+        // El repartidor asignado sí publica y solo el cliente dueño lo recibe.
+        mvc.perform(put("/api/v1/repartidores/me/ubicacion").header("Authorization", "Bearer " + tokenRep)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT, LON)))
+                .andExpect(status().isNoContent());
+        assertThat(((Number) legitimo.get(5, TimeUnit.SECONDS).get("lat")).doubleValue()).isEqualTo(LAT);
+        Thread.sleep(300);
+        assertThat(espia).isNotDone();
+    }
+
+    private StompSession conectar(String token) throws Exception {
+        WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
+        client.setMessageConverter(new MappingJackson2MessageConverter());
+        StompHeaders connectHeaders = new StompHeaders();
+        connectHeaders.add("token", token);
+        return client.connectAsync("ws://localhost:" + port + "/ws",
+                new org.springframework.web.socket.WebSocketHttpHeaders(), connectHeaders,
+                new StompSessionHandlerAdapter() { }).get(5, TimeUnit.SECONDS);
+    }
+
+    private CompletableFuture<Map<String, Object>> suscribir(StompSession sesion, int idPedido) {
+        CompletableFuture<Map<String, Object>> recibido = new CompletableFuture<>();
+        sesion.subscribe("/topic/pedidos/" + idPedido + "/ubicacion", new StompFrameHandler() {
+            @Override
+            public Type getPayloadType(StompHeaders headers) {
+                return Map.class;
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public void handleFrame(StompHeaders headers, Object payload) {
+                recibido.complete((Map<String, Object>) payload);
+            }
+        });
+        return recibido;
     }
 
     // ---- helpers de registro/login ----

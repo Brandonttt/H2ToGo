@@ -1,8 +1,14 @@
 package com.htogo.app.ui.screens
 
+import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +21,7 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Navigation
@@ -34,11 +41,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.htogo.app.data.location.EntregaEnCursoService
+import com.htogo.app.data.location.UbicacionTracker
 import com.htogo.app.ui.RepartidorViewModel
 import com.htogo.app.ui.components.OsmRouteMapView
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterNotNull
 
 enum class EstadoRuta { EN_RUTA, LLEGADO }
 
@@ -51,11 +61,8 @@ data class EntregaActiva(
     val notas: String,
     val productos: String,
     val total: Double,
-    val kmRestantes: Double,
     val entregaActual: Int,
     val totalEntregas: Int,
-    val latOrigen: Double = 19.376692,
-    val lonOrigen: Double = -99.165057,
     val latDestino: Double = 19.38204,
     val lonDestino: Double = -99.16202
 )
@@ -79,7 +86,7 @@ fun RutaEntregaScreen(
     val isLoading by repartidorViewModel.isLoading.collectAsState()
     val context = LocalContext.current
 
-    val entrega = remember(livePedidoEnRuta, livePedidoDisponible, liveRutaCalculada) {
+    val entrega = remember(livePedidoEnRuta, livePedidoDisponible) {
         val pEnRuta = livePedidoEnRuta
         val pDisp = livePedidoDisponible
 
@@ -129,14 +136,6 @@ fun RutaEntregaScreen(
         val latDest = pEnRuta?.latEntrega ?: pDisp?.latEntrega ?: 19.38204
         val lonDest = pEnRuta?.lonEntrega ?: pDisp?.lonEntrega ?: -99.16202
 
-        val km = if (liveRutaCalculada != null && liveRutaCalculada!!.encontrada && liveRutaCalculada!!.distanciaTotalKm > 0) {
-            liveRutaCalculada!!.distanciaTotalKm
-        } else if (pDisp?.distanciaKm != null && pDisp.distanciaKm > 0) {
-            pDisp.distanciaKm
-        } else {
-            1.2
-        }
-
         EntregaActiva(
             pedidoId = idStr,
             cliente = nombre,
@@ -146,11 +145,8 @@ fun RutaEntregaScreen(
             notas = notasTxt,
             productos = prods,
             total = totalMonto,
-            kmRestantes = km,
             entregaActual = 1,
             totalEntregas = 1,
-            latOrigen = 19.376692,
-            lonOrigen = -99.165057,
             latDestino = latDest,
             lonDestino = lonDest
         )
@@ -160,15 +156,39 @@ fun RutaEntregaScreen(
         liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) } ?: emptyList()
     }
 
-    LaunchedEffect(entrega.pedidoId) {
-        val idInt = entrega.pedidoId.toIntOrNull()
-        if (idInt != null) {
-            repartidorViewModel.cargarRutaPedido(
-                id = idInt,
-                latRep = entrega.latOrigen,
-                lonRep = entrega.lonOrigen
-            )
+    // ---- GPS real del repartidor ----
+    val posicion by EntregaEnCursoService.posicion.collectAsState()
+    var tienePermiso by remember { mutableStateOf(UbicacionTracker.tienePermiso(context)) }
+    val pedirPermiso = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
+        tienePermiso = r[Manifest.permission.ACCESS_FINE_LOCATION] == true
+    }
+    LaunchedEffect(Unit) {
+        if (!tienePermiso) {
+            pedirPermiso.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
+    }
+    var enCaminoSolicitado by remember(entrega.pedidoId) { mutableStateOf(false) }
+    // El GPS vive en un servicio en primer plano: sigue reportando aunque se abra Waze/Maps.
+    LaunchedEffect(tienePermiso, entrega.pedidoId) {
+        val idInt = entrega.pedidoId.toIntOrNull() ?: return@LaunchedEffect
+        if (!tienePermiso) return@LaunchedEffect
+        EntregaEnCursoService.iniciar(context, idInt)
+        EntregaEnCursoService.posicion.filterNotNull().collect { p ->
+            // Con el primer fix el pedido pasa a "en camino": el cliente empieza a ver el rastreo.
+            if (!enCaminoSolicitado && livePedidoEnRuta?.estado.equals("asignado", ignoreCase = true)) {
+                enCaminoSolicitado = true
+                repartidorViewModel.marcarEnCamino(idInt, p.lat, p.lon, onError = { err ->
+                    enCaminoSolicitado = false
+                    Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                })
+            }
+            repartidorViewModel.alMoverse(idInt, p)
+        }
+    }
+    DisposableEffect(Unit) { onDispose { repartidorViewModel.detenerNavegacion() } }
+
+    val distanciaDestinoM = posicion?.let {
+        UbicacionTracker.distanciaM(it.lat, it.lon, entrega.latDestino, entrega.lonDestino)
     }
 
     var estado by remember { mutableStateOf(EstadoRuta.EN_RUTA) }
@@ -191,13 +211,27 @@ fun RutaEntregaScreen(
         Box(Modifier.padding(padding).fillMaxSize()) {
             // Mapa interactivo con la ruta del repartidor
             OsmRouteMapView(
-                originLat = entrega.latOrigen,
-                originLon = entrega.lonOrigen,
+                originLat = posicion?.lat,
+                originLon = posicion?.lon,
                 destLat = entrega.latDestino,
                 destLon = entrega.lonDestino,
                 routePoints = routePoints,
                 modifier = Modifier.fillMaxSize()
             )
+
+            if (!tienePermiso) {
+                PermisoUbicacionBanner(
+                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                    onActivar = {
+                        pedirPermiso.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    },
+                    onAjustes = {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                        )
+                    }
+                )
+            }
 
             // Header superior flotante
             Row(
@@ -229,19 +263,22 @@ fun RutaEntregaScreen(
             ) {
                 Column(Modifier.padding(18.dp)) {
                     if (estado == EstadoRuta.EN_RUTA) {
-                        EnRutaSheet(entrega)
+                        EnRutaSheet(entrega, distanciaDestinoM, rutaKm = liveRutaCalculada?.takeIf { it.encontrada }?.distanciaTotalKm)
                         Spacer(Modifier.height(14.dp))
                         Button(
                             onClick = {
-                                val idInt = entrega.pedidoId.toIntOrNull()
-                                if (idInt != null) {
-                                    repartidorViewModel.marcarEnCamino(
-                                        id = idInt,
-                                        lat = entrega.latOrigen,
-                                        lon = entrega.lonOrigen
-                                    )
+                                // RF-014: el backend solo acepta la entrega a ≤ 50 m del domicilio.
+                                when {
+                                    distanciaDestinoM == null -> Toast.makeText(
+                                        context, "Esperando la señal del GPS…", Toast.LENGTH_SHORT
+                                    ).show()
+                                    distanciaDestinoM > RADIO_ENTREGA_M -> Toast.makeText(
+                                        context,
+                                        "Estás a %.0f m del domicilio. Acércate a menos de %d m.".format(distanciaDestinoM, RADIO_ENTREGA_M),
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    else -> estado = EstadoRuta.LLEGADO
                                 }
-                                estado = EstadoRuta.LLEGADO
                             },
                             modifier = Modifier.fillMaxWidth().height(54.dp),
                             shape = RoundedCornerShape(27.dp),
@@ -253,20 +290,6 @@ fun RutaEntregaScreen(
                         }
                     } else {
                         LlegadoSheet(entrega, segundosRestantes)
-                        if (segundosRestantes > 0) {
-                            Spacer(Modifier.height(8.dp))
-                            TextButton(
-                                onClick = { segundosRestantes = 0 },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    "DEMO · Saltar los 10 min",
-                                    fontSize = 12.sp,
-                                    color = HToGoColors.TextTertiary,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
                         Spacer(Modifier.height(14.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(
@@ -315,24 +338,28 @@ fun RutaEntregaScreen(
                 onDismiss = { mostrarModalEntregado = false },
                 onConfirm = {
                     val idInt = entrega.pedidoId.toIntOrNull()
-                    if (idInt != null) {
+                    val p = posicion
+                    if (idInt != null && p != null) {
                         repartidorViewModel.registrarResultadoEntrega(
                             id = idInt,
                             esEntregado = true,
+                            lat = p.lat,
+                            lon = p.lon,
                             onSuccess = {
+                                EntregaEnCursoService.detener(context)
                                 Toast.makeText(context, "¡Entrega completada con éxito!", Toast.LENGTH_SHORT).show()
                                 mostrarModalEntregado = false
                                 onCompletada()
                             },
                             onError = { err ->
+                                // Se queda en la pantalla para reintentar (p. ej. fuera del radio de 50 m).
                                 Toast.makeText(context, err, Toast.LENGTH_LONG).show()
                                 mostrarModalEntregado = false
-                                onCompletada()
                             }
                         )
                     } else {
+                        Toast.makeText(context, "Esperando la señal del GPS…", Toast.LENGTH_SHORT).show()
                         mostrarModalEntregado = false
-                        onCompletada()
                     }
                 }
             )
@@ -342,11 +369,16 @@ fun RutaEntregaScreen(
                 onDismiss = { mostrarModalNoEntregado = false },
                 onConfirm = { motivo, nota ->
                     val idInt = entrega.pedidoId.toIntOrNull()
-                    if (idInt != null) {
+                    val p = posicion
+                    if (idInt != null && p != null) {
                         repartidorViewModel.registrarResultadoEntrega(
                             id = idInt,
                             esEntregado = false,
+                            lat = p.lat,
+                            lon = p.lon,
+                            motivoNoEntrega = motivo.titulo + nota.trim().takeIf { it.isNotEmpty() }?.let { ": $it" }.orEmpty(),
                             onSuccess = {
+                                EntregaEnCursoService.detener(context)
                                 Toast.makeText(context, "Entrega reportada como no realizada", Toast.LENGTH_SHORT).show()
                                 mostrarModalNoEntregado = false
                                 onCompletada()
@@ -354,12 +386,11 @@ fun RutaEntregaScreen(
                             onError = { err ->
                                 Toast.makeText(context, err, Toast.LENGTH_LONG).show()
                                 mostrarModalNoEntregado = false
-                                onCompletada()
                             }
                         )
                     } else {
+                        Toast.makeText(context, "Esperando la señal del GPS…", Toast.LENGTH_SHORT).show()
                         mostrarModalNoEntregado = false
-                        onCompletada()
                     }
                 }
             )
@@ -423,8 +454,9 @@ private fun StepPill(estado: EstadoRuta, pedidoId: String, actual: Int, total: I
 }
 
 @Composable
-private fun EnRutaSheet(entrega: EntregaActiva) {
+private fun EnRutaSheet(entrega: EntregaActiva, distanciaDestinoM: Double?, rutaKm: Double?) {
     val context = LocalContext.current
+    var menuNavegar by remember { mutableStateOf(false) }
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -464,7 +496,12 @@ private fun EnRutaSheet(entrega: EntregaActiva) {
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "%.2f km restantes".format(entrega.kmRestantes),
+                        when {
+                            rutaKm != null -> "%.2f km restantes".format(rutaKm)
+                            distanciaDestinoM != null && distanciaDestinoM < 1000 -> "%.0f m en línea recta".format(distanciaDestinoM)
+                            distanciaDestinoM != null -> "%.2f km en línea recta".format(distanciaDestinoM / 1000)
+                            else -> "Buscando tu ubicación…"
+                        },
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = HToGoColors.Primary
@@ -475,24 +512,31 @@ private fun EnRutaSheet(entrega: EntregaActiva) {
                         color = HToGoColors.TextSecondary
                     )
                 }
-                Button(
-                    onClick = {
-                        try {
-                            val uri = Uri.parse("google.navigation:q=${entrega.latDestino},${entrega.lonDestino}")
-                            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                                setPackage("com.google.android.apps.maps")
+                Box {
+                    Button(
+                        onClick = { menuNavegar = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                    ) {
+                        Icon(Icons.Filled.Navigation, null, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Navegar", fontSize = 12.sp)
+                    }
+                    DropdownMenu(expanded = menuNavegar, onDismissRequest = { menuNavegar = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Abrir en Google Maps") },
+                            onClick = {
+                                menuNavegar = false
+                                abrirGoogleMaps(context, entrega)
                             }
-                            context.startActivity(intent)
-                        } catch (_: Exception) {
-                            val fallbackUri = Uri.parse("geo:${entrega.latDestino},${entrega.lonDestino}?q=${entrega.latDestino},${entrega.lonDestino}(${Uri.encode(entrega.cliente)})")
-                            context.startActivity(Intent(Intent.ACTION_VIEW, fallbackUri))
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                ) {
-                    Icon(Icons.Filled.Navigation, null, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Navegar", fontSize = 12.sp)
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Abrir en Waze") },
+                            onClick = {
+                                menuNavegar = false
+                                abrirWaze(context, entrega)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -599,6 +643,63 @@ private fun LlegadoSheet(entrega: EntregaActiva, segundos: Int) {
 
         Spacer(Modifier.height(12.dp))
         ClienteCard(entrega, HToGoColors.StatusEntregado)
+    }
+}
+
+/** Radio de entrega del backend (RF-014, h2togo.pedidos.entrega-radio-m). */
+private const val RADIO_ENTREGA_M = 50
+
+/** Navegación paso a paso en Google Maps; si no está instalado, cualquier app de mapas (geo:). */
+private fun abrirGoogleMaps(context: Context, entrega: EntregaActiva) {
+    val destino = "${entrega.latDestino},${entrega.lonDestino}"
+    try {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$destino"))
+                .setPackage("com.google.android.apps.maps")
+        )
+    } catch (_: ActivityNotFoundException) {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse("geo:$destino?q=$destino(${Uri.encode(entrega.cliente)})"))
+        )
+    }
+}
+
+/** Waze con navegación inmediata; si no está instalado, el enlace web abre la tienda o el navegador. */
+private fun abrirWaze(context: Context, entrega: EntregaActiva) {
+    val destino = "${entrega.latDestino},${entrega.lonDestino}"
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("waze://?ll=$destino&navigate=yes")))
+    } catch (_: ActivityNotFoundException) {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://waze.com/ul?ll=$destino&navigate=yes")))
+    }
+}
+
+@Composable
+private fun PermisoUbicacionBanner(modifier: Modifier, onActivar: () -> Unit, onAjustes: () -> Unit) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Filled.LocationOff, null, tint = HToGoColors.AccentRose, modifier = Modifier.size(32.dp))
+            Spacer(Modifier.height(8.dp))
+            Text("Activa tu ubicación", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "La necesitamos para calcular tu ruta, avisar al cliente que vas en camino y validar la entrega.",
+                fontSize = 12.sp,
+                color = HToGoColors.TextSecondary
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onActivar,
+                colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary),
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Permitir ubicación") }
+            TextButton(onClick = onAjustes) { Text("Abrir ajustes", fontSize = 12.sp) }
+        }
     }
 }
 

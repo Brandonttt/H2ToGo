@@ -19,7 +19,9 @@ object HToGoRoutes {
     const val NUEVO_PEDIDO       = "form"          // 06 — pedido directo
     const val NUEVO_PEDIDO_ABIERTO = "form_abierto" // 06b — precio máximo
     const val ASIGNANDO          = "buscando"      // 07a
-    const val SEGUIMIENTO        = "track"         // 07
+    const val SEGUIMIENTO        = "track?idPedido={idPedido}" // 07 — idPedido opcional
+    /** Seguimiento de un pedido concreto; sin id usa el pedido activo del cliente. */
+    fun seguimiento(idPedido: Int?) = if (idPedido != null) "track?idPedido=$idPedido" else "track"
     const val HISTORIAL_CLIENTE  = "hist_c"        // 08
     const val PERFIL_CLIENTE     = "perfil_c"      // 09
 

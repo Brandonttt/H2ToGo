@@ -29,6 +29,13 @@ import com.htogo.app.ui.screens.VerificacionTelefonoScreen
 
 import android.widget.Toast
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.htogo.app.data.notificaciones.DestinoNotificacion
+import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.htogo.app.data.api.ApiClient
@@ -75,6 +82,35 @@ fun HToGoNavHost(
                 }
             }
         }
+    }
+
+    // Al tocar una notificación: abre la pantalla que corresponde a su tipo (ver DestinoNotificacion).
+    val destinoNotificacion by DestinoNotificacion.pendiente.collectAsState()
+    LaunchedEffect(destinoNotificacion) {
+        val destino = destinoNotificacion ?: return@LaunchedEffect
+        if (!sessionManager.estaAutenticado()) {
+            DestinoNotificacion.consumir()
+            return@LaunchedEffect
+        }
+        // En arranque en frío el splash redirige al inicio: se espera a que lo haga para no competir.
+        snapshotFlow { navController.currentBackStackEntry?.destination?.route }
+            .first { it != null && it != HToGoRoutes.SPLASH }
+        val esRepartidor = sessionManager.obtenerRol()?.equals("repartidor", ignoreCase = true) == true
+        val ruta = when {
+            !esRepartidor && destino.tipo.startsWith("pedido_") -> HToGoRoutes.seguimiento(destino.idPedido)
+            !esRepartidor -> null
+            destino.tipo == "pedido_nuevo" -> HToGoRoutes.PEDIDOS_DISPONIBLES
+            destino.tipo == "solicitud_resuelta" -> HToGoRoutes.PRODUCTOS_PRECIOS
+            destino.tipo == "lotes_por_caducar" -> HToGoRoutes.INVENTARIO
+            destino.tipo == DestinoNotificacion.TIPO_ENTREGA_EN_CURSO -> {
+                // Si el proceso se reinició, recupera el pedido para que la pantalla de ruta tenga datos.
+                destino.idPedido?.let { repartidorViewModel.cargarPedidoEnRuta(it) }
+                HToGoRoutes.RUTA_ENTREGA
+            }
+            else -> null
+        }
+        DestinoNotificacion.consumir()
+        ruta?.let { navController.navigate(it) { launchSingleTop = true } }
     }
 
     NavHost(navController = navController, startDestination = startDestination) {
@@ -152,7 +188,7 @@ fun HToGoNavHost(
                 onNuevoPedido        = { navController.navigate(HToGoRoutes.NUEVO_PEDIDO) },
                 onElegirPurificadora = { navController.navigate(HToGoRoutes.BUSCAR_PURIFICADORAS) },
                 onPedirAbierto       = { navController.navigate(HToGoRoutes.NUEVO_PEDIDO_ABIERTO) },
-                onTrackPedido        = { navController.navigate(HToGoRoutes.SEGUIMIENTO) },
+                onTrackPedido        = { navController.navigate(HToGoRoutes.seguimiento(clienteViewModel.pedidoActivo.value?.id)) },
                 onHistorial          = {
                     navController.navigate(HToGoRoutes.HISTORIAL_CLIENTE) {
                         popUpTo(HToGoRoutes.HOME_CLIENTE) { saveState = true }
@@ -210,14 +246,21 @@ fun HToGoNavHost(
         composable(HToGoRoutes.ASIGNANDO) {
             AsignandoRepartidorScreen(
                 onCancel   = { navController.popBackStack(HToGoRoutes.HOME_CLIENTE, inclusive = false) },
-                onAsignado = { navController.navigateAndClear(HToGoRoutes.SEGUIMIENTO) }
+                onAsignado = { navController.navigateAndClear(HToGoRoutes.seguimiento(clienteViewModel.pedidoActivo.value?.id)) }
             )
         }
-        composable(HToGoRoutes.SEGUIMIENTO) {
+        composable(
+            HToGoRoutes.SEGUIMIENTO,
+            arguments = listOf(navArgument("idPedido") { type = NavType.StringType; nullable = true; defaultValue = null })
+        ) { entry ->
+            // Sin id explícito (p. ej. desde el inicio) se sigue el último pedido del cliente.
+            val idPedido = entry.arguments?.getString("idPedido")?.toIntOrNull() ?: clienteViewModel.pedidoActivo.value?.id
             SeguimientoPedidoScreen(
+                pedidoId           = idPedido,
                 onBack             = { navController.navigateAndClear(HToGoRoutes.HOME_CLIENTE) },
                 onPedidoEntregado  = { navController.navigateAndClear(HToGoRoutes.HOME_CLIENTE) },
-                onAbrirPurificadora = { navController.navigate(HToGoRoutes.PERFIL_PURIFICADORA) }
+                onAbrirPurificadora = { navController.navigate(HToGoRoutes.PERFIL_PURIFICADORA) },
+                clienteViewModel   = clienteViewModel
             )
         }
         composable(HToGoRoutes.HISTORIAL_CLIENTE) {
@@ -236,7 +279,7 @@ fun HToGoNavHost(
                         restoreState = true
                     }
                 },
-                onPedidoTap         = { _ -> navController.navigate(HToGoRoutes.SEGUIMIENTO) },
+                onPedidoTap         = { id -> navController.navigate(HToGoRoutes.seguimiento(id)) },
                 onAbrirPurificadora = { navController.navigate(HToGoRoutes.PERFIL_PURIFICADORA) },
                 onRepetir           = { navController.navigate(HToGoRoutes.NUEVO_PEDIDO) },
                 clienteViewModel    = clienteViewModel

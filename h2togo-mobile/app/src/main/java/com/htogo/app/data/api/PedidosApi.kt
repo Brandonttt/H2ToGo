@@ -20,6 +20,10 @@ interface PedidosApi {
     @GET("pedidos/{id}")
     suspend fun obtenerDetallePedido(@Path("id") id: Int): Response<PedidoResponse>
 
+    /** Última posición del repartidor (CU-006). 204 si el pedido no está en ruta o aún no hay posición. */
+    @GET("pedidos/{id}/ubicacion-repartidor")
+    suspend fun ubicacionRepartidor(@Path("id") id: Int): Response<com.htogo.app.data.dto.UbicacionRepartidorDto>
+
     @POST("pedidos/{id}/cancelacion")
     suspend fun cancelarPedido(
         @Path("id") id: Int,
