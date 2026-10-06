@@ -63,8 +63,6 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
     var purificadoraSeleccionadaId: Int? = null
     var purificadoraSeleccionadaNombre: String? = null
     var purificadoraSeleccionadaDistancia: String? = null
-    var purificadoraSeleccionadaRating: Float? = null
-    var purificadoraSeleccionadaResenas: Int? = null
 
 
     fun cargarHistorial() {

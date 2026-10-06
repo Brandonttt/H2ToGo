@@ -214,7 +214,19 @@ class NegociosFlowIT {
                         .header("Authorization", "Bearer " + s.token()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.id == " + s.idNegocio() + ")]").exists())
-                .andExpect(jsonPath("$[?(@.id == " + s.idNegocio() + " && @.distanciaM < 50)]").exists());
+                .andExpect(jsonPath("$[?(@.id == " + s.idNegocio() + " && @.distanciaM < 50)]").exists())
+                // Datos reales para la lista de la app: marcas y precio más bajo del catálogo.
+                .andExpect(jsonPath("$[?(@.id == " + s.idNegocio() + ")].marcas[0]").value("Marca-Cinco"))
+                .andExpect(jsonPath("$[?(@.id == " + s.idNegocio() + ")].precioDesde").value(25.0))
+                // Sin horario registrado no está abierto (RN-004).
+                .andExpect(jsonPath("$[?(@.id == " + s.idNegocio() + ")].abiertoAhora").value(false));
+
+        mvc.perform(put("/api/v1/negocios/me/horarios").header("Authorization", "Bearer " + s.token())
+                        .contentType(MediaType.APPLICATION_JSON).content(horariosAbiertos()))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/negocios").param("cerca", LAT + "," + LON)
+                        .header("Authorization", "Bearer " + s.token()))
+                .andExpect(jsonPath("$[?(@.id == " + s.idNegocio() + ")].abiertoAhora").value(true));
     }
 
     @Test

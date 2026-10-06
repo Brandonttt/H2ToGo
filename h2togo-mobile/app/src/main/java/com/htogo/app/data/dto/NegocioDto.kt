@@ -13,13 +13,15 @@ data class NegocioCercanoResponse(
     @SerializedName("nombreComercial") val nombreComercial: String,
     @SerializedName("distanciaKm") private val _distanciaKm: Double? = null,
     @SerializedName("distanciaM") private val _distanciaM: Double? = null,
-    @SerializedName("calificacionPromedio") val calificacionPromedio: Double? = null,
-    @SerializedName("abierto") val abierto: Boolean = true,
-    @SerializedName("tiempoEntregaMinutos") val tiempoEntregaMinutos: Int? = null,
+    // Sin valor por defecto "true": antes, sin el dato, todas las purificadoras salían abiertas.
+    @SerializedName(value = "abiertoAhora", alternate = ["abierto"]) val abiertoAhora: Boolean = false,
     @SerializedName("lat") val lat: Double? = null,
     @SerializedName("lon") val lon: Double? = null,
     @SerializedName("direccion") val direccion: String? = null,
-    @SerializedName("repartidores") val repartidores: Int? = null
+    @SerializedName("repartidores") val repartidores: Int? = null,
+    /** Precio más bajo de su catálogo; null si no tiene productos activos. */
+    @SerializedName("precioDesde") val precioDesde: Double? = null,
+    @SerializedName("marcas") val marcas: List<String>? = null
 ) {
     val distanciaKm: Double
         get() = _distanciaKm ?: ((_distanciaM ?: 0.0) / 1000.0)

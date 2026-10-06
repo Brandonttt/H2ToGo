@@ -73,7 +73,8 @@ fun PerfilPurificadoraScreen(
     val isLoading by clienteViewModel.isLoading.collectAsState()
 
     val displayNombre = perfil?.nombreComercial ?: clienteViewModel.purificadoraSeleccionadaNombre ?: nombre
-    val displayDistancia = clienteViewModel.purificadoraSeleccionadaDistancia ?: distancia
+    // Sin dato real (p. ej. al entrar desde el inicio) no se muestra distancia.
+    val displayDistancia = clienteViewModel.purificadoraSeleccionadaDistancia
     val displayDireccion = perfil?.direccion ?: direccion
     val displayAbierto = perfil?.abiertoAhora ?: abiertoAhora
 
@@ -83,26 +84,41 @@ fun PerfilPurificadoraScreen(
             val abiertos = hList.filter { !it.cerrado }
             if (abiertos.isNotEmpty()) {
                 val primero = abiertos.first()
-                "Horario: ${primero.horaApertura?.take(5) ?: "08:00"} – ${primero.horaCierre?.take(5) ?: "19:00"}"
+                "Horario: ${primero.horaApertura?.take(5) ?: "--:--"} – ${primero.horaCierre?.take(5) ?: "--:--"}"
             } else {
                 "Cerrado temporalmente"
             }
+        } else if (perfil != null) {
+            "Horario no registrado"
         } else {
             horario
+        }
+    }
+    // Días cerrados según el horario real (antes decía siempre "Cerrado los domingos").
+    val displayDiasCerrados = remember(perfil) {
+        val nombres = listOf("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+        val cerrados = perfil?.horarios.orEmpty().filter { it.cerrado }.map { nombres[(it.diaSemana - 1).coerceIn(0, 6)] }
+        when {
+            perfil == null -> diasCerrados
+            cerrados.isEmpty() -> ""
+            else -> "Cerrado: " + cerrados.joinToString(", ")
         }
     }
 
     val productos = remember(perfil) {
         if (!perfil?.productos.isNullOrEmpty()) {
             perfil!!.productos!!.map { prod ->
-                val precioInt = prod.precioLiquido.toInt()
-                val stock = if (prod.stockDisponible > 0) StockEstado.DISPONIBLE
-                            else if (prod.stockDisponible == 0L) StockEstado.POCOS
-                            else StockEstado.AGOTADO
+                val precio = prod.precioLiquido
+                // Antes 0 piezas se mostraba como "pocos".
+                val stock = when {
+                    prod.stockDisponible > 5 -> StockEstado.DISPONIBLE
+                    prod.stockDisponible > 0 -> StockEstado.POCOS
+                    else -> StockEstado.AGOTADO
+                }
                 Producto(
                     marca = prod.nombreMarca,
                     capacidad = "20 L",
-                    precio = "$$precioInt c/u",
+                    precio = (if (precio % 1.0 == 0.0) "$%.0f" else "$%.2f").format(precio) + " c/u",
                     stock = stock
                 )
             }
@@ -155,7 +171,7 @@ fun PerfilPurificadoraScreen(
                     lon = perfil?.direccionObj?.lon
                 )
                 Spacer(Modifier.height(20.dp))
-                DatosNegocio(displayDireccion, displayHorario, diasCerrados, displayAbierto, tiempoEnPlataforma)
+                DatosNegocio(displayDireccion, displayHorario, displayDiasCerrados, displayAbierto, tiempoEnPlataforma)
                 Spacer(Modifier.height(20.dp))
                 SectionTitle("Productos disponibles")
                 if (productos.isNotEmpty()) {
@@ -190,7 +206,7 @@ fun PerfilPurificadoraScreen(
 
 @Composable
 private fun HeaderPurificadora(
-    nombre: String, distancia: String, abierto: Boolean, onBack: () -> Unit
+    nombre: String, distancia: String?, abierto: Boolean, onBack: () -> Unit
 ) {
     Box(
         Modifier
@@ -228,10 +244,12 @@ private fun HeaderPurificadora(
             }
             Spacer(Modifier.height(16.dp))
             Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.LocationOn, null, tint = HToGoColors.PrimarySoft,
-                    modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(distancia, color = HToGoColors.PrimarySoft, fontSize = 13.sp)
+                if (distancia != null) {
+                    Icon(Icons.Filled.LocationOn, null, tint = HToGoColors.PrimarySoft,
+                        modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(distancia, color = HToGoColors.PrimarySoft, fontSize = 13.sp)
+                }
             }
         }
     }
@@ -310,7 +328,7 @@ private fun DatosNegocio(
             DatoRow(
                 Icons.Filled.Schedule,
                 "Horario de atención",
-                "$horario\n$diasCerrados"
+                if (diasCerrados.isBlank()) horario else "$horario\n$diasCerrados"
             )
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {

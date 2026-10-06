@@ -97,45 +97,64 @@ public class NegocioService {
                 esqueleto.direccion(), abiertoAhora(horarios), horarios, productos, vehiculos);
     }
 
+    /**
+     * Columnas comunes de la lista de negocios. {@code abierto_ahora} aplica la misma regla que
+     * {@link #abiertoAhora} (RN-004) pero en SQL, para no consultar horarios negocio por negocio.
+     */
+    private static final String COLUMNAS_LISTA = """
+            n.id_negocio, n.nombre_comercial,
+            CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', n.calle, n.numero_exterior), ''), NULLIF(n.colonia, ''), NULLIF(CONCAT('CP ', n.codigo_postal), 'CP ')) AS direccion,
+            (SELECT COUNT(*) FROM repartidores r WHERE r.id_negocio = n.id_negocio) AS repartidores,
+            EXISTS (SELECT 1 FROM horarios_negocio h
+                    WHERE h.id_negocio = n.id_negocio AND NOT h.cerrado
+                      AND h.dia_semana = EXTRACT(ISODOW FROM now() AT TIME ZONE 'America/Mexico_City')
+                      AND (now() AT TIME ZONE 'America/Mexico_City')::time >= h.hora_apertura
+                      AND (now() AT TIME ZONE 'America/Mexico_City')::time < h.hora_cierre) AS abierto_ahora,
+            (SELECT MIN(pn.precio) FROM productos_negocio pn
+             WHERE pn.id_negocio = n.id_negocio AND pn.activo) AS precio_desde,
+            (SELECT string_agg(m.nombre, '|' ORDER BY m.nombre) FROM productos_negocio pn
+             JOIN marcas m ON m.id_marca = pn.id_marca
+             WHERE pn.id_negocio = n.id_negocio AND pn.activo) AS marcas""";
+
     @Transactional(readOnly = true)
     public List<NegocioCercanoResponse> cercanos(double lat, double lon, int limite) {
         var params = new MapSqlParameterSource()
                 .addValue("lat", lat).addValue("lon", lon).addValue("limite", limite);
-        return jdbc.query("""
-                SELECT n.id_negocio, n.nombre_comercial,
+        return jdbc.query("SELECT " + COLUMNAS_LISTA + """
+                ,
                        ST_Y(n.ubicacion_base::geometry) AS lat, ST_X(n.ubicacion_base::geometry) AS lon,
-                       ST_Distance(n.ubicacion_base, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography) AS dist,
-                       CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', n.calle, n.numero_exterior), ''), NULLIF(n.colonia, ''), NULLIF(CONCAT('CP ', n.codigo_postal), 'CP ')) AS direccion,
-                       (SELECT COUNT(*) FROM repartidores r WHERE r.id_negocio = n.id_negocio) AS repartidores
+                       ST_Distance(n.ubicacion_base, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography) AS dist
                 FROM negocios n
                 WHERE n.activo AND n.ubicacion_base IS NOT NULL
                   AND EXISTS (SELECT 1 FROM zonas_cobertura z WHERE z.activo AND ST_Covers(z.geom, n.ubicacion_base))
                 ORDER BY n.ubicacion_base <-> ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
                 LIMIT :limite
-                """, params, (rs, n) -> new NegocioCercanoResponse(
-                        rs.getInt("id_negocio"), rs.getString("nombre_comercial"),
-                        rs.getDouble("lat"), rs.getDouble("lon"), rs.getDouble("dist"),
-                        rs.getString("direccion"), rs.getInt("repartidores")));
+                """, params, NegocioService::mapNegocioLista);
     }
 
     @Transactional(readOnly = true)
     public List<NegocioCercanoResponse> todosActivos(int limite) {
         var params = new MapSqlParameterSource().addValue("limite", limite);
-        return jdbc.query("""
-                SELECT n.id_negocio, n.nombre_comercial,
+        return jdbc.query("SELECT " + COLUMNAS_LISTA + """
+                ,
                        COALESCE(ST_Y(n.ubicacion_base::geometry), 0.0) AS lat,
                        COALESCE(ST_X(n.ubicacion_base::geometry), 0.0) AS lon,
-                       0.0 AS dist,
-                       CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', n.calle, n.numero_exterior), ''), NULLIF(n.colonia, ''), NULLIF(CONCAT('CP ', n.codigo_postal), 'CP ')) AS direccion,
-                       (SELECT COUNT(*) FROM repartidores r WHERE r.id_negocio = n.id_negocio) AS repartidores
+                       0.0 AS dist
                 FROM negocios n
                 WHERE n.activo
                 ORDER BY n.nombre_comercial ASC
                 LIMIT :limite
-                """, params, (rs, n) -> new NegocioCercanoResponse(
-                        rs.getInt("id_negocio"), rs.getString("nombre_comercial"),
-                        rs.getDouble("lat"), rs.getDouble("lon"), rs.getDouble("dist"),
-                        rs.getString("direccion"), rs.getInt("repartidores")));
+                """, params, NegocioService::mapNegocioLista);
+    }
+
+    private static NegocioCercanoResponse mapNegocioLista(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        String marcas = rs.getString("marcas");
+        return new NegocioCercanoResponse(
+                rs.getInt("id_negocio"), rs.getString("nombre_comercial"),
+                rs.getDouble("lat"), rs.getDouble("lon"), rs.getDouble("dist"),
+                rs.getString("direccion"), rs.getInt("repartidores"),
+                rs.getBoolean("abierto_ahora"), rs.getBigDecimal("precio_desde"),
+                marcas == null ? List.of() : List.of(marcas.split("\\|")));
     }
 
     @Transactional(readOnly = true)

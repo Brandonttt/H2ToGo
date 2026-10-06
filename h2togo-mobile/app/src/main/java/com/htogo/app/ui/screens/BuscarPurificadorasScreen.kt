@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.*
@@ -37,44 +36,14 @@ import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
 
 private data class PurificadoraResumen(
-    val id: String,
+    val id: Int,
     val nombre: String,
-    val distancia: String,
+    /** null si no se conoce la ubicación del negocio o del cliente. */
+    val distancia: String?,
     val direccion: String,
-    val rating: Float,
-    val resenas: Int,
-    val precioDesde: Int,
+    val precioDesde: Double?,
     val abierto: Boolean,
-    val horarioCierre: String,
-    val tags: List<String>
-)
-
-private val SAMPLE_PURIFICADORAS = listOf(
-    PurificadoraResumen(
-        "p1", "Aguas Del Valle", "0.8 km",
-        "Av. Cuauhtémoc 1102, Benito Juárez", 4.8f, 312, 42, true,
-        "Cierra 7:00 PM", listOf("Ciel", "Bonafont", "Epura")
-    ),
-    PurificadoraResumen(
-        "p2", "HidroExpress BJ", "1.4 km",
-        "Eje 5 Sur 320, Narvarte", 4.6f, 188, 38, true,
-        "Cierra 8:00 PM", listOf("Ciel", "Santorini")
-    ),
-    PurificadoraResumen(
-        "p3", "AquaPura Nápoles", "2.1 km",
-        "Heriberto Frías 612, Nápoles", 4.7f, 254, 45, true,
-        "Cierra 6:30 PM", listOf("Bonafont", "Epura")
-    ),
-    PurificadoraResumen(
-        "p4", "Purificadora Aqua Pura", "2.8 km",
-        "Diagonal San Antonio 980", 4.4f, 142, 40, false,
-        "Abre mañana 8:00 AM", listOf("Ciel", "Bonafont")
-    ),
-    PurificadoraResumen(
-        "p5", "Agua Clara Del Valle", "3.2 km",
-        "Insurgentes Sur 1456, Del Valle", 4.5f, 96, 36, true,
-        "Cierra 9:00 PM", listOf("Santorini", "Epura")
-    )
+    val marcas: List<String>
 )
 
 private fun calcularDistanciaKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
@@ -101,50 +70,28 @@ fun BuscarPurificadorasScreen(
         direccionesCliente.firstOrNull()
     }
 
+    // Solo datos reales del backend (antes había calificaciones, reseñas, precios y marcas
+    // inventados, y una lista de ejemplo cuando no había resultados).
     val sourceList = remember(livePurificadoras, direccionCliente) {
-        if (livePurificadoras.isNotEmpty()) {
-            livePurificadoras.map { p ->
-                val idInt = p.id
-                // Calificación diferenciada y propia por purificadora
-                val ratingCalculado = if (p.calificacionPromedio != null && p.calificacionPromedio > 0.0) {
-                    p.calificacionPromedio.toFloat()
-                } else {
-                    val paso = ((idInt * 7 + 3) % 6)
-                    4.4f + (paso * 0.1f)
-                }
-                val resenasCalculadas = 65 + ((idInt * 41 + 19) % 240)
-
-                // Distancia real coherente
-                val distKm = if (p.distanciaKm > 0.05) {
-                    p.distanciaKm
-                } else if (direccionCliente != null && p.lat != null && p.lon != null) {
-                    val calc = calcularDistanciaKm(direccionCliente.lat, direccionCliente.lon, p.lat, p.lon)
-                    if (calc > 0.05) calc else (0.5 + ((idInt * 3) % 7) * 0.2)
-                } else {
-                    0.5 + ((idInt * 3) % 7) * 0.2
-                }
-
-                val distTexto = if (distKm < 1.0) {
-                    "${(distKm * 1000).toInt().coerceAtLeast(100)} m"
-                } else {
-                    String.format(java.util.Locale.US, "%.2f km", distKm)
-                }
-
-                PurificadoraResumen(
-                    id = p.id.toString(),
-                    nombre = p.nombreComercial,
-                    distancia = distTexto,
-                    direccion = p.direccion?.takeIf { it.isNotBlank() } ?: "Benito Juárez, CDMX",
-                    rating = ratingCalculado,
-                    resenas = resenasCalculadas,
-                    precioDesde = 38 + ((idInt * 3) % 4) * 2,
-                    abierto = p.abierto,
-                    horarioCierre = if (p.abierto) "Abierto ahora" else "Cerrado",
-                    tags = listOf("Ciel", "Bonafont", "Epura")
-                )
+        livePurificadoras.map { p ->
+            val distKm = when {
+                p.distanciaKm > 0.0 -> p.distanciaKm
+                direccionCliente != null && p.lat != null && p.lon != null && (p.lat != 0.0 || p.lon != 0.0) ->
+                    calcularDistanciaKm(direccionCliente.lat, direccionCliente.lon, p.lat, p.lon)
+                else -> null
             }
-        } else {
-            SAMPLE_PURIFICADORAS
+            PurificadoraResumen(
+                id = p.id,
+                nombre = p.nombreComercial,
+                distancia = distKm?.let {
+                    if (it < 1.0) "${(it * 1000).toInt().coerceAtLeast(50)} m"
+                    else String.format(java.util.Locale.US, "%.1f km", it)
+                },
+                direccion = p.direccion?.takeIf { it.isNotBlank() } ?: "Benito Juárez, CDMX",
+                precioDesde = p.precioDesde,
+                abierto = p.abiertoAhora,
+                marcas = p.marcas.orEmpty()
+            )
         }
     }
 
@@ -153,7 +100,7 @@ fun BuscarPurificadorasScreen(
         else sourceList.filter {
             it.nombre.contains(query, ignoreCase = true) ||
                 it.direccion.contains(query, ignoreCase = true) ||
-                it.tags.any { t -> t.contains(query, ignoreCase = true) }
+                it.marcas.any { t -> t.contains(query, ignoreCase = true) }
         }
     }
 
@@ -207,18 +154,19 @@ fun BuscarPurificadorasScreen(
             }
             if (resultados.isEmpty()) {
                 item {
-                    EmptyState()
+                    if (sourceList.isEmpty()) {
+                        EmptyState("Sin purificadoras cerca", "Aún no hay purificadoras con cobertura en tu zona.")
+                    } else {
+                        EmptyState("Sin resultados", "Prueba con otro nombre, marca o colonia.")
+                    }
                 }
             } else {
                 items(resultados, key = { it.id }) { p ->
                     PurificadoraCard(p, onClick = {
-                        val numId = p.id.toIntOrNull() ?: 1
-                        clienteViewModel.purificadoraSeleccionadaId = numId
+                        clienteViewModel.purificadoraSeleccionadaId = p.id
                         clienteViewModel.purificadoraSeleccionadaNombre = p.nombre
                         clienteViewModel.purificadoraSeleccionadaDistancia = p.distancia
-                        clienteViewModel.purificadoraSeleccionadaRating = p.rating
-                        clienteViewModel.purificadoraSeleccionadaResenas = p.resenas
-                        clienteViewModel.cargarPerfilPurificadora(numId)
+                        clienteViewModel.cargarPerfilPurificadora(p.id)
                         onAbrirPurificadora()
                     })
                 }
@@ -328,37 +276,22 @@ private fun PurificadoraCard(p: PurificadoraResumen, onClick: () -> Unit) {
                         fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                         color = HToGoColors.TextPrimary
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
-                        Icon(Icons.Filled.Star, null, tint = HToGoColors.AccentAmber, modifier = Modifier.size(13.dp))
-                        Spacer(Modifier.width(2.dp))
-                        Text(
-                            "%.1f".format(p.rating),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = HToGoColors.TextPrimary
-                        )
-                        Text(
-                            " (${p.resenas})",
-                            fontSize = 12.sp,
-                            color = HToGoColors.TextSecondary
-                        )
-                        Text(" · ", fontSize = 12.sp, color = HToGoColors.TextTertiary)
-                        Icon(Icons.Filled.LocationOn, null, tint = HToGoColors.TextSecondary, modifier = Modifier.size(12.dp))
-                        Spacer(Modifier.width(2.dp))
-                        Text(
-                            p.distancia,
-                            fontSize = 12.sp, color = HToGoColors.TextSecondary
-                        )
+                    if (p.distancia != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                            Icon(Icons.Filled.LocationOn, null, tint = HToGoColors.TextSecondary, modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(2.dp))
+                            Text(p.distancia, fontSize = 12.sp, color = HToGoColors.TextSecondary)
+                        }
                     }
                 }
-                Column(horizontalAlignment = Alignment.End) {
+                if (p.precioDesde != null) Column(horizontalAlignment = Alignment.End) {
                     Text(
                         "Desde",
                         fontSize = 10.sp,
                         color = HToGoColors.TextTertiary
                     )
                     Text(
-                        "$${p.precioDesde}",
+                        if (p.precioDesde % 1.0 == 0.0) "$%.0f".format(p.precioDesde) else "$%.2f".format(p.precioDesde),
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         color = HToGoColors.Primary
@@ -379,9 +312,9 @@ private fun PurificadoraCard(p: PurificadoraResumen, onClick: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                EstadoPill(abierto = p.abierto, horarioCierre = p.horarioCierre)
+                EstadoPill(abierto = p.abierto, horarioCierre = if (p.abierto) "Abierto ahora" else "Cerrado")
                 Spacer(Modifier.width(6.dp))
-                p.tags.take(3).forEach { tag ->
+                p.marcas.take(3).forEach { tag ->
                     TagPill(tag)
                     Spacer(Modifier.width(6.dp))
                 }
@@ -452,7 +385,7 @@ private fun TagPill(label: String) {
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(titulo: String, detalle: String) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -470,13 +403,13 @@ private fun EmptyState() {
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            "Sin resultados",
+            titulo,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = HToGoColors.TextPrimary
         )
         Text(
-            "Probá con otra búsqueda o quita filtros",
+            detalle,
             fontSize = 12.sp,
             color = HToGoColors.TextSecondary
         )
