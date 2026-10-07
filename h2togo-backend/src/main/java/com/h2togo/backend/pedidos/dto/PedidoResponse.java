@@ -27,8 +27,16 @@ public record PedidoResponse(
         String telefonoCliente,
         String direccionTexto,
         Double latEntrega,
-        Double lonEntrega
+        Double lonEntrega,
+        /** Purificadora que atiende (la elegida o la del repartidor que aceptó). */
+        String nombreNegocio,
+        /** Datos del repartidor para el seguimiento del cliente; null mientras no hay asignado. */
+        InfoRepartidor repartidor
 ) {
+    /** {@code telefono} solo viaja mientras el pedido está asignado o en camino. */
+    public record InfoRepartidor(String nombre, String telefono, String negocio, String vehiculo, String placas) {
+    }
+
     public PedidoResponse(
             Integer id,
             EstadoPedido estado,
@@ -47,7 +55,7 @@ public record PedidoResponse(
             List<HistorialResponse> historial) {
         this(id, estado, tipoSolicitud, idNegocioSolicitado, idRepartidor, idDireccionEntrega,
                 precioMaximoGarrafon, totalPagar, garrafonesTotales, indicaciones, esProgramado,
-                fechaProgramada, fechaCreacion, detalles, historial, null, null, null, null, null);
+                fechaProgramada, fechaCreacion, detalles, historial, null, null, null, null, null, null, null);
     }
 }
 

@@ -51,24 +51,9 @@ data class TrackedOrder(
     val driverVehicle: String,
     val items: String,
     val address: String,
-    val total: Int
-)
-
-private val SAMPLE_ORDER = TrackedOrder(
-    id = "HG-1287", estado = EstadoPedido.EN_CAMINO,
-    driverName = "Carlos Mendoza", driverInitials = "CM",
-    purificadoraName = "Aguas Del Valle",
-    driverVehicle = "Bicicleta de carga · Placa BJ-238",
-    items = "3 × Ciel 20 L",
-    address = "Casa · Insurgentes Sur 1234",
-    total = 125
-)
-
-private val SAMPLE_STEPS = listOf(
-    TrackingStep("Pedido recibido",         "9:32 AM · Aguas Del Valle confirmó", TrackingStep.StepState.DONE),
-    TrackingStep("Repartidor asignado",     "9:35 AM · Carlos cargó 3 garrafones", TrackingStep.StepState.DONE),
-    TrackingStep("En camino a tu domicilio","En curso",                            TrackingStep.StepState.ACTIVE),
-    TrackingStep("Entregado",               "Pendiente",                           TrackingStep.StepState.PENDING)
+    val total: Double,
+    /** null cuando no hay repartidor o el pedido ya se cerró: oculta el botón de llamar. */
+    val driverPhone: String? = null
 )
 
 @Composable
@@ -168,7 +153,7 @@ private fun MapMock(modifier: Modifier = Modifier, purificadoraName: String) {
                     color = Color.White,
                     shadowElevation = 4.dp
                 ) {
-                    Text("Carlos M.",
+                    Text("Repartidor",
                         Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
                         color = HToGoColors.TextPrimary)
@@ -223,7 +208,7 @@ private fun MapMock(modifier: Modifier = Modifier, purificadoraName: String) {
                 Spacer(Modifier.width(6.dp))
                 Text(purificadoraName, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                     color = HToGoColors.TextPrimary)
-                Text(" · Carlos viene en camino",
+                Text(" · Tu repartidor viene en camino",
                     fontSize = 13.sp, color = HToGoColors.TextSecondary)
             }
         }
@@ -320,7 +305,7 @@ private fun TrackingSheet(
                 OrderRow("Pedido", order.items)
                 OrderRow("Domicilio", order.address)
                 Divider(Modifier.padding(vertical = 8.dp), color = HToGoColors.OutlineSoft)
-                OrderRow("Total a pagar", "$${order.total} MXN",
+                OrderRow("Total a pagar", (if (order.total % 1.0 == 0.0) "$%.0f MXN" else "$%.2f MXN").format(order.total),
                     valueColor = HToGoColors.Primary, bold = true)
                 Spacer(Modifier.height(8.dp))
 
@@ -355,14 +340,15 @@ private fun TrackingSheet(
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
-                } else if (order.estado == EstadoPedido.CANCELADO) {
+                } else if (order.estado == EstadoPedido.CANCELADO || order.estado == EstadoPedido.NO_ENTREGADO) {
                     Surface(
                         color = MaterialTheme.colorScheme.errorContainer,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            "Este pedido fue cancelado",
+                            if (order.estado == EstadoPedido.NO_ENTREGADO) "El repartidor no pudo entregar este pedido"
+                            else "Este pedido fue cancelado",
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.padding(12.dp),
                             fontSize = 13.sp,
@@ -439,13 +425,20 @@ private fun DriverCard(order: TrackedOrder, onAbrirPurificadora: () -> Unit) {
                 }
                 Text(order.driverVehicle, fontSize = 11.sp, color = HToGoColors.TextTertiary)
             }
-            Spacer(Modifier.width(8.dp))
-            Surface(
-                shape = CircleShape, color = HToGoColors.Primary,
-                modifier = Modifier.size(42.dp).clickable { }
-            ) { Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.Call, null, tint = Color.White, modifier = Modifier.size(20.dp))
-            } }
+            if (order.driverPhone != null) {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                Spacer(Modifier.width(8.dp))
+                Surface(
+                    shape = CircleShape, color = HToGoColors.Primary,
+                    modifier = Modifier.size(42.dp).clickable {
+                        context.startActivity(
+                            android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:${order.driverPhone}"))
+                        )
+                    }
+                ) { Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Call, "Llamar al repartidor", tint = Color.White, modifier = Modifier.size(20.dp))
+                } }
+            }
         }
     }
 }
@@ -548,31 +541,48 @@ fun SeguimientoPedidoScreen(
     }
     DisposableEffect(pedidoId) { onDispose { clienteViewModel.detenerRastreo() } }
 
-    val order = remember(livePedido) {
-        if (livePedido != null) {
-            val p = livePedido!!
-            val estEnum = when (p.estado.lowercase()) {
-                "pendiente" -> EstadoPedido.PENDIENTE
-                "asignado" -> EstadoPedido.ASIGNADO
-                "en_camino" -> EstadoPedido.EN_CAMINO
-                "entregado" -> EstadoPedido.ENTREGADO
-                "cancelado" -> EstadoPedido.CANCELADO
-                else -> EstadoPedido.PENDIENTE
+    val marcas by clienteViewModel.marcas.collectAsState()
+    // Solo el pedido pedido (evita mostrar un instante otro pedido mientras carga).
+    val pedido = livePedido?.takeIf { pedidoId == null || it.id == pedidoId }
+    if (pedido == null) {
+        Box(Modifier.fillMaxSize().background(HToGoColors.Background), contentAlignment = Alignment.Center) {
+            if (pedidoId == null) {
+                Text("No tienes un pedido en curso", color = HToGoColors.TextSecondary, fontSize = 14.sp)
+            } else {
+                CircularProgressIndicator(color = HToGoColors.Primary)
             }
-            TrackedOrder(
-                id = p.id.toString(),
-                estado = estEnum,
-                driverName = if (p.idRepartidor != null) "Repartidor #${p.idRepartidor}" else "Por asignar",
-                driverInitials = if (p.idRepartidor != null) "RP" else "H2",
-                purificadoraName = "Purificadora",
-                driverVehicle = "Vehículo de entrega",
-                items = "${p.garrafonesTotales ?: 1} × Garrafón 20 L",
-                address = "Dirección de entrega",
-                total = p.totalPagar?.toInt() ?: 45
-            )
-        } else {
-            SAMPLE_ORDER
         }
+        return
+    }
+    val order = remember(pedido, marcas) {
+        val p = pedido
+        val estEnum = when (p.estado.lowercase()) {
+            "asignado" -> EstadoPedido.ASIGNADO
+            "en_camino" -> EstadoPedido.EN_CAMINO
+            "entregado" -> EstadoPedido.ENTREGADO
+            "cancelado" -> EstadoPedido.CANCELADO
+            "no_entregado" -> EstadoPedido.NO_ENTREGADO
+            else -> EstadoPedido.PENDIENTE
+        }
+        val rep = p.repartidor
+        val nombreRep = rep?.nombre?.takeIf { it.isNotBlank() }
+        val nombresMarca = marcas.associate { it.id to it.nombre }
+        TrackedOrder(
+            id = p.id.toString(),
+            estado = estEnum,
+            driverName = nombreRep ?: "Por asignar",
+            driverInitials = nombreRep?.split(" ")?.filter { it.isNotBlank() }?.take(2)
+                ?.joinToString("") { it.first().uppercase() } ?: "H2",
+            purificadoraName = rep?.negocio ?: p.nombreNegocio ?: clienteViewModel.purificadoraSeleccionadaNombre ?: "Purificadora",
+            driverVehicle = listOfNotNull(rep?.vehiculo, rep?.placas?.takeIf { it.isNotBlank() }?.let { "Placas $it" })
+                .joinToString(" · ").ifBlank { if (rep == null) "Esperando que una purificadora acepte" else "Vehículo por confirmar" },
+            items = p.detalles.orEmpty().takeIf { it.isNotEmpty() }
+                ?.joinToString(", ") { d -> "${d.cantidad} × ${d.nombreMarca ?: nombresMarca[d.idMarca] ?: "Garrafón"} 20 L" }
+                ?: "${p.garrafonesTotales ?: 0} × Garrafón 20 L",
+            address = p.direccionTexto?.takeIf { it.isNotBlank() } ?: "Domicilio de entrega",
+            total = p.totalPagar ?: 0.0,
+            driverPhone = rep?.telefono?.takeIf { it.isNotBlank() }
+        )
     }
 
     val steps = remember(order.estado) {
@@ -606,6 +616,12 @@ fun SeguimientoPedidoScreen(
                 TrackingStep("Cancelado", "El pedido ha sido cancelado", TrackingStep.StepState.ACTIVE),
                 TrackingStep("En camino", "No aplicable", TrackingStep.StepState.PENDING),
                 TrackingStep("Entregado", "No aplicable", TrackingStep.StepState.PENDING)
+            )
+            EstadoPedido.NO_ENTREGADO -> listOf(
+                TrackingStep("Pedido recibido", "Confirmado", TrackingStep.StepState.DONE),
+                TrackingStep("Repartidor asignado", "Pedido preparado", TrackingStep.StepState.DONE),
+                TrackingStep("En camino a tu domicilio", "Llegó al domicilio", TrackingStep.StepState.DONE),
+                TrackingStep("No entregado", "No se pudo completar la entrega", TrackingStep.StepState.ACTIVE)
             )
         }
     }

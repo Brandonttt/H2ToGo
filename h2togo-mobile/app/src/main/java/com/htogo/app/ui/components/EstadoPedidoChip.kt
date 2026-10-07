@@ -25,6 +25,7 @@ enum class EstadoPedido(val label: String, val color: Color) {
     EN_CAMINO  ("En camino",  HToGoColors.StatusEnCamino),
     ENTREGADO  ("Entregado",  HToGoColors.StatusEntregado),
     CANCELADO  ("Cancelado",  HToGoColors.StatusCancelado),
+    NO_ENTREGADO("No entregado", HToGoColors.StatusCancelado),
 }
 
 @Composable

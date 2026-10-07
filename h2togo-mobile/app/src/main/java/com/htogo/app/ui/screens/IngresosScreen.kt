@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.*
@@ -48,8 +49,34 @@ private data class ResumenIngresos(
     val ingresosSemana: List<Double>,
     val totalSemana: Double,
     val entregasSemana: Int,
-    val deltaSemana: Int
+    /** Variación % contra la semana anterior; null si la semana anterior no tuvo ingresos. */
+    val deltaSemana: Int?,
+    /** 0 = lunes … 6 = domingo: día resaltado en la gráfica. */
+    val hoyIndex: Int,
+    val etiquetaTotal: String,
+    val etiquetaPeriodo: String
 )
+
+private val ZONA_CDMX: java.util.TimeZone = java.util.TimeZone.getTimeZone("America/Mexico_City")
+
+/** Fecha ISO del backend → calendario en hora de la CDMX (minSdk 24: sin java.time). */
+private fun calendarioLocal(iso: String?): java.util.Calendar? = try {
+    val limpio = iso!!.replace(Regex("\\.\\d+"), "").replace("Z", "+00:00")
+    val fecha = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US).parse(limpio)!!
+    java.util.Calendar.getInstance(ZONA_CDMX).apply { time = fecha }
+} catch (e: Exception) {
+    null
+}
+
+/** Inicio (lunes 00:00, hora CDMX) de la semana que contiene [ref]. */
+private fun inicioSemana(ref: java.util.Calendar): java.util.Calendar =
+    (ref.clone() as java.util.Calendar).apply {
+        firstDayOfWeek = java.util.Calendar.MONDAY
+        set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+        set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+        val desdeLunes = (get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
+        add(java.util.Calendar.DAY_OF_MONTH, -desdeLunes)
+    }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,39 +100,76 @@ fun IngresosScreen(
         repartidorViewModel.cargarMisEntregas()
     }
 
-    val pedidosEntregados = remember(liveMisEntregas) {
-        liveMisEntregas.filter { it.estado.equals("entregado", ignoreCase = true) }
-    }
-    val pedidosNoEntregados = remember(liveMisEntregas) {
-        liveMisEntregas.filter {
-            it.estado.equals("no_entregado", ignoreCase = true) ||
-            it.estado.equals("cancelado", ignoreCase = true)
-        }
-    }
-    val totalIngresos = remember(pedidosEntregados) {
-        pedidosEntregados.sumOf { it.totalPagar ?: 0.0 }
-    }
-    val garrafonesVendidos = remember(pedidosEntregados) {
-        pedidosEntregados.sumOf { it.garrafonesTotales ?: 0 }
-    }
-    val cantEntregadas = pedidosEntregados.size
-    val cantNoEntregadas = pedidosNoEntregados.size
-    val totalEntregas = cantEntregadas + cantNoEntregadas
-    val tasaEntrega = if (totalEntregas > 0) (cantEntregadas * 100 / totalEntregas) else 100
+    // Cada pestaña filtra su periodo en hora de la CDMX (la fecha es la de creación del pedido;
+    // las entregas son del mismo día). Antes todas mostraban el total histórico.
+    val resumen = remember(liveMisEntregas, tab) {
+        val ahora = java.util.Calendar.getInstance(ZONA_CDMX)
+        val lunes = inicioSemana(ahora)
+        val lunesAnterior = (lunes.clone() as java.util.Calendar).apply { add(java.util.Calendar.DAY_OF_MONTH, -7) }
+        val conFecha = liveMisEntregas.map { it to calendarioLocal(it.fechaCreacion) }
+        fun mismoDia(c: java.util.Calendar) = c.get(java.util.Calendar.YEAR) == ahora.get(java.util.Calendar.YEAR) &&
+            c.get(java.util.Calendar.DAY_OF_YEAR) == ahora.get(java.util.Calendar.DAY_OF_YEAR)
+        fun mismoMes(c: java.util.Calendar) = c.get(java.util.Calendar.YEAR) == ahora.get(java.util.Calendar.YEAR) &&
+            c.get(java.util.Calendar.MONTH) == ahora.get(java.util.Calendar.MONTH)
+        val delPeriodo = conFecha.filter { (_, c) ->
+            when (tab) {
+                TabIngresos.HOY -> c != null && mismoDia(c)
+                TabIngresos.SEMANA -> c != null && !c.before(lunes)
+                TabIngresos.MES -> c != null && mismoMes(c)
+                TabIngresos.HISTORIAL -> true
+            }
+        }.map { it.first }
+        val entregados = delPeriodo.filter { it.estado.equals("entregado", ignoreCase = true) }
+        val noEntregados = delPeriodo.count { it.estado.equals("no_entregado", ignoreCase = true) }
+        val cerrados = entregados.size + noEntregados
 
-    val resumen = remember(totalIngresos, cantEntregadas, totalEntregas, cantNoEntregadas, garrafonesVendidos, tasaEntrega) {
+        // Gráfica: ingresos de la semana actual por día y comparación con la anterior.
+        val porDia = DoubleArray(7)
+        var semanaAnterior = 0.0
+        var entregasSemana = 0
+        conFecha.filter { it.first.estado.equals("entregado", ignoreCase = true) }.forEach { (p, c) ->
+            if (c == null) return@forEach
+            val monto = p.totalPagar ?: 0.0
+            if (!c.before(lunes)) {
+                porDia[(c.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7] += monto
+                entregasSemana++
+            } else if (!c.before(lunesAnterior)) {
+                semanaAnterior += monto
+            }
+        }
+        val totalSemana = porDia.sum()
         ResumenIngresos(
-            totalIngresos = totalIngresos,
-            entregadas = cantEntregadas,
-            totalEntregas = totalEntregas,
-            noEntregadas = cantNoEntregadas,
-            garrafonesVendidos = garrafonesVendidos,
-            tasaEntrega = tasaEntrega,
-            ingresosSemana = listOf(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, totalIngresos),
-            totalSemana = totalIngresos,
-            entregasSemana = cantEntregadas,
-            deltaSemana = 0
+            totalIngresos = entregados.sumOf { it.totalPagar ?: 0.0 },
+            entregadas = entregados.size,
+            totalEntregas = cerrados,
+            noEntregadas = noEntregados,
+            garrafonesVendidos = entregados.sumOf { it.garrafonesTotales ?: 0 },
+            tasaEntrega = if (cerrados > 0) entregados.size * 100 / cerrados else 0,
+            ingresosSemana = porDia.toList(),
+            totalSemana = totalSemana,
+            entregasSemana = entregasSemana,
+            deltaSemana = if (semanaAnterior > 0) ((totalSemana - semanaAnterior) / semanaAnterior * 100).toInt() else null,
+            hoyIndex = (ahora.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7,
+            etiquetaTotal = when (tab) {
+                TabIngresos.HOY -> "Total del día"
+                TabIngresos.SEMANA -> "Total de la semana"
+                TabIngresos.MES -> "Total del mes"
+                TabIngresos.HISTORIAL -> "Total histórico"
+            },
+            etiquetaPeriodo = when (tab) {
+                TabIngresos.HOY -> "de hoy"
+                TabIngresos.SEMANA -> "de la semana"
+                TabIngresos.MES -> "del mes"
+                TabIngresos.HISTORIAL -> "histórico"
+            }
         )
+    }
+    val saludo = remember {
+        when (java.util.Calendar.getInstance(ZONA_CDMX).get(java.util.Calendar.HOUR_OF_DAY)) {
+            in 5..11 -> "¡Buenos días!"
+            in 12..18 -> "¡Buenas tardes!"
+            else -> "¡Buenas noches!"
+        }
     }
 
     Scaffold(
@@ -134,7 +198,7 @@ fun IngresosScreen(
                         }
                         Spacer(Modifier.width(2.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("¡Buenos días!", color = Color.White.copy(alpha = .7f), fontSize = 13.sp)
+                            Text(saludo, color = Color.White.copy(alpha = .7f), fontSize = 13.sp)
                             Text(
                                 nombreRepartidor,
                                 color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold
@@ -151,12 +215,12 @@ fun IngresosScreen(
                     BigCard(resumen, modifier = Modifier.padding(18.dp))
                 }
                 item {
-                    SectionHeader("Desglose de hoy")
+                    SectionHeader("Desglose ${resumen.etiquetaPeriodo}")
                     BreakdownCard(resumen, modifier = Modifier.padding(horizontal = 18.dp))
                 }
                 item {
                     Spacer(Modifier.height(20.dp))
-                    SectionHeader("Esta semana", actionLabel = "Ver semana")
+                    SectionHeader("Esta semana")
                     ChartCard(resumen, modifier = Modifier.padding(horizontal = 18.dp))
                     Spacer(Modifier.height(24.dp))
                 }
@@ -217,7 +281,7 @@ private fun BigCard(r: ResumenIngresos, modifier: Modifier = Modifier) {
         ) {
             Column {
                 Text(
-                    "Total del día",
+                    r.etiquetaTotal,
                     color = Color.White.copy(alpha = .8f),
                     fontSize = 12.sp, fontWeight = FontWeight.Medium
                 )
@@ -403,17 +467,23 @@ private fun ChartCard(r: ResumenIngresos, modifier: Modifier = Modifier) {
                         fontSize = 11.sp, color = HToGoColors.TextSecondary
                     )
                 }
-                Surface(shape = RoundedCornerShape(99.dp), color = HToGoColors.AccentEmerald.copy(alpha = .12f)) {
-                    Row(
-                        Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.TrendingUp, null, tint = HToGoColors.AccentEmerald, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            "+${r.deltaSemana}%",
-                            color = HToGoColors.AccentEmerald, fontSize = 12.sp, fontWeight = FontWeight.SemiBold
-                        )
+                val delta = r.deltaSemana
+                if (delta != null) {
+                    val sube = delta >= 0
+                    val colorDelta = if (sube) HToGoColors.AccentEmerald else HToGoColors.AccentRose
+                    Surface(shape = RoundedCornerShape(99.dp), color = colorDelta.copy(alpha = .12f)) {
+                        Row(
+                            Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(if (sube) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown, null,
+                                tint = colorDelta, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                (if (sube) "+" else "") + "$delta% vs semana anterior",
+                                color = colorDelta, fontSize = 12.sp, fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }
@@ -425,7 +495,7 @@ private fun ChartCard(r: ResumenIngresos, modifier: Modifier = Modifier) {
             ) {
                 val w = size.width
                 val h = size.height
-                val maxV = r.ingresosSemana.maxOrNull() ?: 1.0
+                val maxV = (r.ingresosSemana.maxOrNull() ?: 0.0).takeIf { it > 0 } ?: 1.0
                 val barCount = r.ingresosSemana.size
                 val barW = w / barCount * 0.7f
                 val gap = (w - barW * barCount) / (barCount - 1)
@@ -441,11 +511,11 @@ private fun ChartCard(r: ResumenIngresos, modifier: Modifier = Modifier) {
                     val barH = (v / maxV * h * 0.85f).toFloat()
                     val x = i * (barW + gap)
                     val y = h - barH
+                    // Resalta el día de hoy; los días por venir quedan más tenues.
                     val opacity = when {
-                        i == 5 -> 1f
-                        i == 3 || i == 4 -> 0.5f
-                        i == 1 || i == 2 -> 0.4f
-                        else -> 0.3f
+                        i == r.hoyIndex -> 1f
+                        i < r.hoyIndex -> 0.45f
+                        else -> 0.2f
                     }
                     drawRoundRect(
                         color = HToGoColors.Primary.copy(alpha = opacity),
@@ -465,8 +535,8 @@ private fun ChartCard(r: ResumenIngresos, modifier: Modifier = Modifier) {
                     Text(
                         lbl,
                         fontSize = 10.sp,
-                        color = if (i == 5) HToGoColors.Primary else HToGoColors.TextSecondary,
-                        fontWeight = if (i == 5) FontWeight.Bold else FontWeight.Normal
+                        color = if (i == r.hoyIndex) HToGoColors.Primary else HToGoColors.TextSecondary,
+                        fontWeight = if (i == r.hoyIndex) FontWeight.Bold else FontWeight.Normal
                     )
                 }
             }

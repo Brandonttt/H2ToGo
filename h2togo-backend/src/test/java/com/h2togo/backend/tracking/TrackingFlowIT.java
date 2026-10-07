@@ -42,6 +42,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
@@ -78,6 +79,7 @@ class TrackingFlowIT {
                     "/docker-entrypoint-initdb.d/02_zona.sql");
 
     @Autowired private MockMvc mvc;
+    @Autowired private org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate jdbc;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private RepartidorRepository repartidorRepository;
     @Autowired private MarcaRepository marcaRepository;
@@ -256,6 +258,29 @@ class TrackingFlowIT {
         assertThat(((Number) legitimo.get(5, TimeUnit.SECONDS).get("lat")).doubleValue()).isEqualTo(LAT);
         Thread.sleep(300);
         assertThat(espia).isNotDone();
+    }
+
+    @Test
+    void clienteVeDatosRealesDelRepartidorEnElSeguimiento() throws Exception {
+        Object[] esc = escenarioEnCamino("7");
+        int idPedido = (int) esc[0];
+        String tokenCli = (String) esc[4];
+
+        // Escenario: repartidor "N A" del negocio "Purif Trk7" en motocicleta Honda roja.
+        mvc.perform(get("/api/v1/pedidos/" + idPedido).header("Authorization", "Bearer " + tokenCli))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.repartidor.nombre").value("N A"))
+                .andExpect(jsonPath("$.repartidor.negocio").value("Purif Trk7"))
+                .andExpect(jsonPath("$.repartidor.vehiculo").value("Motocicleta Honda Rojo"))
+                .andExpect(jsonPath("$.repartidor.telefono").value("555817"))
+                .andExpect(jsonPath("$.nombreNegocio").value("Purif Trk7"));
+
+        // Cerrado el pedido, el teléfono del repartidor ya no se comparte.
+        jdbc.update("UPDATE pedidos SET estado_actual = 'entregado'::estado_pedido WHERE id_pedido = :id",
+                new MapSqlParameterSource("id", idPedido));
+        mvc.perform(get("/api/v1/pedidos/" + idPedido).header("Authorization", "Bearer " + tokenCli))
+                .andExpect(jsonPath("$.repartidor.nombre").value("N A"))
+                .andExpect(jsonPath("$.repartidor.telefono").doesNotExist());
     }
 
     private StompSession conectar(String token) throws Exception {

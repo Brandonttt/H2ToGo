@@ -43,7 +43,19 @@ data class PedidoResponse(
     @SerializedName("telefonoCliente") val telefonoCliente: String? = null,
     @SerializedName("direccionTexto") val direccionTexto: String? = null,
     @SerializedName("latEntrega") val latEntrega: Double? = null,
-    @SerializedName("lonEntrega") val lonEntrega: Double? = null
+    @SerializedName("lonEntrega") val lonEntrega: Double? = null,
+    @SerializedName("nombreNegocio") val nombreNegocio: String? = null,
+    /** Repartidor asignado (seguimiento del cliente); null mientras nadie acepta. */
+    @SerializedName("repartidor") val repartidor: InfoRepartidorDto? = null
+)
+
+data class InfoRepartidorDto(
+    @SerializedName("nombre") val nombre: String?,
+    /** Solo viene mientras el pedido está asignado o en camino. */
+    @SerializedName("telefono") val telefono: String?,
+    @SerializedName("negocio") val negocio: String?,
+    @SerializedName("vehiculo") val vehiculo: String?,
+    @SerializedName("placas") val placas: String?
 )
 
 data class UbicacionRepartidorDto(

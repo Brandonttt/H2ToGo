@@ -191,12 +191,21 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
     fun cargarMisEntregas() {
         viewModelScope.launch {
             try {
-                val resp = apiClient.repartidorApi.obtenerMisEntregas(page = 0, size = 50)
-                if (resp.isSuccessful && resp.body() != null) {
-                    val lista = resp.body()!!.elementos
-                    _misEntregas.value = lista
-                    _totalEntregas.value = resp.body()!!.totalElementos.toInt()
-                }
+                // Todas las páginas (100 es el máximo del backend), con tope de 1000 entregas: los
+                // ingresos del mes y el historial se calculan sobre esta lista.
+                val todas = mutableListOf<com.htogo.app.data.dto.PedidoResumenDto>()
+                var pagina = 0
+                var total = 0L
+                do {
+                    val resp = apiClient.repartidorApi.obtenerMisEntregas(page = pagina, size = 100)
+                    val body = resp.body()
+                    if (!resp.isSuccessful || body == null) break
+                    todas += body.elementos
+                    total = body.totalElementos
+                    pagina++
+                } while (pagina < body.totalPaginas && pagina < 10)
+                _misEntregas.value = todas
+                _totalEntregas.value = total.toInt()
             } catch (e: Exception) {
                 // Silencioso
             }

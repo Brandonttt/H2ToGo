@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AsignacionService {
 
+    private final PedidoEnriquecedor enriquecedor;
     private final NamedParameterJdbcTemplate jdbc;
     private final PedidoRepository pedidoRepository;
     private final RepartidorRepository repartidorRepository;
@@ -36,8 +37,10 @@ public class AsignacionService {
 
     public AsignacionService(NamedParameterJdbcTemplate jdbc, PedidoRepository pedidoRepository,
             RepartidorRepository repartidorRepository, PushService pushService,
-            VehiculoNegocioRepository vehiculoRepository) {
+            VehiculoNegocioRepository vehiculoRepository,
+            PedidoEnriquecedor enriquecedor) {
         this.jdbc = jdbc;
+        this.enriquecedor = enriquecedor;
         this.pedidoRepository = pedidoRepository;
         this.repartidorRepository = repartidorRepository;
         this.pushService = pushService;
@@ -338,38 +341,6 @@ public class AsignacionService {
 
     private PedidoResponse respuesta(int idPedido) {
         Pedido p = pedidoRepository.findById(idPedido).orElseThrow();
-        return enriquecer(PedidoMapper.toResponse(p), idPedido);
-    }
-
-    private PedidoResponse enriquecer(PedidoResponse base, int idPedido) {
-        try {
-            Map<String, Object> extra = jdbc.queryForMap("""
-                    SELECT CONCAT(u.nombre, ' ', u.apellidos) AS nombre_cliente,
-                           u.telefono AS telefono_cliente,
-                           CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion,
-                           ST_Y(d.ubicacion::geometry) AS lat,
-                           ST_X(d.ubicacion::geometry) AS lon
-                    FROM pedidos p
-                    JOIN usuarios u ON u.id_usuario = p.id_cliente
-                    LEFT JOIN direcciones_clientes d ON d.id_direccion = p.id_direccion_entrega
-                    WHERE p.id_pedido = :id""",
-                    new MapSqlParameterSource("id", idPedido));
-            Number lat = (Number) extra.get("lat");
-            Number lon = (Number) extra.get("lon");
-            return new PedidoResponse(
-                    base.id(), base.estado(), base.tipoSolicitud(), base.idNegocioSolicitado(),
-                    base.idRepartidor(), base.idDireccionEntrega(), base.precioMaximoGarrafon(),
-                    base.totalPagar(), base.garrafonesTotales(), base.indicaciones(),
-                    base.esProgramado(), base.fechaProgramada(), base.fechaCreacion(),
-                    base.detalles(), base.historial(),
-                    (String) extra.get("nombre_cliente"),
-                    (String) extra.get("telefono_cliente"),
-                    (String) extra.get("direccion"),
-                    lat == null ? null : lat.doubleValue(),
-                    lon == null ? null : lon.doubleValue()
-            );
-        } catch (Exception e) {
-            return base;
-        }
+        return enriquecedor.enriquecer(PedidoMapper.toResponse(p), idPedido);
     }
 }

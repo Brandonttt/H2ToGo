@@ -27,7 +27,6 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
@@ -56,6 +55,7 @@ public class PedidoService {
     private final NegocioRepository negocioRepository;
     private final HorarioNegocioRepository horarioRepository;
     private final ProductoNegocioRepository productoRepository;
+    private final PedidoEnriquecedor enriquecedor;
     private final NamedParameterJdbcTemplate jdbc;
     private final AvisoNuevoPedido avisoNuevoPedido;
 
@@ -65,13 +65,15 @@ public class PedidoService {
     public PedidoService(PedidoRepository pedidoRepository, DireccionClienteRepository direccionRepository,
             NegocioRepository negocioRepository, HorarioNegocioRepository horarioRepository,
             ProductoNegocioRepository productoRepository, NamedParameterJdbcTemplate jdbc,
-            AvisoNuevoPedido avisoNuevoPedido) {
+            AvisoNuevoPedido avisoNuevoPedido,
+            PedidoEnriquecedor enriquecedor) {
         this.pedidoRepository = pedidoRepository;
         this.direccionRepository = direccionRepository;
         this.negocioRepository = negocioRepository;
         this.horarioRepository = horarioRepository;
         this.productoRepository = productoRepository;
         this.jdbc = jdbc;
+        this.enriquecedor = enriquecedor;
         this.avisoNuevoPedido = avisoNuevoPedido;
     }
 
@@ -260,39 +262,7 @@ public class PedidoService {
         Pedido p = pedidoRepository.findById(idPedido)
                 .orElseThrow(() -> new NotFoundException("PEDIDO_NO_ENCONTRADO", "Pedido no encontrado."));
         exigirVisibilidad(p); // RN-016
-        return enriquecer(PedidoMapper.toResponse(p), idPedido);
-    }
-
-    private PedidoResponse enriquecer(PedidoResponse base, int idPedido) {
-        try {
-            Map<String, Object> extra = jdbc.queryForMap("""
-                    SELECT CONCAT(u.nombre, ' ', u.apellidos) AS nombre_cliente,
-                           u.telefono AS telefono_cliente,
-                           CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion,
-                           ST_Y(d.ubicacion::geometry) AS lat,
-                           ST_X(d.ubicacion::geometry) AS lon
-                    FROM pedidos p
-                    JOIN usuarios u ON u.id_usuario = p.id_cliente
-                    LEFT JOIN direcciones_clientes d ON d.id_direccion = p.id_direccion_entrega
-                    WHERE p.id_pedido = :id""",
-                    new MapSqlParameterSource("id", idPedido));
-            Number lat = (Number) extra.get("lat");
-            Number lon = (Number) extra.get("lon");
-            return new PedidoResponse(
-                    base.id(), base.estado(), base.tipoSolicitud(), base.idNegocioSolicitado(),
-                    base.idRepartidor(), base.idDireccionEntrega(), base.precioMaximoGarrafon(),
-                    base.totalPagar(), base.garrafonesTotales(), base.indicaciones(),
-                    base.esProgramado(), base.fechaProgramada(), base.fechaCreacion(),
-                    base.detalles(), base.historial(),
-                    (String) extra.get("nombre_cliente"),
-                    (String) extra.get("telefono_cliente"),
-                    (String) extra.get("direccion"),
-                    lat == null ? null : lat.doubleValue(),
-                    lon == null ? null : lon.doubleValue()
-            );
-        } catch (Exception e) {
-            return base;
-        }
+        return enriquecedor.enriquecer(PedidoMapper.toResponse(p), idPedido);
     }
 
     @Transactional(readOnly = true)
