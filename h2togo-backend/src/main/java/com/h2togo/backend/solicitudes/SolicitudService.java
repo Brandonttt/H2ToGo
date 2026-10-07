@@ -56,6 +56,12 @@ public class SolicitudService {
         Negocio negocio = negocioComoDueno(idRepartidor); // RN-021
         if (req.codigoCambio() == CodigoCambioPerfil.AGREGAR_PRODUCTO) {
             validarAgregarProducto(negocio.getId(), req.valorNuevo());
+        } else if (req.codigoCambio() == CodigoCambioPerfil.AGREGAR_VEHICULO) {
+            validarAgregarVehiculo(negocio.getId(), req.valorNuevo());
+        } else if (req.codigoCambio() == CodigoCambioPerfil.DATOS_VEHICULO) {
+            validarModificarVehiculo(negocio.getId(), req.idVehiculo(), req.valorNuevo());
+        } else if (req.codigoCambio() == CodigoCambioPerfil.ELIMINAR_VEHICULO) {
+            validarEliminarVehiculo(negocio.getId(), req.idVehiculo());
         }
 
         SolicitudCambioPerfil s = new SolicitudCambioPerfil();
@@ -143,20 +149,38 @@ public class SolicitudService {
                             .addValue("ni", str(v, "numeroInterior")).addValue("col", str(v, "colonia"))
                             .addValue("cp", str(v, "codigoPostal")).addValue("lon", dbl(v, "lon"))
                             .addValue("lat", dbl(v, "lat")).addValue("neg", idNegocio));
-            case DATOS_VEHICULO -> jdbc.update("""
-                    UPDATE vehiculos_negocio SET
-                        marca = COALESCE(:marca, marca), modelo = COALESCE(:modelo, modelo),
-                        color = COALESCE(:color, color), placas = COALESCE(:placas, placas),
-                        capacidad_garrafones = COALESCE(:cap, capacidad_garrafones)
-                    WHERE id_vehiculo = :veh AND id_negocio = :neg""",
-                    new MapSqlParameterSource().addValue("marca", str(v, "marca")).addValue("modelo", str(v, "modelo"))
-                            .addValue("color", str(v, "color")).addValue("placas", str(v, "placas"))
-                            .addValue("cap", intg(v, "capacidadGarrafones")).addValue("veh", s.getIdVehiculo())
-                            .addValue("neg", idNegocio));
+            case DATOS_VEHICULO -> {
+                String rawTipo = str(v, "tipoVehiculo");
+                var ps = new MapSqlParameterSource()
+                        .addValue("marca", str(v, "marca"))
+                        .addValue("modelo", str(v, "modelo"))
+                        .addValue("color", str(v, "color"))
+                        .addValue("placas", str(v, "placas"))
+                        .addValue("cap", intg(v, "capacidadGarrafones"))
+                        .addValue("veh", s.getIdVehiculo())
+                        .addValue("neg", idNegocio);
+                if (rawTipo != null && !rawTipo.isBlank()) {
+                    ps.addValue("tipo", normalizarTipoVehiculo(rawTipo));
+                    jdbc.update("""
+                            UPDATE vehiculos_negocio SET
+                                tipo_vehiculo = CAST(:tipo AS tipo_vehiculo),
+                                marca = COALESCE(:marca, marca), modelo = COALESCE(:modelo, modelo),
+                                color = COALESCE(:color, color), placas = COALESCE(:placas, placas),
+                                capacidad_garrafones = COALESCE(:cap, capacidad_garrafones)
+                            WHERE id_vehiculo = :veh AND id_negocio = :neg""", ps);
+                } else {
+                    jdbc.update("""
+                            UPDATE vehiculos_negocio SET
+                                marca = COALESCE(:marca, marca), modelo = COALESCE(:modelo, modelo),
+                                color = COALESCE(:color, color), placas = COALESCE(:placas, placas),
+                                capacidad_garrafones = COALESCE(:cap, capacidad_garrafones)
+                            WHERE id_vehiculo = :veh AND id_negocio = :neg""", ps);
+                }
+            }
             case AGREGAR_VEHICULO -> jdbc.update("""
                     INSERT INTO vehiculos_negocio (id_negocio, tipo_vehiculo, marca, modelo, color, placas, capacidad_garrafones)
                     VALUES (:neg, CAST(:tipo AS tipo_vehiculo), :marca, :modelo, :color, :placas, :cap)""",
-                    new MapSqlParameterSource().addValue("neg", idNegocio).addValue("tipo", str(v, "tipoVehiculo"))
+                    new MapSqlParameterSource().addValue("neg", idNegocio).addValue("tipo", normalizarTipoVehiculo(str(v, "tipoVehiculo")))
                             .addValue("marca", str(v, "marca")).addValue("modelo", str(v, "modelo"))
                             .addValue("color", str(v, "color")).addValue("placas", str(v, "placas"))
                             .addValue("cap", intg(v, "capacidadGarrafones")));
@@ -204,6 +228,68 @@ public class SolicitudService {
         }
     }
 
+    private void validarAgregarVehiculo(int idNegocio, Map<String, Object> v) {
+        String placas = str(v, "placas");
+        String marca = str(v, "marca");
+        String modelo = str(v, "modelo");
+        Integer cap = intg(v, "capacidadGarrafones");
+
+        if (placas == null || placas.isBlank() || marca == null || marca.isBlank()
+                || modelo == null || modelo.isBlank() || cap == null || cap <= 0) {
+            throw new BusinessRuleException("DATOS_VEHICULO_INVALIDOS",
+                    "Agregar vehículo requiere marca, modelo, placas y capacidad mayor a 0.");
+        }
+
+        var p = new MapSqlParameterSource().addValue("placas", placas.trim().toUpperCase()).addValue("neg", idNegocio);
+        Integer yaExiste = jdbc.queryForObject("""
+                SELECT (SELECT COUNT(*) FROM vehiculos_negocio WHERE id_negocio = :neg AND UPPER(placas) = :placas AND activo = TRUE)
+                     + (SELECT COUNT(*) FROM solicitudes_cambio_perfil
+                        WHERE id_negocio = :neg AND estado = 'pendiente' AND codigo_cambio = 'AGREGAR_VEHICULO'
+                          AND UPPER(valor_nuevo::jsonb ->> 'placas') = :placas)""", p, Integer.class);
+        if (yaExiste != null && yaExiste > 0) {
+            throw new ConflictException("VEHICULO_DUPLICADO",
+                    "Ya existe un vehículo registrado con esas placas en tu negocio o tiene una solicitud pendiente.");
+        }
+    }
+
+    private void validarModificarVehiculo(int idNegocio, Integer idVehiculo, Map<String, Object> v) {
+        if (idVehiculo == null) {
+            throw new BusinessRuleException("VEHICULO_REQUERIDO", "Se requiere el ID del vehículo a modificar.");
+        }
+        var p = new MapSqlParameterSource().addValue("veh", idVehiculo).addValue("neg", idNegocio);
+        Boolean existe = jdbc.query("SELECT activo FROM vehiculos_negocio WHERE id_vehiculo = :veh AND id_negocio = :neg",
+                p, rs -> rs.next() ? rs.getBoolean(1) : null);
+        if (existe == null) {
+            throw new NotFoundException("VEHICULO_NO_ENCONTRADO", "El vehículo no existe en tu negocio.");
+        }
+
+        String placas = str(v, "placas");
+        if (placas != null && !placas.isBlank()) {
+            var pPlacas = new MapSqlParameterSource().addValue("placas", placas.trim().toUpperCase())
+                    .addValue("neg", idNegocio).addValue("veh", idVehiculo);
+            Integer yaExiste = jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM vehiculos_negocio
+                    WHERE id_negocio = :neg AND UPPER(placas) = :placas AND id_vehiculo <> :veh AND activo = TRUE""",
+                    pPlacas, Integer.class);
+            if (yaExiste != null && yaExiste > 0) {
+                throw new ConflictException("VEHICULO_DUPLICADO",
+                        "Ya existe otro vehículo registrado con esas placas en tu negocio.");
+            }
+        }
+    }
+
+    private void validarEliminarVehiculo(int idNegocio, Integer idVehiculo) {
+        if (idVehiculo == null) {
+            throw new BusinessRuleException("VEHICULO_REQUERIDO", "Se requiere el ID del vehículo a eliminar.");
+        }
+        var p = new MapSqlParameterSource().addValue("veh", idVehiculo).addValue("neg", idNegocio);
+        Boolean existe = jdbc.query("SELECT activo FROM vehiculos_negocio WHERE id_vehiculo = :veh AND id_negocio = :neg",
+                p, rs -> rs.next() ? rs.getBoolean(1) : null);
+        if (existe == null || !existe) {
+            throw new NotFoundException("VEHICULO_NO_ENCONTRADO", "El vehículo no existe o ya está inactivo.");
+        }
+    }
+
     private String valorAnterior(SolicitudRequest req, Negocio negocio) {
         return switch (req.codigoCambio()) {
             case NOMBRE_NEGOCIO -> negocio.getNombreComercial();
@@ -211,20 +297,54 @@ public class SolicitudService {
                     "SELECT url_foto_perfil FROM usuarios WHERE id_usuario = :d",
                     new MapSqlParameterSource("d", negocio.getIdDueno()),
                     rs -> rs.next() ? rs.getString(1) : null);
+            case DATOS_VEHICULO, ELIMINAR_VEHICULO -> req.idVehiculo() != null ? jdbc.query(
+                    """
+                    SELECT json_build_object(
+                        'tipoVehiculo', tipo_vehiculo::text,
+                        'marca', marca,
+                        'modelo', modelo,
+                        'color', color,
+                        'placas', placas,
+                        'capacidadGarrafones', capacidad_garrafones
+                    )::text
+                    FROM vehiculos_negocio
+                    WHERE id_vehiculo = :v AND id_negocio = :n
+                    """,
+                    new MapSqlParameterSource("v", req.idVehiculo()).addValue("n", negocio.getId()),
+                    rs -> rs.next() ? rs.getString(1) : null) : null;
             default -> null;
         };
     }
 
     // ---------------------------------------------------------------- Helpers
 
+    private static String normalizarTipoVehiculo(String tipo) {
+        if (tipo == null || tipo.isBlank()) return "motocicleta";
+        String t = tipo.trim().toLowerCase();
+        if (t.contains("bici")) return "bicicleta_carga";
+        if (t.contains("tri")) return "triciclo_carga";
+        if (t.contains("camion")) return "camioneta";
+        if (t.contains("auto") || t.contains("carr")) return "automovil";
+        if (t.contains("moto")) return "motocicleta";
+        try {
+            return com.h2togo.backend.common.enums.TipoVehiculo.valueOf(t).name();
+        } catch (IllegalArgumentException e) {
+            return "motocicleta";
+        }
+    }
+
     private void notificarDueno(SolicitudCambioPerfil s) {
-        Integer idDueno = negocioRepository.findById(s.getIdNegocio()).map(Negocio::getIdDueno).orElse(null);
-        if (idDueno != null) {
-            String resultado = s.getEstado() == EstadoSolicitud.aprobado ? "aprobada" : "rechazada";
-            pushService.notificar(idDueno, "Solicitud " + resultado,
-                    "Tu solicitud de cambio fue " + resultado
-                            + (s.getComentarioAdmin() != null ? ": " + s.getComentarioAdmin() : "."),
-                    Map.of("tipo", "solicitud_resuelta", "idSolicitud", String.valueOf(s.getId())));
+        try {
+            Integer idDueno = negocioRepository.findById(s.getIdNegocio()).map(Negocio::getIdDueno).orElse(null);
+            if (idDueno != null) {
+                String resultado = s.getEstado() == EstadoSolicitud.aprobado ? "aprobada" : "rechazada";
+                pushService.notificar(idDueno, "Solicitud " + resultado,
+                        "Tu solicitud de cambio fue " + resultado
+                                + (s.getComentarioAdmin() != null ? ": " + s.getComentarioAdmin() : "."),
+                        Map.of("tipo", "solicitud_resuelta", "idSolicitud", String.valueOf(s.getId())));
+            }
+        } catch (Exception ignored) {
+            // No bloquear la transacción si el servicio push falla
         }
     }
 

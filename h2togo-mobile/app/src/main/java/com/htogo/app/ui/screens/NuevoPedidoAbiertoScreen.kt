@@ -291,8 +291,8 @@ private fun TopBar(onBack: () -> Unit) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .statusBarsPadding() // de borde a borde: no tapar la barra de estado
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .statusBarsPadding()
+                .padding(top = 10.dp, bottom = 12.dp, start = 16.dp, end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(

@@ -1219,6 +1219,10 @@ const CAMPOS = {
   idMarca: 'ID marca', precio: 'Precio (con envase propio)', precioActual: 'Precio', precioEnvase: 'Precio del envase',
   capacidadMaxima: 'Capacidad máx. en base',
 };
+const TIPOS_VEHICULO = {
+  motocicleta: 'Motocicleta', automovil: 'Automóvil', camioneta: 'Camioneta',
+  bicicleta_carga: 'Bicicleta de carga', bicicleta: 'Bicicleta de carga', triciclo_carga: 'Triciclo de carga'
+};
 function valorHtml(raw) {
   if (raw == null || raw === '') return '<span class="sub">Sin valor previo</span>';
   let v; try { v = JSON.parse(raw); } catch { return esc(raw); }
@@ -1226,7 +1230,8 @@ function valorHtml(raw) {
   const ent = Object.entries(v);
   if (!ent.length) return '<span class="sub">—</span>';
   return `<dl>${ent.map(([k, val]) => {
-    const s = val !== null && typeof val === 'object' ? JSON.stringify(val) : String(val ?? '—');
+    let s = val !== null && typeof val === 'object' ? JSON.stringify(val) : String(val ?? '—');
+    if (k === 'tipoVehiculo' && TIPOS_VEHICULO[s]) s = TIPOS_VEHICULO[s];
     const isImg = /^https?:\/\/.+\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(s);
     return `<dt>${esc(CAMPOS[k] || k)}</dt><dd>${isImg ? `<a href="${esc(s)}" target="_blank" rel="noopener">${esc(s)}</a>` : esc(s)}</dd>`;
   }).join('')}</dl>`;

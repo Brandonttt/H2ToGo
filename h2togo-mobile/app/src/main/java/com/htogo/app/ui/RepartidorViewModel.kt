@@ -163,6 +163,107 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    /**
+     * CU-009 / CU-020: Pide al admin agregar un vehículo al negocio (RN-019, RN-020).
+     */
+    fun solicitarAgregarVehiculo(
+        request: com.htogo.app.data.dto.ActualizarVehiculoRequest,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.solicitudesApi.crear(
+                    com.htogo.app.data.dto.SolicitudRequest(
+                        codigoCambio = "AGREGAR_VEHICULO",
+                        valorNuevo = mapOf(
+                            "tipoVehiculo" to (request.tipoVehiculo ?: "motocicleta"),
+                            "marca" to (request.marca ?: ""),
+                            "modelo" to (request.modelo ?: ""),
+                            "color" to (request.color ?: ""),
+                            "placas" to (request.placas ?: "").uppercase(),
+                            "capacidadGarrafones" to (request.capacidadGarrafones ?: 30)
+                        )
+                    )
+                )
+                if (resp.isSuccessful) {
+                    cargarSolicitudes()
+                    onSuccess()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de red al enviar la solicitud")
+            }
+        }
+    }
+
+    /**
+     * CU-009 / CU-020: Pide al admin modificar los datos de un vehículo del negocio (RN-019).
+     */
+    fun solicitarModificarVehiculo(
+        idVehiculo: Int,
+        request: com.htogo.app.data.dto.ActualizarVehiculoRequest,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.solicitudesApi.crear(
+                    com.htogo.app.data.dto.SolicitudRequest(
+                        codigoCambio = "DATOS_VEHICULO",
+                        idVehiculo = idVehiculo,
+                        valorNuevo = mapOf(
+                            "tipoVehiculo" to (request.tipoVehiculo ?: "motocicleta"),
+                            "marca" to (request.marca ?: ""),
+                            "modelo" to (request.modelo ?: ""),
+                            "color" to (request.color ?: ""),
+                            "placas" to (request.placas ?: "").uppercase(),
+                            "capacidadGarrafones" to (request.capacidadGarrafones ?: 30)
+                        )
+                    )
+                )
+                if (resp.isSuccessful) {
+                    cargarSolicitudes()
+                    onSuccess()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de red al enviar la solicitud")
+            }
+        }
+    }
+
+    /**
+     * CU-009 / CU-020: Pide al admin dar de baja un vehículo del negocio (RN-019).
+     */
+    fun solicitarEliminarVehiculo(
+        idVehiculo: Int,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.solicitudesApi.crear(
+                    com.htogo.app.data.dto.SolicitudRequest(
+                        codigoCambio = "ELIMINAR_VEHICULO",
+                        idVehiculo = idVehiculo,
+                        valorNuevo = emptyMap()
+                    )
+                )
+                if (resp.isSuccessful) {
+                    cargarSolicitudes()
+                    onSuccess()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de red al enviar la solicitud")
+            }
+        }
+    }
+
     fun actualizarVehiculo(
         idVehiculo: Int?,
         request: com.htogo.app.data.dto.ActualizarVehiculoRequest,

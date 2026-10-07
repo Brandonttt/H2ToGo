@@ -524,11 +524,149 @@ private fun ResumenRow(label: String, value: String) {
 }
 
 @Composable
+private fun ProgramarPedidoCard(
+    esProgramado: Boolean,
+    onEsProgramadoChange: (Boolean) -> Unit,
+    fechaHoraCal: java.util.Calendar,
+    onElegirFecha: () -> Unit,
+    onElegirHora: () -> Unit,
+    estaCerradaAhora: Boolean,
+    horariosInfo: String?
+) {
+    val es = java.util.Locale("es", "MX")
+    val diaFmt = remember(fechaHoraCal.timeInMillis) {
+        java.text.SimpleDateFormat("EEEE d 'de' MMMM", es).format(fechaHoraCal.time).replaceFirstChar { it.uppercase() }
+    }
+    val horaFmt = remember(fechaHoraCal.timeInMillis) {
+        java.text.SimpleDateFormat("h:mm a", es).format(fechaHoraCal.time)
+    }
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = HToGoColors.Surface,
+        border = androidx.compose.foundation.BorderStroke(
+            1.5.dp,
+            if (esProgramado) HToGoColors.Primary else if (estaCerradaAhora) Color(0xFFF59E0B) else HToGoColors.OutlineSoft
+        ),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(
+                        if (esProgramado) HToGoColors.PrimarySoft else if (estaCerradaAhora) Color(0xFFFEF3C7) else HToGoColors.Background
+                    ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.Event,
+                        contentDescription = null,
+                        tint = if (esProgramado) HToGoColors.Primary else if (estaCerradaAhora) Color(0xFFD97706) else HToGoColors.TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "Programar entrega",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = HToGoColors.TextPrimary
+                    )
+                    Text(
+                        if (estaCerradaAhora && !esProgramado) "Purificadora cerrada ahora; programa tu pedido"
+                        else if (esProgramado) "Se preparará para la fecha y hora elegida"
+                        else "Recibe tu agua en una fecha u hora específica",
+                        fontSize = 11.sp,
+                        color = if (estaCerradaAhora && !esProgramado) Color(0xFFB45309) else HToGoColors.TextSecondary
+                    )
+                }
+                Switch(
+                    checked = esProgramado,
+                    onCheckedChange = onEsProgramadoChange
+                )
+            }
+
+            if (esProgramado) {
+                Spacer(Modifier.height(12.dp))
+                Divider(color = HToGoColors.OutlineSoft)
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    "Fecha y hora de entrega",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = HToGoColors.TextSecondary
+                )
+                Spacer(Modifier.height(8.dp))
+
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Botón para elegir Fecha
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = HToGoColors.PrimarySoft,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, HToGoColors.Primary.copy(alpha = 0.3f)),
+                        modifier = Modifier.weight(1.3f).clickable(onClick = onElegirFecha)
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Filled.Event, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text("Fecha", fontSize = 10.sp, color = HToGoColors.Primary, fontWeight = FontWeight.SemiBold)
+                                Text(diaFmt, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary, maxLines = 1)
+                            }
+                        }
+                    }
+
+                    // Botón para elegir Hora
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = HToGoColors.PrimarySoft,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, HToGoColors.Primary.copy(alpha = 0.3f)),
+                        modifier = Modifier.weight(1f).clickable(onClick = onElegirHora)
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Filled.Schedule, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text("Hora", fontSize = 10.sp, color = HToGoColors.Primary, fontWeight = FontWeight.SemiBold)
+                                Text(horaFmt, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
+                            }
+                        }
+                    }
+                }
+
+                if (!horariosInfo.isNullOrBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        horariosInfo,
+                        fontSize = 11.sp,
+                        color = HToGoColors.TextSecondary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun NuevoPedidoTopBar(onBack: () -> Unit) {
     Surface(color = HToGoColors.PrimaryDark) {
         Row(
-            // La app dibuja de borde a borde: sin esto el título queda bajo la barra de estado.
-            Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+            // La app dibuja de borde a borde: agregamos padding superior para que no choque con notificaciones/cámara
+            Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(top = 10.dp, bottom = 12.dp, start = 16.dp, end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
@@ -662,6 +800,70 @@ fun NuevoPedidoScreen(
     var notes by remember { mutableStateOf("") }
     var conGarrafon by remember { mutableStateOf(true) }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var esProgramado by remember { mutableStateOf(false) }
+    var fechaProgramadaCal by remember {
+        mutableStateOf(
+            java.util.Calendar.getInstance().apply {
+                add(java.util.Calendar.DAY_OF_YEAR, 1)
+                set(java.util.Calendar.HOUR_OF_DAY, 10)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }
+        )
+    }
+
+    // Si la purificadora está cerrada, sugerimos activar entrega programada
+    LaunchedEffect(perfilActual?.abiertoAhora) {
+        if (perfilActual != null && !perfilActual.abiertoAhora) {
+            esProgramado = true
+        }
+    }
+
+    fun abrirSelectorFecha() {
+        val dpd = android.app.DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val nuevoCal = fechaProgramadaCal.clone() as java.util.Calendar
+                nuevoCal.set(java.util.Calendar.YEAR, year)
+                nuevoCal.set(java.util.Calendar.MONTH, month)
+                nuevoCal.set(java.util.Calendar.DAY_OF_MONTH, dayOfMonth)
+                fechaProgramadaCal = nuevoCal
+                clienteViewModel.clearError()
+            },
+            fechaProgramadaCal.get(java.util.Calendar.YEAR),
+            fechaProgramadaCal.get(java.util.Calendar.MONTH),
+            fechaProgramadaCal.get(java.util.Calendar.DAY_OF_MONTH)
+        )
+        dpd.datePicker.minDate = System.currentTimeMillis()
+        dpd.show()
+    }
+
+    fun abrirSelectorHora() {
+        val tpd = android.app.TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                val nuevoCal = fechaProgramadaCal.clone() as java.util.Calendar
+                nuevoCal.set(java.util.Calendar.HOUR_OF_DAY, hourOfDay)
+                nuevoCal.set(java.util.Calendar.MINUTE, minute)
+                nuevoCal.set(java.util.Calendar.SECOND, 0)
+                fechaProgramadaCal = nuevoCal
+                clienteViewModel.clearError()
+            },
+            fechaProgramadaCal.get(java.util.Calendar.HOUR_OF_DAY),
+            fechaProgramadaCal.get(java.util.Calendar.MINUTE),
+            false
+        )
+        tpd.show()
+    }
+
+    fun calToIsoString(cal: java.util.Calendar): String {
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US)
+        sdf.timeZone = cal.timeZone
+        return sdf.format(cal.time)
+    }
+
     LaunchedEffect(brands) {
         if (selectedBrandId.isEmpty() || brands.none { it.id == selectedBrandId }) {
             selectedBrandId = brands.firstOrNull()?.id ?: ""
@@ -685,6 +887,8 @@ fun NuevoPedidoScreen(
         purificadoraId == null -> "Elige una purificadora"
         brand == null -> "Sin productos disponibles"
         selectedAddr == null -> "Agrega un domicilio"
+        esProgramado -> "Confirmar pedido programado"
+        perfilActual != null && !perfilActual.abiertoAhora -> "Programar pedido (cerrada)"
         else -> "Confirmar pedido"
     }
 
@@ -697,11 +901,28 @@ fun NuevoPedidoScreen(
         val brandIdInt = brand?.id?.toIntOrNull() ?: return
         val idNegocio = purificadoraId ?: return
 
+        if (perfilActual != null && !perfilActual.abiertoAhora && !esProgramado) {
+            esProgramado = true
+            android.widget.Toast.makeText(
+                context,
+                "La purificadora está cerrada. Elige fecha y hora para programar tu entrega.",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        val programadoDto = if (esProgramado) {
+            com.htogo.app.data.dto.ProgramadoDto(
+                fechaProgramada = calToIsoString(fechaProgramadaCal)
+            )
+        } else null
+
         val request = PedidoCreateRequest(
             tipoSolicitud = "directa",
             idNegocio = idNegocio,
             idDireccionEntrega = addrIdInt,
             indicaciones = notes.ifBlank { null },
+            programado = programadoDto,
             detalles = listOf(
                 DetallePedidoRequest(
                     idMarca = brandIdInt,
@@ -746,8 +967,9 @@ fun NuevoPedidoScreen(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
         ) {
             if (errorMsg != null) {
+                val esAvisoCerrada = errorMsg!!.contains("cerrada", ignoreCase = true)
                 Surface(
-                    color = MaterialTheme.colorScheme.errorContainer,
+                    color = if (esAvisoCerrada) Color(0xFFFEF3C7) else MaterialTheme.colorScheme.errorContainer,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
@@ -755,13 +977,40 @@ fun NuevoPedidoScreen(
                         Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.Warning, null, tint = MaterialTheme.colorScheme.error)
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            errorMsg!!,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            fontSize = 13.sp
+                        Icon(
+                            if (esAvisoCerrada) Icons.Filled.Schedule else Icons.Filled.Warning,
+                            null,
+                            tint = if (esAvisoCerrada) Color(0xFFD97706) else MaterialTheme.colorScheme.error
                         )
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                if (esAvisoCerrada) "Purificadora cerrada en este momento" else errorMsg!!,
+                                color = if (esAvisoCerrada) Color(0xFF92400E) else MaterialTheme.colorScheme.onErrorContainer,
+                                fontSize = 13.sp,
+                                fontWeight = if (esAvisoCerrada) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                            if (esAvisoCerrada) {
+                                Text(
+                                    "Puedes programar tu entrega abajo para cuando abra en su horario.",
+                                    color = Color(0xFFB45309),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                        if (esAvisoCerrada && !esProgramado) {
+                            Button(
+                                onClick = {
+                                    esProgramado = true
+                                    clienteViewModel.clearError()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text("Programar", fontSize = 11.sp, color = Color.White)
+                            }
+                        }
                     }
                 }
             }
@@ -790,6 +1039,29 @@ fun NuevoPedidoScreen(
                     TextButton(onClick = onElegirPurificadora) { Text(if (purificadoraId == null) "Elegir" else "Cambiar") }
                 }
             }
+
+            Spacer(Modifier.height(12.dp))
+            // Sección de programación de pedido
+            ProgramarPedidoCard(
+                esProgramado = esProgramado,
+                onEsProgramadoChange = {
+                    esProgramado = it
+                    clienteViewModel.clearError()
+                },
+                fechaHoraCal = fechaProgramadaCal,
+                onElegirFecha = { abrirSelectorFecha() },
+                onElegirHora = { abrirSelectorHora() },
+                estaCerradaAhora = perfilActual?.abiertoAhora == false,
+                horariosInfo = remember(perfilActual) {
+                    val list = perfilActual?.horarios?.filter { !it.cerrado && it.horaApertura != null && it.horaCierre != null }
+                    if (!list.isNullOrEmpty()) {
+                        val p = list.first()
+                        val ini = p.horaApertura?.take(5) ?: ""
+                        val fin = p.horaCierre?.take(5) ?: ""
+                        "Horario de atención: $ini a $fin"
+                    } else null
+                }
+            )
 
             Spacer(Modifier.height(16.dp))
             SectionTitle("Marca de garrafón")

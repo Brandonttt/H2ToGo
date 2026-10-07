@@ -117,6 +117,7 @@ fun PerfilClienteScreen(
         mutableStateOf(sessionManager.obtenerDireccionPredeterminadaId())
     }
     var mostrarDialogFecha by remember { mutableStateOf(false) }
+    var mostrarDialogLogout by remember { mutableStateOf(false) }
 
     val direcciones = remember(direccionesDisponibles, direccionPredeterminadaId) {
         val effectiveDefaultId = direccionPredeterminadaId
@@ -227,7 +228,7 @@ fun PerfilClienteScreen(
             item {
                 SettingsList {
                     SettingRow(Icons.Filled.Logout, "Cerrar sesión",
-                        danger = true, onClick = onLogout, showChevron = false)
+                        danger = true, onClick = { mostrarDialogLogout = true }, showChevron = false)
                     SettingRow(Icons.Filled.DeleteForever, "Eliminar cuenta",
                         danger = true, onClick = {}, showChevron = false)
                 }
@@ -323,6 +324,42 @@ fun PerfilClienteScreen(
                         onClick = { direccionAEliminar = null },
                         enabled = !eliminandoDireccion
                     ) {
+                        Text("Cancelar", color = HToGoColors.TextSecondary)
+                    }
+                },
+                shape = RoundedCornerShape(16.dp),
+                containerColor = Color.White
+            )
+        }
+
+        if (mostrarDialogLogout) {
+            AlertDialog(
+                onDismissRequest = { mostrarDialogLogout = false },
+                icon = { Icon(Icons.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) },
+                title = {
+                    Text("¿Cerrar sesión?", fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
+                },
+                text = {
+                    Text(
+                        "¿Estás seguro de que deseas cerrar tu sesión? Tendrás que volver a ingresar tus credenciales para acceder.",
+                        color = HToGoColors.TextSecondary,
+                        fontSize = 14.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            mostrarDialogLogout = false
+                            onLogout()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Cerrar sesión", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { mostrarDialogLogout = false }) {
                         Text("Cancelar", color = HToGoColors.TextSecondary)
                     }
                 },

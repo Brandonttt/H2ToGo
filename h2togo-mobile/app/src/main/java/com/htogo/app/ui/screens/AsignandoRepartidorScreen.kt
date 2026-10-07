@@ -1,4 +1,4 @@
-﻿package com.htogo.app.ui.screens
+package com.htogo.app.ui.screens
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -79,6 +79,45 @@ fun AsignandoRepartidorScreen(
     val purificadora = perfil?.takeIf { it.id == p.idNegocioSolicitado }?.nombreComercial
         ?: clienteViewModel.purificadoraSeleccionadaNombre ?: "La purificadora"
 
+    var mostrarDialogCancelar by remember { mutableStateOf(false) }
+
+    if (mostrarDialogCancelar) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogCancelar = false },
+            icon = { Icon(Icons.Filled.Warning, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("¿Cancelar pedido?", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "¿Estás seguro de que deseas cancelar este pedido? Puedes cancelar sin costo mientras la purificadora o el repartidor no hayan salido en camino."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        mostrarDialogCancelar = false
+                        cancelando = true
+                        clienteViewModel.cancelarPedido(
+                            id = p.id,
+                            onSuccess = { cancelando = false; onCancel() },
+                            onError = { err ->
+                                cancelando = false
+                                Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Sí, cancelar pedido", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDialogCancelar = false }) {
+                    Text("No, mantener pedido")
+                }
+            }
+        )
+    }
+
     AsignandoRepartidorScreen(
         modoDirecto = p.tipoSolicitud.equals("directa", ignoreCase = true),
         purificadoraName = purificadora,
@@ -90,17 +129,7 @@ fun AsignandoRepartidorScreen(
         precioMax = p.precioMaximoGarrafon ?: 0.0,
         cancelando = cancelando,
         onBack = onBack,
-        onCancel = {
-            cancelando = true
-            clienteViewModel.cancelarPedido(
-                id = p.id,
-                onSuccess = { cancelando = false; onCancel() },
-                onError = { err ->
-                    cancelando = false
-                    Toast.makeText(context, err, Toast.LENGTH_LONG).show()
-                }
-            )
-        }
+        onCancel = { mostrarDialogCancelar = true }
     )
 }
 

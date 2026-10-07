@@ -647,22 +647,51 @@ fun SeguimientoPedidoScreen(
             FloatingTopBar(order.id, onBack)
         }
 
+        var mostrarDialogCancelar by remember { mutableStateOf(false) }
+
+        if (mostrarDialogCancelar) {
+            AlertDialog(
+                onDismissRequest = { mostrarDialogCancelar = false },
+                icon = { Icon(Icons.Filled.Warning, null, tint = MaterialTheme.colorScheme.error) },
+                title = { Text("¿Cancelar pedido?", fontWeight = FontWeight.Bold) },
+                text = {
+                    Text(
+                        "¿Estás seguro de que deseas cancelar este pedido? Puedes cancelar sin costo mientras la purificadora o el repartidor no hayan salido en camino."
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            mostrarDialogCancelar = false
+                            val idInt = order.id.toIntOrNull()
+                            if (idInt != null) {
+                                clienteViewModel.cancelarPedido(
+                                    id = idInt,
+                                    onSuccess = {},
+                                    onError = {}
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Sí, cancelar pedido", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { mostrarDialogCancelar = false }) {
+                        Text("No, mantener pedido")
+                    }
+                }
+            )
+        }
+
         Box(Modifier.align(Alignment.BottomCenter)) {
             TrackingSheet(
                 order = order,
                 steps = steps,
                 onPedidoEntregado = onPedidoEntregado,
                 onAbrirPurificadora = onAbrirPurificadora,
-                onCancelarPedido = {
-                    val idInt = order.id.toIntOrNull()
-                    if (idInt != null) {
-                        clienteViewModel.cancelarPedido(
-                            id = idInt,
-                            onSuccess = {},
-                            onError = {}
-                        )
-                    }
-                }
+                onCancelarPedido = { mostrarDialogCancelar = true }
             )
         }
     }
