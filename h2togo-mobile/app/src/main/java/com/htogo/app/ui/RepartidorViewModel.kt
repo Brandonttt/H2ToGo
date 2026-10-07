@@ -447,6 +447,13 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
 
     // ---------------------------------------------------------------- Navegación (CU-011/CU-006)
 
+    private val _rutaNoDisponible = MutableStateFlow(false)
+    /**
+     * true si el backend no encontró ruta (422): el grafo de calles solo cubre Benito Juárez,
+     * así que pasa si el repartidor está fuera de esa zona.
+     */
+    val rutaNoDisponible: StateFlow<Boolean> = _rutaNoDisponible.asStateFlow()
+
     private var origenRuta: com.htogo.app.data.location.Posicion? = null
     private var ultimaRutaMs = 0L
     private var calculandoRuta = false
@@ -471,6 +478,13 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                 val resp = apiClient.repartidorApi.obtenerRuta(idPedido)
                 if (resp.isSuccessful && resp.body() != null) {
                     _rutaCalculada.value = resp.body()
+                    _rutaNoDisponible.value = false
+                    origenRuta = p
+                    ultimaRutaMs = ahora
+                } else if (resp.code() == 422) {
+                    _rutaCalculada.value = null
+                    _rutaNoDisponible.value = true
+                    // Se reintenta cuando se mueva lo suficiente (p. ej. al entrar a la zona).
                     origenRuta = p
                     ultimaRutaMs = ahora
                 }
@@ -496,6 +510,7 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
 
     /** Al salir de la pantalla de ruta: el próximo pedido empieza con ruta nueva. */
     fun detenerNavegacion() {
+        _rutaNoDisponible.value = false
         origenRuta = null
         ultimaRutaMs = 0L
     }

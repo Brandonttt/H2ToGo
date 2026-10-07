@@ -527,7 +527,8 @@ private fun ResumenRow(label: String, value: String) {
 private fun NuevoPedidoTopBar(onBack: () -> Unit) {
     Surface(color = HToGoColors.PrimaryDark) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            // La app dibuja de borde a borde: sin esto el título queda bajo la barra de estado.
+            Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(

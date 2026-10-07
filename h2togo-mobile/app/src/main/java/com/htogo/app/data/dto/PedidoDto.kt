@@ -18,8 +18,7 @@ data class ProgramadoDto(
 
 data class DetallePedidoRequest(
     @SerializedName("idMarca") val idMarca: Int,
-    // El backend lo manda como "cantidadSolicitada"; "cantidad" se acepta por compatibilidad.
-    @SerializedName(value = "cantidad", alternate = ["cantidadSolicitada"]) val cantidad: Int,
+    @SerializedName("cantidad") val cantidad: Int,
     @SerializedName("tieneEnvase") val tieneEnvase: Boolean
 )
 
@@ -78,7 +77,8 @@ data class CoordenadaDto(
 data class DetalleResponse(
     @SerializedName("idMarca") val idMarca: Int,
     @SerializedName("nombreMarca") val nombreMarca: String?,
-    @SerializedName("cantidad") val cantidad: Int,
+    // El backend lo manda como "cantidadSolicitada"; "cantidad" se acepta por compatibilidad.
+    @SerializedName(value = "cantidad", alternate = ["cantidadSolicitada"]) val cantidad: Int,
     @SerializedName("tieneEnvase") val tieneEnvase: Boolean,
     @SerializedName("subtotal") val subtotal: Double?
 )

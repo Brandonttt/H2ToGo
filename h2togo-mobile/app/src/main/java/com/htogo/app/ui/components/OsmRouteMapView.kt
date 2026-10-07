@@ -67,17 +67,31 @@ fun OsmRouteMapView(
               '<path d="M21 2C11.61 2 4 9.61 4 19C4 31.75 21 46 21 46S38 31.75 38 19C38 9.61 30.39 2 21 2Z" fill="#10B981" stroke="#FFFFFF" stroke-width="2.5"/>' +
               '<circle cx="21" cy="19" r="6.5" fill="#FFFFFF"/></svg>' });
 
+            // Dentro de Compose el WebView arranca con altura 0 y "height: 100%" deja el mapa en
+            // 0 px: se fija la altura real en píxeles y Leaflet recalcula su tamaño (igual que OsmMapView).
+            function ajustarTamano() {
+              var div = document.getElementById('map');
+              var h = window.innerHeight;
+              div.style.height = (h && h > 50 ? h : 400) + 'px';
+              if (typeof map !== 'undefined' && map) map.invalidateSize(true);
+            }
+            ajustarTamano();
+
             var map = L.map('map', {
               center: [$destLat, $destLon], zoom: 15, zoomControl: false, attributionControl: false,
               dragging: $isInteractive, touchZoom: $isInteractive, doubleClickZoom: $isInteractive, scrollWheelZoom: $isInteractive
             });
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+            if (window.ResizeObserver) new ResizeObserver(ajustarTamano).observe(document.body);
+            window.addEventListener('resize', ajustarTamano);
+            [100, 350, 800].forEach(function (ms) { setTimeout(ajustarTamano, ms); });
 
             var markerDest = L.marker([$destLat, $destLon], { icon: destIcon }).addTo(map).bindPopup('<b>Destino de entrega</b>');
             var markerRep = null, linea = null, encuadrado = false, rutaPrevia = '';
 
             // Llamada desde Kotlin en cada cambio. ruta = [[lat,lon],...] o [] (línea recta punteada).
             function actualizar(repLat, repLon, destLat, destLon, ruta, etiqueta) {
+              ajustarTamano();
               markerDest.setLatLng([destLat, destLon]);
               if (repLat !== null) {
                 if (!markerRep) markerRep = L.marker([repLat, repLon], { icon: repIcon }).addTo(map);
@@ -122,10 +136,16 @@ fun OsmRouteMapView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
                 WebView(ctx).apply {
+                    layoutParams = android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                    )
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
-                    settings.loadWithOverviewMode = true
-                    settings.useWideViewPort = true
+                    settings.loadWithOverviewMode = false
+                    settings.useWideViewPort = false
+                    // La política de tiles de OpenStreetMap exige identificar la app.
+                    settings.userAgentString = "HToGo-App/1.0 (Android; info@h2togo.mx) AppleWebKit/537.36"
                     webChromeClient = object : WebChromeClient() {
                         override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
                             Log.d("OsmRouteMap", "[JS] ${consoleMessage?.message()}")

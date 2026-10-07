@@ -48,7 +48,9 @@ if ([string]::IsNullOrWhiteSpace($Password)) {
 
 Write-Host ""
 Write-Host "[2/4] Creando la Container App '$rabbitApp'..." -ForegroundColor Yellow
-$existe = az containerapp show -n $rabbitApp -g $rgName --query name -o tsv 2>$null
+# "az containerapp list" devuelve vacío si no existe; "show" falla con ResourceNotFound y, con
+# $ErrorActionPreference = "Stop", Windows PowerShell lo convierte en error fatal.
+$existe = az containerapp list -g $rgName --query "[?name=='$rabbitApp'].name" -o tsv
 if ($existe) {
     Write-Host "[OK] Ya existe; se conserva su configuracion." -ForegroundColor Green
     Write-Host "     (Si no conoces su contrasena, pasala con -Password para alinear el backend.)" -ForegroundColor Gray

@@ -189,6 +189,7 @@ fun RutaEntregaScreen(
     }
     DisposableEffect(Unit) { onDispose { repartidorViewModel.detenerNavegacion() } }
 
+    val rutaNoDisponible by repartidorViewModel.rutaNoDisponible.collectAsState()
     val distanciaDestinoM = posicion?.let {
         UbicacionTracker.distanciaM(it.lat, it.lon, entrega.latDestino, entrega.lonDestino)
     }
@@ -265,7 +266,11 @@ fun RutaEntregaScreen(
             ) {
                 Column(Modifier.padding(18.dp)) {
                     if (estado == EstadoRuta.EN_RUTA) {
-                        EnRutaSheet(entrega, distanciaDestinoM, rutaKm = liveRutaCalculada?.takeIf { it.encontrada }?.distanciaTotalKm)
+                        EnRutaSheet(
+                            entrega, distanciaDestinoM,
+                            rutaKm = liveRutaCalculada?.takeIf { it.encontrada }?.distanciaTotalKm,
+                            rutaNoDisponible = rutaNoDisponible
+                        )
                         Spacer(Modifier.height(14.dp))
                         Button(
                             onClick = {
@@ -456,7 +461,7 @@ private fun StepPill(estado: EstadoRuta, pedidoId: String, actual: Int, total: I
 }
 
 @Composable
-private fun EnRutaSheet(entrega: EntregaActiva, distanciaDestinoM: Double?, rutaKm: Double?) {
+private fun EnRutaSheet(entrega: EntregaActiva, distanciaDestinoM: Double?, rutaKm: Double?, rutaNoDisponible: Boolean) {
     val context = LocalContext.current
     var menuNavegar by remember { mutableStateOf(false) }
     Column {
@@ -513,6 +518,15 @@ private fun EnRutaSheet(entrega: EntregaActiva, distanciaDestinoM: Double?, ruta
                         fontSize = 11.sp,
                         color = HToGoColors.TextSecondary
                     )
+                    if (rutaNoDisponible && rutaKm == null) {
+                        Text(
+                            "Sin ruta calculada: estás fuera de la zona con mapa de calles (Benito Juárez). Usa Navegar.",
+                            fontSize = 11.sp,
+                            color = HToGoColors.AccentAmber,
+                            lineHeight = 14.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
                 }
                 Box {
                     Button(
