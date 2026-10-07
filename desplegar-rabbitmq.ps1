@@ -40,11 +40,7 @@ try {
     exit 1
 }
 
-if ([string]::IsNullOrWhiteSpace($Password)) {
-    # Solo letras y numeros: evita problemas de escape en la CLI.
-    $chars = (48..57) + (65..90) + (97..122)
-    $Password = -join ($chars | Get-Random -Count 24 | ForEach-Object { [char]$_ })
-}
+$passwordGenerada = $false
 
 Write-Host ""
 Write-Host "[2/4] Creando la Container App '$rabbitApp'..." -ForegroundColor Yellow
@@ -53,8 +49,20 @@ Write-Host "[2/4] Creando la Container App '$rabbitApp'..." -ForegroundColor Yel
 $existe = az containerapp list -g $rgName --query "[?name=='$rabbitApp'].name" -o tsv
 if ($existe) {
     Write-Host "[OK] Ya existe; se conserva su configuracion." -ForegroundColor Green
-    Write-Host "     (Si no conoces su contrasena, pasala con -Password para alinear el backend.)" -ForegroundColor Gray
+    if ([string]::IsNullOrWhiteSpace($Password)) {
+        # RabbitMQ conserva la contrasena con la que se creo: generar otra aqui desconectaria
+        # al backend. Hay que volver a correr el script con la original.
+        Write-Host "[ERROR] RabbitMQ ya existe: pasa su contrasena original con -Password." -ForegroundColor Red
+        Write-Host "        Ejemplo: ./desplegar-rabbitmq.ps1 -Password '<contrasena>' [-FcmCredenciales ./cuenta.json]" -ForegroundColor Gray
+        exit 1
+    }
 } else {
+    if ([string]::IsNullOrWhiteSpace($Password)) {
+        # Solo letras y numeros: evita problemas de escape en la CLI.
+        $chars = (48..57) + (65..90) + (97..122)
+        $Password = -join ($chars | Get-Random -Count 24 | ForEach-Object { [char]$_ })
+        $passwordGenerada = $true
+    }
     az containerapp create -n $rabbitApp -g $rgName --environment $envName `
         --image "rabbitmq:3.13-management" `
         --ingress internal --transport tcp --target-port 5672 --exposed-port 5672 `
@@ -105,7 +113,9 @@ Write-Host "  az containerapp logs show -n $apiApp -g $rgName --tail 80" -Foregr
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host " RabbitMQ listo. Usuario: $rabbitUser" -ForegroundColor Green
-Write-Host " Guarda la contrasena en un lugar seguro: $Password" -ForegroundColor White
+if ($passwordGenerada) {
+    Write-Host " Contrasena generada (guardala; se pide para volver a correr este script): $Password" -ForegroundColor White
+}
 Write-Host " Consola de administracion (desde tu equipo):" -ForegroundColor White
 Write-Host "   az containerapp exec -n $rabbitApp -g $rgName --command 'rabbitmq-diagnostics status'" -ForegroundColor Gray
 Write-Host "==========================================================" -ForegroundColor Cyan
