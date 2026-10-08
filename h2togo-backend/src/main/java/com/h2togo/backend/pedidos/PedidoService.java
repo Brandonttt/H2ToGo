@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -275,10 +276,46 @@ public class PedidoService {
 
     @Transactional(readOnly = true)
     public PagedResponse<PedidoResumen> misEntregas(int idRepartidor, Pageable pageable) {
-        Page<PedidoResumen> page = pedidoRepository
-                .findByIdRepartidorOrderByFechaCreacionDesc(idRepartidor, acotar(pageable))
-                .map(PedidoMapper::toResumen);
-        return PagedResponse.of(page);
+        Pageable acotada = acotar(pageable);
+        int size = acotada.getPageSize();
+        long offset = acotada.getOffset();
+
+        var params = new MapSqlParameterSource()
+                .addValue("rep", idRepartidor)
+                .addValue("lim", size)
+                .addValue("off", offset);
+
+        Integer total = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM pedidos WHERE id_repartidor = :rep",
+                new MapSqlParameterSource("rep", idRepartidor), Integer.class);
+        if (total == null || total == 0) {
+            return PagedResponse.of(new PageImpl<>(List.of(), acotada, 0));
+        }
+
+        List<PedidoResumen> lista = jdbc.query("""
+                SELECT p.id_pedido, p.estado_actual, p.tipo_solicitud, p.total_pagar,
+                       p.garrafones_totales, p.es_programado, p.fecha_creacion,
+                       CONCAT(u.nombre, ' ', u.apellidos) AS nombre_cliente,
+                       CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion
+                FROM pedidos p
+                JOIN usuarios u ON u.id_usuario = p.id_cliente
+                LEFT JOIN direcciones_clientes d ON d.id_direccion = p.id_direccion_entrega
+                WHERE p.id_repartidor = :rep
+                ORDER BY p.fecha_creacion DESC
+                LIMIT :lim OFFSET :off
+                """, params, (rs, rowNum) -> new PedidoResumen(
+                        rs.getInt("id_pedido"),
+                        EstadoPedido.valueOf(rs.getString("estado_actual")),
+                        TipoSolicitudPedido.valueOf(rs.getString("tipo_solicitud")),
+                        rs.getBigDecimal("total_pagar"),
+                        rs.getInt("garrafones_totales"),
+                        rs.getBoolean("es_programado"),
+                        rs.getObject("fecha_creacion", OffsetDateTime.class),
+                        rs.getString("nombre_cliente"),
+                        rs.getString("direccion")
+                ));
+
+        return PagedResponse.of(new PageImpl<>(lista, acotada, total));
     }
 
     // ---------------------------------------------------------------- Helpers

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
@@ -52,6 +53,7 @@ fun HomeRepartidorScreen(
     onPedidoProgramado: (idPedido: Int) -> Unit = {},
     onSwitchRol: () -> Unit = {},
     onPedidosDisponibles: () -> Unit = {},
+    onHistorial: () -> Unit = {},
     repartidorViewModel: RepartidorViewModel = viewModel()
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -163,6 +165,13 @@ fun HomeRepartidorScreen(
                                 fontSize = 12.sp
                             )
                         }
+                        IconButton(onClick = onHistorial) {
+                            Icon(
+                                Icons.Filled.History,
+                                contentDescription = "Mi historial de entregas",
+                                tint = Color.White
+                            )
+                        }
                         IconButton(onClick = {
                             val nuevoEstado = !notificacionesActivas
                             notificacionesActivas = nuevoEstado
@@ -230,8 +239,23 @@ fun HomeRepartidorScreen(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard("Entregas", "$entregasHoyCount", "/ ${liveMisEntregas.size}", Icons.Filled.CheckCircle, HToGoColors.StatusEntregado, Modifier.weight(1f))
-                StatCard("En tu vehículo", "${liveVehiculo?.ocupado ?: 0}", "garrafones", Icons.Filled.DirectionsCar, HToGoColors.Primary, Modifier.weight(1f))
+                StatCard(
+                    label = "Entregas",
+                    big = "$entregasHoyCount",
+                    small = "/ ${liveMisEntregas.size}",
+                    icon = Icons.Filled.CheckCircle,
+                    accent = HToGoColors.StatusEntregado,
+                    modifier = Modifier.weight(1f),
+                    onClick = onHistorial
+                )
+                StatCard(
+                    label = "En tu vehículo",
+                    big = "${liveVehiculo?.ocupado ?: 0}",
+                    small = "garrafones",
+                    icon = Icons.Filled.DirectionsCar,
+                    accent = HToGoColors.Primary,
+                    modifier = Modifier.weight(1f)
+                )
             }
             Spacer(Modifier.height(12.dp))
             Row(
@@ -431,10 +455,13 @@ fun HomeRepartidorScreen(
 @Composable
 private fun StatCard(
     label: String, big: String, small: String, icon: ImageVector,
-    accent: Color, modifier: Modifier = Modifier
+    accent: Color, modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
     Card(
-        modifier = modifier.height(110.dp),
+        modifier = modifier
+            .height(110.dp)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)

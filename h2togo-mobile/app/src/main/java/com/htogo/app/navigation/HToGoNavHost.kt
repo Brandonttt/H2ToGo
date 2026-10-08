@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import com.htogo.app.ui.screens.AsignandoRepartidorScreen
 import com.htogo.app.ui.screens.AvisoPrivacidadScreen
 import com.htogo.app.ui.screens.BuscarPurificadorasScreen
+import com.htogo.app.ui.screens.HistorialEntregasRepartidorScreen
 import com.htogo.app.ui.screens.HistorialPedidosScreen
 import com.htogo.app.ui.screens.HomeClienteScreen
 import com.htogo.app.ui.screens.HomeRepartidorScreen
@@ -333,6 +334,7 @@ fun HToGoNavHost(
                 onPedidoProgramado = { id -> navController.navigate(HToGoRoutes.pedidoProgramado(id)) },
                 onSwitchRol        = { navController.navigate(HToGoRoutes.HOME_CLIENTE) },
                 onPedidosDisponibles = { navController.navigate(HToGoRoutes.PEDIDOS_DISPONIBLES) },
+                onHistorial        = { navController.navigate(HToGoRoutes.HISTORIAL_REPARTIDOR) },
                 repartidorViewModel = repartidorViewModel
             )
         }
@@ -392,19 +394,31 @@ fun HToGoNavHost(
                 repartidorViewModel = repartidorViewModel
             )
         }
+        composable(HToGoRoutes.HISTORIAL_REPARTIDOR) {
+            HistorialEntregasRepartidorScreen(
+                onBack           = { navController.popBackStack() },
+                onInicio         = { navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
+                onInventario     = { navController.navigate(HToGoRoutes.INVENTARIO) },
+                onIngresos       = { navController.navigate(HToGoRoutes.INGRESOS) },
+                onPerfil         = { navController.navigate(HToGoRoutes.PERFIL_REPARTIDOR) },
+                onVerDisponibles = { navController.navigate(HToGoRoutes.PEDIDOS_DISPONIBLES) },
+                repartidorViewModel = repartidorViewModel
+            )
+        }
         composable(HToGoRoutes.PERFIL_REPARTIDOR) {
             val context = LocalContext.current
             val sessionManager = remember { SessionManager.getInstance(context) }
             PerfilRepartidorScreen(
-                onBack    = { navController.popBackStack() },
-                onLogout  = {
+                onBack      = { navController.popBackStack() },
+                onLogout    = {
                     authViewModel.logout {
                         navController.navigateAndClear(HToGoRoutes.LOGIN)
                     }
                 },
-                onInicio  = { navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
-                onNegocio = { navController.navigate(HToGoRoutes.INVENTARIO) },
-                onIngresos = { navController.navigate(HToGoRoutes.INGRESOS) },
+                onInicio    = { navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
+                onNegocio   = { navController.navigate(HToGoRoutes.INVENTARIO) },
+                onIngresos  = { navController.navigate(HToGoRoutes.INGRESOS) },
+                onHistorial = { navController.navigate(HToGoRoutes.HISTORIAL_REPARTIDOR) },
                 repartidorViewModel = repartidorViewModel
             )
         }

@@ -313,6 +313,24 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    /**
+     * CU-013: Carga el detalle completo de un pedido con historial de timestamps del ciclo de vida.
+     */
+    fun cargarDetallePedido(idPedido: Int, onResult: (com.htogo.app.data.dto.PedidoResponse?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.pedidosApi.obtenerDetallePedido(idPedido)
+                if (resp.isSuccessful) {
+                    onResult(resp.body())
+                } else {
+                    onResult(null)
+                }
+            } catch (e: Exception) {
+                onResult(null)
+            }
+        }
+    }
+
     fun cargarMarcas() {
         viewModelScope.launch {
             try {

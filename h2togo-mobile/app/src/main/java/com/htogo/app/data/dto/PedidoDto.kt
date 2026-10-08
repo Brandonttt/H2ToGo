@@ -85,9 +85,12 @@ data class DetalleResponse(
 
 data class HistorialResponse(
     @SerializedName("estado") val estado: String,
-    @SerializedName("fecha") val fecha: String,
-    @SerializedName("motivo") val motivo: String?
-)
+    @SerializedName(value = "fechaCambio", alternate = ["fecha"]) val fechaCambio: String? = null,
+    @SerializedName(value = "notas", alternate = ["motivo"]) val notas: String? = null
+) {
+    val fecha: String
+        get() = fechaCambio ?: ""
+}
 
 data class CancelacionRequest(
     @SerializedName("motivo") val motivo: String
@@ -128,7 +131,9 @@ data class PedidoResumenDto(
     @SerializedName("totalPagar") val totalPagar: Double?,
     @SerializedName("garrafonesTotales") val garrafonesTotales: Int?,
     @SerializedName("esProgramado") val esProgramado: Boolean,
-    @SerializedName("fechaCreacion") val fechaCreacion: String?
+    @SerializedName("fechaCreacion") val fechaCreacion: String?,
+    @SerializedName("nombreCliente") val nombreCliente: String? = null,
+    @SerializedName("direccionTexto") val direccionTexto: String? = null
 )
 
 data class PagedResponseDto<T>(

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Notifications
@@ -57,6 +58,7 @@ fun PerfilRepartidorScreen(
     onInicio: () -> Unit = {},
     onNegocio: () -> Unit = {},
     onIngresos: () -> Unit = {},
+    onHistorial: () -> Unit = {},
     repartidorViewModel: com.htogo.app.ui.RepartidorViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -159,6 +161,7 @@ fun PerfilRepartidorScreen(
                     u = usuario,
                     enLinea = enLinea,
                     onToggleLinea = { enLinea = !enLinea },
+                    onHistorial = onHistorial,
                     modifier = Modifier
                         .padding(horizontal = 18.dp)
                         .offset(y = (-42).dp)
@@ -218,6 +221,7 @@ fun PerfilRepartidorScreen(
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     Column {
+                        ActionRow(Icons.Filled.History, "Mi historial de entregas", redText = false, onClick = onHistorial)
                         ActionRow(Icons.Outlined.Lock, "Cambiar contraseña", redText = false, onClick = {})
                         ActionRow(Icons.Filled.Logout, "Cerrar sesión", redText = true, isLast = true, onClick = { mostrarDialogLogout = true })
                     }
@@ -277,6 +281,7 @@ private fun ProfileCard(
     u: PerfilUsuario,
     enLinea: Boolean,
     onToggleLinea: () -> Unit,
+    onHistorial: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -337,7 +342,7 @@ private fun ProfileCard(
             HorizontalDivider(color = HToGoColors.OutlineSoft)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                MiniProfileStat("${u.totalEntregas}", "Entregas")
+                MiniProfileStat("${u.totalEntregas}", "Entregas", onClick = onHistorial)
                 Box(
                     Modifier
                         .width(1.dp)
@@ -351,9 +356,12 @@ private fun ProfileCard(
 }
 
 @Composable
-private fun MiniProfileStat(v: String, l: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(v, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+private fun MiniProfileStat(v: String, l: String, onClick: (() -> Unit)? = null) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+    ) {
+        Text(v, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = if (onClick != null) HToGoColors.Primary else HToGoColors.TextPrimary)
         Text(l.uppercase(), fontSize = 10.sp, color = HToGoColors.TextSecondary)
     }
 }
