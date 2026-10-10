@@ -264,6 +264,81 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    /**
+     * CU-020: Pide al admin cambiar el nombre comercial del negocio (RN-019, RN-021).
+     */
+    fun solicitarCambioNombreNegocio(
+        nuevoNombre: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.solicitudesApi.crear(
+                    com.htogo.app.data.dto.SolicitudRequest(
+                        codigoCambio = "NOMBRE_NEGOCIO",
+                        valorNuevo = mapOf("nombreComercial" to nuevoNombre.trim())
+                    )
+                )
+                if (resp.isSuccessful) {
+                    cargarSolicitudes()
+                    onSuccess()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de red al enviar la solicitud")
+            }
+        }
+    }
+
+    /**
+     * CU-020: Pide al admin cambiar la dirección de la base del negocio (RN-019, RN-021).
+     */
+    fun solicitarCambioDireccionBase(
+        calle: String,
+        numeroExterior: String,
+        numeroInterior: String?,
+        colonia: String,
+        codigoPostal: String,
+        referencias: String?,
+        lat: Double? = null,
+        lon: Double? = null,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val mapa = mutableMapOf<String, Any>(
+                    "calle" to calle.trim(),
+                    "numeroExterior" to numeroExterior.trim(),
+                    "colonia" to colonia.trim(),
+                    "codigoPostal" to codigoPostal.trim()
+                )
+                if (!numeroInterior.isNullOrBlank()) mapa["numeroInterior"] = numeroInterior.trim()
+                if (!referencias.isNullOrBlank()) mapa["referencias"] = referencias.trim()
+                if (lat != null && lon != null) {
+                    mapa["lat"] = lat
+                    mapa["lon"] = lon
+                }
+                val resp = apiClient.solicitudesApi.crear(
+                    com.htogo.app.data.dto.SolicitudRequest(
+                        codigoCambio = "DIRECCION_BASE",
+                        valorNuevo = mapa
+                    )
+                )
+                if (resp.isSuccessful) {
+                    cargarSolicitudes()
+                    onSuccess()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de red al enviar la solicitud")
+            }
+        }
+    }
+
     fun actualizarVehiculo(
         idVehiculo: Int?,
         request: com.htogo.app.data.dto.ActualizarVehiculoRequest,
@@ -506,6 +581,40 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                 }
             } catch (e: Exception) {
                 onError(e.localizedMessage ?: "Error al devolver inventario")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun registrarSalidaManual(
+        idMarca: Int,
+        cantidad: Int,
+        motivo: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val resp = apiClient.inventarioApi.registrarSalidaManual(
+                    com.htogo.app.data.dto.SalidaManualRequest(
+                        idMarca = idMarca,
+                        cantidad = cantidad,
+                        motivo = motivo
+                    )
+                )
+                if (resp.isSuccessful) {
+                    cargarInventarioBase()
+                    cargarMiNegocio()
+                    onSuccess()
+                } else {
+                    val err = parseError(resp.errorBody()?.string())
+                        ?: "Error al registrar salida (${resp.code()})"
+                    onError(err)
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de red al registrar salida manual")
             } finally {
                 _isLoading.value = false
             }

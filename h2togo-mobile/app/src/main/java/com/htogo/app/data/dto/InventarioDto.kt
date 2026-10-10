@@ -59,3 +59,10 @@ data class JornadaResponse(
     @SerializedName("disponible") val disponible: Boolean,
     @SerializedName("inventario") val inventario: InventarioVehiculoResponse? = null
 )
+
+data class SalidaManualRequest(
+    @SerializedName("idMarca") val idMarca: Int,
+    @SerializedName("cantidad") val cantidad: Int,
+    @SerializedName("motivo") val motivo: String
+)
+

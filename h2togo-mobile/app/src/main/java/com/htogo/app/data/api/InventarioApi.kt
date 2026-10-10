@@ -26,4 +26,7 @@ interface InventarioApi {
 
     @POST("inventario/devolucion")
     suspend fun devolverABase(): Response<Unit>
+
+    @POST("inventario/salida-manual")
+    suspend fun registrarSalidaManual(@Body request: com.htogo.app.data.dto.SalidaManualRequest): Response<Unit>
 }

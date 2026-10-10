@@ -10,6 +10,7 @@ import com.h2togo.backend.inventario.dto.InventarioItem;
 import com.h2togo.backend.inventario.dto.InventarioVehiculoResponse;
 import com.h2togo.backend.inventario.dto.LoteEntradaRequest;
 import com.h2togo.backend.inventario.dto.LoteResponse;
+import com.h2togo.backend.inventario.dto.SalidaManualRequest;
 import com.h2togo.backend.negocios.Negocio;
 import com.h2togo.backend.negocios.NegocioRepository;
 import com.h2togo.backend.repartidores.dto.IniciarJornadaRequest;
@@ -100,6 +101,60 @@ public class InventarioService {
 
         return new LoteResponse(idLote, req.idMarca(), marcaNombre(req.idMarca()),
                 req.fechaCaducidad(), req.cantidad());
+    }
+
+    // ---------------------------------------------------------------- Salida manual de base
+
+    @Transactional
+    public void registrarSalidaManual(int idRepartidor, SalidaManualRequest req) {
+        Negocio negocio = negocioDelRepartidor(idRepartidor);
+        int idNegocio = negocio.getId();
+
+        productoRepository.findByIdNegocioAndIdMarca(idNegocio, req.idMarca())
+                .orElseThrow(() -> new BusinessRuleException("PRODUCTO_NO_CONFIGURADO",
+                        "La marca no está configurada en el catálogo del negocio."));
+
+        List<Map<String, Object>> lotes = jdbc.queryForList("""
+                SELECT id_lote, (cantidad_actual - cantidad_apartada) AS disponible
+                FROM lotes_inventario
+                WHERE id_negocio = :neg AND id_marca = :marca AND activo
+                  AND (cantidad_actual - cantidad_apartada) > 0
+                ORDER BY fecha_caducidad, id_lote
+                FOR UPDATE""",
+                new MapSqlParameterSource().addValue("neg", idNegocio).addValue("marca", req.idMarca()));
+
+        int disponibleTotal = lotes.stream().mapToInt(l -> ((Number) l.get("disponible")).intValue()).sum();
+        if (disponibleTotal < req.cantidad()) {
+            throw new BusinessRuleException("STOCK_INSUFICIENTE",
+                    "Stock insuficiente en la base para registrar la salida manual (disponibles: " + disponibleTotal + ").");
+        }
+
+        int restante = req.cantidad();
+        for (Map<String, Object> lote : lotes) {
+            if (restante <= 0) {
+                break;
+            }
+            int disponible = ((Number) lote.get("disponible")).intValue();
+            int tomar = Math.min(restante, disponible);
+            var p = new MapSqlParameterSource()
+                    .addValue("lote", lote.get("id_lote"))
+                    .addValue("tomar", tomar)
+                    .addValue("rep", idRepartidor)
+                    .addValue("motivo", req.motivo());
+
+            jdbc.update("""
+                    UPDATE lotes_inventario
+                    SET cantidad_actual = cantidad_actual - :tomar,
+                        activo = CASE WHEN (cantidad_actual - :tomar) <= 0 AND cantidad_apartada = 0 THEN FALSE ELSE activo END
+                    WHERE id_lote = :lote""", p);
+
+            jdbc.update("""
+                    INSERT INTO movimientos_inventario
+                        (id_lote_base, tipo, cantidad, id_repartidor_responsable, notas)
+                    VALUES (:lote, 'salida_manual'::tipo_movimiento, :tomar, :rep, :motivo)""", p);
+
+            restante -= tomar;
+        }
     }
 
     // ---------------------------------------------------------------- Consultas

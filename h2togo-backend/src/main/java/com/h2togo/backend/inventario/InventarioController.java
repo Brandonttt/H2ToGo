@@ -56,4 +56,10 @@ public class InventarioController {
     public void devolucion() {
         inventarioService.devolucion(SecurityUtils.idActual());
     }
+
+    @PostMapping("/salida-manual")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void registrarSalidaManual(@Valid @RequestBody com.h2togo.backend.inventario.dto.SalidaManualRequest request) {
+        inventarioService.registrarSalidaManual(SecurityUtils.idActual(), request);
+    }
 }

@@ -62,6 +62,10 @@ public class SolicitudService {
             validarModificarVehiculo(negocio.getId(), req.idVehiculo(), req.valorNuevo());
         } else if (req.codigoCambio() == CodigoCambioPerfil.ELIMINAR_VEHICULO) {
             validarEliminarVehiculo(negocio.getId(), req.idVehiculo());
+        } else if (req.codigoCambio() == CodigoCambioPerfil.NOMBRE_NEGOCIO) {
+            validarNombreNegocio(negocio.getId(), req.valorNuevo());
+        } else if (req.codigoCambio() == CodigoCambioPerfil.DIRECCION_BASE) {
+            validarDireccionBase(negocio.getId(), req.valorNuevo());
         }
 
         SolicitudCambioPerfil s = new SolicitudCambioPerfil();
@@ -142,13 +146,17 @@ public class SolicitudService {
                     new MapSqlParameterSource().addValue("url", str(v, "urlFotoPerfil")).addValue("neg", idNegocio));
             case DIRECCION_BASE -> jdbc.update("""
                     UPDATE negocios SET calle = :calle, numero_exterior = :ne, numero_interior = :ni,
-                        colonia = :col, codigo_postal = :cp,
-                        ubicacion_base = ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
+                        colonia = :col, codigo_postal = :cp, referencias = :ref,
+                        ubicacion_base = CASE
+                            WHEN :lat::numeric IS NOT NULL AND :lon::numeric IS NOT NULL
+                                THEN ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
+                            ELSE COALESCE(ubicacion_base, ST_SetSRID(ST_MakePoint(-99.1332, 19.4326), 4326)::geography)
+                        END
                     WHERE id_negocio = :neg""",
                     new MapSqlParameterSource().addValue("calle", str(v, "calle")).addValue("ne", str(v, "numeroExterior"))
                             .addValue("ni", str(v, "numeroInterior")).addValue("col", str(v, "colonia"))
-                            .addValue("cp", str(v, "codigoPostal")).addValue("lon", dbl(v, "lon"))
-                            .addValue("lat", dbl(v, "lat")).addValue("neg", idNegocio));
+                            .addValue("cp", str(v, "codigoPostal")).addValue("ref", str(v, "referencias"))
+                            .addValue("lon", dbl(v, "lon")).addValue("lat", dbl(v, "lat")).addValue("neg", idNegocio));
             case DATOS_VEHICULO -> {
                 String rawTipo = str(v, "tipoVehiculo");
                 var ps = new MapSqlParameterSource()
@@ -290,6 +298,44 @@ public class SolicitudService {
         }
     }
 
+    private void validarNombreNegocio(int idNegocio, Map<String, Object> v) {
+        String nombre = str(v, "nombreComercial");
+        if (nombre == null || nombre.trim().isBlank()) {
+            throw new BusinessRuleException("NOMBRE_INVALIDO", "El nombre comercial no puede estar vacío.");
+        }
+        if (nombre.trim().length() > 150) {
+            throw new BusinessRuleException("NOMBRE_INVALIDO", "El nombre comercial no puede exceder 150 caracteres.");
+        }
+        Integer yaPendiente = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM solicitudes_cambio_perfil
+                WHERE id_negocio = :neg AND estado = 'pendiente' AND codigo_cambio = 'NOMBRE_NEGOCIO'""",
+                new MapSqlParameterSource("neg", idNegocio), Integer.class);
+        if (yaPendiente != null && yaPendiente > 0) {
+            throw new ConflictException("SOLICITUD_PENDIENTE",
+                    "Ya existe una solicitud pendiente para cambiar el nombre comercial.");
+        }
+    }
+
+    private void validarDireccionBase(int idNegocio, Map<String, Object> v) {
+        String calle = str(v, "calle");
+        String numExt = str(v, "numeroExterior");
+        String colonia = str(v, "colonia");
+        String cp = str(v, "codigoPostal");
+        if (calle == null || calle.trim().isBlank() || numExt == null || numExt.trim().isBlank()
+                || colonia == null || colonia.trim().isBlank() || cp == null || cp.trim().isBlank()) {
+            throw new BusinessRuleException("DIRECCION_INVALIDA",
+                    "La dirección requiere calle, número exterior, colonia y código postal.");
+        }
+        Integer yaPendiente = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM solicitudes_cambio_perfil
+                WHERE id_negocio = :neg AND estado = 'pendiente' AND codigo_cambio = 'DIRECCION_BASE'""",
+                new MapSqlParameterSource("neg", idNegocio), Integer.class);
+        if (yaPendiente != null && yaPendiente > 0) {
+            throw new ConflictException("SOLICITUD_PENDIENTE",
+                    "Ya existe una solicitud pendiente para cambiar la dirección de la base.");
+        }
+    }
+
     private String valorAnterior(SolicitudRequest req, Negocio negocio) {
         return switch (req.codigoCambio()) {
             case NOMBRE_NEGOCIO -> negocio.getNombreComercial();
@@ -312,6 +358,20 @@ public class SolicitudService {
                     """,
                     new MapSqlParameterSource("v", req.idVehiculo()).addValue("n", negocio.getId()),
                     rs -> rs.next() ? rs.getString(1) : null) : null;
+            case DIRECCION_BASE -> jdbc.query(
+                    """
+                    SELECT json_build_object(
+                        'calle', calle,
+                        'numeroExterior', numero_exterior,
+                        'numeroInterior', numero_interior,
+                        'colonia', colonia,
+                        'codigoPostal', codigo_postal,
+                        'referencias', referencias
+                    )::text
+                    FROM negocios WHERE id_negocio = :n
+                    """,
+                    new MapSqlParameterSource("n", negocio.getId()),
+                    rs -> rs.next() ? rs.getString(1) : null);
             default -> null;
         };
     }

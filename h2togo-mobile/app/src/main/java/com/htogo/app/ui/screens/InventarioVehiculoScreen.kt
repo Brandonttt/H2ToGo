@@ -651,10 +651,22 @@ fun InventarioVehiculoScreen(
         SalidaManualDialog(
             marcas = marcasBase,
             onDismiss = { showSalidaManual = false },
-            onSalida = {
-                repartidorViewModel.devolverABase(
-                    onSuccess = { showSalidaManual = false },
-                    onError = { showSalidaManual = false }
+            onSalida = { idMarca, cantidad, motivo ->
+                repartidorViewModel.registrarSalidaManual(
+                    idMarca = idMarca,
+                    cantidad = cantidad,
+                    motivo = motivo,
+                    onSuccess = {
+                        showSalidaManual = false
+                        Toast.makeText(
+                            context,
+                            "Salida manual registrada: -$cantidad garrafones ($motivo)",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    },
+                    onError = { err ->
+                        Toast.makeText(context, "Error: $err", Toast.LENGTH_LONG).show()
+                    }
                 )
             }
         )
@@ -1992,15 +2004,18 @@ private fun QtyStepper(value: Int, max: Int, onChange: (Int) -> Unit) {
 private fun SalidaManualDialog(
     marcas: List<MarcaBaseStock>,
     onDismiss: () -> Unit,
-    onSalida: () -> Unit = {}
+    onSalida: (idMarca: Int, cantidad: Int, motivo: String) -> Unit
 ) {
-    var seleccionada by remember { mutableStateOf(marcas.firstOrNull()?.id ?: "") }
-    val seleccionMarca = marcas.firstOrNull { it.id == seleccionada } ?: marcas.first()
+    val marcasDisponibles = remember(marcas) { marcas.filter { it.enBase > 0 } }
+    val listaMarcas = if (marcasDisponibles.isNotEmpty()) marcasDisponibles else marcas
+    var seleccionada by remember { mutableStateOf(listaMarcas.firstOrNull()?.id ?: "") }
+    val seleccionMarca = listaMarcas.firstOrNull { it.id == seleccionada } ?: listaMarcas.firstOrNull()
     var cantidad by remember { mutableStateOf(1) }
     var motivo by remember { mutableStateOf("Merma / rotura") }
+    var enviando by remember { mutableStateOf(false) }
     val motivos = listOf("Merma / rotura", "Entrega fuera de la app", "Devolución a proveedor", "Ajuste de inventario")
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = { if (!enviando) onDismiss() }) {
         Surface(
             shape = RoundedCornerShape(20.dp),
             color = Color.White,
@@ -2033,40 +2048,53 @@ private fun SalidaManualDialog(
                 Spacer(Modifier.height(12.dp))
                 Text("MARCA", fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    marcas.forEach { m ->
-                        val sel = m.id == seleccionada
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .border(
-                                    1.dp,
-                                    if (sel) HToGoColors.Primary else HToGoColors.OutlineSoft,
-                                    RoundedCornerShape(10.dp)
+                if (listaMarcas.isEmpty()) {
+                    Text("No hay marcas configuradas en el negocio.", fontSize = 13.sp, color = HToGoColors.TextSecondary)
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listaMarcas.forEach { m ->
+                            val sel = m.id == seleccionada
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(
+                                        1.dp,
+                                        if (sel) HToGoColors.Primary else HToGoColors.OutlineSoft,
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                    .background(if (sel) HToGoColors.PrimaryWash else Color.White)
+                                    .clickable {
+                                        seleccionada = m.id
+                                        cantidad = minOf(cantidad, maxOf(1, m.enBase))
+                                    }
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "${m.nombre} · ${m.capacidad} — ${m.enBase} en base",
+                                    fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f)
                                 )
-                                .background(if (sel) HToGoColors.PrimaryWash else Color.White)
-                                .clickable {
-                                    seleccionada = m.id
-                                    cantidad = minOf(cantidad, m.enBase)
-                                }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "${m.nombre} · ${m.capacidad} — ${m.enBase} en base",
-                                fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (sel) Icon(Icons.Filled.CheckCircle, null, tint = HToGoColors.Primary,
-                                modifier = Modifier.size(18.dp))
+                                if (sel) Icon(Icons.Filled.CheckCircle, null, tint = HToGoColors.Primary,
+                                    modifier = Modifier.size(18.dp))
+                            }
                         }
                     }
                 }
                 Spacer(Modifier.height(14.dp))
                 Text("CANTIDAD A RESTAR", fontSize = 11.sp, color = HToGoColors.TextSecondary,
                     fontWeight = FontWeight.SemiBold)
-                QtyStepper(cantidad, max = seleccionMarca.enBase) { cantidad = it }
+                val maxDisponible = seleccionMarca?.enBase ?: 0
+                QtyStepper(cantidad, max = maxOf(1, maxDisponible)) { cantidad = it }
+                if (maxDisponible <= 0) {
+                    Text(
+                        "Sin stock disponible en base para esta marca",
+                        fontSize = 11.sp,
+                        color = HToGoColors.AccentRose,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
                 Spacer(Modifier.height(14.dp))
                 Text("MOTIVO", fontSize = 11.sp, color = HToGoColors.TextSecondary,
                     fontWeight = FontWeight.SemiBold)
@@ -2098,15 +2126,33 @@ private fun SalidaManualDialog(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
                         onClick = onDismiss,
+                        enabled = !enviando,
                         modifier = Modifier.weight(1f).height(46.dp),
                         shape = RoundedCornerShape(23.dp)
                     ) { Text("Cancelar") }
                     Button(
-                        onClick = { onSalida() },
+                        onClick = {
+                            val idMarcaInt = seleccionMarca?.id?.toIntOrNull()
+                            if (idMarcaInt != null && cantidad > 0 && maxDisponible >= cantidad) {
+                                enviando = true
+                                onSalida(idMarcaInt, cantidad, motivo)
+                            }
+                        },
+                        enabled = !enviando && seleccionMarca != null && maxDisponible >= cantidad && cantidad > 0,
                         modifier = Modifier.weight(1f).height(46.dp),
                         shape = RoundedCornerShape(23.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentRose)
-                    ) { Text("Confirmar salida", fontWeight = FontWeight.SemiBold) }
+                    ) {
+                        if (enviando) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Confirmar salida", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                 }
             }
         }
