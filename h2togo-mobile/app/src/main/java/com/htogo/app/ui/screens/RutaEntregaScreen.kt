@@ -14,8 +14,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
@@ -26,9 +29,13 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Warehouse
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.htogo.app.data.dto.DetalleResponse
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,6 +67,7 @@ data class EntregaActiva(
     val direccion: String,
     val notas: String,
     val productos: String,
+    val garrafonesTotales: Int = 1,
     val total: Double,
     val entregaActual: Int,
     val totalEntregas: Int,
@@ -138,6 +146,14 @@ fun RutaEntregaScreen(
         val latDest = pEnRuta?.latEntrega ?: pDisp?.latEntrega ?: 19.38204
         val lonDest = pEnRuta?.lonEntrega ?: pDisp?.lonEntrega ?: -99.16202
 
+        val cantGarrafones: Int = when {
+            !pEnRuta?.detalles.isNullOrEmpty() -> pEnRuta!!.detalles!!.sumOf { it.cantidad }
+            !pDisp?.detalles.isNullOrEmpty() -> pDisp!!.detalles!!.sumOf { it.cantidad }
+            (pEnRuta?.garrafonesTotales ?: 0) > 0 -> pEnRuta?.garrafonesTotales ?: 1
+            (pDisp?.garrafonesTotales ?: 0) > 0 -> pDisp?.garrafonesTotales ?: 1
+            else -> 1
+        }
+
         EntregaActiva(
             pedidoId = idStr,
             cliente = nombre,
@@ -146,6 +162,7 @@ fun RutaEntregaScreen(
             direccion = dir,
             notas = notasTxt,
             productos = prods,
+            garrafonesTotales = cantGarrafones,
             total = totalMonto,
             entregaActual = 1,
             totalEntregas = 1,
@@ -158,8 +175,11 @@ fun RutaEntregaScreen(
         liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) } ?: emptyList()
     }
 
-    // ---- GPS real del repartidor ----
-    val posicion by EntregaEnCursoService.posicion.collectAsState()
+    // ---- GPS real del repartidor (con soporte para modo de simulación de prueba) ----
+    var posicionSimulada by remember { mutableStateOf<com.htogo.app.data.location.Posicion?>(null) }
+    val posicionReal by EntregaEnCursoService.posicion.collectAsState()
+    val posicion = posicionSimulada ?: posicionReal
+
     var tienePermiso by remember { mutableStateOf(UbicacionTracker.tienePermiso(context)) }
     val pedirPermiso = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         tienePermiso = r[Manifest.permission.ACCESS_FINE_LOCATION] == true
@@ -169,22 +189,52 @@ fun RutaEntregaScreen(
             pedirPermiso.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
     }
+    LaunchedEffect(entrega.pedidoId) {
+        val idInt = entrega.pedidoId.toIntOrNull()
+        if (idInt != null && (livePedidoEnRuta?.detalles.isNullOrEmpty())) {
+            repartidorViewModel.cargarPedidoEnRuta(idInt)
+        }
+    }
+    var errorCargaBase by remember { mutableStateOf<String?>(null) }
     var enCaminoSolicitado by remember(entrega.pedidoId) { mutableStateOf(false) }
+
+    // Si se activa la simulación, reportamos la posición simulada al backend y recalculamos ruta
+    LaunchedEffect(posicionSimulada) {
+        val sim = posicionSimulada ?: return@LaunchedEffect
+        val idInt = entrega.pedidoId.toIntOrNull() ?: return@LaunchedEffect
+        if (!enCaminoSolicitado && livePedidoEnRuta?.estado.equals("asignado", ignoreCase = true)) {
+            enCaminoSolicitado = true
+            repartidorViewModel.marcarEnCamino(idInt, sim.lat, sim.lon, onError = { err ->
+                enCaminoSolicitado = false
+                if (err.contains("apartados en la base", ignoreCase = true) || err.contains("CARGA_PENDIENTE", ignoreCase = true)) {
+                    errorCargaBase = err
+                }
+            })
+        }
+        repartidorViewModel.alMoverse(idInt, sim, forzar = true)
+    }
+
     // El GPS vive en un servicio en primer plano: sigue reportando aunque se abra Waze/Maps.
     LaunchedEffect(tienePermiso, entrega.pedidoId) {
         val idInt = entrega.pedidoId.toIntOrNull() ?: return@LaunchedEffect
         if (!tienePermiso) return@LaunchedEffect
         EntregaEnCursoService.iniciar(context, idInt)
         EntregaEnCursoService.posicion.filterNotNull().collect { p ->
-            // Con el primer fix el pedido pasa a "en camino": el cliente empieza a ver el rastreo.
-            if (!enCaminoSolicitado && livePedidoEnRuta?.estado.equals("asignado", ignoreCase = true)) {
-                enCaminoSolicitado = true
-                repartidorViewModel.marcarEnCamino(idInt, p.lat, p.lon, onError = { err ->
-                    enCaminoSolicitado = false
-                    Toast.makeText(context, err, Toast.LENGTH_LONG).show()
-                })
+            if (posicionSimulada == null) {
+                // Con el primer fix el pedido pasa a "en camino": el cliente empieza a ver el rastreo.
+                if (!enCaminoSolicitado && livePedidoEnRuta?.estado.equals("asignado", ignoreCase = true)) {
+                    enCaminoSolicitado = true
+                    repartidorViewModel.marcarEnCamino(idInt, p.lat, p.lon, onError = { err ->
+                        enCaminoSolicitado = false
+                        if (err.contains("apartados en la base", ignoreCase = true) || err.contains("CARGA_PENDIENTE", ignoreCase = true)) {
+                            errorCargaBase = err
+                        } else {
+                            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                        }
+                    })
+                }
+                repartidorViewModel.alMoverse(idInt, p)
             }
-            repartidorViewModel.alMoverse(idInt, p)
         }
     }
     DisposableEffect(Unit) { onDispose { repartidorViewModel.detenerNavegacion() } }
@@ -237,6 +287,7 @@ fun RutaEntregaScreen(
             }
 
             // Header superior flotante
+            var menuOpciones by remember { mutableStateOf(false) }
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -252,7 +303,72 @@ fun RutaEntregaScreen(
                     total = entrega.totalEntregas
                 )
                 Spacer(Modifier.width(8.dp))
-                FloatingIconButton(Icons.Filled.MoreVert, {})
+                Box {
+                    FloatingIconButton(Icons.Filled.MoreVert, { menuOpciones = true })
+                    DropdownMenu(
+                        expanded = menuOpciones,
+                        onDismissRequest = { menuOpciones = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    if (posicionSimulada == null) "🧪 Simular GPS en Benito Juárez (a 30 m)"
+                                    else "📍 Usar GPS real del teléfono"
+                                )
+                            },
+                            onClick = {
+                                menuOpciones = false
+                                if (posicionSimulada == null) {
+                                    // Simula estar a ~30 metros del domicilio para probar la llegada y entrega
+                                    val latSim = entrega.latDestino + 0.00025
+                                    val lonSim = entrega.lonDestino + 0.00015
+                                    posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
+                                    Toast.makeText(context, "GPS simulado en Benito Juárez (a ~30 m del destino)", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    posicionSimulada = null
+                                    Toast.makeText(context, "Volviendo al GPS real", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
+                        if (posicionSimulada != null) {
+                            DropdownMenuItem(
+                                text = { Text("🚗 Simular en ruta (a 1.2 km)") },
+                                onClick = {
+                                    menuOpciones = false
+                                    val latSim = entrega.latDestino + 0.010
+                                    val lonSim = entrega.lonDestino - 0.005
+                                    posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
+                                    Toast.makeText(context, "GPS simulado en ruta en Benito Juárez (a ~1.2 km)", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Indicador compacto si el GPS está en modo simulación de prueba
+            if (posicionSimulada != null) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFF7C3AED).copy(alpha = 0.92f),
+                    shadowElevation = 3.dp,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(top = 96.dp, start = 12.dp)
+                        .clickable { posicionSimulada = null }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "🧪 Simulado ✕",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
 
             // Tarjeta inferior con información del pedido
@@ -265,6 +381,55 @@ fun RutaEntregaScreen(
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
                 Column(Modifier.padding(18.dp)) {
+                    if (errorCargaBase != null) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = HToGoColors.AccentAmber.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, HToGoColors.AccentAmber),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Filled.Warning, null, tint = HToGoColors.AccentAmber, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Carga pendiente en la base", fontWeight = FontWeight.Bold, color = HToGoColors.AccentAmber, fontSize = 13.sp)
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    errorCargaBase ?: "Hay garrafones apartados en la base para este pedido. Debes cargarlos al vehículo antes de iniciar la ruta (CU-011 / CU-019).",
+                                    fontSize = 11.sp,
+                                    color = HToGoColors.TextPrimary
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        val idInt = entrega.pedidoId.toIntOrNull() ?: return@Button
+                                        repartidorViewModel.cargarApartadosBase(
+                                            id = idInt,
+                                            onSuccess = {
+                                                errorCargaBase = null
+                                                Toast.makeText(context, "Garrafones cargados al vehículo", Toast.LENGTH_SHORT).show()
+                                                posicion?.let { pos ->
+                                                    repartidorViewModel.marcarEnCamino(idInt, pos.lat, pos.lon)
+                                                }
+                                            },
+                                            onError = { err ->
+                                                Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                                            }
+                                        )
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentAmber),
+                                    modifier = Modifier.fillMaxWidth().height(36.dp),
+                                    shape = RoundedCornerShape(18.dp)
+                                ) {
+                                    Icon(Icons.Filled.Warehouse, null, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Cargar garrafones al vehículo", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+                    }
+
                     if (estado == EstadoRuta.EN_RUTA) {
                         EnRutaSheet(
                             entrega, distanciaDestinoM,
@@ -342,8 +507,9 @@ fun RutaEntregaScreen(
         if (mostrarModalEntregado) {
             ModalEntregado(
                 entrega = entrega,
+                detalles = livePedidoEnRuta?.detalles ?: emptyList(),
                 onDismiss = { mostrarModalEntregado = false },
-                onConfirm = {
+                onConfirm = { lineasPayload ->
                     val idInt = entrega.pedidoId.toIntOrNull()
                     val p = posicion
                     if (idInt != null && p != null) {
@@ -352,6 +518,7 @@ fun RutaEntregaScreen(
                             esEntregado = true,
                             lat = p.lat,
                             lon = p.lon,
+                            lineas = lineasPayload,
                             onSuccess = {
                                 EntregaEnCursoService.detener(context)
                                 Toast.makeText(context, "¡Entrega completada con éxito!", Toast.LENGTH_SHORT).show()
@@ -519,13 +686,24 @@ private fun EnRutaSheet(entrega: EntregaActiva, distanciaDestinoM: Double?, ruta
                         color = HToGoColors.TextSecondary
                     )
                     if (rutaNoDisponible && rutaKm == null) {
-                        Text(
-                            "Sin ruta calculada: estás fuera de la zona con mapa de calles (Benito Juárez). Usa Navegar.",
-                            fontSize = 11.sp,
-                            color = HToGoColors.AccentAmber,
-                            lineHeight = 14.sp,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = HToGoColors.AccentAmber.copy(alpha = 0.15f),
+                            modifier = Modifier.padding(top = 6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "⚠️ Estás fuera de Benito Juárez. Toca el menú (⋮) arriba para simular GPS o usa 'Navegar' para abrir tu app externa.",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFFB45309),
+                                    lineHeight = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
                 Box {
@@ -806,49 +984,265 @@ private fun PagoBox(entrega: EntregaActiva, soloTotal: Boolean) {
     }
 }
 
+private data class ItemLineaEntrega(
+    val idDetalle: Int?,
+    val idMarca: Int,
+    val nombreMarca: String,
+    val cantidadSolicitada: Int,
+    val cantidadEntregada: Int,
+    val tieneEnvase: Boolean,
+    val envaseApto: Boolean = true,
+    val cobrarEnvaseNuevo: Boolean = false,
+    val precioUnitario: Double,
+    val precioEnvaseUnitario: Double
+)
+
 @Composable
 private fun ModalEntregado(
     entrega: EntregaActiva,
+    detalles: List<DetalleResponse>,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: (List<com.htogo.app.data.dto.LineaResultadoDto>) -> Unit
 ) {
+    var lineasState by remember(detalles) {
+        val list = if (detalles.isNotEmpty()) {
+            detalles.map { d ->
+                ItemLineaEntrega(
+                    idDetalle = d.id,
+                    idMarca = d.idMarca,
+                    nombreMarca = d.nombreMarca ?: "Garrafón 20 L",
+                    cantidadSolicitada = d.cantidad,
+                    cantidadEntregada = d.cantidad,
+                    tieneEnvase = d.tieneEnvase,
+                    envaseApto = true,
+                    cobrarEnvaseNuevo = false,
+                    precioUnitario = d.precioUnitario ?: (d.subtotal?.div(d.cantidad) ?: 45.0),
+                    precioEnvaseUnitario = d.precioEnvaseUnitario ?: 80.0
+                )
+            }
+        } else {
+            listOf(
+                ItemLineaEntrega(
+                    idDetalle = null,
+                    idMarca = 1,
+                    nombreMarca = "Garrafón 20 L",
+                    cantidadSolicitada = entrega.garrafonesTotales.coerceAtLeast(1),
+                    cantidadEntregada = entrega.garrafonesTotales.coerceAtLeast(1),
+                    tieneEnvase = true,
+                    envaseApto = true,
+                    cobrarEnvaseNuevo = false,
+                    precioUnitario = entrega.total / entrega.garrafonesTotales.coerceAtLeast(1),
+                    precioEnvaseUnitario = 80.0
+                )
+            )
+        }
+        mutableStateOf(list)
+    }
+
+    val totalRecalculado = remember(lineasState) {
+        lineasState.sumOf { item ->
+            val pAgua = item.precioUnitario
+            val pEnvase = if (!item.tieneEnvase || item.cobrarEnvaseNuevo) item.precioEnvaseUnitario else 0.0
+            item.cantidadEntregada * (pAgua + pEnvase)
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Confirmar entrega", fontWeight = FontWeight.SemiBold) },
+        title = { Text("Registrar entrega en sitio", fontWeight = FontWeight.SemiBold) },
         text = {
-            Column {
-                Text(
-                    "Verifica el cobro antes de confirmar.",
-                    fontSize = 13.sp,
-                    color = HToGoColors.TextSecondary
-                )
-                Spacer(Modifier.height(12.dp))
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = HToGoColors.StatusEntregado.copy(alpha = .08f),
-                    border = BorderStroke(1.dp, HToGoColors.StatusEntregado.copy(alpha = .25f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Payments, null, tint = HToGoColors.StatusEntregado)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                "Total cobrado en efectivo",
-                                fontSize = 11.sp,
-                                color = HToGoColors.TextSecondary
-                            )
-                            Text(
-                                "$%.0f MXN".format(entrega.total),
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = HToGoColors.StatusEntregado
-                            )
-                            Text(
-                                "${entrega.productos} · ${entrega.cliente}",
-                                fontSize = 11.sp,
-                                color = HToGoColors.TextSecondary
-                            )
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
+                    Text(
+                        "Revisa físicamente los envases recibidos y confirma las cantidades por línea (CU-012 / RN-032).",
+                        fontSize = 12.sp,
+                        color = HToGoColors.TextSecondary
+                    )
+                }
+
+                items(lineasState.indices.toList()) { index ->
+                    val linea = lineasState[index]
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(10.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        linea.nombreMarca,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = HToGoColors.TextPrimary
+                                    )
+                                    Text(
+                                        "Solicitados: ${linea.cantidadSolicitada} · $%.0f c/u".format(linea.precioUnitario),
+                                        fontSize = 11.sp,
+                                        color = HToGoColors.TextSecondary
+                                    )
+                                }
+
+                                // Controles de cantidad entregada (Entrega parcial / S4)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(
+                                        onClick = {
+                                            if (linea.cantidadEntregada > 0) {
+                                                val updated = lineasState.toMutableList()
+                                                updated[index] = linea.copy(cantidadEntregada = linea.cantidadEntregada - 1)
+                                                lineasState = updated
+                                            }
+                                        },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(Icons.Filled.Remove, null, tint = HToGoColors.Primary)
+                                    }
+                                    Text(
+                                        "${linea.cantidadEntregada}",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp)
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            if (linea.cantidadEntregada < linea.cantidadSolicitada) {
+                                                val updated = lineasState.toMutableList()
+                                                updated[index] = linea.copy(cantidadEntregada = linea.cantidadEntregada + 1)
+                                                lineasState = updated
+                                            }
+                                        },
+                                        modifier = Modifier.size(28.dp),
+                                        enabled = linea.cantidadEntregada < linea.cantidadSolicitada
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Add, null,
+                                            tint = if (linea.cantidadEntregada < linea.cantidadSolicitada) HToGoColors.Primary else HToGoColors.TextTertiary
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.height(6.dp))
+
+                            // Validación física del envase del cliente (CU-012 Paso 5 y Flujo S3)
+                            if (linea.tieneEnvase) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (linea.envaseApto) HToGoColors.StatusEntregado.copy(alpha = 0.08f) else HToGoColors.AccentRose.copy(alpha = 0.08f),
+                                    border = BorderStroke(1.dp, if (linea.envaseApto) HToGoColors.StatusEntregado.copy(alpha = 0.3f) else HToGoColors.AccentRose.copy(alpha = 0.3f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(Modifier.padding(8.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                if (linea.envaseApto) "✓ Envase del cliente apto" else "⚠ Envase dañado / no apto",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = if (linea.envaseApto) HToGoColors.StatusEntregado else HToGoColors.AccentRose
+                                            )
+                                            TextButton(
+                                                onClick = {
+                                                    val updated = lineasState.toMutableList()
+                                                    val nuevoApto = !linea.envaseApto
+                                                    updated[index] = linea.copy(
+                                                        envaseApto = nuevoApto,
+                                                        cobrarEnvaseNuevo = if (nuevoApto) false else linea.cobrarEnvaseNuevo
+                                                    )
+                                                    lineasState = updated
+                                                },
+                                                contentPadding = PaddingValues(0.dp)
+                                            ) {
+                                                Text(if (linea.envaseApto) "Marcar dañado" else "Marcar apto", fontSize = 11.sp)
+                                            }
+                                        }
+
+                                        // Flujo S3: opciones si el envase no es apto
+                                        if (!linea.envaseApto) {
+                                            Text(
+                                                "El envase no está en condiciones. ¿Desea el cliente pagar un envase nuevo?",
+                                                fontSize = 11.sp,
+                                                color = HToGoColors.TextSecondary
+                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.padding(top = 4.dp)
+                                            ) {
+                                                Checkbox(
+                                                    checked = linea.cobrarEnvaseNuevo,
+                                                    onCheckedChange = { chk ->
+                                                        val updated = lineasState.toMutableList()
+                                                        updated[index] = linea.copy(cobrarEnvaseNuevo = chk)
+                                                        lineasState = updated
+                                                    }
+                                                )
+                                                Text(
+                                                    "Cobrar envase nuevo (+ $%.0f MXN)".format(linea.precioEnvaseUnitario),
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = HToGoColors.AccentAmber.copy(alpha = 0.08f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        "Pedido sin envase retornado (incluye envase nuevo: +$%.0f MXN)".format(linea.precioEnvaseUnitario),
+                                        fontSize = 11.sp,
+                                        color = HToGoColors.AccentAmber,
+                                        modifier = Modifier.padding(6.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    // Resumen y Total a cobrar
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = HToGoColors.StatusEntregado.copy(alpha = .08f),
+                        border = BorderStroke(1.dp, HToGoColors.StatusEntregado.copy(alpha = .25f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Payments, null, tint = HToGoColors.StatusEntregado)
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "Total definitivo a cobrar",
+                                    fontSize = 11.sp,
+                                    color = HToGoColors.TextSecondary
+                                )
+                                Text(
+                                    "$%.2f MXN".format(totalRecalculado),
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = HToGoColors.StatusEntregado
+                                )
+                                Text(
+                                    "Efectivo / Transferencia / Tarjeta",
+                                    fontSize = 10.sp,
+                                    color = HToGoColors.TextSecondary
+                                )
+                            }
                         }
                     }
                 }
@@ -856,12 +1250,43 @@ private fun ModalEntregado(
         },
         confirmButton = {
             Button(
-                onClick = onConfirm,
+                onClick = {
+                    val lineasPayload = mutableListOf<com.htogo.app.data.dto.LineaResultadoDto>()
+                    for (l in lineasState) {
+                        if (l.idDetalle != null) {
+                            lineasPayload.add(
+                                com.htogo.app.data.dto.LineaResultadoDto(
+                                    idDetalle = l.idDetalle,
+                                    cantidadEntregada = l.cantidadEntregada,
+                                    agregadaEnSitio = false
+                                )
+                            )
+                        } else {
+                            lineasPayload.add(
+                                com.htogo.app.data.dto.LineaResultadoDto(
+                                    idMarca = l.idMarca,
+                                    cantidadEntregada = l.cantidadEntregada,
+                                    agregadaEnSitio = false
+                                )
+                            )
+                        }
+                        if (l.cobrarEnvaseNuevo && l.cantidadEntregada > 0) {
+                            lineasPayload.add(
+                                com.htogo.app.data.dto.LineaResultadoDto(
+                                    idMarca = l.idMarca,
+                                    cantidadEntregada = l.cantidadEntregada,
+                                    agregadaEnSitio = true
+                                )
+                            )
+                        }
+                    }
+                    onConfirm(lineasPayload)
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.StatusEntregado)
             ) {
                 Icon(Icons.Filled.CheckCircle, null)
                 Spacer(Modifier.width(4.dp))
-                Text("Confirmar entrega")
+                Text("Confirmar entrega ($%.0f)".format(totalRecalculado))
             }
         },
         dismissButton = {

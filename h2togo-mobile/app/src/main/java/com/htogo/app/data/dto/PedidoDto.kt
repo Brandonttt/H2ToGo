@@ -75,12 +75,15 @@ data class CoordenadaDto(
 )
 
 data class DetalleResponse(
+    @SerializedName(value = "id", alternate = ["idDetalle"]) val id: Int? = null,
     @SerializedName("idMarca") val idMarca: Int,
     @SerializedName("nombreMarca") val nombreMarca: String?,
     // El backend lo manda como "cantidadSolicitada"; "cantidad" se acepta por compatibilidad.
     @SerializedName(value = "cantidad", alternate = ["cantidadSolicitada"]) val cantidad: Int,
     @SerializedName("tieneEnvase") val tieneEnvase: Boolean,
-    @SerializedName("subtotal") val subtotal: Double?
+    @SerializedName("subtotal") val subtotal: Double?,
+    @SerializedName("precioUnitario") val precioUnitario: Double? = null,
+    @SerializedName("precioEnvaseUnitario") val precioEnvaseUnitario: Double? = null
 )
 
 data class HistorialResponse(
@@ -147,3 +150,18 @@ data class PagedResponseDto<T>(
     val elementos: List<T>
         get() = contenido ?: items ?: emptyList()
 }
+
+data class ResultadoEntregaRequestDto(
+    @SerializedName("resultado") val resultado: String, // "ENTREGADO" o "NO_ENTREGADO"
+    @SerializedName("lat") val lat: Double,
+    @SerializedName("lon") val lon: Double,
+    @SerializedName("motivoNoEntrega") val motivoNoEntrega: String? = null,
+    @SerializedName("lineas") val lineas: List<LineaResultadoDto>? = null
+)
+
+data class LineaResultadoDto(
+    @SerializedName("idDetalle") val idDetalle: Int? = null,
+    @SerializedName("idMarca") val idMarca: Int? = null,
+    @SerializedName("cantidadEntregada") val cantidadEntregada: Int,
+    @SerializedName("agregadaEnSitio") val agregadaEnSitio: Boolean = false
+)

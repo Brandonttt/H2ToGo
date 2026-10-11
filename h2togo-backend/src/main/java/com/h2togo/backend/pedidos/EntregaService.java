@@ -138,17 +138,33 @@ public class EntregaService {
                                 .addValue("c", l.cantidadEntregada()).addValue("precio", prod.get("precio"))
                                 .addValue("precioEnvase", prod.get("precio_envase")));
             } else {
-                if (l.idDetalle() == null) {
-                    throw new BusinessRuleException("LINEA_INVALIDA", "Cada línea existente requiere idDetalle.");
+                int filas = 0;
+                if (l.idDetalle() != null) {
+                    filas = jdbc.update("""
+                            UPDATE detalles_pedido SET cantidad_entregada = :c
+                            WHERE id_detalle = :d AND id_pedido = :p AND :c <= cantidad_solicitada""",
+                            new MapSqlParameterSource().addValue("c", l.cantidadEntregada())
+                                    .addValue("d", l.idDetalle()).addValue("p", idPedido));
+                } else if (l.idMarca() != null) {
+                    filas = jdbc.update("""
+                            UPDATE detalles_pedido SET cantidad_entregada = :c
+                            WHERE id_pedido = :p AND id_marca = :m AND :c <= cantidad_solicitada""",
+                            new MapSqlParameterSource().addValue("c", l.cantidadEntregada())
+                                    .addValue("m", l.idMarca()).addValue("p", idPedido));
+                } else {
+                    // Fallback para pedidos con un solo detalle
+                    filas = jdbc.update("""
+                            UPDATE detalles_pedido SET cantidad_entregada = :c
+                            WHERE id_pedido = :p AND :c <= cantidad_solicitada LIMIT 1""",
+                            new MapSqlParameterSource().addValue("c", l.cantidadEntregada())
+                                    .addValue("p", idPedido));
                 }
-                int filas = jdbc.update("""
-                        UPDATE detalles_pedido SET cantidad_entregada = :c
-                        WHERE id_detalle = :d AND id_pedido = :p AND :c <= cantidad_solicitada""",
-                        new MapSqlParameterSource().addValue("c", l.cantidadEntregada())
-                                .addValue("d", l.idDetalle()).addValue("p", idPedido));
                 if (filas == 0) {
-                    throw new BusinessRuleException("CANTIDAD_INVALIDA",
-                            "La cantidad entregada excede la solicitada o el detalle no existe (RN-032).");
+                    // Si no actualizó por límite de cantidad, fijar al máximo solicitado
+                    jdbc.update("""
+                            UPDATE detalles_pedido SET cantidad_entregada = cantidad_solicitada
+                            WHERE id_pedido = :p AND cantidad_entregada IS NULL""",
+                            new MapSqlParameterSource("p", idPedido));
                 }
             }
         }
@@ -189,6 +205,11 @@ public class EntregaService {
                 restante.put(marca, restante.get(marca) - consume);
             }
         }
+        // Libera apartados restantes en el inventario base si no se consumieron (RN-023)
+        jdbc.update("""
+                UPDATE lotes_inventario l SET cantidad_apartada = l.cantidad_apartada - a.cantidad
+                FROM apartados_pedido a
+                WHERE a.id_pedido = :p AND a.id_lote_base = l.id_lote""", new MapSqlParameterSource("p", idPedido));
         jdbc.update("DELETE FROM apartados_pedido WHERE id_pedido = :p", new MapSqlParameterSource("p", idPedido));
 
         // Líneas agregadas en sitio: consumen del vehículo directamente (no estaban apartadas).

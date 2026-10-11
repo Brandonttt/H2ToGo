@@ -35,7 +35,8 @@ public final class PedidoMapper {
     }
 
     private static DetalleResponse toDetalle(DetallePedido d) {
-        return new DetalleResponse(d.getId(), d.getIdMarca(), d.getCantidadSolicitada(),
+        String nombreMarca = d.getMarca() != null ? d.getMarca().getNombre() : null;
+        return new DetalleResponse(d.getId(), d.getIdMarca(), nombreMarca, d.getCantidadSolicitada(),
                 d.getCantidadEntregada(), d.isTieneEnvase(), d.getPrecioUnitario(),
                 d.getPrecioEnvaseUnitario(), d.isAgregadaEnSitio());
     }

@@ -38,6 +38,10 @@ public class DetallePedido {
     @Column(name = "id_marca", nullable = false)
     private Integer idMarca;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_marca", insertable = false, updatable = false)
+    private com.h2togo.backend.catalogo.Marca marca;
+
     @Column(name = "cantidad_solicitada", nullable = false)
     private Integer cantidadSolicitada;
 

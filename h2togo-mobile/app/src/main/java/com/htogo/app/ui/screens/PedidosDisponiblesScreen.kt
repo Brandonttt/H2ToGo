@@ -615,6 +615,45 @@ private fun AceptarPedidoDialog(
                         }
                     }
                 }
+                if (pedido.detalles.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Desglose por línea de pedido:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = HToGoColors.TextPrimary
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    pedido.detalles.forEach { d ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF8FAFC),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        "${d.cantidad} × ${d.nombreMarca ?: "Garrafón 20 L"}",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = HToGoColors.TextPrimary
+                                    )
+                                    Text(
+                                        if (d.tieneEnvase) "✓ Envase retornado (propio del cliente)"
+                                        else "⚠ Requiere envase nuevo (sin envase)",
+                                        fontSize = 11.sp,
+                                        color = if (d.tieneEnvase) HToGoColors.StatusEntregado else HToGoColors.AccentAmber
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
                 Spacer(Modifier.height(10.dp))
                 StockNotice(stockInfo)
             }

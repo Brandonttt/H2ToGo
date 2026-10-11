@@ -11,11 +11,22 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 
 class OsmBridge(private val onLocationChange: (Double, Double) -> Unit) {
@@ -164,20 +175,21 @@ fun OsmMapView(
                   attributionControl: false
                 });
 
-                var tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                  maxZoom: 19,
-                  attribution: '&copy; OpenStreetMap'
+                // Capa estándar limpia (Google Maps Road) que funciona en WebViews Android sin API keys ni marcas de agua
+                var googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20 });
+                // Capa OpenStreetMap Humanitaria (HOT) con subdominios públicos libres
+                var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+                  subdomains: 'abc',
+                  maxZoom: 19
                 });
+                var currentTileLayer = googleLayer;
+                currentTileLayer.addTo(map);
 
-                tileLayer.on('tileload', function(e) {
-                  console.log("OSM TILE LOADED: " + e.coords.z + "/" + e.coords.x + "/" + e.coords.y);
-                });
-
-                tileLayer.on('tileerror', function(e) {
-                  console.error("OSM TILE ERROR: " + (e.tile ? e.tile.src : "unknown"));
-                });
-
-                tileLayer.addTo(map);
+                window.setCapa = function(tipo) {
+                  if (currentTileLayer) map.removeLayer(currentTileLayer);
+                  currentTileLayer = (tipo === 'osm') ? osmLayer : googleLayer;
+                  currentTileLayer.addTo(map);
+                };
 
                 marker = L.marker([initialLat, initialLon], {
                   icon: customIcon,
@@ -334,5 +346,36 @@ fun OsmMapView(
             },
             modifier = Modifier.fillMaxSize()
         )
+
+        var capaOsm by remember { mutableStateOf(false) }
+        if (isInteractive) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color.White.copy(alpha = 0.95f),
+                shadowElevation = 3.dp,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .clickable {
+                        capaOsm = !capaOsm
+                        webViewInstance?.evaluateJavascript(
+                            "if (window.setCapa) window.setCapa('${if (capaOsm) "osm" else "google"}');",
+                            null
+                        )
+                    }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        if (capaOsm) "🗺️ OSM" else "🗺️ Google Maps",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (capaOsm) Color(0xFF0284C7) else Color(0xFF1A73E8)
+                    )
+                }
+            }
+        }
     }
 }

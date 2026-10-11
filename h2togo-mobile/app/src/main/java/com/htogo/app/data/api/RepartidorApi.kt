@@ -24,10 +24,13 @@ interface RepartidorApi {
         @Body ubicacion: Map<String, Double>
     ): Response<PedidoResponse>
 
+    @POST("pedidos/{id}/cargar-apartados-base")
+    suspend fun cargarApartadosBase(@Path("id") id: Int): Response<PedidoResponse>
+
     @POST("pedidos/{id}/resultado")
     suspend fun finalizarEntrega(
         @Path("id") id: Int,
-        @Body resultado: Map<String, Any>
+        @Body resultado: com.htogo.app.data.dto.ResultadoEntregaRequestDto
     ): Response<PedidoResponse>
 
     @PUT("repartidores/me/ubicacion")

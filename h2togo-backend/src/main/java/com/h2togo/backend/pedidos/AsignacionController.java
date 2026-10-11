@@ -39,6 +39,11 @@ public class AsignacionController {
                 request.lat(), request.lon());
     }
 
+    @PostMapping("/{id}/cargar-apartados-base")
+    public PedidoResponse cargarApartadosBase(@PathVariable int id) {
+        return asignacionService.cargarApartadosBase(SecurityUtils.exigirRol(RolUsuario.repartidor), id);
+    }
+
     @PostMapping("/{id}/resultado")
     public PedidoResponse resultado(@PathVariable int id, @Valid @RequestBody ResultadoEntregaRequest request) {
         return entregaService.resultado(SecurityUtils.exigirRol(RolUsuario.repartidor), id, request);

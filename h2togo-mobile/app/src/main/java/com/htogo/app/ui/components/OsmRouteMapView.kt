@@ -6,11 +6,26 @@ import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 
 /**
@@ -81,7 +96,22 @@ fun OsmRouteMapView(
               center: [$destLat, $destLon], zoom: 15, zoomControl: false, attributionControl: false,
               dragging: $isInteractive, touchZoom: $isInteractive, doubleClickZoom: $isInteractive, scrollWheelZoom: $isInteractive
             });
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+            // Capa estándar limpia (Google Maps Road) que funciona siempre sin bloqueos ni marcas de agua en WebViews Android
+            var googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20 });
+            // Capa OpenStreetMap Humanitaria (HOT) con subdominios públicos libres
+            var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+              subdomains: 'abc',
+              maxZoom: 19
+            });
+            var currentLayer = googleLayer;
+            currentLayer.addTo(map);
+
+            function setCapa(tipo) {
+              if (currentLayer) map.removeLayer(currentLayer);
+              currentLayer = (tipo === 'osm') ? osmLayer : googleLayer;
+              currentLayer.addTo(map);
+            }
+
             if (window.ResizeObserver) new ResizeObserver(ajustarTamano).observe(document.body);
             window.addEventListener('resize', ajustarTamano);
             [100, 350, 800].forEach(function (ms) { setTimeout(ajustarTamano, ms); });
@@ -124,6 +154,7 @@ fun OsmRouteMapView(
         routePoints.joinToString(prefix = "[", postfix = "]") { "[${it.first},${it.second}]" }
     }
     val etiquetaJs = remember(repartidorLabel) { repartidorLabel.replace("\\", "").replace("'", "\\'") }
+    var esGoogleMaps by remember { mutableStateOf(false) }
 
     LaunchedEffect(listo, originLat, originLon, destLat, destLon, rutaJson, etiquetaJs) {
         if (!listo) return@LaunchedEffect
@@ -162,5 +193,65 @@ fun OsmRouteMapView(
                 }
             }
         )
+
+        // CU-017 Flujo S1: Indicador de búsqueda de señal GPS
+        if (originLat == null || originLon == null) {
+            androidx.compose.material3.Surface(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.75f),
+                modifier = Modifier
+                    .align(androidx.compose.ui.Alignment.TopCenter)
+                    .padding(top = 96.dp)
+            ) {
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        color = androidx.compose.ui.graphics.Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    androidx.compose.material3.Text(
+                        "Buscando señal GPS...",
+                        color = androidx.compose.ui.graphics.Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        var capaOsm by remember { mutableStateOf(false) }
+
+        // CU-017: Selector de capas de mapa (Google Maps / OSM)
+        androidx.compose.material3.Surface(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.95f),
+            shadowElevation = 4.dp,
+            modifier = Modifier
+                .align(androidx.compose.ui.Alignment.TopEnd)
+                .padding(top = 96.dp, end = 12.dp)
+                .clickable {
+                    capaOsm = !capaOsm
+                    webViewRef?.evaluateJavascript(
+                        "setCapa('${if (capaOsm) "osm" else "google"}');",
+                        null
+                    )
+                }
+        ) {
+            androidx.compose.foundation.layout.Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.Text(
+                    if (capaOsm) "🗺️ OSM" else "🗺️ Google Maps",
+                    fontSize = 11.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = if (capaOsm) androidx.compose.ui.graphics.Color(0xFF0284C7) else androidx.compose.ui.graphics.Color(0xFF1A73E8)
+                )
+            }
+        }
     }
 }

@@ -688,13 +688,13 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
 
     /**
      * Cada fix del GPS (lo reporta al backend [EntregaEnCursoService]): recalcula la ruta si el
-     * repartidor se movió más de 60 m desde el último cálculo, como mucho cada 20 s.
+     * repartidor se movió más de 60 m desde el último cálculo, como mucho cada 20 s (o si forzar = true).
      */
-    fun alMoverse(idPedido: Int, p: com.htogo.app.data.location.Posicion) {
+    fun alMoverse(idPedido: Int, p: com.htogo.app.data.location.Posicion, forzar: Boolean = false) {
         if (calculandoRuta) return
         val ahora = System.currentTimeMillis()
         val origen = origenRuta
-        val recalcular = origen == null || (ahora - ultimaRutaMs >= 20_000 &&
+        val recalcular = forzar || origen == null || (ahora - ultimaRutaMs >= 20_000 &&
             com.htogo.app.data.location.UbicacionTracker.distanciaM(origen.lat, origen.lon, p.lat, p.lon) > 60)
         if (!recalcular) return
         calculandoRuta = true
@@ -765,9 +765,34 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    fun cargarApartadosBase(
+        id: Int,
+        onSuccess: (PedidoResponse) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val resp = apiClient.repartidorApi.cargarApartadosBase(id)
+                if (resp.isSuccessful && resp.body() != null) {
+                    _pedidoEnRuta.value = resp.body()!!
+                    cargarInventarios()
+                    onSuccess(resp.body()!!)
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudieron cargar los apartados (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de red al cargar apartados de la base")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     /**
      * CU-012. El backend exige la posición actual: para ENTREGADO valida que esté a ≤ 50 m del
-     * domicilio (RF-014); para NO_ENTREGADO exige el motivo.
+     * domicilio (RF-014); para NO_ENTREGADO exige el motivo. Las líneas permiten ajustes en sitio
+     * y cobro de envases nuevos (RN-032 / RN-033).
      */
     fun registrarResultadoEntrega(
         id: Int,
@@ -775,19 +800,21 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         lat: Double,
         lon: Double,
         motivoNoEntrega: String? = null,
+        lineas: List<com.htogo.app.data.dto.LineaResultadoDto>? = null,
         onSuccess: (PedidoResponse) -> Unit,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val payload = buildMap<String, Any> {
-                    put("resultado", if (esEntregado) "ENTREGADO" else "NO_ENTREGADO")
-                    put("lat", lat)
-                    put("lon", lon)
-                    if (!esEntregado) put("motivoNoEntrega", motivoNoEntrega ?: "Sin motivo")
-                }
-                val resp = apiClient.repartidorApi.finalizarEntrega(id, payload)
+                val req = com.htogo.app.data.dto.ResultadoEntregaRequestDto(
+                    resultado = if (esEntregado) "ENTREGADO" else "NO_ENTREGADO",
+                    lat = lat,
+                    lon = lon,
+                    motivoNoEntrega = if (!esEntregado) (motivoNoEntrega ?: "Sin motivo") else null,
+                    lineas = lineas
+                )
+                val resp = apiClient.repartidorApi.finalizarEntrega(id, req)
                 if (resp.isSuccessful && resp.body() != null) {
                     _pedidoEnRuta.value = null
                     _pedidoDisponibleSeleccionado.value = null

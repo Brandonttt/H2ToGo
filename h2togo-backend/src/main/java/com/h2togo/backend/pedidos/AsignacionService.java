@@ -146,7 +146,7 @@ public class AsignacionService {
                 new MapSqlParameterSource("p", idPedido));
 
         validarCompatibilidad(tipo, idNegocioSolicitado, idNegocio, precioMax, detalles);
-        validarCargaVehiculo(idVehiculo, detalles); // RN-008 (§10 #28)
+        validarStockDisponible(idVehiculo, idNegocio, detalles); // RN-008, RN-022
 
         // RF-019: solo el primero en confirmar gana (UPDATE condicional).
         int filas = jdbc.update("""
@@ -159,14 +159,19 @@ public class AsignacionService {
             throw new ConflictException("PEDIDO_YA_ASIGNADO", "Otro repartidor tomó el pedido primero.");
         }
 
+        boolean apartadosEnBase = false;
         for (Map<String, Object> d : detalles) {
-            apartarDelVehiculo(idVehiculo, (Integer) d.get("id_marca"),
+            int faltante = apartarDelVehiculo(idVehiculo, (Integer) d.get("id_marca"),
                     (Integer) d.get("cantidad_solicitada"), idPedido);
+            if (faltante > 0) {
+                apartarDeLaBase(idNegocio, (Integer) d.get("id_marca"), faltante, idPedido);
+                apartadosEnBase = true;
+            }
         }
         if ("abierta".equals(tipo)) {
             fijarPreciosAbierta(idPedido, idNegocio); // RN-025: precio real del negocio que acepta
         }
-        insertarHistorial(idPedido, "asignado", null, null, null);
+        insertarHistorial(idPedido, "asignado", apartadosEnBase ? "Apartados completados con stock en base" : null, null, null);
         pushService.notificar((Integer) pedido.get("id_cliente"), "Pedido asignado",
                 "Un repartidor tomó tu pedido y lo preparará para entrega.", datosPedido("pedido_asignado", idPedido));
 
@@ -182,11 +187,92 @@ public class AsignacionService {
             throw new BusinessRuleException("TRANSICION_INVALIDA",
                     "El pedido debe estar asignado para ponerse en camino.");
         }
+
+        // RN-008 / CU-011: El vehículo debe tener todos los garrafones cargados; no puede iniciar ruta con apartados pendientes en base.
+        Integer apartadosEnBase = jdbc.queryForObject("""
+                SELECT COALESCE(SUM(cantidad), 0)
+                FROM apartados_pedido
+                WHERE id_pedido = :id AND id_lote_base IS NOT NULL""",
+                new MapSqlParameterSource("id", idPedido), Integer.class);
+        if (apartadosEnBase != null && apartadosEnBase > 0) {
+            throw new BusinessRuleException("CARGA_PENDIENTE_EN_BASE",
+                    "Tienes " + apartadosEnBase + " garrafones apartados en la base para este pedido. Debes cargarlos al vehículo antes de iniciar la ruta (CU-019).");
+        }
+
         jdbc.update("UPDATE pedidos SET estado_actual = 'en_camino'::estado_pedido WHERE id_pedido = :id",
                 new MapSqlParameterSource("id", idPedido));
         insertarHistorial(idPedido, "en_camino", null, lat, lon);
         pushService.notificar((Integer) pedido.get("id_cliente"), "Pedido en camino",
                 "Tu repartidor va en camino a tu domicilio.", datosPedido("pedido_en_camino", idPedido));
+        return respuesta(idPedido);
+    }
+
+    /**
+     * CU-019 / CU-011: Carga al vehículo los garrafones que quedaron apartados en la base para este pedido.
+     */
+    @Transactional
+    public PedidoResponse cargarApartadosBase(int idRepartidor, int idPedido) {
+        Map<String, Object> pedido = cargarPedidoAsignado(idPedido, idRepartidor);
+        int idVehiculo = (Integer) pedido.get("id_vehiculo_utilizado");
+
+        List<Map<String, Object>> baseApartados = jdbc.queryForList("""
+                SELECT a.id_apartado, a.id_lote_base, a.cantidad
+                FROM apartados_pedido a
+                WHERE a.id_pedido = :p AND a.id_lote_base IS NOT NULL
+                FOR UPDATE""", new MapSqlParameterSource("p", idPedido));
+
+        if (baseApartados.isEmpty()) {
+            return respuesta(idPedido);
+        }
+
+        int totalACargar = baseApartados.stream().mapToInt(a -> ((Number) a.get("cantidad")).intValue()).sum();
+        int capacidad = vehiculoRepository.findById(idVehiculo).map(VehiculoNegocio::getCapacidadGarrafones).orElse(30);
+        Integer ocupadoActual = jdbc.queryForObject("""
+                SELECT COALESCE(SUM(cantidad_actual), 0)
+                FROM inventario_vehiculo WHERE id_vehiculo = :veh AND activo""",
+                new MapSqlParameterSource("veh", idVehiculo), Integer.class);
+        if ((ocupadoActual != null ? ocupadoActual : 0) + totalACargar > capacidad) {
+            throw new BusinessRuleException("CAPACIDAD_VEHICULO_EXCEDIDA",
+                    "El vehículo no tiene capacidad suficiente (" + capacidad + ") para cargar los " + totalACargar + " garrafones apartados.");
+        }
+
+        for (Map<String, Object> a : baseApartados) {
+            int idApartado = ((Number) a.get("id_apartado")).intValue();
+            int idLote = ((Number) a.get("id_lote_base")).intValue();
+            int cant = ((Number) a.get("cantidad")).intValue();
+
+            jdbc.update("""
+                    UPDATE lotes_inventario
+                    SET cantidad_actual = cantidad_actual - :cant,
+                        cantidad_apartada = cantidad_apartada - :cant
+                    WHERE id_lote = :lote""",
+                    new MapSqlParameterSource().addValue("cant", cant).addValue("lote", idLote));
+
+            Integer idIv = jdbc.queryForObject("""
+                    INSERT INTO inventario_vehiculo (id_vehiculo, id_lote, cantidad_actual, cantidad_apartada, activo)
+                    VALUES (:veh, :lote, :cant, :cant, TRUE)
+                    ON CONFLICT (id_vehiculo, id_lote)
+                    DO UPDATE SET cantidad_actual = inventario_vehiculo.cantidad_actual + :cant,
+                                  cantidad_apartada = inventario_vehiculo.cantidad_apartada + :cant,
+                                  activo = TRUE
+                    RETURNING id_inventario_vehiculo""",
+                    new MapSqlParameterSource().addValue("veh", idVehiculo).addValue("lote", idLote).addValue("cant", cant),
+                    Integer.class);
+
+            jdbc.update("""
+                    UPDATE apartados_pedido
+                    SET id_inventario_vehiculo = :iv, id_lote_base = NULL
+                    WHERE id_apartado = :ap""",
+                    new MapSqlParameterSource().addValue("iv", idIv).addValue("ap", idApartado));
+
+            jdbc.update("""
+                    INSERT INTO movimientos_inventario
+                        (id_lote_base, id_inventario_vehiculo, tipo, cantidad, id_pedido, id_repartidor_responsable)
+                    VALUES (:lote, :iv, 'traspaso_a_vehiculo'::tipo_movimiento, :cant, :ped, :rep)""",
+                    new MapSqlParameterSource().addValue("lote", idLote).addValue("iv", idIv)
+                            .addValue("cant", cant).addValue("ped", idPedido).addValue("rep", idRepartidor));
+        }
+
         return respuesta(idPedido);
     }
 
@@ -244,23 +330,36 @@ public class AsignacionService {
         }
     }
 
-    private void validarCargaVehiculo(int idVehiculo, List<Map<String, Object>> detalles) {
+    private void validarStockDisponible(int idVehiculo, int idNegocio, List<Map<String, Object>> detalles) {
         for (Map<String, Object> d : detalles) {
-            Integer disponible = jdbc.queryForObject("""
+            int idMarca = (Integer) d.get("id_marca");
+            int cantidadSolicitada = (Integer) d.get("cantidad_solicitada");
+
+            Integer dispVehiculo = jdbc.queryForObject("""
                     SELECT COALESCE(SUM(iv.cantidad_actual - iv.cantidad_apartada), 0)
                     FROM inventario_vehiculo iv JOIN lotes_inventario l ON l.id_lote = iv.id_lote
                     WHERE iv.id_vehiculo = :veh AND iv.activo AND l.id_marca = :marca
                       AND l.fecha_caducidad >= CURRENT_DATE""",
-                    new MapSqlParameterSource().addValue("veh", idVehiculo).addValue("marca", d.get("id_marca")),
+                    new MapSqlParameterSource().addValue("veh", idVehiculo).addValue("marca", idMarca),
                     Integer.class);
-            if (disponible == null || disponible < (Integer) d.get("cantidad_solicitada")) {
-                throw new BusinessRuleException("CARGA_INSUFICIENTE",
-                        "El vehículo no tiene carga suficiente; carga más desde la base (RN-008).");
+
+            Integer dispBase = jdbc.queryForObject("""
+                    SELECT COALESCE(SUM(l.cantidad_actual - l.cantidad_apartada), 0)
+                    FROM lotes_inventario l
+                    WHERE l.id_negocio = :neg AND l.activo AND l.id_marca = :marca
+                      AND l.fecha_caducidad >= CURRENT_DATE""",
+                    new MapSqlParameterSource().addValue("neg", idNegocio).addValue("marca", idMarca),
+                    Integer.class);
+
+            int totalDisponible = (dispVehiculo != null ? dispVehiculo : 0) + (dispBase != null ? dispBase : 0);
+            if (totalDisponible < cantidadSolicitada) {
+                throw new BusinessRuleException("STOCK_INSUFICIENTE",
+                        "Stock insuficiente: ni el vehículo ni la base cuentan con producto suficiente para cubrir el pedido (RN-008).");
             }
         }
     }
 
-    private void apartarDelVehiculo(int idVehiculo, int idMarca, int cantidad, int idPedido) {
+    private int apartarDelVehiculo(int idVehiculo, int idMarca, int cantidad, int idPedido) {
         List<Map<String, Object>> filas = jdbc.queryForList("""
                 SELECT iv.id_inventario_vehiculo, (iv.cantidad_actual - iv.cantidad_apartada) AS disp
                 FROM inventario_vehiculo iv JOIN lotes_inventario l ON l.id_lote = iv.id_lote
@@ -282,6 +381,33 @@ public class AsignacionService {
                     + "WHERE id_inventario_vehiculo = :iv", p);
             jdbc.update("INSERT INTO apartados_pedido (id_pedido, id_inventario_vehiculo, cantidad) "
                     + "VALUES (:ped, :iv, :tomar)", p);
+            restante -= tomar;
+        }
+        return restante;
+    }
+
+    private void apartarDeLaBase(int idNegocio, int idMarca, int cantidad, int idPedido) {
+        List<Map<String, Object>> filas = jdbc.queryForList("""
+                SELECT l.id_lote, (l.cantidad_actual - l.cantidad_apartada) AS disp
+                FROM lotes_inventario l
+                WHERE l.id_negocio = :neg AND l.activo AND l.id_marca = :marca
+                  AND l.fecha_caducidad >= CURRENT_DATE AND (l.cantidad_actual - l.cantidad_apartada) > 0
+                ORDER BY l.fecha_caducidad, l.id_lote
+                FOR UPDATE""",
+                new MapSqlParameterSource().addValue("neg", idNegocio).addValue("marca", idMarca));
+        int restante = cantidad;
+        for (Map<String, Object> f : filas) {
+            if (restante == 0) {
+                break;
+            }
+            int disp = ((Number) f.get("disp")).intValue();
+            int tomar = Math.min(restante, disp);
+            var p = new MapSqlParameterSource().addValue("lote", f.get("id_lote"))
+                    .addValue("tomar", tomar).addValue("ped", idPedido);
+            jdbc.update("UPDATE lotes_inventario SET cantidad_apartada = cantidad_apartada + :tomar "
+                    + "WHERE id_lote = :lote", p);
+            jdbc.update("INSERT INTO apartados_pedido (id_pedido, id_lote_base, cantidad) "
+                    + "VALUES (:ped, :lote, :tomar)", p);
             restante -= tomar;
         }
     }
@@ -322,18 +448,22 @@ public class AsignacionService {
 
     private Map<Integer, List<DetalleResponse>> detallesPorPedido(List<Integer> ids) {
         return jdbc.query("""
-                SELECT id_detalle, id_pedido, id_marca, cantidad_solicitada, cantidad_entregada,
-                       tiene_envase, precio_unitario, precio_envase_unitario, agregada_en_sitio
-                FROM detalles_pedido WHERE id_pedido IN (:ids)""",
+                SELECT dp.id_detalle, dp.id_pedido, dp.id_marca, m.nombre AS nombre_marca,
+                       dp.cantidad_solicitada, dp.cantidad_entregada,
+                       dp.tiene_envase, dp.precio_unitario, dp.precio_envase_unitario, dp.agregada_en_sitio
+                FROM detalles_pedido dp
+                LEFT JOIN marcas m ON m.id_marca = dp.id_marca
+                WHERE dp.id_pedido IN (:ids)""",
                 new MapSqlParameterSource("ids", ids), rs -> {
                     Map<Integer, List<DetalleResponse>> map = new java.util.HashMap<>();
                     while (rs.next()) {
                         Integer idPedido = rs.getInt("id_pedido");
                         Integer entregada = (Integer) rs.getObject("cantidad_entregada");
                         map.computeIfAbsent(idPedido, k -> new ArrayList<>()).add(new DetalleResponse(
-                                rs.getInt("id_detalle"), rs.getInt("id_marca"), rs.getInt("cantidad_solicitada"),
-                                entregada, rs.getBoolean("tiene_envase"), rs.getBigDecimal("precio_unitario"),
-                                rs.getBigDecimal("precio_envase_unitario"), rs.getBoolean("agregada_en_sitio")));
+                                rs.getInt("id_detalle"), rs.getInt("id_marca"), rs.getString("nombre_marca"),
+                                rs.getInt("cantidad_solicitada"), entregada, rs.getBoolean("tiene_envase"),
+                                rs.getBigDecimal("precio_unitario"), rs.getBigDecimal("precio_envase_unitario"),
+                                rs.getBoolean("agregada_en_sitio")));
                     }
                     return map;
                 });

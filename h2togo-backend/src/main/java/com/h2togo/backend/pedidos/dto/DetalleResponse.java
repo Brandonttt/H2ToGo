@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 public record DetalleResponse(
         Integer id,
         Integer idMarca,
+        String nombreMarca,
         Integer cantidadSolicitada,
         Integer cantidadEntregada,
         boolean tieneEnvase,
@@ -13,4 +14,16 @@ public record DetalleResponse(
         BigDecimal precioEnvaseUnitario,
         boolean agregadaEnSitio
 ) {
+    public DetalleResponse(
+            Integer id,
+            Integer idMarca,
+            Integer cantidadSolicitada,
+            Integer cantidadEntregada,
+            boolean tieneEnvase,
+            BigDecimal precioUnitario,
+            BigDecimal precioEnvaseUnitario,
+            boolean agregadaEnSitio
+    ) {
+        this(id, idMarca, null, cantidadSolicitada, cantidadEntregada, tieneEnvase, precioUnitario, precioEnvaseUnitario, agregadaEnSitio);
+    }
 }
