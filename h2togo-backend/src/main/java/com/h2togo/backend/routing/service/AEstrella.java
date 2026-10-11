@@ -121,15 +121,9 @@ public class AEstrella implements CalculoRutaService {
             }
         }
 
-        // Si la cola se vacía sin llegar al destino (p. ej. subgrafos de sentidos viales desconectados),
-        // devolvemos la ruta directa con los puntos de aproximación para garantizar la navegación.
-        log.warn("A* no encontró ruta completa entre {} y {}; usando aproximación de calle.", origen, destino);
-        double distDirecta = haversineKm(origen.getLatitud(), origen.getLongitud(), destino.getLatitud(), destino.getLongitud());
-        List<RouteResponse.Coordenada> fallbackCoords = List.of(
-            CalculoRutaService.toCoord(origen),
-            CalculoRutaService.toCoord(destino)
-        );
-        return new RouteResponse(true, Math.round(distDirecta * 1000.0) / 1000.0, fallbackCoords);
+        // Si la cola se vacía sin llegar al destino, no hay ruta
+        log.warn("A* no encontró ruta entre {} y {}", origen, destino);
+        return new RouteResponse(false, 0.0, List.of());
     }
 
     // -------------------------------------------------------------------------
