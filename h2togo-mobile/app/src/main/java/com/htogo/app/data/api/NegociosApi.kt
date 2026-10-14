@@ -30,4 +30,10 @@ interface NegociosApi {
         @Path("id") id: Int,
         @retrofit2.http.Body request: com.htogo.app.data.dto.PrecioRequest
     ): Response<com.htogo.app.data.dto.ProductoNegocioDto>
+
+    /** RF-031: horario semanal (7 días); solo el dueño, se aplica al instante. */
+    @retrofit2.http.PUT("negocios/me/horarios")
+    suspend fun actualizarHorarios(
+        @retrofit2.http.Body dias: List<com.htogo.app.data.dto.HorarioNegocioDto>
+    ): Response<List<com.htogo.app.data.dto.HorarioNegocioDto>>
 }

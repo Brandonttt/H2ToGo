@@ -136,7 +136,9 @@ data class PedidoResumenDto(
     @SerializedName("esProgramado") val esProgramado: Boolean,
     @SerializedName("fechaCreacion") val fechaCreacion: String?,
     @SerializedName("nombreCliente") val nombreCliente: String? = null,
-    @SerializedName("direccionTexto") val direccionTexto: String? = null
+    @SerializedName("direccionTexto") val direccionTexto: String? = null,
+    @SerializedName("nombreNegocio") val nombreNegocio: String? = null,
+    @SerializedName("nombreRepartidor") val nombreRepartidor: String? = null
 )
 
 data class PagedResponseDto<T>(

@@ -268,42 +268,49 @@ public class PedidoService {
 
     @Transactional(readOnly = true)
     public PagedResponse<PedidoResumen> misPedidos(int idCliente, Pageable pageable) {
-        Page<PedidoResumen> page = pedidoRepository
-                .findByIdClienteOrderByFechaCreacionDesc(idCliente, acotar(pageable))
-                .map(PedidoMapper::toResumen);
-        return PagedResponse.of(page);
+        return resumenes("p.id_cliente", idCliente, pageable);
     }
 
     @Transactional(readOnly = true)
     public PagedResponse<PedidoResumen> misEntregas(int idRepartidor, Pageable pageable) {
-        Pageable acotada = acotar(pageable);
-        int size = acotada.getPageSize();
-        long offset = acotada.getOffset();
+        return resumenes("p.id_repartidor", idRepartidor, pageable);
+    }
 
+    /**
+     * Historial (RF-010) de un cliente o repartidor, del más reciente al más antiguo, con los
+     * nombres ya resueltos. {@code columna} es una constante interna, nunca entrada del usuario.
+     */
+    private PagedResponse<PedidoResumen> resumenes(String columna, int id, Pageable pageable) {
+        Pageable acotada = acotar(pageable);
         var params = new MapSqlParameterSource()
-                .addValue("rep", idRepartidor)
-                .addValue("lim", size)
-                .addValue("off", offset);
+                .addValue("id", id)
+                .addValue("lim", acotada.getPageSize())
+                .addValue("off", acotada.getOffset());
 
         Integer total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM pedidos WHERE id_repartidor = :rep",
-                new MapSqlParameterSource("rep", idRepartidor), Integer.class);
+                "SELECT COUNT(*) FROM pedidos p WHERE " + columna + " = :id", params, Integer.class);
         if (total == null || total == 0) {
             return PagedResponse.of(new PageImpl<>(List.of(), acotada, 0));
         }
 
+        // Negocio: el solicitado (directa) o el del repartidor que tomó el pedido (abierta).
         List<PedidoResumen> lista = jdbc.query("""
                 SELECT p.id_pedido, p.estado_actual, p.tipo_solicitud, p.total_pagar,
                        p.garrafones_totales, p.es_programado, p.fecha_creacion,
-                       CONCAT(u.nombre, ' ', u.apellidos) AS nombre_cliente,
-                       CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion
+                       CONCAT_WS(' ', uc.nombre, uc.apellidos) AS nombre_cliente,
+                       CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion,
+                       n.nombre_comercial AS nombre_negocio,
+                       NULLIF(CONCAT_WS(' ', ur.nombre, ur.apellidos), '') AS nombre_repartidor
                 FROM pedidos p
-                JOIN usuarios u ON u.id_usuario = p.id_cliente
+                JOIN usuarios uc ON uc.id_usuario = p.id_cliente
                 LEFT JOIN direcciones_clientes d ON d.id_direccion = p.id_direccion_entrega
-                WHERE p.id_repartidor = :rep
+                LEFT JOIN usuarios ur ON ur.id_usuario = p.id_repartidor
+                LEFT JOIN repartidores r ON r.id_usuario = p.id_repartidor
+                LEFT JOIN negocios n ON n.id_negocio = COALESCE(p.id_negocio_solicitado, r.id_negocio)
+                WHERE {columna} = :id
                 ORDER BY p.fecha_creacion DESC
                 LIMIT :lim OFFSET :off
-                """, params, (rs, rowNum) -> new PedidoResumen(
+                """.replace("{columna}", columna), params, (rs, rowNum) -> new PedidoResumen(
                         rs.getInt("id_pedido"),
                         EstadoPedido.valueOf(rs.getString("estado_actual")),
                         TipoSolicitudPedido.valueOf(rs.getString("tipo_solicitud")),
@@ -312,7 +319,9 @@ public class PedidoService {
                         rs.getBoolean("es_programado"),
                         rs.getObject("fecha_creacion", OffsetDateTime.class),
                         rs.getString("nombre_cliente"),
-                        rs.getString("direccion")
+                        rs.getString("direccion"),
+                        rs.getString("nombre_negocio"),
+                        rs.getString("nombre_repartidor")
                 ));
 
         return PagedResponse.of(new PageImpl<>(lista, acotada, total));

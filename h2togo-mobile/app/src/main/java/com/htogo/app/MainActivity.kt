@@ -19,6 +19,9 @@ import com.htogo.app.data.notificaciones.NotificacionesEnVivo
 import com.htogo.app.data.notificaciones.Notificador
 import androidx.navigation.compose.rememberNavController
 import com.htogo.app.navigation.HToGoNavHost
+import com.htogo.app.ui.components.SinConexionBanner
+import com.htogo.app.ui.components.rememberHayConexion
+import androidx.compose.runtime.getValue
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
 
@@ -65,7 +68,11 @@ private fun HToGoRoot() {
             color = HToGoColors.Background
         ) {
             val navController = rememberNavController()
-            HToGoNavHost(navController = navController)
+            val hayConexion by rememberHayConexion()
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                HToGoNavHost(navController = navController)
+                SinConexionBanner(visible = !hayConexion, modifier = Modifier.align(androidx.compose.ui.Alignment.TopCenter))
+            }
         }
     }
 }

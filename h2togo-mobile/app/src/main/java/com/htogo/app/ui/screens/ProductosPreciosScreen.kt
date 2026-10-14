@@ -45,6 +45,7 @@ private data class ProductoCatalogo(
     val marca: String,
     val capacidad: String,
     val precio: Int,
+    val precioEnvase: Double,
     val activo: Boolean,
     val proveedor: String,
     val accent: Color
@@ -127,6 +128,7 @@ fun ProductosPreciosScreen(
 
     val solicitudes by repartidorViewModel.solicitudes.collectAsState()
     val marcas by repartidorViewModel.marcas.collectAsState()
+    val esDueno by repartidorViewModel.esDueno.collectAsState()
 
     LaunchedEffect(Unit) {
         repartidorViewModel.cargarMiNegocio()
@@ -153,6 +155,7 @@ fun ProductosPreciosScreen(
                         marca = p.marca,
                         capacidad = "20 L",
                         precio = p.precio.toInt(),
+                        precioEnvase = p.precioEnvase,
                         activo = p.activo,
                         proveedor = "Proveedor oficial",
                         accent = color
@@ -255,9 +258,10 @@ fun ProductosPreciosScreen(
                 }
             }
             items(productos, key = { it.id }) { p ->
-                ProductoCard(p) { editandoPrecio = p }
+                // RN-021: solo el dueño cambia precios o pide productos nuevos.
+                ProductoCard(p, onEditar = if (esDueno) ({ editandoPrecio = p }) else null)
             }
-            item {
+            if (esDueno) item {
                 AgregarProductoBtn { mostrarAgregar = true }
             }
             if (pendientes.isNotEmpty()) {
@@ -289,17 +293,22 @@ fun ProductosPreciosScreen(
             onDismiss = { editandoPrecio = null },
             onConfirmar = { nuevoPrecio ->
                 val idNum = producto.id.toIntOrNull()
-                if (idNum != null) {
-                    repartidorViewModel.actualizarPrecio(idNum, nuevoPrecio.toDouble())
-                }
-                productos = productos.map {
-                    if (it.id == producto.id) it.copy(precio = nuevoPrecio) else it
-                }
                 editandoPrecio = null
-                toast = ToastInfo(
-                    "Precio actualizado · aplicado al instante",
-                    success = true
-                )
+                if (idNum != null) {
+                    // Conserva el precio del envase vigente; solo cambia el del agua.
+                    repartidorViewModel.actualizarPrecio(
+                        idProducto = idNum,
+                        nuevoPrecio = nuevoPrecio.toDouble(),
+                        precioEnvase = producto.precioEnvase,
+                        onSuccess = {
+                            productos = productos.map {
+                                if (it.id == producto.id) it.copy(precio = nuevoPrecio) else it
+                            }
+                            toast = ToastInfo("Precio actualizado · aplicado al instante", success = true)
+                        },
+                        onError = { msg -> toast = ToastInfo(msg, success = false, error = true) }
+                    )
+                }
             }
         )
     }
@@ -419,7 +428,7 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun ProductoCard(p: ProductoCatalogo, onEditar: () -> Unit) {
+private fun ProductoCard(p: ProductoCatalogo, onEditar: (() -> Unit)?) {
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = Color.White,
@@ -490,7 +499,7 @@ private fun ProductoCard(p: ProductoCatalogo, onEditar: () -> Unit) {
                     }
                 }
                 Spacer(Modifier.weight(1f))
-                Surface(
+                if (onEditar != null) Surface(
                     shape = RoundedCornerShape(10.dp),
                     color = HToGoColors.PrimarySoft,
                     modifier = Modifier.clickable(onClick = onEditar)

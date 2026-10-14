@@ -107,7 +107,7 @@ public class InventarioService {
 
     @Transactional
     public void registrarSalidaManual(int idRepartidor, SalidaManualRequest req) {
-        Negocio negocio = negocioDelRepartidor(idRepartidor);
+        Negocio negocio = negocioComoDueno(idRepartidor); // como la entrada de lotes: solo el dueño (RN-021)
         int idNegocio = negocio.getId();
 
         productoRepository.findByIdNegocioAndIdMarca(idNegocio, req.idMarca())

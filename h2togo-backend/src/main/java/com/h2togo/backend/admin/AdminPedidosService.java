@@ -63,7 +63,7 @@ public class AdminPedidosService {
             params.addValue("rep", idRepartidor);
         }
         if (idNegocio != null) {
-            where.append(" AND p.id_negocio_solicitado = :neg");
+            where.append(" AND n.id_negocio = :neg"); // directo o el negocio que tomó el abierto
             params.addValue("neg", idNegocio);
         }
         if (cliente != null && !cliente.isBlank()) {

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -82,8 +83,11 @@ fun PerfilRepartidorScreen(
     val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
     val totalEntregas by repartidorViewModel.totalEntregas.collectAsState()
     val solicitudes by repartidorViewModel.solicitudes.collectAsState()
+    val esDueno by repartidorViewModel.esDueno.collectAsState()
 
     var mostrarDialogLogout by remember { mutableStateOf(false) }
+    var showHorario by remember { mutableStateOf(false) }
+    var guardandoHorario by remember { mutableStateOf(false) }
     var showModalCambioNombre by remember { mutableStateOf(false) }
     var showModalCambioDireccion by remember { mutableStateOf(false) }
 
@@ -247,23 +251,37 @@ fun PerfilRepartidorScreen(
                         InfoRow(Icons.Filled.Person, "Nombre", usuario.nombre)
                         InfoRow(Icons.Filled.Phone, "Teléfono", usuario.telefono)
                         InfoRow(Icons.Filled.MailOutline, "Correo", usuario.correo)
-                        // CU-020: Nombre comercial con solicitud al administrador
-                        EditableInfoRow(
-                            icon = Icons.Filled.Storefront,
-                            label = "Purificadora (Nombre comercial)",
-                            valor = usuario.nombreNegocio,
-                            pendienteTexto = if (solicitudPendienteNombre != null) "Cambio pendiente: ${nombrePropuesto ?: "En revisión"}" else null,
-                            onClick = { showModalCambioNombre = true }
-                        )
-                        // CU-020: Dirección de la base con solicitud al administrador
-                        EditableInfoRow(
-                            icon = Icons.Filled.LocationOn,
-                            label = "Dirección de la base",
-                            valor = direccionBaseTexto,
-                            pendienteTexto = if (solicitudPendienteDireccion != null) "Cambio pendiente: ${direccionPropuesta ?: "En revisión"}" else null,
-                            last = true,
-                            onClick = { showModalCambioDireccion = true }
-                        )
+                        if (esDueno) {
+                            // CU-020: Nombre comercial con solicitud al administrador
+                            EditableInfoRow(
+                                icon = Icons.Filled.Storefront,
+                                label = "Purificadora (Nombre comercial)",
+                                valor = usuario.nombreNegocio,
+                                pendienteTexto = if (solicitudPendienteNombre != null) "Cambio pendiente: ${nombrePropuesto ?: "En revisión"}" else null,
+                                onClick = { showModalCambioNombre = true }
+                            )
+                            // CU-020: Dirección de la base con solicitud al administrador
+                            EditableInfoRow(
+                                icon = Icons.Filled.LocationOn,
+                                label = "Dirección de la base",
+                                valor = direccionBaseTexto,
+                                pendienteTexto = if (solicitudPendienteDireccion != null) "Cambio pendiente: ${direccionPropuesta ?: "En revisión"}" else null,
+                                onClick = { showModalCambioDireccion = true }
+                            )
+                            // RF-031: horario semanal, se aplica sin aprobación
+                            EditableInfoRow(
+                                icon = Icons.Filled.Schedule,
+                                label = "Horario de atención",
+                                valor = resumenHorario(liveMiNegocio?.horarios),
+                                last = true,
+                                onClick = { showHorario = true }
+                            )
+                        } else {
+                            // RN-021: solo el dueño solicita cambios del negocio
+                            InfoRow(Icons.Filled.Storefront, "Purificadora (Nombre comercial)", usuario.nombreNegocio)
+                            InfoRow(Icons.Filled.LocationOn, "Dirección de la base", direccionBaseTexto)
+                            InfoRow(Icons.Filled.Schedule, "Horario de atención", resumenHorario(liveMiNegocio?.horarios), last = true)
+                        }
                     }
                 }
             }
@@ -322,7 +340,30 @@ fun PerfilRepartidorScreen(
         }
 
         // Dialog Logout
-        if (mostrarDialogLogout) {
+        if (showHorario) {
+        HorarioNegocioDialog(
+            actuales = liveMiNegocio?.horarios,
+            guardando = guardandoHorario,
+            onDismiss = { showHorario = false },
+            onGuardar = { dias ->
+                guardandoHorario = true
+                repartidorViewModel.actualizarHorarios(
+                    dias,
+                    onSuccess = {
+                        guardandoHorario = false
+                        showHorario = false
+                        Toast.makeText(context, "Horario actualizado", Toast.LENGTH_SHORT).show()
+                    },
+                    onError = { msg ->
+                        guardandoHorario = false
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                    }
+                )
+            }
+        )
+    }
+
+    if (mostrarDialogLogout) {
             AlertDialog(
                 onDismissRequest = { mostrarDialogLogout = false },
                 icon = { Icon(Icons.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) },

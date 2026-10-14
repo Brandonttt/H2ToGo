@@ -68,3 +68,17 @@ data class OtpRequest(
 data class ReenviarOtpRequest(
     @SerializedName("correo") val correo: String
 )
+
+/** GET /usuarios/me: solo los campos que usa la app. */
+data class PerfilMeDto(
+    @SerializedName("id") val id: Int,
+    @SerializedName("rol") val rol: String,
+    @SerializedName("repartidor") val repartidor: RepartidorInfoDto? = null
+)
+
+data class RepartidorInfoDto(
+    @SerializedName("idNegocio") val idNegocio: Int? = null,
+    @SerializedName("estadoOperativo") val estadoOperativo: Boolean = false,
+    @SerializedName("idVehiculoActual") val idVehiculoActual: Int? = null,
+    @SerializedName("esDueno") val esDueno: Boolean = false
+)

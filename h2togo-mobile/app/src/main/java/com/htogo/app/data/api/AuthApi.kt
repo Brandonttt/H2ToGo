@@ -32,6 +32,9 @@ interface AuthApi {
     @GET("usuarios/me")
     suspend fun verificarSesion(): Response<Unit>
 
+    @GET("usuarios/me")
+    suspend fun perfil(): Response<com.htogo.app.data.dto.PerfilMeDto>
+
     /** Token FCM del dispositivo para recibir notificaciones con la app cerrada. */
     @PUT("usuarios/me/dispositivo")
     suspend fun registrarDispositivo(@Body body: Map<String, String>): Response<Unit>

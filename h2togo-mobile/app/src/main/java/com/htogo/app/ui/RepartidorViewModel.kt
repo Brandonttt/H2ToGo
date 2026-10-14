@@ -64,8 +64,17 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
 
+    private val _esDueno = MutableStateFlow(false)
+    /** RN-021: solo el dueño ve las acciones que cambian el negocio (inventario base, catálogo, solicitudes). */
+    val esDueno: StateFlow<Boolean> = _esDueno.asStateFlow()
+
     fun cargarMiNegocio() {
         viewModelScope.launch {
+            try {
+                apiClient.authApi.perfil().body()?.let { _esDueno.value = it.repartidor?.esDueno == true }
+            } catch (e: Exception) {
+                // Silencioso: sin dato se ocultan las acciones de dueño
+            }
             try {
                 val resp = apiClient.negociosApi.obtenerMiNegocio()
                 if (resp.isSuccessful && resp.body() != null) {
@@ -78,7 +87,13 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun actualizarPrecio(idProducto: Int, nuevoPrecio: Double, precioEnvase: Double = 80.0, onSuccess: () -> Unit = {}) {
+    fun actualizarPrecio(
+        idProducto: Int,
+        nuevoPrecio: Double,
+        precioEnvase: Double,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
         viewModelScope.launch {
             try {
                 val resp = apiClient.negociosApi.actualizarPrecio(
@@ -88,9 +103,31 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                 if (resp.isSuccessful) {
                     cargarMiNegocio()
                     onSuccess()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo actualizar el precio (${resp.code()})")
                 }
             } catch (e: Exception) {
-                // Silencioso
+                onError(e.localizedMessage ?: "Error de red al actualizar el precio")
+            }
+        }
+    }
+
+    fun actualizarHorarios(
+        dias: List<com.htogo.app.data.dto.HorarioNegocioDto>,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.negociosApi.actualizarHorarios(dias)
+                if (resp.isSuccessful) {
+                    cargarMiNegocio()
+                    onSuccess()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo guardar el horario (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: "Error de red al guardar el horario")
             }
         }
     }
@@ -821,6 +858,7 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         _pedidoDisponibleSeleccionado.value = null
         _rutaCalculada.value = null
         _miNegocio.value = null
+        _esDueno.value = false
         _misEntregas.value = emptyList()
         _totalEntregas.value = 0
         _inventarioBase.value = null

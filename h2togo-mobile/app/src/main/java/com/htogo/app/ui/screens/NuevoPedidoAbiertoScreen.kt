@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -53,7 +54,6 @@ private val ABIERTO_ADDRESSES = listOf(
 )
 
 private val PRECIOS_PRESET = listOf(35, 40, 45, 50)
-private const val ENVIO_ABIERTO = 15
 
 @Composable
 fun NuevoPedidoAbiertoScreen(
@@ -88,7 +88,19 @@ fun NuevoPedidoAbiertoScreen(
     var qty by remember { mutableStateOf(3) }
     var precioMax by remember { mutableStateOf(45) }
     var selectedAddrId by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("Tocar timbre, dejar en recepción si no contesto") }
+    var notes by remember { mutableStateOf("") }
+    var marcaSelId by remember { mutableStateOf<Int?>(null) }
+    // RN-031: si el cliente no entrega envase, paga además el envase al precio del negocio que acepte.
+    var tieneEnvase by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        if (marcasDisponibles.isEmpty()) clienteViewModel.cargarMarcas()
+    }
+    LaunchedEffect(marcasDisponibles) {
+        if (marcaSelId == null || marcasDisponibles.none { it.id == marcaSelId }) {
+            marcaSelId = marcasDisponibles.firstOrNull()?.id
+        }
+    }
 
     LaunchedEffect(addresses) {
         if (addresses.isNotEmpty() && (selectedAddrId.isEmpty() || addresses.none { it.id == selectedAddrId })) {
@@ -97,8 +109,9 @@ fun NuevoPedidoAbiertoScreen(
     }
 
     val selectedAddr = addresses.firstOrNull { it.id == selectedAddrId }
-    val totalMax = qty * precioMax + ENVIO_ABIERTO
-    val canConfirm = selectedAddr != null && qty > 0 && precioMax >= 25 && !isLoading
+    // El envío no se cobra aparte: el tope es solo el agua (más envases si no los entrega).
+    val totalMax = qty * precioMax
+    val canConfirm = selectedAddr != null && marcaSelId != null && qty > 0 && precioMax >= 25 && !isLoading
 
     fun ejecutarPedidoAbierto() {
         if (selectedAddr == null) {
@@ -106,7 +119,7 @@ fun NuevoPedidoAbiertoScreen(
             return
         }
         val addrIdInt = selectedAddr.id.toIntOrNull() ?: return
-        val marcaIdInt = marcasDisponibles.firstOrNull()?.id ?: 1
+        val marcaIdInt = marcaSelId ?: return
 
         val request = PedidoCreateRequest(
             tipoSolicitud = "abierta",
@@ -117,7 +130,7 @@ fun NuevoPedidoAbiertoScreen(
                 DetallePedidoRequest(
                     idMarca = marcaIdInt,
                     cantidad = qty,
-                    tieneEnvase = true
+                    tieneEnvase = tieneEnvase
                 )
             )
         )
@@ -203,6 +216,44 @@ fun NuevoPedidoAbiertoScreen(
             HintRow(precio = precioMax)
 
             Spacer(Modifier.height(20.dp))
+            SectionTitle("Marca")
+            Spacer(Modifier.height(10.dp))
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (marcasDisponibles.isEmpty()) {
+                    Text("Cargando marcas…", fontSize = 13.sp, color = HToGoColors.TextSecondary)
+                }
+                marcasDisponibles.forEach { m ->
+                    val sel = m.id == marcaSelId
+                    Surface(
+                        shape = RoundedCornerShape(99.dp),
+                        color = if (sel) HToGoColors.Primary else Color.White,
+                        border = BorderStroke(1.dp, if (sel) HToGoColors.Primary else HToGoColors.OutlineSoft),
+                        modifier = Modifier.clickable { marcaSelId = m.id }
+                    ) {
+                        Text(
+                            m.nombre,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (sel) Color.White else HToGoColors.TextPrimary,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+            }
+            Text(
+                "Solo podrán tomarlo purificadoras que vendan esta marca a tu precio máximo o menos.",
+                fontSize = 11.sp,
+                color = HToGoColors.TextTertiary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+            )
+
+            Spacer(Modifier.height(14.dp))
             SectionTitle("¿Cuántos garrafones?")
             Spacer(Modifier.height(10.dp))
             Box(Modifier.padding(horizontal = 16.dp)) {
@@ -211,6 +262,27 @@ fun NuevoPedidoAbiertoScreen(
             Spacer(Modifier.height(10.dp))
             Box(Modifier.padding(horizontal = 16.dp)) {
                 PresetCantidad(qty = qty) { qty = it }
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color.White,
+                border = BorderStroke(1.dp, HToGoColors.OutlineSoft),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            ) {
+                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Tengo envases para intercambiar", fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary)
+                        Text(
+                            if (tieneEnvase) "Pagas solo el agua"
+                            else "Pagarás también el envase, al precio de la purificadora que acepte",
+                            fontSize = 11.sp, color = HToGoColors.TextSecondary
+                        )
+                    }
+                    Switch(checked = tieneEnvase, onCheckedChange = { tieneEnvase = it })
+                }
             }
 
             Spacer(Modifier.height(20.dp))
@@ -267,7 +339,7 @@ fun NuevoPedidoAbiertoScreen(
             SectionTitle("Resumen")
             Spacer(Modifier.height(10.dp))
             Box(Modifier.padding(horizontal = 16.dp)) {
-                ResumenAbiertoCard(qty = qty, precioMax = precioMax, envio = ENVIO_ABIERTO)
+                ResumenAbiertoCard(qty = qty, precioMax = precioMax, tieneEnvase = tieneEnvase)
             }
             Spacer(Modifier.height(20.dp))
         }
@@ -763,9 +835,9 @@ private fun NotasCard(value: String, onChange: (String) -> Unit) {
 }
 
 @Composable
-private fun ResumenAbiertoCard(qty: Int, precioMax: Int, envio: Int) {
+private fun ResumenAbiertoCard(qty: Int, precioMax: Int, tieneEnvase: Boolean) {
     val sub = qty * precioMax
-    val total = sub + envio
+    val total = sub
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = Color.White,
@@ -775,7 +847,8 @@ private fun ResumenAbiertoCard(qty: Int, precioMax: Int, envio: Int) {
     ) {
         Column(Modifier.padding(14.dp)) {
             ResumenRow("$qty × Garrafón 20 L", "≤ $$sub.00")
-            ResumenRow("Envío", "$$envio.00")
+            ResumenRow("Envío", "Sin costo")
+            if (!tieneEnvase) ResumenRow("$qty × Envase nuevo", "Precio del negocio")
             HorizontalDivider(
                 Modifier.padding(vertical = 8.dp),
                 color = HToGoColors.OutlineSoft

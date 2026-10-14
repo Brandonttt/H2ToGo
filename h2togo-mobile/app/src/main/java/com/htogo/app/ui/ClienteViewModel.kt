@@ -303,7 +303,8 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
     // ---------------------------------------------------------------- Rastreo en vivo (CU-006)
 
     /** Posición del repartidor que llega por el tópico del pedido. */
-    data class UbicacionEnVivo(val lat: Double, val lon: Double)
+    /** [recibidaMs]: cuándo llegó a la app; sirve para avisar si la posición quedó vieja (CU-006 S1). */
+    data class UbicacionEnVivo(val lat: Double, val lon: Double, val recibidaMs: Long = System.currentTimeMillis())
 
     private val _ubicacionRepartidor = MutableStateFlow<UbicacionEnVivo?>(null)
     val ubicacionRepartidor: StateFlow<UbicacionEnVivo?> = _ubicacionRepartidor.asStateFlow()
@@ -371,7 +372,13 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
     private suspend fun consultarUbicacion(idPedido: Int) {
         try {
             val resp = apiClient.pedidosApi.ubicacionRepartidor(idPedido)
-            resp.body()?.let { _ubicacionRepartidor.value = UbicacionEnVivo(it.lat, it.lon) }
+            resp.body()?.let { u ->
+                val previa = _ubicacionRepartidor.value
+                // Misma posición que ya teníamos: no la marca como reciente.
+                if (previa == null || previa.lat != u.lat || previa.lon != u.lon) {
+                    _ubicacionRepartidor.value = UbicacionEnVivo(u.lat, u.lon)
+                }
+            }
         } catch (_: Exception) {
             // Sin red: se reintenta en el siguiente ciclo.
         }

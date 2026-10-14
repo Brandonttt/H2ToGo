@@ -211,6 +211,14 @@ class E2EFlujoFelizIT {
         mvc.perform(get("/api/v1/pedidos/" + idPedido).header("Authorization", "Bearer " + cli.token()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("entregado"));
+
+        // RF-010: en el listado aparecen la purificadora y el repartidor reales.
+        mvc.perform(get("/api/v1/clientes/me/pedidos").header("Authorization", "Bearer " + cli.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].id").value(idPedido))
+                .andExpect(jsonPath("$.contenido[0].nombreNegocio").isNotEmpty())
+                .andExpect(jsonPath("$.contenido[0].nombreRepartidor").isNotEmpty())
+                .andExpect(jsonPath("$.contenido[0].direccionTexto").isNotEmpty());
     }
 
     @Test

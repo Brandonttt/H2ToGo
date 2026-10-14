@@ -48,6 +48,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.htogo.app.data.local.LlegadaEntrega
 import com.htogo.app.data.location.EntregaEnCursoService
 import com.htogo.app.data.location.UbicacionTracker
 import com.htogo.app.ui.RepartidorViewModel
@@ -244,18 +245,26 @@ fun RutaEntregaScreen(
         UbicacionTracker.distanciaM(it.lat, it.lon, entrega.latDestino, entrega.lonDestino)
     }
 
+    val idPedidoRuta = livePedidoEnRuta?.id
     var estado by remember { mutableStateOf(EstadoRuta.EN_RUTA) }
     var mostrarModalEntregado by remember { mutableStateOf(false) }
     var mostrarModalNoEntregado by remember { mutableStateOf(false) }
 
+    // RN-012: la llegada se guarda en disco; al volver a la pantalla se retoma el conteo.
+    LaunchedEffect(idPedidoRuta) {
+        if (idPedidoRuta != null && LlegadaEntrega.obtener(context, idPedidoRuta) != null) {
+            estado = EstadoRuta.LLEGADO
+        }
+    }
     var segundosRestantes by remember { mutableStateOf(10 * 60) }
-    LaunchedEffect(estado) {
+    LaunchedEffect(estado, idPedidoRuta) {
         if (estado == EstadoRuta.LLEGADO) {
-            segundosRestantes = 10 * 60
-            while (segundosRestantes > 0) {
-                delay(1000)
-                segundosRestantes--
-            }
+            val llegada = idPedidoRuta?.let { LlegadaEntrega.registrar(context, it) } ?: System.currentTimeMillis()
+            do {
+                val transcurridos = ((System.currentTimeMillis() - llegada) / 1000).toInt()
+                segundosRestantes = (10 * 60 - transcurridos).coerceAtLeast(0)
+                if (segundosRestantes > 0) delay(1000)
+            } while (segundosRestantes > 0)
         }
     }
     val puedeMarcarNoEntregado = estado == EstadoRuta.LLEGADO && segundosRestantes <= 0
@@ -271,6 +280,22 @@ fun RutaEntregaScreen(
                 routePoints = routePoints,
                 modifier = Modifier.fillMaxSize()
             )
+
+            // CU-017 S1: con permiso pero sin fix del GPS tras unos segundos.
+            var sinSenalGps by remember { mutableStateOf(false) }
+            LaunchedEffect(tienePermiso, posicion == null) {
+                sinSenalGps = false
+                if (tienePermiso && posicion == null) {
+                    delay(15_000)
+                    sinSenalGps = true
+                }
+            }
+            if (sinSenalGps && posicion == null) {
+                com.htogo.app.ui.components.AvisoMapa(
+                    "Sin señal GPS · sal a un lugar abierto",
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 104.dp)
+                )
+            }
 
             if (!tienePermiso) {
                 PermisoUbicacionBanner(
@@ -521,6 +546,7 @@ fun RutaEntregaScreen(
                             lineas = lineasPayload,
                             onSuccess = {
                                 EntregaEnCursoService.detener(context)
+                                LlegadaEntrega.limpiar(context, idInt)
                                 Toast.makeText(context, "¡Entrega completada con éxito!", Toast.LENGTH_SHORT).show()
                                 mostrarModalEntregado = false
                                 onCompletada()
@@ -553,6 +579,7 @@ fun RutaEntregaScreen(
                             motivoNoEntrega = motivo.titulo + nota.trim().takeIf { it.isNotEmpty() }?.let { ": $it" }.orEmpty(),
                             onSuccess = {
                                 EntregaEnCursoService.detener(context)
+                                LlegadaEntrega.limpiar(context, idInt)
                                 Toast.makeText(context, "Entrega reportada como no realizada", Toast.LENGTH_SHORT).show()
                                 mostrarModalNoEntregado = false
                                 onCompletada()

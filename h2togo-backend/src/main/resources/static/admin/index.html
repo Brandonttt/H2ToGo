@@ -179,6 +179,8 @@
   .filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:12px;align-items:end;padding:14px 16px}
   .filters .acts{display:flex;gap:8px}
 
+  tr.clickable{cursor:pointer}
+  tr.clickable:hover td{background:#F8FAFC}
   /* modal */
   .overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;z-index:1000;overflow-y:auto}
   .modal{background:var(--surface);border-radius:14px;width:100%;max-width:560px;box-shadow:0 25px 60px rgba(15,23,42,.3)}
@@ -390,6 +392,8 @@
             </select></div>
           <div><label class="f">Cliente</label><input class="input" name="cliente" placeholder="Nombre o ID"></div>
           <div><label class="f">Repartidor</label><input class="input" name="repartidor" placeholder="Nombre o ID"></div>
+          <div><label class="f">Purificadora</label>
+            <select class="input" name="idNegocio"><option value="">Todas</option></select></div>
           <div class="acts"><button type="reset" class="btn">Limpiar</button><button type="submit" class="btn primary">Aplicar</button></div>
         </form>
       </div>
@@ -657,7 +661,7 @@ const VISTAS = {
 const state = {
   vista: null, timer: null, dash: null, serieDias: 30, map: null, mapLayer: null,
   u: { tab: '', q: '', page: 0, size: 15 },
-  p: { page: 0, size: 20, filtros: { rango: '7', estado: '', cliente: '', repartidor: '' }, total: 0 },
+  p: { page: 0, size: 20, filtros: { rango: '7', estado: '', cliente: '', repartidor: '', idNegocio: '' }, total: 0 },
   s: { tab: 'pendiente', tipo: '', data: [] },
   m: { data: [], filtro: '' },
 };
@@ -1082,14 +1086,26 @@ const RANGO_TXT = { hoy: 'de hoy', 7: 'de los últimos 7 días', 30: 'de los úl
 
 function queryPedidos(extra = {}) {
   const f = state.p.filtros;
-  return { ...rangoFechas(f.rango), estado: f.estado, cliente: f.cliente, repartidor: f.repartidor, ...extra };
+  return { ...rangoFechas(f.rango), estado: f.estado, cliente: f.cliente, repartidor: f.repartidor, idNegocio: f.idNegocio, ...extra };
 }
 
 async function cargarPedidos() {
   const form = $('#pFilters');
+  await cargarOpcionesNegocio(form.elements.idNegocio);
   Object.entries(state.p.filtros).forEach(([k, v]) => { form.elements[k].value = v; });
   cargarKpisPedidos();
   await listarPedidos();
+}
+
+/** Opciones del filtro de purificadora (RF-021); se cargan una vez por sesión del panel. */
+async function cargarOpcionesNegocio(select) {
+  if (select.options.length > 1) return;
+  try {
+    const negocios = await api('/admin/negocios');
+    negocios.sort((a, b) => a.nombreComercial.localeCompare(b.nombreComercial, 'es'))
+      .forEach(n => select.insertAdjacentHTML('beforeend',
+        `<option value="${n.id}">${esc(n.nombreComercial)}${n.activo ? '' : ' (inactiva)'}</option>`));
+  } catch { /* sin opciones: el filtro queda en "Todas" */ }
 }
 
 async function cargarKpisPedidos() {
@@ -1114,7 +1130,7 @@ async function listarPedidos() {
   try {
     const r = await api('/admin/pedidos', { query: queryPedidos({ page: p.page, size: p.size }) });
     p.total = r.totalElementos;
-    $('#pRows').innerHTML = r.contenido.length ? r.contenido.map(x => `<tr>
+    $('#pRows').innerHTML = r.contenido.length ? r.contenido.map(x => `<tr class="clickable" data-ped="${x.id}" title="Ver detalle">
       <td><b class="num">#${x.id}</b>${x.esProgramado ? ' <span class="ms" title="Programado" style="font-size:16px;color:var(--violet)">event</span>' : ''}</td>
       <td class="sub nw">${fmtDateTime(x.fechaCreacion)}</td>
       <td>${who(x.idCliente, x.cliente, 'ID ' + x.idCliente)}</td>
@@ -1132,14 +1148,55 @@ async function listarPedidos() {
 $('#pFilters').addEventListener('submit', e => {
   e.preventDefault();
   const fd = new FormData(e.target);
-  state.p.filtros = { rango: fd.get('rango'), estado: fd.get('estado'), cliente: fd.get('cliente').trim(), repartidor: fd.get('repartidor').trim() };
+  state.p.filtros = { rango: fd.get('rango'), estado: fd.get('estado'), cliente: fd.get('cliente').trim(), repartidor: fd.get('repartidor').trim(), idNegocio: fd.get('idNegocio') };
   state.p.page = 0; listarPedidos();
 });
 $('#pFilters').addEventListener('reset', () => setTimeout(() => {
-  state.p.filtros = { rango: '7', estado: '', cliente: '', repartidor: '' };
+  state.p.filtros = { rango: '7', estado: '', cliente: '', repartidor: '', idNegocio: '' };
   $('#pFilters').elements.rango.value = '7';
   state.p.page = 0; listarPedidos();
 }));
+$('#pRows').addEventListener('click', e => {
+  const tr = e.target.closest('[data-ped]'); if (tr) modalPedido(Number(tr.dataset.ped));
+});
+
+/** CU-016 pasos 5-6: detalle con dirección, líneas y fecha/hora de cada cambio de estado (RN-013). */
+async function modalPedido(id) {
+  let p;
+  try { p = await api('/pedidos/' + id); } catch (e) { toast(errMsg(e), 'err'); return; }
+  const est = ESTADOS[p.estado] || { t: p.estado, cls: 't-slate', ic: 'receipt_long' };
+  const lineas = (p.detalles || []).map(d => `<tr>
+      <td>${esc(d.nombreMarca || 'Marca ' + d.idMarca)}${d.agregadaEnSitio ? ' <span class="role t-warn">En sitio</span>' : ''}</td>
+      <td class="r num">${fmtInt(d.cantidadSolicitada)}</td>
+      <td class="r num">${d.cantidadEntregada == null ? '—' : fmtInt(d.cantidadEntregada)}</td>
+      <td class="r num">${fmtMoney2(d.precioUnitario)}</td>
+      <td class="r num">${d.tieneEnvase ? '<span class="sub">Propio</span>' : fmtMoney2(d.precioEnvaseUnitario)}</td></tr>`).join('');
+  const historial = (p.historial || []).map(h => `<li style="display:flex;gap:10px;align-items:flex-start;padding:6px 0">
+      ${estadoBadge(h.estado)}<div><div class="num">${fmtDateTime(h.fechaCambio)}</div>${h.notas ? `<div class="sub">${esc(h.notas)}</div>` : ''}</div></li>`).join('');
+  const rep = p.repartidor;
+  abrirModal(`
+    <div class="modal-h"><div class="chip-ic ${est.cls}" style="width:38px;height:38px;border-radius:10px"><span class="ms">${est.ic}</span></div>
+      <div><h3>Pedido #${p.id}</h3><p>${p.tipoSolicitud === 'abierta' ? 'Modalidad abierta' : 'Modalidad directa'} · creado ${fmtDateTime(p.fechaCreacion)}${p.esProgramado ? ' · programado para ' + fmtDateTime(p.fechaProgramada) : ''}</p></div>
+      <button class="icon-btn" data-close aria-label="Cerrar"><span class="ms">close</span></button></div>
+    <div class="modal-b">
+      <dl style="display:grid;grid-template-columns:120px 1fr;gap:6px 12px;margin:0">
+        <dt class="sub">Cliente</dt><dd style="margin:0">${esc(p.nombreCliente || '—')}${p.telefonoCliente ? ` · <span class="num">${esc(p.telefonoCliente)}</span>` : ''}</dd>
+        <dt class="sub">Dirección</dt><dd style="margin:0">${esc(p.direccionTexto || '—')}</dd>
+        <dt class="sub">Indicaciones</dt><dd style="margin:0">${esc(p.indicaciones || '—')}</dd>
+        <dt class="sub">Purificadora</dt><dd style="margin:0">${esc(p.nombreNegocio || (p.tipoSolicitud === 'abierta' ? 'Aún sin purificadora' : '—'))}${p.precioMaximoGarrafon ? ` · tope ${fmtMoney2(p.precioMaximoGarrafon)}/garrafón` : ''}</dd>
+        <dt class="sub">Repartidor</dt><dd style="margin:0">${rep ? esc(rep.nombre) + (rep.vehiculo ? ` · ${esc(rep.vehiculo)}` : '') + (rep.placas ? ` (${esc(rep.placas)})` : '') : '<span class="sub">Sin asignar</span>'}</dd>
+        <dt class="sub">Estado</dt><dd style="margin:0">${estadoBadge(p.estado)}</dd>
+      </dl>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Marca</th><th class="r">Pedidos</th><th class="r">Entregados</th><th class="r">Agua</th><th class="r">Envase</th></tr></thead>
+        <tbody>${lineas || '<tr><td colspan="5" class="sub">Sin líneas</td></tr>'}</tbody>
+        <tfoot><tr><td colspan="4" class="r"><b>${['entregado', 'no_entregado'].includes(p.estado) ? 'Total final' : 'Total estimado'}</b></td><td class="r num"><b>${fmtMoney2(p.totalPagar)}</b></td></tr></tfoot>
+      </table></div>
+      <div><div class="sub" style="margin-bottom:4px">Historial de estados</div><ul style="list-style:none;margin:0;padding:0">${historial || '<li class="sub">Sin registros</li>'}</ul></div>
+    </div>
+    <div class="modal-f"><button class="btn" data-close>Cerrar</button></div>`, 'lg');
+}
+
 $('#pCsv').addEventListener('click', async () => {
   const btn = $('#pCsv'); btn.disabled = true;
   try {

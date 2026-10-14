@@ -121,6 +121,7 @@ fun InventarioVehiculoScreen(
     val liveVehiculo by repartidorViewModel.inventarioVehiculo.collectAsState()
     val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
     val solicitudes by repartidorViewModel.solicitudes.collectAsState()
+    val esDueno by repartidorViewModel.esDueno.collectAsState()
 
     LaunchedEffect(Unit) {
         repartidorViewModel.cargarSolicitudes()
@@ -346,7 +347,7 @@ fun InventarioVehiculoScreen(
                     } else {
                         items(marcasBase) { m -> MarcaBaseCard(m) }
                     }
-                    item {
+                    if (esDueno) item {
                         Button(
                             onClick = { showRegistrarEntrada = true },
                             modifier = Modifier
@@ -360,7 +361,7 @@ fun InventarioVehiculoScreen(
                             Text("Registrar entrada", fontWeight = FontWeight.SemiBold)
                         }
                     }
-                    item {
+                    if (esDueno) item {
                         OutlinedButton(
                             onClick = { showSalidaManual = true },
                             modifier = Modifier
@@ -511,7 +512,7 @@ fun InventarioVehiculoScreen(
                                     color = HToGoColors.TextSecondary
                                 )
                             }
-                            Button(
+                            if (esDueno) Button(
                                 onClick = {
                                     vehiculoParaEditar = null
                                     showEditarVehiculoDialog = true
@@ -554,8 +555,17 @@ fun InventarioVehiculoScreen(
                                         color = HToGoColors.TextSecondary,
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                     )
-                                    Spacer(Modifier.height(16.dp))
-                                    Button(
+                                    if (!esDueno) {
+                                        Spacer(Modifier.height(10.dp))
+                                        Text(
+                                            "Pide al dueño del negocio que solicite el alta del vehículo.",
+                                            fontSize = 12.sp,
+                                            color = HToGoColors.TextSecondary,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+                                    }
+                                    if (esDueno) Spacer(Modifier.height(16.dp))
+                                    if (esDueno) Button(
                                         onClick = {
                                             vehiculoParaEditar = null
                                             showEditarVehiculoDialog = true
@@ -578,6 +588,7 @@ fun InventarioVehiculoScreen(
                                 vehiculo = v,
                                 esJornadaActiva = esActivo,
                                 solicitudPendiente = solPendiente,
+                                puedeSolicitar = esDueno,
                                 onIniciarJornada = {
                                     vehiculoParaJornada = v
                                     showIniciarJornadaDialog = true
@@ -1323,6 +1334,7 @@ private fun VehiculoDetalleCard(
     esJornadaActiva: Boolean = false,
     solicitudPendiente: com.htogo.app.data.dto.SolicitudResponse? = null,
     onIniciarJornada: () -> Unit = {},
+    puedeSolicitar: Boolean = true,
     onSolicitarCambio: () -> Unit,
     onEliminar: () -> Unit = {}
 ) {
@@ -1390,7 +1402,7 @@ private fun VehiculoDetalleCard(
                         fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f)
                     )
-                    Surface(
+                    if (puedeSolicitar) Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = HToGoColors.PrimarySoft,
                         modifier = Modifier.clickable(onClick = onSolicitarCambio)
@@ -1403,8 +1415,8 @@ private fun VehiculoDetalleCard(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                         )
                     }
-                    Spacer(Modifier.width(6.dp))
-                    Surface(
+                    if (puedeSolicitar) Spacer(Modifier.width(6.dp))
+                    if (puedeSolicitar) Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = HToGoColors.AccentRose.copy(alpha = 0.12f),
                         modifier = Modifier.clickable(onClick = onEliminar)

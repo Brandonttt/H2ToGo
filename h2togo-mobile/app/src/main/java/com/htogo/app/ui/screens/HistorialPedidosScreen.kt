@@ -32,10 +32,42 @@ import com.htogo.app.ui.components.ClienteTab
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
 
-enum class HistEstado(val label: String, val color: Color, val icon: ImageVector) {
-    EN_CAMINO ("En camino",  HToGoColors.StatusEnCamino,  Icons.Filled.DeliveryDining),
-    ENTREGADO ("Entregado",  HToGoColors.StatusEntregado, Icons.Filled.CheckCircle),
-    CANCELADO ("Cancelado",  HToGoColors.StatusCancelado, Icons.Filled.Cancel)
+enum class HistEstado(val label: String, val color: Color, val icon: ImageVector, val activo: Boolean) {
+    PROGRAMADO  ("Programado",          HToGoColors.StatusPendiente, Icons.Filled.Schedule,       true),
+    PENDIENTE   ("Buscando repartidor", HToGoColors.StatusPendiente, Icons.Filled.HourglassTop,   true),
+    ASIGNADO    ("Asignado",            HToGoColors.StatusAsignado,  Icons.Filled.Person,         true),
+    EN_CAMINO   ("En camino",           HToGoColors.StatusEnCamino,  Icons.Filled.DeliveryDining, true),
+    ENTREGADO   ("Entregado",           HToGoColors.StatusEntregado, Icons.Filled.CheckCircle,    false),
+    NO_ENTREGADO("No entregado",        HToGoColors.StatusCancelado, Icons.Filled.Block,          false),
+    CANCELADO   ("Cancelado",           HToGoColors.StatusCancelado, Icons.Filled.Cancel,         false);
+
+    companion object {
+        fun desde(estado: String?): HistEstado = when (estado?.lowercase()) {
+            "pendiente_programado" -> PROGRAMADO
+            "pendiente" -> PENDIENTE
+            "asignado" -> ASIGNADO
+            "en_camino" -> EN_CAMINO
+            "entregado" -> ENTREGADO
+            "no_entregado" -> NO_ENTREGADO
+            else -> CANCELADO
+        }
+    }
+}
+
+/** "2026-10-13T09:30:00-06:00" → grupo "Hoy" / "Ayer" / "Anteriores" según la fecha local del teléfono. */
+private fun grupoPorFecha(iso: String?): String {
+    val dia = iso?.take(10) ?: return "Anteriores"
+    val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+    val hoy = java.util.Calendar.getInstance()
+    if (dia == fmt.format(hoy.time)) return "Hoy"
+    hoy.add(java.util.Calendar.DAY_OF_YEAR, -1)
+    return if (dia == fmt.format(hoy.time)) "Ayer" else "Anteriores"
+}
+
+/** "2026-10-13T09:30:00-06:00" → "13/10/2026 09:30". */
+private fun fechaLegible(iso: String?): String {
+    if (iso.isNullOrBlank() || iso.length < 16) return iso?.take(10) ?: "—"
+    return "${iso.substring(8, 10)}/${iso.substring(5, 7)}/${iso.substring(0, 4)} ${iso.substring(11, 16)}"
 }
 
 data class HistPedido(
@@ -75,44 +107,45 @@ fun HistorialPedidosScreen(
 
     val liveHistorial = remember(rawHistorial) {
         (rawHistorial ?: emptyList()).map { dto ->
-            val estadoEnum = when (dto.estado?.lowercase()) {
-                "entregado" -> HistEstado.ENTREGADO
-                "cancelado" -> HistEstado.CANCELADO
-                else -> HistEstado.EN_CAMINO
-            }
+            val estadoEnum = HistEstado.desde(dto.estado)
             HistPedido(
                 id = dto.id.toString(),
-                resumen = "${dto.garrafonesTotales ?: 1} × Garrafón 20 L",
-                purificadora = "Purificadora",
-                repartidor = if (estadoEnum == HistEstado.CANCELADO) "Cancelado" else "Repartidor asignado",
-                fecha = dto.fechaCreacion?.take(10) ?: "Reciente",
-                direccion = "Dirección de entrega",
+                resumen = "${dto.garrafonesTotales ?: 0} × Garrafón 20 L",
+                purificadora = dto.nombreNegocio
+                    ?: if (dto.tipoSolicitud.equals("abierta", true)) "Pedido abierto" else "Purificadora",
+                repartidor = dto.nombreRepartidor ?: when (estadoEnum) {
+                    HistEstado.CANCELADO -> "Sin repartidor"
+                    HistEstado.PENDIENTE, HistEstado.PROGRAMADO -> "Aún sin repartidor"
+                    else -> "—"
+                },
+                fecha = fechaLegible(dto.fechaCreacion),
+                direccion = dto.direccionTexto ?: "Dirección de entrega",
                 direccionIcon = Icons.Filled.Home,
-                total = dto.totalPagar?.toInt() ?: 45,
+                total = dto.totalPagar?.toInt() ?: 0,
                 estado = estadoEnum,
-                grupo = if (dto.fechaCreacion?.take(10) == "2026-09-09") "Hoy" else "Anteriores"
+                grupo = grupoPorFecha(dto.fechaCreacion)
             )
         }
     }
 
     val dynamicTabs = remember(liveHistorial) {
         val totalCount = liveHistorial.size
-        val activosCount = liveHistorial.count { it.estado == HistEstado.EN_CAMINO }
+        val activosCount = liveHistorial.count { it.estado.activo }
         val entregadosCount = liveHistorial.count { it.estado == HistEstado.ENTREGADO }
-        val canceladosCount = liveHistorial.count { it.estado == HistEstado.CANCELADO }
+        val canceladosCount = liveHistorial.count { it.estado == HistEstado.CANCELADO || it.estado == HistEstado.NO_ENTREGADO }
         listOf(
             TabFilter("Todos", totalCount),
             TabFilter("Activos", activosCount),
             TabFilter("Entregados", entregadosCount),
-            TabFilter("Cancelados", canceladosCount)
+            TabFilter("No completados", canceladosCount)
         )
     }
 
     val pedidosFiltrados = remember(liveHistorial, activeTab, query) {
         val base = when (activeTab) {
-            1 -> liveHistorial.filter { it.estado == HistEstado.EN_CAMINO }
+            1 -> liveHistorial.filter { it.estado.activo }
             2 -> liveHistorial.filter { it.estado == HistEstado.ENTREGADO }
-            3 -> liveHistorial.filter { it.estado == HistEstado.CANCELADO }
+            3 -> liveHistorial.filter { it.estado == HistEstado.CANCELADO || it.estado == HistEstado.NO_ENTREGADO }
             else -> liveHistorial
         }
         if (query.isBlank()) base else base.filter {
@@ -387,7 +420,7 @@ private fun HistCard(
                     StatusChipSmall(p.estado)
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    if (p.estado == HistEstado.CANCELADO) {
+                    if (p.estado == HistEstado.CANCELADO || p.estado == HistEstado.NO_ENTREGADO) {
                         Text("$${p.total}", fontSize = 15.sp, fontWeight = FontWeight.Bold,
                             color = HToGoColors.TextTertiary,
                             textDecoration = TextDecoration.LineThrough)

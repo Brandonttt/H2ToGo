@@ -335,7 +335,7 @@ private fun TrackingSheet(
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Puedes cancelar mientras el repartidor no haya salido en camino.",
+                        "Puedes cancelar mientras ningún repartidor haya tomado tu pedido.",
                         fontSize = 11.sp, color = HToGoColors.TextTertiary,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -380,7 +380,7 @@ private fun TrackingSheet(
                         Icon(Icons.Filled.Lock, null, tint = HToGoColors.TextTertiary,
                             modifier = Modifier.size(13.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Ya no puedes cancelar: tu pedido está en camino",
+                        Text(if (order.estado == EstadoPedido.EN_CAMINO) "Ya no puedes cancelar: tu pedido está en camino" else "Ya no puedes cancelar: un repartidor ya tomó tu pedido",
                             fontSize = 11.sp, color = HToGoColors.TextTertiary)
                     }
                 }
@@ -585,7 +585,8 @@ fun SeguimientoPedidoScreen(
         )
     }
 
-    val steps = remember(order.estado) {
+    val historialPedido = livePedido?.historial
+    val pasos = remember(order.estado) {
         when (order.estado) {
             EstadoPedido.PENDIENTE -> listOf(
                 TrackingStep("Pedido recibido", "En espera de repartidor", TrackingStep.StepState.ACTIVE),
@@ -625,6 +626,23 @@ fun SeguimientoPedidoScreen(
             )
         }
     }
+    // CU-007: cada paso cumplido muestra la hora real registrada en el historial (RN-013).
+    val steps = remember(pasos, historialPedido) {
+        pasos.map { paso ->
+            val estado = when {
+                paso.title.startsWith("Pedido recibido") -> listOf("pendiente_programado", "pendiente")
+                paso.title.startsWith("Repartidor asignado") -> listOf("asignado")
+                paso.title.startsWith("En camino") -> listOf("en_camino")
+                paso.title == "Entregado" -> listOf("entregado")
+                paso.title == "No entregado" -> listOf("no_entregado")
+                paso.title == "Cancelado" -> listOf("cancelado")
+                else -> emptyList()
+            }
+            val fecha = historialPedido.orEmpty().firstOrNull { it.estado.lowercase() in estado }?.fecha
+            if (paso.state == TrackingStep.StepState.PENDING || fecha.isNullOrBlank() || fecha.length < 16) paso
+            else paso.copy(time = "${fecha.substring(8, 10)}/${fecha.substring(5, 7)} ${fecha.substring(11, 16)} · ${paso.time}")
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(HToGoColors.Background)) {
         val latDestino = livePedido?.latEntrega
@@ -647,6 +665,27 @@ fun SeguimientoPedidoScreen(
             FloatingTopBar(order.id, onBack)
         }
 
+        // CU-006 S1: en camino pero sin posición, o sin cambios en más de 2 minutos.
+        if (order.estado == EstadoPedido.EN_CAMINO) {
+            var ahoraMs by remember { mutableStateOf(System.currentTimeMillis()) }
+            LaunchedEffect(Unit) {
+                while (true) { kotlinx.coroutines.delay(15_000); ahoraMs = System.currentTimeMillis() }
+            }
+            val u = ubicacionRepartidor
+            val aviso = when {
+                u == null -> "Ubicación del repartidor no disponible por ahora"
+                ahoraMs - u.recibidaMs > 120_000 ->
+                    "Última ubicación hace ${(ahoraMs - u.recibidaMs) / 60_000} min"
+                else -> null
+            }
+            if (aviso != null) {
+                com.htogo.app.ui.components.AvisoMapa(
+                    aviso,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 104.dp)
+                )
+            }
+        }
+
         var mostrarDialogCancelar by remember { mutableStateOf(false) }
 
         if (mostrarDialogCancelar) {
@@ -656,10 +695,11 @@ fun SeguimientoPedidoScreen(
                 title = { Text("¿Cancelar pedido?", fontWeight = FontWeight.Bold) },
                 text = {
                     Text(
-                        "¿Estás seguro de que deseas cancelar este pedido? Puedes cancelar sin costo mientras la purificadora o el repartidor no hayan salido en camino."
+                        "¿Estás seguro de que deseas cancelar este pedido? Solo puedes cancelarlo mientras ningún repartidor lo haya tomado."
                     )
                 },
                 confirmButton = {
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
                     Button(
                         onClick = {
                             mostrarDialogCancelar = false
@@ -667,8 +707,13 @@ fun SeguimientoPedidoScreen(
                             if (idInt != null) {
                                 clienteViewModel.cancelarPedido(
                                     id = idInt,
-                                    onSuccess = {},
-                                    onError = {}
+                                    onSuccess = {
+                                        android.widget.Toast.makeText(ctx, "Pedido cancelado", android.widget.Toast.LENGTH_SHORT).show()
+                                    },
+                                    // CU-005 S1: p. ej. un repartidor lo tomó mientras se confirmaba.
+                                    onError = { msg ->
+                                        android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_LONG).show()
+                                    }
                                 )
                             }
                         },
