@@ -91,7 +91,7 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun cargarDirecciones() {
+    fun cargarDirecciones(onComplete: (() -> Unit)? = null) {
         viewModelScope.launch {
             try {
                 val resp = apiClient.direccionesApi.listarDirecciones()
@@ -99,12 +99,20 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
                     val lista = resp.body()!!
                     _direcciones.value = lista
                     val defaultDir = lista.firstOrNull()
-                    if (defaultDir != null) {
+                    if (defaultDir != null && (defaultDir.lat != 0.0 || defaultDir.lon != 0.0)) {
                         buscarPurificadoras(defaultDir.lat, defaultDir.lon)
+                    } else {
+                        buscarPurificadoras(19.376692, -99.165057)
                     }
+                } else if (_purificadoras.value.isEmpty()) {
+                    buscarPurificadoras(19.376692, -99.165057)
                 }
             } catch (e: Exception) {
-                // Error de red
+                if (_purificadoras.value.isEmpty()) {
+                    buscarPurificadoras(19.376692, -99.165057)
+                }
+            } finally {
+                onComplete?.invoke()
             }
         }
     }
@@ -140,6 +148,9 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
                 if (resp.isSuccessful && resp.body() != null) {
                     val nueva = resp.body()!!
                     _direcciones.value = _direcciones.value + nueva
+                    if (_direcciones.value.size == 1 && (nueva.lat != 0.0 || nueva.lon != 0.0)) {
+                        buscarPurificadoras(nueva.lat, nueva.lon)
+                    }
                     onSuccess(nueva)
                 } else {
                     val err = parseError(resp.errorBody()?.string())
@@ -186,6 +197,10 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
                 if (resp.isSuccessful && resp.body() != null) {
                     val actualizada = resp.body()!!
                     _direcciones.value = _direcciones.value.map { if (it.id == id) actualizada else it }
+                    val defaultDir = _direcciones.value.firstOrNull()
+                    if (defaultDir?.id == id && (actualizada.lat != 0.0 || actualizada.lon != 0.0)) {
+                        buscarPurificadoras(actualizada.lat, actualizada.lon)
+                    }
                     onSuccess(actualizada)
                 } else {
                     val err = parseError(resp.errorBody()?.string())
@@ -211,6 +226,12 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
                 val resp = apiClient.direccionesApi.eliminarDireccion(id)
                 if (resp.isSuccessful) {
                     _direcciones.value = _direcciones.value.filter { it.id != id }
+                    val defaultDir = _direcciones.value.firstOrNull()
+                    if (defaultDir != null && (defaultDir.lat != 0.0 || defaultDir.lon != 0.0)) {
+                        buscarPurificadoras(defaultDir.lat, defaultDir.lon)
+                    } else {
+                        buscarPurificadoras(19.376692, -99.165057)
+                    }
                     onSuccess()
                 } else {
                     val err = parseError(resp.errorBody()?.string())
@@ -225,15 +246,29 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private var buscarPurificadorasJob: Job? = null
+
     fun buscarPurificadoras(lat: Double, lon: Double) {
-        viewModelScope.launch {
+        buscarPurificadorasJob?.cancel()
+        buscarPurificadorasJob = viewModelScope.launch {
             try {
                 val resp = apiClient.negociosApi.buscarCercanos("$lat,$lon", limite = 15)
-                if (resp.isSuccessful && resp.body() != null) {
+                if (resp.isSuccessful && !resp.body().isNullOrEmpty()) {
                     _purificadoras.value = resp.body()!!
+                } else {
+                    // Fallback para evitar lista vacía si la coordenada está fuera de la zona estricta
+                    val fallback = apiClient.negociosApi.buscarCercanos(cerca = null, limite = 15)
+                    if (fallback.isSuccessful && fallback.body() != null) {
+                        _purificadoras.value = fallback.body()!!
+                    }
                 }
             } catch (e: Exception) {
-                // Error
+                try {
+                    val fallback = apiClient.negociosApi.buscarCercanos(cerca = null, limite = 15)
+                    if (fallback.isSuccessful && fallback.body() != null) {
+                        _purificadoras.value = fallback.body()!!
+                    }
+                } catch (ignored: Exception) {}
             }
         }
     }
@@ -473,8 +508,6 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
         cargarMarcas()
         cargarDirecciones()
         cargarHistorial()
-        // Benito Juárez centro por defecto: 19.376692, -99.165057
-        buscarPurificadoras(19.376692, -99.165057)
     }
 
     private fun limpiarDatosDeSesion() {

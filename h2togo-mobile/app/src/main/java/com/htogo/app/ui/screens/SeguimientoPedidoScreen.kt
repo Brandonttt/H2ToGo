@@ -4,6 +4,9 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -195,7 +198,7 @@ private fun MapMock(modifier: Modifier = Modifier, purificadoraName: String) {
             shape = RoundedCornerShape(99.dp),
             color = Color.White,
             shadowElevation = 6.dp,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 110.dp)
+            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 70.dp)
         ) {
             Row(
                 Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
@@ -214,7 +217,7 @@ private fun MapMock(modifier: Modifier = Modifier, purificadoraName: String) {
         }
 
         Column(
-            Modifier.align(Alignment.TopEnd).padding(top = 140.dp, end = 14.dp),
+            Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 70.dp, end = 14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MapFab(Icons.Filled.MyLocation)
@@ -239,7 +242,11 @@ private fun MapFab(icon: ImageVector) {
 @Composable
 private fun FloatingTopBar(orderId: String, onBack: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp)
+            .padding(top = 10.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -270,118 +277,199 @@ private fun FloatingTopBar(orderId: String, onBack: () -> Unit) {
 private fun TrackingSheet(
     order: TrackedOrder,
     steps: List<TrackingStep>,
+    maxScreenHeight: androidx.compose.ui.unit.Dp = 800.dp,
     onPedidoEntregado: () -> Unit,
     onAbrirPurificadora: () -> Unit,
     onCancelarPedido: () -> Unit = {}
 ) {
     val isEntregado = order.estado == EstadoPedido.ENTREGADO
+    var isMinimized by remember { mutableStateOf(false) }
+
+    val sheetMaxHeight = maxScreenHeight * 0.62f
+    val sheetMinHeight = 88.dp
+    val animatedHeight by animateDpAsState(
+        targetValue = if (isMinimized) sheetMinHeight else sheetMaxHeight,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "trackingSheetHeight"
+    )
+
     Surface(
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         color = HToGoColors.Surface,
         shadowElevation = 8.dp,
-        modifier = Modifier.fillMaxWidth().fillMaxHeight(0.62f)
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(animatedHeight)
     ) {
-        Column(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 20.dp)) {
-            Box(
-                Modifier.align(Alignment.CenterHorizontally)
-                    .width(44.dp).height(4.dp).clip(RoundedCornerShape(2.dp))
-                    .background(HToGoColors.OutlineSoft)
-            )
-            Spacer(Modifier.height(10.dp))
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    EstadoPedidoChip(order.estado)
-                }
-                Spacer(Modifier.height(14.dp))
-
-                DriverCard(order, onAbrirPurificadora)
-                Spacer(Modifier.height(14.dp))
-
-                Timeline(steps)
-                Spacer(Modifier.height(14.dp))
-
-                OrderRow("Pedido", order.items)
-                OrderRow("Domicilio", order.address)
-                Divider(Modifier.padding(vertical = 8.dp), color = HToGoColors.OutlineSoft)
-                OrderRow("Total a pagar", (if (order.total % 1.0 == 0.0) "$%.0f MXN" else "$%.2f MXN").format(order.total),
-                    valueColor = HToGoColors.Primary, bold = true)
-                Spacer(Modifier.height(8.dp))
-
-                if (isEntregado) {
-                    Button(
-                        onClick = onPedidoEntregado,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.StatusEntregado)
-                    ) {
-                        Icon(Icons.Filled.CheckCircle, null, tint = Color.White,
-                            modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Confirmar pedido entregado",
-                            fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                    }
-                } else if (order.estado == EstadoPedido.PENDIENTE) {
-                    Button(
-                        onClick = onCancelarPedido,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Icon(Icons.Filled.Cancel, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Cancelar pedido", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Puedes cancelar mientras ningún repartidor haya tomado tu pedido.",
-                        fontSize = 11.sp, color = HToGoColors.TextTertiary,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = if (isMinimized) 0.dp else 16.dp)
+        ) {
+            // Cabecera interactiva y arrastrable (Handle + Chip + Resumen + Chevron)
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .draggable(
+                        orientation = Orientation.Vertical,
+                        state = rememberDraggableState { delta ->
+                            if (delta > 10f && !isMinimized) {
+                                isMinimized = true
+                            } else if (delta < -10f && isMinimized) {
+                                isMinimized = false
+                            }
+                        }
                     )
-                } else if (order.estado == EstadoPedido.CANCELADO || order.estado == EstadoPedido.NO_ENTREGADO) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    .clickable { isMinimized = !isMinimized }
+                    .padding(top = 10.dp, bottom = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    Modifier
+                        .width(44.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(HToGoColors.OutlineSoft)
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    EstadoPedidoChip(order.estado)
+                    Spacer(Modifier.width(10.dp))
+                    if (isMinimized) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                order.driverName.takeIf { it != "Por asignar" } ?: order.purificadoraName,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = HToGoColors.TextPrimary,
+                                maxLines = 1
+                            )
+                            Text(
+                                (if (order.total % 1.0 == 0.0) "$%.0f MXN" else "$%.2f MXN").format(order.total) + " · ${order.items}",
+                                fontSize = 11.5.sp,
+                                color = HToGoColors.TextSecondary,
+                                maxLines = 1
+                            )
+                        }
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    IconButton(
+                        onClick = { isMinimized = !isMinimized },
+                        modifier = Modifier.size(28.dp)
                     ) {
+                        Icon(
+                            if (isMinimized) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                            contentDescription = if (isMinimized) "Expandir desglose" else "Minimizar desglose",
+                            tint = HToGoColors.TextSecondary
+                        )
+                    }
+                }
+            }
+
+            if (!isMinimized) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 18.dp)
+                ) {
+                    DriverCard(order, onAbrirPurificadora)
+                    Spacer(Modifier.height(14.dp))
+
+                    Timeline(steps)
+                    Spacer(Modifier.height(14.dp))
+
+                    OrderRow("Pedido", order.items)
+                    OrderRow("Domicilio", order.address)
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp), color = HToGoColors.OutlineSoft)
+                    OrderRow(
+                        "Total a pagar",
+                        (if (order.total % 1.0 == 0.0) "$%.0f MXN" else "$%.2f MXN").format(order.total),
+                        valueColor = HToGoColors.Primary,
+                        bold = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    if (isEntregado) {
+                        Button(
+                            onClick = onPedidoEntregado,
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.StatusEntregado)
+                        ) {
+                            Icon(Icons.Filled.CheckCircle, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Confirmar pedido entregado", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        }
+                    } else if (order.estado == EstadoPedido.PENDIENTE) {
+                        Button(
+                            onClick = onCancelarPedido,
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Icon(Icons.Filled.Cancel, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Cancelar pedido", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        }
+                        Spacer(Modifier.height(6.dp))
                         Text(
-                            if (order.estado == EstadoPedido.NO_ENTREGADO) "El repartidor no pudo entregar este pedido"
-                            else "Este pedido fue cancelado",
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(12.dp),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            "Puedes cancelar mientras ningún repartidor haya tomado tu pedido.",
+                            fontSize = 11.sp, color = HToGoColors.TextTertiary,
+                            modifier = Modifier.fillMaxWidth(),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = {},
-                        enabled = false,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, HToGoColors.OutlineSoft),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            disabledContainerColor = HToGoColors.Background,
-                            disabledContentColor = HToGoColors.TextTertiary
-                        )
-                    ) {
-                        Text("Cancelar pedido",
-                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.Lock, null, tint = HToGoColors.TextTertiary,
-                            modifier = Modifier.size(13.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(if (order.estado == EstadoPedido.EN_CAMINO) "Ya no puedes cancelar: tu pedido está en camino" else "Ya no puedes cancelar: un repartidor ya tomó tu pedido",
-                            fontSize = 11.sp, color = HToGoColors.TextTertiary)
+                    } else if (order.estado == EstadoPedido.CANCELADO || order.estado == EstadoPedido.NO_ENTREGADO) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                if (order.estado == EstadoPedido.NO_ENTREGADO) "El repartidor no pudo entregar este pedido"
+                                else "Este pedido fue cancelado",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(12.dp),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = {},
+                            enabled = false,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, HToGoColors.OutlineSoft),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                disabledContainerColor = HToGoColors.Background,
+                                disabledContentColor = HToGoColors.TextTertiary
+                            )
+                        ) {
+                            Text("Cancelar pedido", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Filled.Lock, null, tint = HToGoColors.TextTertiary, modifier = Modifier.size(13.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                if (order.estado == EstadoPedido.EN_CAMINO) "Ya no puedes cancelar: tu pedido está en camino"
+                                else "Ya no puedes cancelar: un repartidor ya tomó tu pedido",
+                                fontSize = 11.sp,
+                                color = HToGoColors.TextTertiary
+                            )
+                        }
                     }
                 }
             }
@@ -645,7 +733,8 @@ fun SeguimientoPedidoScreen(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(HToGoColors.Background)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(HToGoColors.Background)) {
+        val screenHeight = maxHeight
         val latDestino = livePedido?.latEntrega
         val lonDestino = livePedido?.lonEntrega
         if (latDestino != null && lonDestino != null) {
@@ -685,7 +774,7 @@ fun SeguimientoPedidoScreen(
             if (aviso != null) {
                 com.htogo.app.ui.components.AvisoMapa(
                     aviso,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 146.dp)
+                    modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 70.dp)
                 )
             }
         }
@@ -738,6 +827,7 @@ fun SeguimientoPedidoScreen(
             TrackingSheet(
                 order = order,
                 steps = steps,
+                maxScreenHeight = screenHeight,
                 onPedidoEntregado = onPedidoEntregado,
                 onAbrirPurificadora = onAbrirPurificadora,
                 onCancelarPedido = { mostrarDialogCancelar = true }

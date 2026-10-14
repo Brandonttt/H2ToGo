@@ -72,14 +72,25 @@ fun PerfilPurificadoraScreen(
     val perfil by clienteViewModel.perfilPurificadora.collectAsState()
     val isLoading by clienteViewModel.isLoading.collectAsState()
 
-    val displayNombre = perfil?.nombreComercial ?: clienteViewModel.purificadoraSeleccionadaNombre ?: nombre
-    // Sin dato real (p. ej. al entrar desde el inicio) no se muestra distancia.
-    val displayDistancia = clienteViewModel.purificadoraSeleccionadaDistancia
-    val displayDireccion = perfil?.direccion ?: direccion
-    val displayAbierto = perfil?.abiertoAhora ?: abiertoAhora
+    LaunchedEffect(clienteViewModel.purificadoraSeleccionadaId) {
+        val id = clienteViewModel.purificadoraSeleccionadaId
+        if (id != null) {
+            clienteViewModel.cargarPerfilPurificadora(id)
+        }
+    }
 
-    val displayHorario = remember(perfil) {
-        val hList = perfil?.horarios
+    val perfilActual = perfil?.takeIf { it.id == clienteViewModel.purificadoraSeleccionadaId }
+
+    val displayNombre = perfilActual?.nombreComercial
+        ?: clienteViewModel.purificadoraSeleccionadaNombre
+        ?: "Purificadora"
+    val displayDistancia = clienteViewModel.purificadoraSeleccionadaDistancia
+    val displayDireccion = perfilActual?.direccion
+        ?: if (isLoading) "Cargando dirección..." else "Dirección no disponible"
+    val displayAbierto = perfilActual?.abiertoAhora ?: false
+
+    val displayHorario = remember(perfilActual, isLoading) {
+        val hList = perfilActual?.horarios
         if (!hList.isNullOrEmpty()) {
             val abiertos = hList.filter { !it.cerrado }
             if (abiertos.isNotEmpty()) {
@@ -88,28 +99,26 @@ fun PerfilPurificadoraScreen(
             } else {
                 "Cerrado temporalmente"
             }
-        } else if (perfil != null) {
+        } else if (perfilActual != null) {
             "Horario no registrado"
+        } else if (isLoading) {
+            "Cargando horario..."
         } else {
-            horario
+            "Horario no disponible"
         }
     }
-    // Días cerrados según el horario real (antes decía siempre "Cerrado los domingos").
-    val displayDiasCerrados = remember(perfil) {
+    // Días cerrados según el horario real
+    val displayDiasCerrados = remember(perfilActual) {
+        if (perfilActual == null) return@remember ""
         val nombres = listOf("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
-        val cerrados = perfil?.horarios.orEmpty().filter { it.cerrado }.map { nombres[(it.diaSemana - 1).coerceIn(0, 6)] }
-        when {
-            perfil == null -> diasCerrados
-            cerrados.isEmpty() -> ""
-            else -> "Cerrado: " + cerrados.joinToString(", ")
-        }
+        val cerrados = perfilActual.horarios.orEmpty().filter { it.cerrado }.map { nombres[(it.diaSemana - 1).coerceIn(0, 6)] }
+        if (cerrados.isEmpty()) "" else "Cerrado: " + cerrados.joinToString(", ")
     }
 
-    val productos = remember(perfil) {
-        if (!perfil?.productos.isNullOrEmpty()) {
-            perfil!!.productos!!.map { prod ->
+    val productos = remember(perfilActual) {
+        if (!perfilActual?.productos.isNullOrEmpty()) {
+            perfilActual.productos!!.filter { it.activo }.map { prod ->
                 val precio = prod.precioLiquido
-                // Antes 0 piezas se mostraba como "pocos".
                 val stock = when {
                     prod.stockDisponible > 5 -> StockEstado.DISPONIBLE
                     prod.stockDisponible > 0 -> StockEstado.POCOS
@@ -136,7 +145,17 @@ fun PerfilPurificadoraScreen(
                     .background(Color.White)
                     .padding(horizontal = 20.dp, vertical = 12.dp)
             ) {
-                HToGoButton(text = "Pedir a esta purificadora", onClick = onPedir)
+                HToGoButton(
+                    text = "Pedir a esta purificadora",
+                    onClick = {
+                        val idActual = perfilActual?.id ?: clienteViewModel.purificadoraSeleccionadaId
+                        if (idActual != null) {
+                            clienteViewModel.purificadoraSeleccionadaId = idActual
+                            clienteViewModel.purificadoraSeleccionadaNombre = displayNombre
+                        }
+                        onPedir()
+                    }
+                )
             }
         }
     ) { padding ->
@@ -148,7 +167,7 @@ fun PerfilPurificadoraScreen(
         ) {
             HeaderPurificadora(displayNombre, displayDistancia, displayAbierto, onBack)
 
-            if (isLoading && perfil == null) {
+            if (isLoading && perfilActual == null) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -167,8 +186,8 @@ fun PerfilPurificadoraScreen(
                 }
             } else {
                 MiniMapa(
-                    lat = perfil?.direccionObj?.lat,
-                    lon = perfil?.direccionObj?.lon
+                    lat = perfilActual?.direccionObj?.lat,
+                    lon = perfilActual?.direccionObj?.lon
                 )
                 Spacer(Modifier.height(20.dp))
                 DatosNegocio(displayDireccion, displayHorario, displayDiasCerrados, displayAbierto, tiempoEnPlataforma)

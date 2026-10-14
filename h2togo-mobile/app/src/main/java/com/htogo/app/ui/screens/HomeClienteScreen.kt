@@ -64,7 +64,19 @@ fun HomeClienteScreen(
     val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance(context) }
     val nombre = remember { sessionManager.obtenerNombre()?.substringBefore(" ")?.ifBlank { "Cliente" } ?: "Cliente" }
     var notificacionesActivas by remember { mutableStateOf(sessionManager.estanNotificacionesActivas()) }
-    val direccion = "Benito Juárez, CDMX"
+
+    val direccionesCliente by clienteViewModel.direcciones.collectAsState()
+    val defaultDir = remember(direccionesCliente) { direccionesCliente.firstOrNull() }
+    val direccion = remember(defaultDir) {
+        defaultDir?.let {
+            if (!it.colonia.isNullOrBlank()) "${it.alias}: Col. ${it.colonia}"
+            else "${it.alias}: ${it.calle}"
+        } ?: "Benito Juárez, CDMX"
+    }
+
+    LaunchedEffect(Unit) {
+        clienteViewModel.cargarDirecciones()
+    }
 
     val livePurificadoras by clienteViewModel.purificadoras.collectAsState()
     val livePedidoActivo by clienteViewModel.pedidoActivo.collectAsState()
@@ -227,17 +239,34 @@ fun HomeClienteScreen(
             Spacer(Modifier.height(8.dp))
             if (livePurificadoras.isNotEmpty()) {
                 livePurificadoras.forEach { p ->
+                    val pLat = p.lat
+                    val pLon = p.lon
+                    val distKm = when {
+                        p.distanciaKm > 0.0 -> p.distanciaKm
+                        defaultDir != null && pLat != null && pLon != null && (pLat != 0.0 || pLon != 0.0) ->
+                            com.htogo.app.data.location.UbicacionTracker.distanciaM(defaultDir.lat, defaultDir.lon, pLat, pLon) / 1000.0
+                        else -> p.distanciaKm
+                    }
+                    val distanciaStr = when {
+                        distKm < 0.05 -> "< 0.1 km"
+                        distKm < 1.0 -> "${(distKm * 1000).toInt().coerceAtLeast(50)} m"
+                        else -> String.format(java.util.Locale.US, "%.2f km", distKm)
+                    }
                     PurificadoraMini(
                         nombre = p.nombreComercial,
-                        distancia = String.format(java.util.Locale.US, "%.2f km", p.distanciaKm),
+                        distancia = distanciaStr,
                         onAbrir = {
                             clienteViewModel.purificadoraSeleccionadaId = p.id
                             clienteViewModel.purificadoraSeleccionadaNombre = p.nombreComercial
+                            clienteViewModel.purificadoraSeleccionadaDistancia = distanciaStr
+                            clienteViewModel.cargarPerfilPurificadora(p.id)
                             onAbrirPurificadora()
                         },
                         onPedir = {
                             clienteViewModel.purificadoraSeleccionadaId = p.id
                             clienteViewModel.purificadoraSeleccionadaNombre = p.nombreComercial
+                            clienteViewModel.purificadoraSeleccionadaDistancia = distanciaStr
+                            clienteViewModel.cargarPerfilPurificadora(p.id)
                             onNuevoPedido()
                         }
                     )
