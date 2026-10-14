@@ -31,8 +31,20 @@ h2togo-mobile/
    La fase "Compilar Kotlin (Shared)" corre Gradle y genera el framework `Shared`;
    la primera vez tarda varios minutos.
 
-Para probar contra el backend local (Docker en el puerto 8088), cambia la URL en
-`iosApp/iosApp/ContentView.swift` por `http://localhost:8088/api/v1/`.
+Por defecto usa el backend de Azure. Para el backend local (Docker en el puerto 8088):
+
+- En Xcode: *Product > Scheme > Edit Scheme > Run > Arguments > Environment Variables*,
+  agrega `H2TOGO_API` = `http://localhost:8088/api/v1/`.
+- O desde terminal, con la app ya instalada en el simulador:
+  `SIMCTL_CHILD_H2TOGO_API=http://localhost:8088/api/v1/ xcrun simctl launch booted com.htogo.app`
+
+Por línea de comandos (sin abrir Xcode):
+
+```bash
+cd h2togo-mobile/iosApp
+xcodebuild -project iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath build/dd build
+xcrun simctl install booted build/dd/Build/Products/Debug-iphonesimulator/H2ToGo.app
+```
 
 ## Comandos útiles
 
@@ -49,7 +61,7 @@ Gradle 8.9 necesita un JDK 17–21 (`JAVA_HOME`); con JDK 25 falla.
 
 | Fase | Estado |
 |---|---|
-| 1. Prueba inicial: módulo `shared`, login compartido, app iOS | ✅ (falta correrla en simulador al tener Xcode) |
+| 1. Prueba inicial: módulo `shared`, login compartido, app iOS | ✅ Probado en simulador (iPhone 17, iOS 27) contra el backend local |
 | 2. Capa de datos a Ktor / kotlinx.serialization / multiplatform-settings / kotlinx-datetime | Pendiente |
 | 3. ViewModels, navegación y las 25 pantallas a `commonMain` | Pendiente |
 | 4. Mapa (WKWebView con el mismo HTML de Leaflet), GPS (CoreLocation), notificaciones (APNs), enlaces | Pendiente |

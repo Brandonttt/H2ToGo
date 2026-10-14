@@ -1,5 +1,6 @@
 package com.htogo.shared.data
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /** Mismo contrato que POST /auth/login del backend (ver AuthDto.kt de la app Android). */
@@ -22,7 +23,7 @@ data class SesionDto(
 
 @Serializable
 data class PerfilDto(
-    val idUsuario: Int,
+    @SerialName("id") val idUsuario: Int,
     val correo: String,
     val nombre: String,
     val apellidos: String = "",

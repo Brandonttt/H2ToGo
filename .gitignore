@@ -43,3 +43,4 @@ h2togo-mobile/iosApp/*.xcodeproj/
 xcuserdata/
 DerivedData/
 .kotlin/
+h2togo-mobile/iosApp/build/

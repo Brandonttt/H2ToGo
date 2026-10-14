@@ -28,7 +28,7 @@ class AuthRepositorioTest {
         var url = ""; var enviado = ""
         val r = repo(HttpStatusCode.OK, """
             {"token":"abc","rol":"cliente","campoNuevo":1,
-             "perfil":{"idUsuario":7,"correo":"a@b.mx","nombre":"Ana","apellidos":"Ruiz","telefono":"555","rol":"cliente"}}
+             "perfil":{"id":7,"correo":"a@b.mx","nombre":"Ana","apellidos":"Ruiz","telefono":"555","rol":"cliente","urlFotoPerfil":null}}
         """) { u, b -> url = u; enviado = b }.login("  a@b.mx ", "secreta1")
 
         val exito = assertIs<ResultadoLogin.Exito>(r)

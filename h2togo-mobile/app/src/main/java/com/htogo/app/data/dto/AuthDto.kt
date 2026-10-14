@@ -18,7 +18,8 @@ data class SesionResponse(
 )
 
 data class PerfilResponse(
-    @SerializedName("idUsuario") val idUsuario: Int,
+    // El backend manda "id" (PerfilResponse); se acepta "idUsuario" por compatibilidad.
+    @SerializedName(value = "id", alternate = ["idUsuario"]) val idUsuario: Int,
     @SerializedName("correo") val correo: String,
     @SerializedName("nombre") val nombre: String,
     @SerializedName("apellidos") val apellidos: String,
