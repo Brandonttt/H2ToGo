@@ -10,6 +10,7 @@ import com.h2togo.backend.common.NotFoundException;
 import com.h2togo.backend.common.enums.RolUsuario;
 import com.h2togo.backend.negocios.Negocio;
 import com.h2togo.backend.negocios.NegocioRepository;
+import com.h2togo.backend.notificaciones.PushService;
 import com.h2togo.backend.usuarios.Administrador;
 import com.h2togo.backend.usuarios.AdministradorRepository;
 import com.h2togo.backend.usuarios.Cliente;
@@ -20,6 +21,7 @@ import com.h2togo.backend.usuarios.Usuario;
 import com.h2togo.backend.usuarios.UsuarioRepository;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,11 +39,12 @@ public class AdminUsuariosService {
     private final NegocioRepository negocioRepository;
     private final PasswordEncoder passwordEncoder;
     private final NamedParameterJdbcTemplate jdbc;
+    private final PushService pushService;
 
     public AdminUsuariosService(UsuarioRepository usuarioRepository, ClienteRepository clienteRepository,
             RepartidorRepository repartidorRepository, AdministradorRepository administradorRepository,
             NegocioRepository negocioRepository, PasswordEncoder passwordEncoder,
-            NamedParameterJdbcTemplate jdbc) {
+            NamedParameterJdbcTemplate jdbc, PushService pushService) {
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
         this.repartidorRepository = repartidorRepository;
@@ -49,6 +52,7 @@ public class AdminUsuariosService {
         this.negocioRepository = negocioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jdbc = jdbc;
+        this.pushService = pushService;
     }
 
     @Transactional
@@ -117,13 +121,23 @@ public class AdminUsuariosService {
                 .orElseThrow(() -> new NotFoundException("USUARIO_NO_ENCONTRADO", "Usuario no encontrado."));
 
         if (u.getRol() == RolUsuario.repartidor) {
-            Integer enCamino = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM pedidos WHERE id_repartidor = :id AND estado_actual = 'en_camino'",
-                    new MapSqlParameterSource("id", idUsuario), Integer.class);
-            if (enCamino != null && enCamino > 0) {
-                throw new BusinessRuleException("REPARTIDOR_CON_PEDIDOS_ACTIVOS",
-                        "El repartidor tiene pedidos en camino; no se puede dar de baja aún.");
+            // CU-015 S1: con pedidos asignados o en camino solo procede forzando la baja.
+            List<Map<String, Object>> activos = jdbc.queryForList("""
+                    SELECT id_pedido, id_cliente FROM pedidos
+                    WHERE id_repartidor = :id AND estado_actual IN ('asignado', 'en_camino')
+                    FOR UPDATE""", new MapSqlParameterSource("id", idUsuario));
+            if (!activos.isEmpty()) {
+                if (!Boolean.TRUE.equals(req.forzar())) {
+                    throw new ConflictException("REPARTIDOR_CON_PEDIDOS_ACTIVOS",
+                            "El repartidor tiene " + activos.size() + " pedido(s) asignados o en camino. "
+                            + "Fuerza la baja para devolverlos a pendiente.");
+                }
+                for (Map<String, Object> p : activos) {
+                    devolverAPendiente((Integer) p.get("id_pedido"), (Integer) p.get("id_cliente"));
+                }
             }
+            jdbc.update("UPDATE repartidores SET estado_operativo = FALSE, id_vehiculo_actual = NULL WHERE id_usuario = :id",
+                    new MapSqlParameterSource("id", idUsuario));
             resolverNegociosEnPropiedad(idUsuario, req.idNuevoDueno());
         }
 
@@ -135,6 +149,31 @@ public class AdminUsuariosService {
         u.setSesionFechaCreacion(null);
         u.setSesionFechaExpiracion(null);
         usuarioRepository.save(u);
+    }
+
+    /**
+     * Pedido de un repartidor dado de baja: libera sus apartados (RN-023), lo deja sin repartidor
+     * en "pendiente" para que otro lo tome y lo registra en el historial (RN-013).
+     */
+    private void devolverAPendiente(int idPedido, int idCliente) {
+        var p = new MapSqlParameterSource("p", idPedido);
+        jdbc.update("""
+                UPDATE inventario_vehiculo iv SET cantidad_apartada = iv.cantidad_apartada - a.cantidad
+                FROM apartados_pedido a WHERE a.id_pedido = :p AND a.id_inventario_vehiculo = iv.id_inventario_vehiculo""", p);
+        jdbc.update("""
+                UPDATE lotes_inventario l SET cantidad_apartada = l.cantidad_apartada - a.cantidad
+                FROM apartados_pedido a WHERE a.id_pedido = :p AND a.id_lote_base = l.id_lote""", p);
+        jdbc.update("DELETE FROM apartados_pedido WHERE id_pedido = :p", p);
+        jdbc.update("""
+                UPDATE pedidos SET estado_actual = 'pendiente'::estado_pedido, id_repartidor = NULL,
+                    id_vehiculo_utilizado = NULL
+                WHERE id_pedido = :p""", p);
+        jdbc.update("""
+                INSERT INTO historial_estados_pedido (id_pedido, estado, notas_adicionales)
+                VALUES (:p, 'pendiente'::estado_pedido, 'Devuelto a pendiente por baja del repartidor')""", p);
+        pushService.notificar(idCliente, "Buscando otro repartidor",
+                "Tu repartidor ya no está disponible; tu pedido vuelve a la lista para que otro lo tome.",
+                Map.of("tipo", "pedido_reasignado", "idPedido", String.valueOf(idPedido)));
     }
 
     /** RN-024: cada negocio del que es dueño se transfiere o queda inactivo. */

@@ -54,7 +54,9 @@ fun OsmRouteMapView(
     /** Navegación del repartidor: la cámara lo sigue y el mapa gira con su rumbo (brújula para alternar). */
     seguirRepartidor: Boolean = false,
     /** Aviso mientras no hay posición; null para no mostrarlo (p. ej. el cliente tiene el suyo). */
-    avisoSinUbicacion: String? = "Buscando señal GPS..."
+    avisoSinUbicacion: String? = "Buscando señal GPS...",
+    /** RF-007: estado del pedido ("asignado", "en_camino"…); colorea los marcadores y muestra una etiqueta. */
+    estadoPedido: String? = null
 ) {
     val context = LocalContext.current
     val css = remember { LeafletAssets.getCss(context) }
@@ -84,6 +86,10 @@ fun OsmRouteMapView(
                    z-index: 1000; -webkit-tap-highlight-color: transparent; }
             #brujula { top: 150px; }
             #brujula svg { transition: transform .6s ease-out; }
+            #estado { position: absolute; left: 12px; top: 96px; z-index: 1000; display: none; align-items: center; gap: 6px;
+                       background: #fff; border-radius: 99px; padding: 6px 12px; box-shadow: 0 2px 8px rgba(15,23,42,.2);
+                       font: 600 12px sans-serif; color: #0F172A; }
+            #estado i { width: 10px; height: 10px; border-radius: 5px; background: var(--estado, #0284C7); display: inline-block; }
             #centrar { top: 202px; display: none; color: #0284C7; font: 600 12px sans-serif; width: auto; padding: 0 14px; }
             .leaflet-control-attribution { display: none !important; }
           </style>
@@ -95,18 +101,19 @@ fun OsmRouteMapView(
               <path d="M14 9 L18 15.5 L14 14 L10 15.5 Z" fill="#EF4444"/><path d="M14 25 L10 15.5 L14 17 L18 15.5 Z" fill="#94A3B8"/></svg>
           </div>
           <div id="centrar" class="ctl">◎ Centrar</div>
+          <div id="estado"><i></i><span></span></div>
           <script>$js</script>
           <script>
             // Marcador del repartidor: círculo con gota y una flecha exterior que apunta a su rumbo.
             var repIcon = L.divIcon({ className: 'pin', iconSize: [48, 48], iconAnchor: [24, 24], html:
               '<div class="rep"><svg class="rumbo" width="48" height="48" viewBox="0 0 48 48">' +
-              '<path d="M24 0 L30 9 L18 9 Z" fill="#0284C7" stroke="#FFFFFF" stroke-width="1.5"/></svg>' +
+              '<path d="M24 0 L30 9 L18 9 Z" style="fill:var(--estado,#0284C7)" stroke="#FFFFFF" stroke-width="1.5"/></svg>' +
               '<svg width="48" height="48" viewBox="0 0 48 48" style="position:absolute;inset:0">' +
-              '<circle cx="24" cy="24" r="16" fill="#0284C7" stroke="#FFFFFF" stroke-width="3"/>' +
+              '<circle cx="24" cy="24" r="16" style="fill:var(--estado,#0284C7)" stroke="#FFFFFF" stroke-width="3"/>' +
               '<path d="M24 15C20.6 20 18 23.4 18 26.6A6 6 0 0 0 30 26.6C30 23.4 27.4 20 24 15Z" fill="#FFFFFF"/></svg></div>' });
             var destIcon = L.divIcon({ className: 'pin', iconSize: [42, 48], iconAnchor: [21, 46], html:
               '<svg width="42" height="48" viewBox="0 0 42 48" xmlns="http://www.w3.org/2000/svg">' +
-              '<path d="M21 2C11.61 2 4 9.61 4 19C4 31.75 21 46 21 46S38 31.75 38 19C38 9.61 30.39 2 21 2Z" fill="#10B981" stroke="#FFFFFF" stroke-width="2.5"/>' +
+              '<path d="M21 2C11.61 2 4 9.61 4 19C4 31.75 21 46 21 46S38 31.75 38 19C38 9.61 30.39 2 21 2Z" style="fill:var(--destino,#10B981)" stroke="#FFFFFF" stroke-width="2.5"/>' +
               '<circle cx="21" cy="19" r="6.5" fill="#FFFFFF"/></svg>' });
 
             // Dentro de Compose el WebView arranca con altura 0 y "height: 100%" deja el mapa en
@@ -140,7 +147,7 @@ fun OsmRouteMapView(
               subdomains: 'abc',
               maxZoom: 19
             });
-            var currentLayer = googleLayer;
+            var currentLayer = osmLayer; // OSM por defecto; Google como alternativa
             currentLayer.addTo(map);
 
             function setCapa(tipo) {
@@ -260,6 +267,16 @@ fun OsmRouteMapView(
               aplicarRotacion();
             });
 
+            // RF-007: color y etiqueta del estado del pedido en los marcadores (destino gris si ya cerró).
+            function setEstado(color, texto, cerrado) {
+              document.documentElement.style.setProperty('--estado', color);
+              document.documentElement.style.setProperty('--destino', cerrado ? color : '#10B981');
+              var chip = document.getElementById('estado');
+              chip.querySelector('span').textContent = texto;
+              chip.style.display = texto ? 'flex' : 'none';
+              if (linea && linea._rutaReal) linea.setStyle({ color: color });
+            }
+
             // Llamada desde Kotlin en cada cambio. ruta = [[lat,lon],...] o [] (línea recta punteada).
             function actualizar(repLat, repLon, destLat, destLon, ruta, etiqueta) {
               ajustarTamano();
@@ -302,6 +319,21 @@ fun OsmRouteMapView(
         if (!listo) return@LaunchedEffect
         val rep = if (originLat != null && originLon != null) "$originLat, $originLon" else "null, null"
         webViewRef?.evaluateJavascript("actualizar($rep, $destLat, $destLon, $rutaJson, '$etiquetaJs');", null)
+    }
+
+    LaunchedEffect(listo, estadoPedido) {
+        if (!listo || estadoPedido == null) return@LaunchedEffect
+        val (color, texto) = when (estadoPedido.lowercase()) {
+            "pendiente", "pendiente_programado" -> "#94A3B8" to "Buscando repartidor"
+            "asignado" -> "#F59E0B" to "Repartidor asignado"
+            "en_camino" -> "#0284C7" to "En camino"
+            "entregado" -> "#10B981" to "Entregado"
+            "no_entregado" -> "#EF4444" to "No entregado"
+            "cancelado" -> "#EF4444" to "Cancelado"
+            else -> "#0284C7" to ""
+        }
+        val cerrado = estadoPedido.lowercase() in setOf("entregado", "no_entregado", "cancelado")
+        webViewRef?.evaluateJavascript("setEstado('$color', '$texto', $cerrado);", null)
     }
 
     Box(modifier = modifier) {
@@ -365,7 +397,7 @@ fun OsmRouteMapView(
             }
         }
 
-        var capaOsm by remember { mutableStateOf(false) }
+        var capaOsm by remember { mutableStateOf(true) }
 
         // CU-017: Selector de capas de mapa (Google Maps / OSM)
         androidx.compose.material3.Surface(

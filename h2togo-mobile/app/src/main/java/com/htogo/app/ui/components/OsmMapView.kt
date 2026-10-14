@@ -182,7 +182,7 @@ fun OsmMapView(
                   subdomains: 'abc',
                   maxZoom: 19
                 });
-                var currentTileLayer = googleLayer;
+                var currentTileLayer = osmLayer; // OSM por defecto; Google como alternativa
                 currentTileLayer.addTo(map);
 
                 window.setCapa = function(tipo) {
@@ -347,7 +347,7 @@ fun OsmMapView(
             modifier = Modifier.fillMaxSize()
         )
 
-        var capaOsm by remember { mutableStateOf(false) }
+        var capaOsm by remember { mutableStateOf(true) }
         if (isInteractive) {
             Surface(
                 shape = RoundedCornerShape(20.dp),

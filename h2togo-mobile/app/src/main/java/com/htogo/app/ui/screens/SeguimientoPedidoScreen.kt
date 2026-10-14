@@ -658,6 +658,7 @@ fun SeguimientoPedidoScreen(
                 routePoints = if (order.estado == EstadoPedido.EN_CAMINO) rutaSeguimiento else emptyList(),
                 repartidorLabel = "Tu repartidor",
                 avisoSinUbicacion = null, // el aviso del cliente se muestra abajo (CU-006 S1)
+                estadoPedido = livePedido?.estado,
                 modifier = Modifier.fillMaxSize()
             )
         } else {
@@ -684,7 +685,7 @@ fun SeguimientoPedidoScreen(
             if (aviso != null) {
                 com.htogo.app.ui.components.AvisoMapa(
                     aviso,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 104.dp)
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 146.dp)
                 )
             }
         }

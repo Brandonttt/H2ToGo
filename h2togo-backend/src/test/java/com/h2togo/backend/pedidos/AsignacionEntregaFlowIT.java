@@ -70,6 +70,7 @@ class AsignacionEntregaFlowIT {
     @Autowired private VehiculoNegocioRepository vehiculoRepository;
     @Autowired private InventarioService inventarioService;
     @Autowired private AsignacionService asignacionService;
+    @Autowired private org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate jdbc;
 
     private static final double LAT = 19.372, LON = -99.178;
 
@@ -371,5 +372,43 @@ class AsignacionEntregaFlowIT {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("CLIENTE_SUSPENDIDO"));
+    }
+
+    @Test
+    void bajaForzadaDevuelvePedidosAPendienteYLiberaApartados() throws Exception {
+        Cli c = registrarCliente("f7c10@test.mx", "5557770110");
+        Rep r = setupDueno("f7d10@test.mx", "5557770111", "Purif F7-10", "MarcaF710", "25.00", 100, 10);
+        int[] ped = crearPedido(c.token(), r.idNegocio(), c.idDireccion(), r.idMarca(), 3);
+        mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/aceptacion").header("Authorization", "Bearer " + r.token()))
+                .andExpect(status().isOk());
+
+        String admin = "admin-" + java.util.UUID.randomUUID();
+        Integer idAdmin = jdbc.queryForObject("""
+                INSERT INTO usuarios (nombre, apellidos, correo, password_hash, telefono, rol,
+                    telefono_verificado, cuenta_activa, token_sesion, sesion_fecha_creacion, sesion_fecha_expiracion)
+                VALUES ('Admin','Root',:correo,'x','5557770112','admin'::rol_usuario, TRUE, TRUE, :token, now(), now() + interval '30 days')
+                RETURNING id_usuario""",
+                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource()
+                        .addValue("correo", admin + "@test.mx").addValue("token", admin), Integer.class);
+        jdbc.update("INSERT INTO administradores (id_usuario) VALUES (:id)",
+                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource("id", idAdmin));
+
+        // Sin forzar: 409 (CU-015 S1).
+        mvc.perform(post("/api/v1/admin/usuarios/" + r.idRep() + "/baja").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"motivo\":\"renuncia\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("REPARTIDOR_CON_PEDIDOS_ACTIVOS"));
+
+        // Forzando: el pedido vuelve a pendiente sin repartidor y se liberan los apartados.
+        mvc.perform(post("/api/v1/admin/usuarios/" + r.idRep() + "/baja").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"motivo\":\"renuncia\",\"forzar\":true}"))
+                .andExpect(status().isNoContent());
+        var p = new org.springframework.jdbc.core.namedparam.MapSqlParameterSource("p", ped[0]);
+        assertThat(jdbc.queryForObject("SELECT estado_actual::text FROM pedidos WHERE id_pedido = :p", p, String.class))
+                .isEqualTo("pendiente");
+        assertThat(jdbc.queryForObject("SELECT id_repartidor FROM pedidos WHERE id_pedido = :p", p, Integer.class)).isNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM apartados_pedido WHERE id_pedido = :p", p, Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COALESCE(SUM(cantidad_apartada), 0) FROM inventario_vehiculo WHERE id_vehiculo = :v",
+                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource("v", r.idVehiculo()), Integer.class)).isZero();
     }
 }

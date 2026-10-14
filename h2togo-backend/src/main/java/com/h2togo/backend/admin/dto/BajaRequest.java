@@ -5,9 +5,11 @@ import jakarta.validation.constraints.NotBlank;
 /**
  * Baja lógica de un usuario (CU-015). {@code idNuevoDueno} transfiere la propiedad del
  * negocio si el usuario es su dueño (RN-024); si no se indica, el negocio queda inactivo.
+ * {@code forzar} da de baja a un repartidor con pedidos activos devolviéndolos a pendiente (CU-015 S1).
  */
 public record BajaRequest(
         @NotBlank String motivo,
-        Integer idNuevoDueno
+        Integer idNuevoDueno,
+        Boolean forzar
 ) {
 }

@@ -978,6 +978,9 @@ async function modalBaja(x) {
           ${companeros.map(c => `<option value="${c.id}">Transferir a ${esc(c.nombre + ' ' + c.apellidos)}</option>`).join('')}
         </select>
         <div class="help">${companeros.length ? 'Puedes transferir la propiedad a otro repartidor del mismo negocio.' : 'No hay otros repartidores activos en este negocio; quedará inactivo.'}</div></div>` : ''}
+      ${x.rol === 'repartidor' ? `<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px">
+        <input type="checkbox" name="forzar" style="margin-top:2px">
+        <span>Si tiene pedidos asignados o en camino, <b>devolverlos a pendiente</b> para que otro repartidor los tome (CU-015 S1). Se avisa a cada cliente.</span></label>` : ''}
       <div class="err-msg hidden" data-err></div>
     </form>
     <div class="modal-f"><button class="btn" data-close>Cancelar</button><button class="btn danger" form="fBaja" type="submit"><span class="ms">person_off</span>Dar de baja</button></div>`);
@@ -986,6 +989,7 @@ async function modalBaja(x) {
     const fd = new FormData(ev.target);
     const body = { motivo: fd.get('motivo').trim() };
     if (fd.get('idNuevoDueno')) body.idNuevoDueno = Number(fd.get('idNuevoDueno'));
+    if (fd.get('forzar')) body.forzar = true;
     await enviar(m, () => api(`/admin/usuarios/${x.id}/baja`, { method: 'POST', body }), () => {
       toast('Usuario dado de baja.'); listarUsuarios(); cargarResumenUsuarios();
     });

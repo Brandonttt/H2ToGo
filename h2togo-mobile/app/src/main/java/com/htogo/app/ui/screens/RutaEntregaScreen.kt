@@ -279,6 +279,7 @@ fun RutaEntregaScreen(
                 destLon = entrega.lonDestino,
                 routePoints = routePoints,
                 seguirRepartidor = true,
+                estadoPedido = livePedidoEnRuta?.estado,
                 modifier = Modifier.fillMaxSize()
             )
 
