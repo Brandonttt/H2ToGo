@@ -236,7 +236,8 @@ fun HToGoNavHost(
                     navController.navigate(HToGoRoutes.ASIGNANDO) {
                         popUpTo(HToGoRoutes.HOME_CLIENTE)
                     }
-                }
+                },
+                clienteViewModel = clienteViewModel // mismo VM que Asignando: ahí se lee el pedido activo
             )
         }
         composable(HToGoRoutes.NUEVO_PEDIDO) {

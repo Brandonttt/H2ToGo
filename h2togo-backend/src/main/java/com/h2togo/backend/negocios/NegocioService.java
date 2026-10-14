@@ -14,7 +14,6 @@ import com.h2togo.backend.negocios.dto.PerfilNegocioResponse.DireccionBase;
 import com.h2togo.backend.usuarios.Repartidor;
 import com.h2togo.backend.usuarios.RepartidorRepository;
 import com.h2togo.backend.common.enums.TipoVehiculo;
-import com.h2togo.backend.negocios.dto.VehiculoRequest;
 import com.h2togo.backend.vehiculos.VehiculoNegocio;
 import com.h2togo.backend.vehiculos.VehiculoNegocioRepository;
 import java.time.LocalDateTime;
@@ -202,59 +201,6 @@ public class NegocioService {
 
         return productosDeNegocio(producto.getIdNegocio(), idProducto).stream().findFirst()
                 .orElseThrow(() -> new NotFoundException("PRODUCTO_NO_ENCONTRADO", "Producto no disponible."));
-    }
-
-    @Transactional
-    public PerfilNegocioResponse.VehiculoResponse actualizarVehiculo(int idRepartidor, int idVehiculo, VehiculoRequest req) {
-        Negocio negocio = negocioComoDueno(idRepartidor);
-        VehiculoNegocio v = vehiculoRepository.findById(idVehiculo)
-                .orElseThrow(() -> new NotFoundException("VEHICULO_NO_ENCONTRADO", "No existe el vehículo " + idVehiculo));
-        if (!v.getIdNegocio().equals(negocio.getId())) {
-            throw new AccessDeniedException("El vehículo no pertenece al negocio del usuario.");
-        }
-        if (req.tipoVehiculo() != null) v.setTipoVehiculo(req.tipoVehiculo());
-        if (req.marca() != null && !req.marca().isBlank()) v.setMarca(req.marca());
-        if (req.modelo() != null) v.setModelo(req.modelo());
-        if (req.color() != null && !req.color().isBlank()) v.setColor(req.color());
-        if (req.placas() != null) v.setPlacas(req.placas());
-        if (req.capacidadGarrafones() != null) v.setCapacidadGarrafones(req.capacidadGarrafones());
-
-        VehiculoNegocio saved = vehiculoRepository.save(v);
-        return new PerfilNegocioResponse.VehiculoResponse(
-                saved.getId(),
-                saved.getTipoVehiculo() != null ? saved.getTipoVehiculo().name() : "motocicleta",
-                saved.getMarca(),
-                saved.getModelo(),
-                saved.getColor(),
-                saved.getPlacas(),
-                saved.getCapacidadGarrafones(),
-                saved.isActivo()
-        );
-    }
-
-    @Transactional
-    public PerfilNegocioResponse.VehiculoResponse registrarVehiculo(int idRepartidor, VehiculoRequest req) {
-        Negocio negocio = negocioComoDueno(idRepartidor);
-        VehiculoNegocio v = new VehiculoNegocio();
-        v.setIdNegocio(negocio.getId());
-        v.setTipoVehiculo(req.tipoVehiculo() != null ? req.tipoVehiculo() : TipoVehiculo.motocicleta);
-        v.setMarca(req.marca() != null && !req.marca().isBlank() ? req.marca() : "Italika");
-        v.setModelo(req.modelo() != null ? req.modelo() : "FT150");
-        v.setColor(req.color() != null && !req.color().isBlank() ? req.color() : "Blanco");
-        v.setPlacas(req.placas() != null ? req.placas() : "ABC1234");
-        v.setCapacidadGarrafones(req.capacidadGarrafones() != null ? req.capacidadGarrafones() : 30);
-        v.setActivo(true);
-        VehiculoNegocio saved = vehiculoRepository.save(v);
-        return new PerfilNegocioResponse.VehiculoResponse(
-                saved.getId(),
-                saved.getTipoVehiculo() != null ? saved.getTipoVehiculo().name() : "motocicleta",
-                saved.getMarca(),
-                saved.getModelo(),
-                saved.getColor(),
-                saved.getPlacas(),
-                saved.getCapacidadGarrafones(),
-                saved.isActivo()
-        );
     }
 
     // ---------------------------------------------------------------- Helpers

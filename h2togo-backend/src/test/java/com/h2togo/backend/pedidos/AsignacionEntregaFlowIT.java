@@ -257,14 +257,50 @@ class AsignacionEntregaFlowIT {
     }
 
     @Test
-    void aceptarSinCargaSuficienteDevuelve422() throws Exception {
+    void aceptarSinStockCombinadoDevuelve422() throws Exception {
         Cli c = registrarCliente("f7c3@test.mx", "5557770003");
-        Rep r = setupDueno("f7d3@test.mx", "5557770030", "Purif F7-3", "MarcaF73", "25.00", 100, 1); // solo 1 cargado
+        Rep r = setupDueno("f7d3@test.mx", "5557770030", "Purif F7-3", "MarcaF73", "25.00", 3, 1); // 1 vehículo + 2 base
         int[] ped = crearPedido(c.token(), r.idNegocio(), c.idDireccion(), r.idMarca(), 5); // pide 5
 
         mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/aceptacion").header("Authorization", "Bearer " + r.token()))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.codigo").value("CARGA_INSUFICIENTE"));
+                .andExpect(jsonPath("$.codigo").value("STOCK_INSUFICIENTE"));
+    }
+
+    @Test
+    void faltanteSeApartaEnBaseYDebeCargarseAntesDeSalir() throws Exception {
+        Cli c = registrarCliente("f7c8@test.mx", "5557770008");
+        Rep r = setupDueno("f7d8@test.mx", "5557770080", "Purif F7-8", "MarcaF78", "25.00", 100, 1); // solo 1 cargado
+        int[] ped = crearPedido(c.token(), r.idNegocio(), c.idDireccion(), r.idMarca(), 5); // pide 5
+
+        // RN-022: aparta 1 del vehículo y completa 4 en la base.
+        mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/aceptacion").header("Authorization", "Bearer " + r.token()))
+                .andExpect(status().isOk());
+        String enCamino = "{\"lat\":%s,\"lon\":%s}".formatted(LAT, LON);
+        mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/en-camino").header("Authorization", "Bearer " + r.token())
+                        .contentType(MediaType.APPLICATION_JSON).content(enCamino))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("CARGA_PENDIENTE_EN_BASE"));
+
+        mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/cargar-apartados-base").header("Authorization", "Bearer " + r.token()))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/en-camino").header("Authorization", "Bearer " + r.token())
+                        .contentType(MediaType.APPLICATION_JSON).content(enCamino))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void aceptarSinCargaEnJornadaDevuelve422() throws Exception {
+        Cli c = registrarCliente("f7c9@test.mx", "5557770009");
+        Rep r = setupDueno("f7d9@test.mx", "5557770090", "Purif F7-9", "MarcaF79", "25.00", 100, 10);
+        int[] ped = crearPedido(c.token(), r.idNegocio(), c.idDireccion(), r.idMarca(), 2);
+        // Cierra la jornada y la reabre sin carga: elige vehículo pero no queda disponible (RN-007).
+        inventarioService.devolucion(r.idRep());
+        inventarioService.iniciarJornada(r.idRep(), new IniciarJornadaRequest(r.idVehiculo(), List.of()));
+
+        mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/aceptacion").header("Authorization", "Bearer " + r.token()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("SIN_JORNADA"));
     }
 
     @Test

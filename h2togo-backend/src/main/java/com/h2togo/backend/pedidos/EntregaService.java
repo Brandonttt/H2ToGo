@@ -119,7 +119,11 @@ public class EntregaService {
     }
 
     private void procesarLineas(int idPedido, int idNegocio, List<Linea> lineas) {
-        if (lineas == null) {
+        if (lineas == null || lineas.isEmpty()) {
+            // Sin ajustes en sitio: se entregó exactamente lo solicitado (RN-033).
+            jdbc.update("UPDATE detalles_pedido SET cantidad_entregada = cantidad_solicitada "
+                    + "WHERE id_pedido = :p AND agregada_en_sitio = FALSE AND cantidad_entregada IS NULL",
+                    new MapSqlParameterSource("p", idPedido));
             return;
         }
         for (Linea l : lineas) {
@@ -138,33 +142,15 @@ public class EntregaService {
                                 .addValue("c", l.cantidadEntregada()).addValue("precio", prod.get("precio"))
                                 .addValue("precioEnvase", prod.get("precio_envase")));
             } else {
-                int filas = 0;
-                if (l.idDetalle() != null) {
-                    filas = jdbc.update("""
-                            UPDATE detalles_pedido SET cantidad_entregada = :c
-                            WHERE id_detalle = :d AND id_pedido = :p AND :c <= cantidad_solicitada""",
-                            new MapSqlParameterSource().addValue("c", l.cantidadEntregada())
-                                    .addValue("d", l.idDetalle()).addValue("p", idPedido));
-                } else if (l.idMarca() != null) {
-                    filas = jdbc.update("""
-                            UPDATE detalles_pedido SET cantidad_entregada = :c
-                            WHERE id_pedido = :p AND id_marca = :m AND :c <= cantidad_solicitada""",
-                            new MapSqlParameterSource().addValue("c", l.cantidadEntregada())
-                                    .addValue("m", l.idMarca()).addValue("p", idPedido));
-                } else {
-                    // Fallback para pedidos con un solo detalle
-                    filas = jdbc.update("""
-                            UPDATE detalles_pedido SET cantidad_entregada = :c
-                            WHERE id_pedido = :p AND :c <= cantidad_solicitada LIMIT 1""",
-                            new MapSqlParameterSource().addValue("c", l.cantidadEntregada())
-                                    .addValue("p", idPedido));
-                }
+                Integer idDetalle = resolverDetalle(idPedido, l);
+                int filas = idDetalle == null ? 0 : jdbc.update("""
+                        UPDATE detalles_pedido SET cantidad_entregada = :c
+                        WHERE id_detalle = :d AND id_pedido = :p AND :c <= cantidad_solicitada""",
+                        new MapSqlParameterSource().addValue("c", l.cantidadEntregada())
+                                .addValue("d", idDetalle).addValue("p", idPedido));
                 if (filas == 0) {
-                    // Si no actualizó por límite de cantidad, fijar al máximo solicitado
-                    jdbc.update("""
-                            UPDATE detalles_pedido SET cantidad_entregada = cantidad_solicitada
-                            WHERE id_pedido = :p AND cantidad_entregada IS NULL""",
-                            new MapSqlParameterSource("p", idPedido));
+                    throw new BusinessRuleException("CANTIDAD_INVALIDA",
+                            "La cantidad entregada excede la solicitada o el detalle no existe (RN-032).");
                 }
             }
         }
@@ -172,6 +158,31 @@ public class EntregaService {
         jdbc.update("UPDATE detalles_pedido SET cantidad_entregada = 0 "
                 + "WHERE id_pedido = :p AND agregada_en_sitio = FALSE AND cantidad_entregada IS NULL",
                 new MapSqlParameterSource("p", idPedido));
+    }
+
+    /**
+     * Detalle original al que corresponde una línea: por {@code idDetalle}; si no viene, por marca
+     * (primera línea aún sin registrar); y si tampoco, la única línea del pedido.
+     */
+    private Integer resolverDetalle(int idPedido, Linea l) {
+        if (l.idDetalle() != null) {
+            return l.idDetalle();
+        }
+        var p = new MapSqlParameterSource("p", idPedido);
+        if (l.idMarca() != null) {
+            p.addValue("m", l.idMarca());
+            List<Integer> porMarca = jdbc.queryForList("""
+                    SELECT id_detalle FROM detalles_pedido
+                    WHERE id_pedido = :p AND id_marca = :m AND agregada_en_sitio = FALSE AND cantidad_entregada IS NULL
+                    ORDER BY id_detalle LIMIT 1""", p, Integer.class);
+            if (!porMarca.isEmpty()) {
+                return porMarca.get(0);
+            }
+        }
+        List<Integer> originales = jdbc.queryForList(
+                "SELECT id_detalle FROM detalles_pedido WHERE id_pedido = :p AND agregada_en_sitio = FALSE",
+                p, Integer.class);
+        return originales.size() == 1 ? originales.get(0) : null;
     }
 
     /** Consume del vehículo lo entregado (salida_pedido) y libera los apartados sobrantes (RN-023). */

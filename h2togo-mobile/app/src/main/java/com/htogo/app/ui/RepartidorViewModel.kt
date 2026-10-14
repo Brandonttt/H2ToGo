@@ -339,31 +339,6 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun actualizarVehiculo(
-        idVehiculo: Int?,
-        request: com.htogo.app.data.dto.ActualizarVehiculoRequest,
-        onSuccess: () -> Unit = {},
-        onError: (String) -> Unit = {}
-    ) {
-        viewModelScope.launch {
-            try {
-                val resp = if (idVehiculo != null && idVehiculo > 0) {
-                    apiClient.negociosApi.actualizarVehiculo(idVehiculo, request)
-                } else {
-                    apiClient.negociosApi.crearVehiculo(request)
-                }
-                if (resp.isSuccessful) {
-                    cargarMiNegocio()
-                    onSuccess()
-                } else {
-                    onError("Error al actualizar vehículo (${resp.code()})")
-                }
-            } catch (e: Exception) {
-                onError("Error de conexión: ${e.message}")
-            }
-        }
-    }
-
     fun cargarMisEntregas() {
         viewModelScope.launch {
             try {
@@ -503,31 +478,6 @@ class RepartidorViewModel(application: Application) : AndroidViewModel(applicati
                 } else {
                     val err = parseError(resp.errorBody()?.string())
                         ?: "No se pudo cargar el vehículo (${resp.code()})"
-                    
-                    // Si el backend pide iniciar jornada / seleccionar vehículo, auto-iniciar con el vehículo del negocio
-                    val vehiculoId = _miNegocio.value?.vehiculoPrincipal?.id
-                        ?: _miNegocio.value?.vehiculos?.firstOrNull()?.id
-                    
-                    if (vehiculoId != null && (err.contains("jornada", ignoreCase = true) || err.contains("vehículo", ignoreCase = true) || err.contains("vehiculo", ignoreCase = true))) {
-                        try {
-                            val jornadaResp = apiClient.repartidorApi.iniciarJornada(
-                                com.htogo.app.data.dto.IniciarJornadaRequest(
-                                    idVehiculo = vehiculoId,
-                                    cargaInicial = cargas
-                                )
-                            )
-                            if (jornadaResp.isSuccessful && jornadaResp.body() != null) {
-                                cargarInventarios()
-                                val inv = jornadaResp.body()!!.inventario ?: _inventarioVehiculo.value
-                                if (inv != null) {
-                                    onSuccess(inv)
-                                    return@launch
-                                }
-                            }
-                        } catch (e: Exception) {
-                            // continúa al error normal
-                        }
-                    }
                     onError(err)
                 }
             } catch (e: Exception) {

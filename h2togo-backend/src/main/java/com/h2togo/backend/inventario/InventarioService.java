@@ -172,20 +172,11 @@ public class InventarioService {
         return new InventarioBaseResponse(lotes);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public InventarioVehiculoResponse inventarioVehiculo(int idRepartidor) {
-        Repartidor r = repartidor(idRepartidor);
-        Integer idVehiculo = r.getIdVehiculoActual();
-        if (idVehiculo == null) {
-            List<VehiculoNegocio> vehiculos = vehiculoRepository.findByIdNegocioAndActivoTrue(r.getIdNegocio());
-            if (!vehiculos.isEmpty()) {
-                idVehiculo = vehiculos.get(0).getId();
-                r.setIdVehiculoActual(idVehiculo);
-                r.setEstadoOperativo(true);
-                repartidorRepository.saveAndFlush(r);
-            } else {
-                return new InventarioVehiculoResponse(null, 30, 0, 30, List.of());
-            }
+        Integer idVehiculo = repartidor(idRepartidor).getIdVehiculoActual();
+        if (idVehiculo == null) { // sin jornada: no hay vehículo seleccionado
+            return new InventarioVehiculoResponse(null, 0, 0, 0, List.of());
         }
         int capacidad = vehiculo(idVehiculo).getCapacidadGarrafones();
         List<InventarioItem> lotes = jdbc.query("""
@@ -206,28 +197,13 @@ public class InventarioService {
     @Transactional
     public InventarioVehiculoResponse cargarVehiculo(int idRepartidor, List<CargaItem> cargas) {
         Repartidor r = repartidor(idRepartidor);
-        if (r.getIdVehiculoActual() == null) {
-            List<VehiculoNegocio> vehiculos = vehiculoRepository.findByIdNegocioAndActivoTrue(r.getIdNegocio());
-            VehiculoNegocio veh;
-            if (!vehiculos.isEmpty()) {
-                veh = vehiculos.get(0);
-            } else {
-                veh = new VehiculoNegocio();
-                veh.setIdNegocio(r.getIdNegocio());
-                veh.setTipoVehiculo(com.h2togo.backend.common.enums.TipoVehiculo.camioneta);
-                veh.setMarca("Vehículo de Reparto");
-                veh.setModelo("Estándar");
-                veh.setColor("Blanco");
-                veh.setPlacas("REP-001");
-                veh.setCapacidadGarrafones(30);
-                veh.setActivo(true);
-                veh = vehiculoRepository.save(veh);
-            }
-            r.setIdVehiculoActual(veh.getId());
-            r.setEstadoOperativo(true);
-            repartidorRepository.saveAndFlush(r);
+        if (r.getIdVehiculoActual() == null) { // RN-014: primero se elige el vehículo de la jornada
+            throw new BusinessRuleException("SIN_JORNADA",
+                    "Inicia tu jornada eligiendo el vehículo antes de cargarlo.");
         }
         ejecutarCarga(r, cargas);
+        r.setEstadoOperativo(true); // RN-007: con carga queda disponible
+        repartidorRepository.save(r);
         return inventarioVehiculo(idRepartidor);
     }
 
@@ -248,10 +224,13 @@ public class InventarioService {
         if (req.cargaInicial() != null && !req.cargaInicial().isEmpty()) {
             ejecutarCarga(r, req.cargaInicial());
         }
-        r.setEstadoOperativo(true); // RN-007: disponible tras cargar
+        // RN-007 / RF-030: queda disponible solo si el vehículo lleva garrafones.
+        InventarioVehiculoResponse inventario = inventarioVehiculo(idRepartidor);
+        boolean disponible = inventario.ocupado() > 0;
+        r.setEstadoOperativo(disponible);
         repartidorRepository.save(r);
 
-        return new JornadaResponse(req.idVehiculo(), true, inventarioVehiculo(idRepartidor));
+        return new JornadaResponse(req.idVehiculo(), disponible, inventario);
     }
 
     // ---------------------------------------------------------------- Devolución / fin de jornada

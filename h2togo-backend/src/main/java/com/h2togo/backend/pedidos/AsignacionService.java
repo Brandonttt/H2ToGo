@@ -109,26 +109,10 @@ public class AsignacionService {
     public PedidoResponse aceptar(int idRepartidor, int idPedido) {
         Repartidor r = repartidorRepository.findById(idRepartidor)
                 .orElseThrow(() -> new NotFoundException("REPARTIDOR_NO_ENCONTRADO", "No es repartidor."));
+        // RN-007 / RN-014 / RF-030: solo acepta quien inició jornada con vehículo y lo cargó.
         if (r.getIdVehiculoActual() == null || !r.isEstadoOperativo()) {
-            List<VehiculoNegocio> vehiculos = vehiculoRepository.findByIdNegocioAndActivoTrue(r.getIdNegocio());
-            VehiculoNegocio veh;
-            if (!vehiculos.isEmpty()) {
-                veh = vehiculos.get(0);
-            } else {
-                veh = new VehiculoNegocio();
-                veh.setIdNegocio(r.getIdNegocio());
-                veh.setTipoVehiculo(com.h2togo.backend.common.enums.TipoVehiculo.camioneta);
-                veh.setMarca("Vehículo de Reparto");
-                veh.setModelo("Estándar");
-                veh.setColor("Blanco");
-                veh.setPlacas("REP-001");
-                veh.setCapacidadGarrafones(30);
-                veh.setActivo(true);
-                veh = vehiculoRepository.save(veh);
-            }
-            r.setIdVehiculoActual(veh.getId());
-            r.setEstadoOperativo(true);
-            repartidorRepository.saveAndFlush(r);
+            throw new BusinessRuleException("SIN_JORNADA",
+                    "Inicia tu jornada (elige vehículo y cárgalo desde la base) antes de aceptar pedidos.");
         }
         int idVehiculo = r.getIdVehiculoActual();
         int idNegocio = r.getIdNegocio();
@@ -297,7 +281,7 @@ public class AsignacionService {
         Map<String, Object> pedido;
         try {
             pedido = jdbc.queryForMap(
-                    "SELECT estado_actual::text, id_repartidor, id_cliente FROM pedidos WHERE id_pedido = :id",
+                    "SELECT estado_actual::text, id_repartidor, id_cliente, id_vehiculo_utilizado FROM pedidos WHERE id_pedido = :id",
                     new MapSqlParameterSource("id", idPedido));
         } catch (org.springframework.dao.EmptyResultDataAccessException e) {
             throw new NotFoundException("PEDIDO_NO_ENCONTRADO", "Pedido no encontrado.");

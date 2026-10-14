@@ -816,28 +816,16 @@ fun InventarioVehiculoScreen(
             onIniciar = { idMarca, cant ->
                 val idVeh = vehiculoSel.id
                 if (idVeh != null) {
+                    // Selección de vehículo y carga inicial en una sola transacción (CU-008).
                     repartidorViewModel.iniciarJornada(
                         idVehiculo = idVeh,
-                        onSuccess = {
-                            if (cant > 0 && idMarca != null) {
-                                repartidorViewModel.cargarVehiculo(
-                                    cargas = listOf(CargaItemDto(idMarca = idMarca, cantidad = cant)),
-                                    onSuccess = {
-                                        Toast.makeText(context, "Jornada iniciada con $cant garrafones cargados", Toast.LENGTH_SHORT).show()
-                                        showIniciarJornadaDialog = false
-                                        vehiculoParaJornada = null
-                                    },
-                                    onError = { err ->
-                                        Toast.makeText(context, "Jornada iniciada pero error al cargar inventario: $err", Toast.LENGTH_LONG).show()
-                                        showIniciarJornadaDialog = false
-                                        vehiculoParaJornada = null
-                                    }
-                                )
-                            } else {
-                                Toast.makeText(context, "Jornada iniciada sin carga inicial", Toast.LENGTH_SHORT).show()
-                                showIniciarJornadaDialog = false
-                                vehiculoParaJornada = null
-                            }
+                        cargasIniciales = if (cant > 0 && idMarca != null) listOf(CargaItemDto(idMarca = idMarca, cantidad = cant)) else null,
+                        onSuccess = { jornada ->
+                            val msg = if (jornada.disponible) "Jornada iniciada: ya puedes recibir pedidos"
+                                      else "Vehículo seleccionado. Carga garrafones desde la base para quedar disponible"
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                            showIniciarJornadaDialog = false
+                            vehiculoParaJornada = null
                         },
                         onError = { err ->
                             Toast.makeText(context, err, Toast.LENGTH_LONG).show()
