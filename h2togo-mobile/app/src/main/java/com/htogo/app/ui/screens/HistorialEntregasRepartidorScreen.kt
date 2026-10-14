@@ -716,7 +716,7 @@ private fun ModalDetalleEntrega(
                                         Icon(Icons.Filled.Phone, null, tint = HToGoColors.Primary, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(
-                                            detalle.telefonoCliente,
+                                            detalle.telefonoCliente.orEmpty(),
                                             fontSize = 13.sp,
                                             color = HToGoColors.TextSecondary
                                         )
@@ -761,7 +761,7 @@ private fun ModalDetalleEntrega(
                                         fontWeight = FontWeight.Bold,
                                         color = HToGoColors.TextSecondary
                                     )
-                                    detalle.detalles.forEach { d ->
+                                    detalle.detalles.orEmpty().forEach { d ->
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.SpaceBetween,

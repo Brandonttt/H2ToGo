@@ -62,11 +62,22 @@ Gradle 8.9 necesita un JDK 17–21 (`JAVA_HOME`); con JDK 25 falla.
 | Fase | Estado |
 |---|---|
 | 1. Prueba inicial: módulo `shared`, login compartido, app iOS | ✅ Probado en simulador (iPhone 17, iOS 27) contra el backend local |
-| 2. Capa de datos a Ktor / kotlinx.serialization / multiplatform-settings / kotlinx-datetime | Pendiente |
+| 2. Capa de datos compartida: APIs con Ktor, DTOs con kotlinx.serialization, sesión con multiplatform-settings, WebSocket STOMP con Ktor | ✅ Android e iOS la usan |
 | 3. ViewModels, navegación y las 25 pantallas a `commonMain` | Pendiente |
 | 4. Mapa (WKWebView con el mismo HTML de Leaflet), GPS (CoreLocation), notificaciones (APNs), enlaces | Pendiente |
 | 5. iPhone real y TestFlight (requiere Apple Developer Program) | Pendiente |
 
-En la fase 1, Android usa la **pantalla** de login compartida, pero la petición sigue pasando por su
-`AuthViewModel` (Retrofit). iOS ya usa la lógica compartida (`LoginViewModel` + Ktor). En la fase 2
-Android pasará también a la lógica compartida.
+Desde la fase 2 toda la comunicación con el backend vive en `shared` (paquetes
+`com.htogo.app.data.api`, `.dto`, `.local`, `.realtime`), con los mismos nombres que tenía en la
+app Android, así que los ViewModels no cambiaron. Quedan en Android, para las fases 3 y 4: Gson
+para leer mensajes de error en los ViewModels, OkHttp en el geocoder, y las fechas con
+`SimpleDateFormat` en las pantallas (pasarán a kotlinx-datetime junto con ellas).
+
+### Prueba de contrato con el backend
+
+```bash
+H2TOGO_API=http://localhost:8088/api/v1/ ./gradlew :shared:testDebugUnitTest
+```
+
+Inicia sesión con los usuarios de `data-demo.sql` (cierra su sesión abierta) y verifica que cada
+endpoint de lectura y el WebSocket se decodifiquen con los DTOs compartidos. Sin `H2TOGO_API` se omite.

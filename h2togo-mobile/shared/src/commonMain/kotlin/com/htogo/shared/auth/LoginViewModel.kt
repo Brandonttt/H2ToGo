@@ -3,7 +3,8 @@ package com.htogo.shared.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.htogo.app.ui.screens.LoginEstado
-import com.htogo.shared.data.SesionDto
+import com.htogo.app.data.dto.SesionResponse
+import com.htogo.app.data.local.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,8 +13,8 @@ import kotlinx.coroutines.launch
 /** Lógica del login compartida (la usa iOS; Android migrará a ella en la siguiente fase). */
 class LoginViewModel(
     private val repositorio: AuthRepositorio,
-    private val almacen: SesionAlmacen,
-    private val alIniciar: (SesionDto) -> Unit
+    private val sesion: SessionManager,
+    private val alIniciar: (SesionResponse) -> Unit
 ) : ViewModel() {
 
     private val _estado = MutableStateFlow<LoginEstado>(LoginEstado.Inactivo)
@@ -24,7 +25,9 @@ class LoginViewModel(
         viewModelScope.launch {
             _estado.value = when (val r = repositorio.login(correo, password, forzar)) {
                 is ResultadoLogin.Exito -> {
-                    almacen.guardar(r.sesion)
+                    val p = r.sesion.perfil
+                    sesion.guardarSesion(r.sesion.token, r.sesion.rol, p.idUsuario,
+                        "${p.nombre} ${p.apellidos}".trim(), p.correo, p.telefono)
                     alIniciar(r.sesion)
                     LoginEstado.Inactivo
                 }

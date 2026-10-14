@@ -1,5 +1,6 @@
 package com.htogo.shared.auth
 
+import com.htogo.app.data.api.AuthApi
 import com.htogo.shared.data.crearClienteHttp
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -18,10 +19,10 @@ class AuthRepositorioTest {
     private val json = headersOf(HttpHeaders.ContentType, "application/json")
 
     private fun repo(status: HttpStatusCode, cuerpo: String, alPedir: (String, String) -> Unit = { _, _ -> }) =
-        AuthRepositorio(crearClienteHttp("https://api.test/api/v1/", engine = MockEngine { req ->
+        AuthRepositorio(AuthApi(crearClienteHttp("https://api.test/api/v1/", engine = MockEngine { req ->
             alPedir(req.url.toString(), req.body.toByteArray().decodeToString())
             respond(cuerpo, status, json)
-        }))
+        })))
 
     @Test
     fun loginExitosoLeeLaSesionEIgnoraCamposNuevos() = runTest {

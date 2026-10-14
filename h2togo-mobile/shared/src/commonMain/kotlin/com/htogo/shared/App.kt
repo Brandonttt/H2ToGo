@@ -14,9 +14,9 @@ import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
 import com.htogo.shared.auth.AuthRepositorio
 import com.htogo.shared.auth.LoginViewModel
-import com.htogo.shared.auth.SesionAlmacen
+import com.htogo.app.data.api.ApiClient
+import com.htogo.app.data.local.SessionManager
 import com.htogo.shared.data.API_AZURE
-import com.htogo.shared.data.crearClienteHttp
 
 /**
  * Raíz de la app en iOS (prueba inicial): login real contra el backend y, al entrar, una
@@ -24,16 +24,16 @@ import com.htogo.shared.data.crearClienteHttp
  */
 @Composable
 fun App(baseUrl: String = API_AZURE) {
-    val almacen = remember { SesionAlmacen() }
-    val repositorio = remember(baseUrl) { AuthRepositorio(crearClienteHttp(baseUrl, token = { almacen.token })) }
-    var nombre by remember { mutableStateOf(almacen.token?.let { almacen.nombre }) }
-    var rol by remember { mutableStateOf(almacen.rol) }
+    val sesion = remember { SessionManager.getInstance() }
+    val repositorio = remember(baseUrl) { AuthRepositorio(ApiClient.getInstance(baseUrl = baseUrl).authApi) }
+    var nombre by remember { mutableStateOf(sesion.obtenerToken()?.let { sesion.obtenerNombre() }) }
+    var rol by remember { mutableStateOf(sesion.obtenerRol()) }
 
     HToGoTheme {
         val actual = nombre
         if (actual == null) {
             val vm = viewModel {
-                LoginViewModel(repositorio, almacen) { s ->
+                LoginViewModel(repositorio, sesion) { s ->
                     nombre = "${s.perfil.nombre} ${s.perfil.apellidos}".trim()
                     rol = s.rol
                 }
@@ -52,7 +52,7 @@ fun App(baseUrl: String = API_AZURE) {
                 Spacer(Modifier.height(4.dp))
                 Text("H2ToGo en $plataforma", color = HToGoColors.TextTertiary)
                 Spacer(Modifier.height(24.dp))
-                HToGoButton(text = "Cerrar sesión", onClick = { almacen.cerrar(); nombre = null; rol = null })
+                HToGoButton(text = "Cerrar sesión", onClick = { sesion.cerrarSesion(); nombre = null; rol = null })
             }
         }
     }

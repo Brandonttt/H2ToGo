@@ -33,6 +33,7 @@ kotlin {
             implementation("io.ktor:ktor-client-core:3.0.1")
             implementation("io.ktor:ktor-client-content-negotiation:3.0.1")
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.1")
+            implementation("io.ktor:ktor-client-websockets:3.0.1")
             implementation("com.russhwolf:multiplatform-settings-no-arg:1.2.0")
         }
         androidMain.dependencies {
@@ -40,6 +41,9 @@ kotlin {
         }
         iosMain.dependencies {
             implementation("io.ktor:ktor-client-darwin:3.0.1")
+        }
+        androidUnitTest.dependencies {
+            implementation(kotlin("test-junit"))
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

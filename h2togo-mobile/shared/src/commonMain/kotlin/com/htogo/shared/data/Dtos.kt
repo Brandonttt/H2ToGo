@@ -1,36 +1,11 @@
 package com.htogo.shared.data
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
-/** Mismo contrato que POST /auth/login del backend (ver AuthDto.kt de la app Android). */
-@Serializable
-data class LoginRequestDto(
-    val correo: String,
-    val password: String,
-    val forzar: Boolean = false,
-    val tokenFcm: String? = null
-)
-
-@Serializable
-data class SesionDto(
-    val token: String,
-    val expiraEn: String? = null,
-    val rol: String,
-    val suspendidoHasta: String? = null,
-    val perfil: PerfilDto
-)
-
-@Serializable
-data class PerfilDto(
-    @SerialName("id") val idUsuario: Int,
-    val correo: String,
-    val nombre: String,
-    val apellidos: String = "",
-    val telefono: String = "",
-    val rol: String
-)
 
 /** Cuerpo de error del backend: {"codigo": "...", "mensaje": "..."}. */
 @Serializable
 data class ErrorDto(val codigo: String? = null, val mensaje: String? = null)
+
+/** Mensaje legible de un cuerpo de error del backend, o null si no trae uno. */
+fun mensajeDeError(cuerpo: String?): String? =
+    cuerpo?.let { runCatching { jsonApi.decodeFromString(ErrorDto.serializer(), it).mensaje }.getOrNull() }

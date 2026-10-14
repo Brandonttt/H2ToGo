@@ -188,7 +188,7 @@ fun PedidosDisponiblesScreen(
         if (liveDisponibles.isNotEmpty()) {
             liveDisponibles.map { p ->
                 val productosTexto = if (!p.detalles.isNullOrEmpty()) {
-                    p.detalles.joinToString(", ") { d ->
+                    p.detalles.orEmpty().joinToString(", ") { d ->
                         "${d.cantidad} × ${d.nombreMarca ?: "Garrafón 20 L"}"
                     }
                 } else {
@@ -197,7 +197,7 @@ fun PedidosDisponiblesScreen(
 
                 PedidoDisponible(
                     id = p.id.toString(),
-                    cliente = if (!p.nombreCliente.isNullOrBlank()) p.nombreCliente else "Cliente",
+                    cliente = p.nombreCliente?.takeIf { it.isNotBlank() } ?: "Cliente",
                     direccion = p.direccionResumen,
                     colonia = p.colonia ?: "Zona Cobertura",
                     productos = productosTexto,

@@ -77,7 +77,7 @@ fun BuscarPurificadorasScreen(
             val distKm = when {
                 p.distanciaKm > 0.0 -> p.distanciaKm
                 direccionCliente != null && p.lat != null && p.lon != null && (p.lat != 0.0 || p.lon != 0.0) ->
-                    calcularDistanciaKm(direccionCliente.lat, direccionCliente.lon, p.lat, p.lon)
+                    calcularDistanciaKm(direccionCliente.lat, direccionCliente.lon, p.lat!!, p.lon!!)
                 else -> null
             }
             PurificadoraResumen(

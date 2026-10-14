@@ -1,7 +1,6 @@
 package com.htogo.app.data.local
 
-import android.content.Context
-import android.content.SharedPreferences
+import com.russhwolf.settings.Settings
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,16 +9,15 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Gestor de sesión local del usuario.
+ * Gestor de sesión local del usuario, común a Android e iOS.
  * Almacena el token opaco emitido por el backend Spring Boot (RN-018) y el rol.
+ * En Android usa el mismo archivo de SharedPreferences que antes ("htogo_session_prefs"),
+ * así que las sesiones existentes se conservan; en iOS, NSUserDefaults.
  */
-class SessionManager(context: Context) {
-
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+class SessionManager(private val prefs: Settings) {
 
     companion object {
-        private const val PREFS_NAME = "htogo_session_prefs"
+        internal const val PREFS_NAME = "htogo_session_prefs"
         private const val KEY_TOKEN = "auth_token"
         private const val KEY_ROL = "user_role"
         private const val KEY_USER_ID = "user_id"
@@ -39,18 +37,18 @@ class SessionManager(context: Context) {
 
         private val _token = MutableStateFlow<String?>(null)
 
-        @Volatile
         private var instance: SessionManager? = null
 
-        fun getInstance(context: Context): SessionManager {
-            return instance ?: synchronized(this) {
-                instance ?: SessionManager(context.applicationContext).also { instance = it }
-            }
-        }
+        /**
+         * Instancia única. En Android recibe el `Context` (se usa su applicationContext); en iOS
+         * se pasa `null`.
+         */
+        fun getInstance(context: Any? = null): SessionManager =
+            instance ?: SessionManager(ajustesSesion(context)).also { instance = it }
     }
 
     init {
-        _token.value = prefs.getString(KEY_TOKEN, null)
+        _token.value = prefs.getStringOrNull(KEY_TOKEN)
     }
 
     /**
@@ -61,48 +59,46 @@ class SessionManager(context: Context) {
 
     fun guardarSesion(token: String, rol: String, idUsuario: Int, nombre: String, correo: String, telefono: String = "") {
         _token.value = token
-        prefs.edit()
-            .putString(KEY_TOKEN, token)
-            .putString(KEY_ROL, rol)
-            .putInt(KEY_USER_ID, idUsuario)
-            .putString(KEY_USER_NAME, nombre)
-            .putString(KEY_USER_EMAIL, correo)
-            .putString(KEY_USER_PHONE, telefono)
-            .apply()
+        prefs.putString(KEY_TOKEN, token)
+        prefs.putString(KEY_ROL, rol)
+        prefs.putInt(KEY_USER_ID, idUsuario)
+        prefs.putString(KEY_USER_NAME, nombre)
+        prefs.putString(KEY_USER_EMAIL, correo)
+        prefs.putString(KEY_USER_PHONE, telefono)
     }
 
     fun guardarFechaNacimiento(fecha: String) {
-        prefs.edit().putString(KEY_USER_DOB, fecha).apply()
+        prefs.putString(KEY_USER_DOB, fecha)
     }
 
     fun guardarNombreNegocio(nombre: String) {
-        prefs.edit().putString(KEY_NEGOCIO_NOMBRE, nombre).apply()
+        prefs.putString(KEY_NEGOCIO_NOMBRE, nombre)
     }
 
-    fun obtenerToken(): String? = prefs.getString(KEY_TOKEN, null)
+    fun obtenerToken(): String? = prefs.getStringOrNull(KEY_TOKEN)
 
-    fun obtenerRol(): String? = prefs.getString(KEY_ROL, null)
+    fun obtenerRol(): String? = prefs.getStringOrNull(KEY_ROL)
 
-    fun obtenerNombre(): String? = prefs.getString(KEY_USER_NAME, null)
+    fun obtenerNombre(): String? = prefs.getStringOrNull(KEY_USER_NAME)
 
-    fun obtenerCorreo(): String? = prefs.getString(KEY_USER_EMAIL, null)
+    fun obtenerCorreo(): String? = prefs.getStringOrNull(KEY_USER_EMAIL)
     
-    fun obtenerTelefono(): String? = prefs.getString(KEY_USER_PHONE, null)
+    fun obtenerTelefono(): String? = prefs.getStringOrNull(KEY_USER_PHONE)
     
-    fun obtenerFechaNacimiento(): String? = prefs.getString(KEY_USER_DOB, null)
+    fun obtenerFechaNacimiento(): String? = prefs.getStringOrNull(KEY_USER_DOB)
 
-    fun obtenerNombreNegocio(): String? = prefs.getString(KEY_NEGOCIO_NOMBRE, null)
+    fun obtenerNombreNegocio(): String? = prefs.getStringOrNull(KEY_NEGOCIO_NOMBRE)
 
     fun obtenerIdUsuario(): Int = prefs.getInt(KEY_USER_ID, -1)
 
     fun estanNotificacionesActivas(): Boolean = prefs.getBoolean(KEY_NOTIFICACIONES_ACTIVAS, true)
 
     fun guardarNotificacionesActivas(activas: Boolean) {
-        prefs.edit().putBoolean(KEY_NOTIFICACIONES_ACTIVAS, activas).apply()
+        prefs.putBoolean(KEY_NOTIFICACIONES_ACTIVAS, activas)
     }
 
     fun guardarDireccionPredeterminadaId(id: Int) {
-        prefs.edit().putInt(KEY_DIRECCION_PREDETERMINADA_ID, id).apply()
+        prefs.putInt(KEY_DIRECCION_PREDETERMINADA_ID, id)
     }
 
     fun obtenerDireccionPredeterminadaId(): Int? {
@@ -111,13 +107,13 @@ class SessionManager(context: Context) {
     }
 
     fun limpiarDireccionPredeterminadaId() {
-        prefs.edit().remove(KEY_DIRECCION_PREDETERMINADA_ID).apply()
+        prefs.remove(KEY_DIRECCION_PREDETERMINADA_ID)
     }
 
     fun estaAutenticado(): Boolean = !obtenerToken().isNullOrBlank()
 
     fun cerrarSesion() {
-        prefs.edit().clear().apply()
+        prefs.clear()
         _token.value = null
     }
 

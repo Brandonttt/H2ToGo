@@ -72,11 +72,10 @@ dependencies {
 
     implementation("androidx.navigation:navigation-compose:2.8.4")
 
-    // Networking (Retrofit + OkHttp para conectar con h2togo-backend)
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    // La API REST va por Ktor en :shared. OkHttp queda para el WebSocket STOMP y el geocoder,
+    // y Gson para leer mensajes de error y el JSON de las solicitudes (se migran en la fase 3).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.google.code.gson:gson:2.11.0")
 
     // Persistencia local para sesión y tokens
     implementation("androidx.datastore:datastore-preferences:1.1.1")
