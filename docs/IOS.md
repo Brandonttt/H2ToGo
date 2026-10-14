@@ -63,15 +63,25 @@ Gradle 8.9 necesita un JDK 17–21 (`JAVA_HOME`); con JDK 25 falla.
 |---|---|
 | 1. Prueba inicial: módulo `shared`, login compartido, app iOS | ✅ Probado en simulador (iPhone 17, iOS 27) contra el backend local |
 | 2. Capa de datos compartida: APIs con Ktor, DTOs con kotlinx.serialization, sesión con multiplatform-settings, WebSocket STOMP con Ktor | ✅ Android e iOS la usan |
-| 3. ViewModels, navegación y las 25 pantallas a `commonMain` | Pendiente |
+| 3. ViewModels, navegación y las 25 pantallas a `commonMain` | ✅ La app completa corre en iOS (sin mapas, GPS ni notificaciones) |
 | 4. Mapa (WKWebView con el mismo HTML de Leaflet), GPS (CoreLocation), notificaciones (APNs), enlaces | Pendiente |
 | 5. iPhone real y TestFlight (requiere Apple Developer Program) | Pendiente |
 
-Desde la fase 2 toda la comunicación con el backend vive en `shared` (paquetes
-`com.htogo.app.data.api`, `.dto`, `.local`, `.realtime`), con los mismos nombres que tenía en la
-app Android, así que los ViewModels no cambiaron. Quedan en Android, para las fases 3 y 4: Gson
-para leer mensajes de error en los ViewModels, OkHttp en el geocoder, y las fechas con
-`SimpleDateFormat` en las pantallas (pasarán a kotlinx-datetime junto con ellas).
+Desde la fase 3 la app (ViewModels, navegación, 25 pantallas, componentes y la raíz `HToGoRaiz`)
+vive en `shared/commonMain`, con los mismos paquetes que tenía en Android. Lo que depende del
+sistema operativo se pide a través de dos contratos en `com.htogo.app.plataforma`:
+
+- `UiPlataforma` (por `LocalUiPlataforma`): mapas, conectividad y permiso de ubicación.
+  Android: `UiPlataformaAndroid` (Leaflet en WebView). iOS: `UiPlataformaIos` (por ahora sin mapas).
+- `ServiciosPlataforma` (por `Plataforma.servicios`): geocodificador, GPS de la entrega, ajustes
+  y apps de navegación. Android: `ServiciosAndroid`. iOS: `ServiciosIos` (vacío hasta la fase 4).
+
+Utilidades comunes: `mostrarAviso` (Toast / aviso flotante en iOS), `String.format` propio
+(`com.htogo.app.util.format`), fechas en hora de la CDMX con kotlinx-datetime (`util/Fechas.kt`) y
+selectores de fecha y hora de Material 3 (`SelectorFecha`, `SelectorHora`).
+
+Siguen solo en Android (`app/`): `MainActivity`, `HToGoApp`, notificaciones (FCM), el servicio de
+ubicación en primer plano, el geocodificador y los mapas en WebView.
 
 ### Prueba de contrato con el backend
 

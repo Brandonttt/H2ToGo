@@ -35,6 +35,8 @@ kotlin {
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.1")
             implementation("io.ktor:ktor-client-websockets:3.0.1")
             implementation("com.russhwolf:multiplatform-settings-no-arg:1.2.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
+            implementation("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha10")
         }
         androidMain.dependencies {
             implementation("io.ktor:ktor-client-okhttp:3.0.1")

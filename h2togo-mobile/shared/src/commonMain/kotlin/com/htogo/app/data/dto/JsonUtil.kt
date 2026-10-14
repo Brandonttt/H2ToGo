@@ -19,3 +19,18 @@ private fun Any?.aJson(): JsonElement = when (this) {
     is Iterable<*> -> JsonArray(map { it.aJson() })
     else -> JsonPrimitive(toString())
 }
+
+/**
+ * Texto JSON de un objeto → mapa de valores simples (como lo hacía Gson: los números son Double).
+ * Devuelve un mapa vacío si el texto no es un objeto JSON.
+ */
+fun String.aMapaJson(): Map<String, Any?> = runCatching {
+    (com.htogo.shared.data.jsonApi.parseToJsonElement(this) as? JsonObject)?.mapValues { (_, v) -> v.aValorSimple() }
+}.getOrNull() ?: emptyMap()
+
+private fun JsonElement.aValorSimple(): Any? = when (this) {
+    is JsonNull -> null
+    is JsonPrimitive -> if (isString) content else content.toBooleanStrictOrNull() ?: content.toDoubleOrNull() ?: content
+    is JsonObject -> mapValues { (_, v) -> v.aValorSimple() }
+    is JsonArray -> map { it.aValorSimple() }
+}

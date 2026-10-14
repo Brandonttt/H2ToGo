@@ -8,22 +8,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.htogo.app.data.notificaciones.DestinoNotificacion
+import com.htogo.app.data.notificaciones.desdeIntent
 import com.htogo.app.data.notificaciones.DispositivoFcm
 import com.htogo.app.data.notificaciones.NotificacionesEnVivo
 import com.htogo.app.data.notificaciones.Notificador
-import androidx.navigation.compose.rememberNavController
-import com.htogo.app.navigation.HToGoNavHost
-import com.htogo.app.ui.components.SinConexionBanner
-import com.htogo.app.ui.components.rememberHayConexion
-import androidx.compose.runtime.getValue
-import com.htogo.app.ui.theme.HToGoColors
-import com.htogo.app.ui.theme.HToGoTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -38,7 +28,9 @@ class MainActivity : ComponentActivity() {
         if (!Notificador.puedeNotificar(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             pedirPermisoNotificaciones.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
-        setContent { HToGoRoot() }
+        // La app (pantallas y navegación) es compartida con iOS; aquí solo se pasan los mapas,
+        // la red y los permisos de Android.
+        setContent { HToGoRaiz(com.htogo.app.plataforma.UiPlataformaAndroid) }
     }
 
     // App ya abierta y se toca una notificación (launchMode singleTop).
@@ -57,22 +49,5 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         NotificacionesEnVivo.detener()
         super.onStop()
-    }
-}
-
-@Composable
-private fun HToGoRoot() {
-    HToGoTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = HToGoColors.Background
-        ) {
-            val navController = rememberNavController()
-            val hayConexion by rememberHayConexion()
-            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-                HToGoNavHost(navController = navController)
-                SinConexionBanner(visible = !hayConexion, modifier = Modifier.align(androidx.compose.ui.Alignment.TopCenter))
-            }
-        }
     }
 }

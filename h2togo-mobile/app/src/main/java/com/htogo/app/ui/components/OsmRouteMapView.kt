@@ -42,7 +42,7 @@ import androidx.compose.ui.viewinterop.AndroidView
  */
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
-fun OsmRouteMapView(
+fun OsmRouteMapViewAndroid(
     originLat: Double?,
     originLon: Double?,
     destLat: Double,

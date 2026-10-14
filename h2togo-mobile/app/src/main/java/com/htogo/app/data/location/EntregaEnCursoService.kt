@@ -90,7 +90,7 @@ class EntregaEnCursoService : Service() {
         seguimiento = scope.launch {
             launch { delay(DURACION_MAX_MS); stopSelf() }
             var ultimoReporte = 0L
-            UbicacionTracker.posiciones(this@EntregaEnCursoService).collect { p ->
+            UbicacionAndroid.posiciones(this@EntregaEnCursoService).collect { p ->
                 _posicion.value = p
                 val ahora = System.currentTimeMillis()
                 if (ahora - ultimoReporte >= REPORTE_MS) {

@@ -67,7 +67,7 @@ object LeafletAssets {
 
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
-fun OsmMapView(
+fun OsmMapViewAndroid(
     latitude: Double,
     longitude: Double,
     modifier: Modifier = Modifier,
