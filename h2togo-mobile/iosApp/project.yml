@@ -1,0 +1,43 @@
+# Proyecto de Xcode para H2ToGo en iOS. Se genera con XcodeGen:
+#   brew install xcodegen && cd h2togo-mobile/iosApp && xcodegen
+# (el .xcodeproj generado no se versiona; este archivo es la fuente).
+name: iosApp
+options:
+  bundleIdPrefix: com.htogo
+  deploymentTarget:
+    iOS: "15.0"
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    sources: [iosApp]
+    info:
+      path: iosApp/Info.plist
+      properties:
+        CFBundleDisplayName: H2ToGo
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        CADisableMinimumFrameDurationOnPhone: true
+        # Permite http://localhost para probar contra el backend local desde el simulador.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.htogo.app
+        PRODUCT_NAME: H2ToGo
+        # El framework Shared lo compila Gradle en la fase previa.
+        FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        OTHER_LDFLAGS: ["$(inherited)", "-framework", "Shared"]
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    preBuildScripts:
+      - name: Compilar Kotlin (Shared)
+        basedOnDependencyAnalysis: false
+        script: |
+          # Xcode no hereda el entorno del shell: Gradle 8.9 necesita un JDK 17-21.
+          if [ -z "$JAVA_HOME" ]; then export JAVA_HOME="$(/usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home -v 17)"; fi
+          cd "$SRCROOT/.."
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode

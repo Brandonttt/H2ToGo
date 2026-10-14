@@ -21,3 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "HToGo"
 include(":app")
+// Código compartido Android/iOS (Kotlin Multiplatform + Compose Multiplatform).
+include(":shared")
