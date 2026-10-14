@@ -51,6 +51,34 @@ public class RutaService {
                     "La ruta solo está disponible para pedidos asignados o en camino.");
         }
 
+        return calcular(idRepartidor, (Integer) pedido.get("id_direccion_entrega"));
+    }
+
+    /**
+     * Ruta por calles que ve el cliente en el seguimiento (CU-006): desde la última ubicación del
+     * repartidor hasta su domicilio. Solo el cliente dueño del pedido y mientras va en camino.
+     */
+    @Transactional(readOnly = true)
+    public RouteResponse rutaSeguimiento(int idCliente, int idPedido) {
+        Map<String, Object> pedido;
+        try {
+            pedido = jdbc.queryForMap(
+                    "SELECT estado_actual::text, id_cliente, id_repartidor, id_direccion_entrega FROM pedidos WHERE id_pedido = :id",
+                    new MapSqlParameterSource("id", idPedido));
+        } catch (EmptyResultDataAccessException e) {
+            throw new NotFoundException("PEDIDO_NO_ENCONTRADO", "Pedido no encontrado.");
+        }
+        if (!Integer.valueOf(idCliente).equals(pedido.get("id_cliente"))) {
+            throw new AccessDeniedException("Solo el cliente del pedido puede ver su seguimiento (RN-016).");
+        }
+        if (!"en_camino".equals(pedido.get("estado_actual"))) {
+            throw new BusinessRuleException("ESTADO_INVALIDO", "La ruta se muestra mientras el pedido va en camino.");
+        }
+        return calcular((Integer) pedido.get("id_repartidor"), (Integer) pedido.get("id_direccion_entrega"));
+    }
+
+    /** A* desde la ubicación guardada del repartidor hasta la dirección de entrega. */
+    private RouteResponse calcular(int idRepartidor, Integer idDireccion) {
         Map<String, Object> origen = jdbc.queryForMap("""
                 SELECT ST_Y(ubicacion_actual::geometry) AS lat, ST_X(ubicacion_actual::geometry) AS lon
                 FROM repartidores WHERE id_usuario = :rep""",
@@ -62,7 +90,7 @@ public class RutaService {
         Map<String, Object> destino = jdbc.queryForMap("""
                 SELECT ST_Y(ubicacion::geometry) AS lat, ST_X(ubicacion::geometry) AS lon
                 FROM direcciones_clientes WHERE id_direccion = :dir""",
-                new MapSqlParameterSource("dir", pedido.get("id_direccion_entrega")));
+                new MapSqlParameterSource("dir", idDireccion));
 
         RouteRequest req = new RouteRequest();
         req.setOrigenLat(((Number) origen.get("lat")).doubleValue());

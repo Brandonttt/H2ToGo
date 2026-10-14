@@ -278,24 +278,9 @@ fun RutaEntregaScreen(
                 destLat = entrega.latDestino,
                 destLon = entrega.lonDestino,
                 routePoints = routePoints,
+                seguirRepartidor = true,
                 modifier = Modifier.fillMaxSize()
             )
-
-            // CU-017 S1: con permiso pero sin fix del GPS tras unos segundos.
-            var sinSenalGps by remember { mutableStateOf(false) }
-            LaunchedEffect(tienePermiso, posicion == null) {
-                sinSenalGps = false
-                if (tienePermiso && posicion == null) {
-                    delay(15_000)
-                    sinSenalGps = true
-                }
-            }
-            if (sinSenalGps && posicion == null) {
-                com.htogo.app.ui.components.AvisoMapa(
-                    "Sin señal GPS · sal a un lugar abierto",
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 104.dp)
-                )
-            }
 
             if (!tienePermiso) {
                 PermisoUbicacionBanner(

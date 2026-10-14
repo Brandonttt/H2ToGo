@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Ruta de entrega (CU-011). Solo el repartidor asignado; devuelve la polilínea y la distancia
+ * Ruta de entrega (CU-011) para el repartidor asignado y su versión de seguimiento para el cliente; devuelve la polilínea y la distancia
  * total (mismo {@code RouteResponse} del motor A*). 422 si no hay ruta posible.
  */
 @RestController
@@ -26,6 +26,13 @@ public class RutaController {
     @GetMapping("/{id}/ruta")
     public ResponseEntity<RouteResponse> ruta(@PathVariable int id) {
         RouteResponse ruta = rutaService.ruta(SecurityUtils.exigirRol(RolUsuario.repartidor), id);
+        return ruta.isEncontrada() ? ResponseEntity.ok(ruta) : ResponseEntity.unprocessableEntity().body(ruta);
+    }
+
+    /** Seguimiento del cliente (CU-006): la misma ruta por calles, del repartidor a su domicilio. */
+    @GetMapping("/{id}/ruta-seguimiento")
+    public ResponseEntity<RouteResponse> rutaSeguimiento(@PathVariable int id) {
+        RouteResponse ruta = rutaService.rutaSeguimiento(SecurityUtils.exigirRol(RolUsuario.cliente), id);
         return ruta.isEncontrada() ? ResponseEntity.ok(ruta) : ResponseEntity.unprocessableEntity().body(ruta);
     }
 }

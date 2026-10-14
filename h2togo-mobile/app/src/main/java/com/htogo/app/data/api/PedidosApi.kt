@@ -24,6 +24,10 @@ interface PedidosApi {
     @GET("pedidos/{id}/ubicacion-repartidor")
     suspend fun ubicacionRepartidor(@Path("id") id: Int): Response<com.htogo.app.data.dto.UbicacionRepartidorDto>
 
+    /** Ruta por calles del repartidor a mi domicilio (CU-006); 422 si va en camino fuera de Benito Juárez. */
+    @GET("pedidos/{id}/ruta-seguimiento")
+    suspend fun rutaSeguimiento(@Path("id") id: Int): Response<com.htogo.app.data.dto.RouteResponse>
+
     @POST("pedidos/{id}/cancelacion")
     suspend fun cancelarPedido(
         @Path("id") id: Int,

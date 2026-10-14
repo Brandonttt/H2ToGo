@@ -146,7 +146,7 @@ class RutaFlowIT {
         int idPedido = JsonPath.read(cuerpoPed, "$.id");
         mvc.perform(post("/api/v1/pedidos/" + idPedido + "/aceptacion").header("Authorization", "Bearer " + tokenRep))
                 .andExpect(status().isOk());
-        return new Object[]{idPedido, tokenRep};
+        return new Object[]{idPedido, tokenRep, tokenCli};
     }
 
     @Test
@@ -169,5 +169,20 @@ class RutaFlowIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.encontrada").value(true))
                 .andExpect(jsonPath("$.coordenadas.length()").value(org.hamcrest.Matchers.greaterThan(0)));
+
+        // CU-006: el cliente ve la ruta por calles solo cuando va en camino.
+        String tokenCli = (String) esc[2];
+        mvc.perform(get("/api/v1/pedidos/" + idPedido + "/ruta-seguimiento").header("Authorization", "Bearer " + tokenCli))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("ESTADO_INVALIDO"));
+        mvc.perform(post("/api/v1/pedidos/" + idPedido + "/en-camino").header("Authorization", "Bearer " + tokenRep)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT_REP, LON_REP)))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/pedidos/" + idPedido + "/ruta-seguimiento").header("Authorization", "Bearer " + tokenCli))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.coordenadas.length()").value(org.hamcrest.Matchers.greaterThan(2)));
+        // El repartidor no usa la ruta del cliente.
+        mvc.perform(get("/api/v1/pedidos/" + idPedido + "/ruta-seguimiento").header("Authorization", "Bearer " + tokenRep))
+                .andExpect(status().isForbidden());
     }
 }

@@ -311,6 +311,12 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
 
     private var rastreoJob: Job? = null
 
+    private val _rutaSeguimiento = MutableStateFlow<List<Pair<Double, Double>>>(emptyList())
+    /** Ruta por calles del repartidor al domicilio; vacía mientras no hay (el mapa dibuja línea recta). */
+    val rutaSeguimiento: StateFlow<List<Pair<Double, Double>>> = _rutaSeguimiento.asStateFlow()
+    private var origenRutaSeguimiento: UbicacionEnVivo? = null
+    private var rutaSeguimientoMs = 0L
+
     /**
      * Mientras el pedido está activo: escucha el WebSocket (reconecta si se cae) y, cuando no hay
      * conexión, consulta la última posición cada 10 s. Además refresca el estado del pedido cada
@@ -319,9 +325,23 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
     fun iniciarRastreo(idPedido: Int) {
         rastreoJob?.cancel()
         _ubicacionRepartidor.value = null
+        _rutaSeguimiento.value = emptyList()
+        origenRutaSeguimiento = null
         val token = sessionManager.obtenerToken() ?: return
         rastreoJob = viewModelScope.launch {
             var conectado = false
+            // Ruta por calles: se recalcula cuando el repartidor avanza > 60 m (máx. cada 15 s).
+            launch {
+                _ubicacionRepartidor.collect { u ->
+                    if (u == null || _pedidoActivo.value?.estado?.lowercase() != "en_camino") return@collect
+                    val previo = origenRutaSeguimiento
+                    val movido = previo == null || com.htogo.app.data.location.UbicacionTracker
+                        .distanciaM(previo.lat, previo.lon, u.lat, u.lon) > 60
+                    if (movido && System.currentTimeMillis() - rutaSeguimientoMs >= 15_000) {
+                        actualizarRutaSeguimiento(idPedido, u)
+                    }
+                }
+            }
             launch {
                 while (isActive) {
                     StompCliente.suscribir(StompCliente.topicoUbicacion(idPedido), token)
@@ -354,6 +374,19 @@ class ClienteViewModel(application: Application) : AndroidViewModel(application)
                     }
                 }
             }
+        }
+    }
+
+    private suspend fun actualizarRutaSeguimiento(idPedido: Int, desde: UbicacionEnVivo) {
+        rutaSeguimientoMs = System.currentTimeMillis()
+        try {
+            val resp = apiClient.pedidosApi.rutaSeguimiento(idPedido)
+            val ruta = resp.body()
+            _rutaSeguimiento.value = if (resp.isSuccessful && ruta != null && ruta.encontrada)
+                ruta.coordenadas.map { it.lat to it.lon } else emptyList()
+            origenRutaSeguimiento = desde
+        } catch (_: Exception) {
+            // Sin red: se reintenta con la siguiente posición.
         }
     }
 

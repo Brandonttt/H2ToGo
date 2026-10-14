@@ -532,6 +532,7 @@ fun SeguimientoPedidoScreen(
 ) {
     val livePedido by clienteViewModel.pedidoActivo.collectAsState()
     val ubicacionRepartidor by clienteViewModel.ubicacionRepartidor.collectAsState()
+    val rutaSeguimiento by clienteViewModel.rutaSeguimiento.collectAsState()
 
     LaunchedEffect(pedidoId) {
         if (pedidoId != null) {
@@ -654,7 +655,9 @@ fun SeguimientoPedidoScreen(
                 originLon = ubicacionRepartidor?.lon,
                 destLat = latDestino,
                 destLon = lonDestino,
+                routePoints = if (order.estado == EstadoPedido.EN_CAMINO) rutaSeguimiento else emptyList(),
                 repartidorLabel = "Tu repartidor",
+                avisoSinUbicacion = null, // el aviso del cliente se muestra abajo (CU-006 S1)
                 modifier = Modifier.fillMaxSize()
             )
         } else {
