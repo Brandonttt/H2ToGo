@@ -746,9 +746,16 @@ fun NuevoPedidoScreen(
     val purificadorasCercanas by clienteViewModel.purificadoras.collectAsState()
     val perfil by clienteViewModel.perfilPurificadora.collectAsState()
     // Sin purificadora elegida (p. ej. desde el botón "Nuevo pedido"), se usa la más cercana.
-    var purificadoraId by remember { mutableStateOf(clienteViewModel.purificadoraSeleccionadaId) }
+    var purificadoraId by remember(clienteViewModel.purificadoraSeleccionadaId) {
+        mutableStateOf(clienteViewModel.purificadoraSeleccionadaId)
+    }
+    LaunchedEffect(clienteViewModel.purificadoraSeleccionadaId) {
+        if (clienteViewModel.purificadoraSeleccionadaId != null) {
+            purificadoraId = clienteViewModel.purificadoraSeleccionadaId
+        }
+    }
     LaunchedEffect(purificadorasCercanas) {
-        if (purificadoraId == null) {
+        if (purificadoraId == null && purificadorasCercanas.isNotEmpty()) {
             purificadorasCercanas.minByOrNull { it.distanciaKm }?.let {
                 purificadoraId = it.id
                 clienteViewModel.purificadoraSeleccionadaId = it.id
@@ -756,7 +763,9 @@ fun NuevoPedidoScreen(
             }
         }
     }
-    LaunchedEffect(purificadoraId) { purificadoraId?.let { clienteViewModel.cargarPerfilPurificadora(it) } }
+    LaunchedEffect(purificadoraId) {
+        purificadoraId?.let { clienteViewModel.cargarPerfilPurificadora(it) }
+    }
     val perfilActual = perfil?.takeIf { it.id == purificadoraId }
     val direccionesDisponibles by clienteViewModel.direcciones.collectAsState()
     // Refresca al abrir: si se agregó un domicilio en otra pantalla, aparece aquí sin reiniciar la app.

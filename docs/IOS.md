@@ -46,6 +46,28 @@ xcodebuild -project iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS S
 xcrun simctl install booted build/dd/Build/Products/Debug-iphonesimulator/H2ToGo.app
 ```
 
+## Reglas para editar pantallas (Android e iOS)
+
+Las pantallas, ViewModels y la navegación están en `h2togo-mobile/shared/src/commonMain/kotlin/com/htogo/app/`
+(ya no en `app/src/main/java/...`). Ese código compila también para iOS, así que **no puede usar APIs
+de Android ni de Java**. Equivalentes:
+
+| En lugar de… | Usa… |
+|---|---|
+| `Toast.makeText(context, msg, …).show()` | `mostrarAviso(msg)` / `mostrarAviso(msg, largo = true)` (`com.htogo.app.plataforma`) |
+| `String.format(Locale.US, "%.2f", x)` | `"%.2f".format(x)` con `import com.htogo.app.util.format` |
+| `System.currentTimeMillis()` | `ahoraMs()` |
+| `Calendar`, `SimpleDateFormat`, `java.time` | `util/Fechas.kt` (`fechaCdmx`, `ahoraCdmx`, `textoLargo`, …) con kotlinx-datetime |
+| `Gson`, `org.json.JSONObject` | `jsonApi` / `String.aMapaJson()` |
+| `Intent(ACTION_DIAL, "tel:…")` | `LocalUriHandler.current.openUri("tel:…")` |
+| `DatePickerDialog`, `TimePickerDialog` | `SelectorFecha`, `SelectorHora` (`ui/components/Selectores.kt`) |
+| `LocalContext`, `SessionManager.getInstance(context)` | `SessionManager.getInstance()` / `ApiClient.getInstance()` |
+| `viewModel()` | `viewModel { MiViewModel() }` |
+| GPS, mapas, permisos, abrir Maps/Waze | `Plataforma.servicios` y `LocalUiPlataforma.current` (implementación Android en `app/.../plataforma/PlataformaAndroid.kt`) |
+
+Para verificar que un cambio no rompe iOS (no requiere Xcode):
+`./gradlew :shared:compileKotlinIosSimulatorArm64`.
+
 ## Comandos útiles
 
 ```bash

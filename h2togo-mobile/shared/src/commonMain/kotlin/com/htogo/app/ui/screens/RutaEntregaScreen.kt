@@ -4,16 +4,23 @@ import androidx.compose.ui.platform.LocalUriHandler
 import com.htogo.app.plataforma.AppNavegacion
 import com.htogo.app.plataforma.LocalUiPlataforma
 import com.htogo.app.plataforma.Plataforma
-
 import com.htogo.app.plataforma.mostrarAviso
 import com.htogo.app.plataforma.ahoraMs
 import com.htogo.app.util.format
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -24,6 +31,8 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
@@ -265,7 +274,18 @@ fun RutaEntregaScreen(
     val puedeMarcarNoEntregado = estado == EstadoRuta.LLEGADO && segundosRestantes <= 0
 
     Scaffold(containerColor = HToGoColors.Background) { padding ->
-        Box(Modifier.padding(padding).fillMaxSize()) {
+        BoxWithConstraints(Modifier.padding(padding).fillMaxSize()) {
+            val maxScreenHeight = maxHeight
+            var isSheetMinimized by remember { mutableStateOf(false) }
+            val sheetHeight by animateDpAsState(
+                targetValue = if (isSheetMinimized) 84.dp else (maxScreenHeight * 0.70f).coerceAtMost(560.dp),
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
+                label = "sheetHeight"
+            )
+
             // Mapa interactivo con la ruta del repartidor
             OsmRouteMapView(
                 originLat = posicion?.lat,
@@ -295,7 +315,8 @@ fun RutaEntregaScreen(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(top = 44.dp, start = 12.dp, end = 12.dp),
+                    .statusBarsPadding()
+                    .padding(top = 10.dp, start = 12.dp, end = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 FloatingIconButton(Icons.AutoMirrored.Filled.ArrowBack, onBack)
@@ -358,7 +379,8 @@ fun RutaEntregaScreen(
                     shadowElevation = 3.dp,
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(top = 96.dp, start = 12.dp)
+                        .statusBarsPadding()
+                        .padding(top = 60.dp, start = 12.dp)
                         .clickable { posicionSimulada = null }
                 ) {
                     Row(
@@ -375,127 +397,235 @@ fun RutaEntregaScreen(
                 }
             }
 
-            // Tarjeta inferior con información del pedido
+            // Tarjeta inferior con información del pedido (minimizable / deslizable)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .heightIn(max = 560.dp),
+                    .height(sheetHeight),
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
-                Column(Modifier.padding(18.dp)) {
-                    if (errorCargaBase != null) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = HToGoColors.AccentAmber.copy(alpha = 0.12f),
-                            border = BorderStroke(1.dp, HToGoColors.AccentAmber),
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = if (isSheetMinimized) 0.dp else 12.dp)
+                ) {
+                    // Cabecera interactiva y arrastrable (Handle + Resumen cuando está minimizado + Chevron)
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .draggable(
+                                orientation = Orientation.Vertical,
+                                state = rememberDraggableState { delta ->
+                                    if (delta > 10f && !isSheetMinimized) {
+                                        isSheetMinimized = true
+                                    } else if (delta < -10f && isSheetMinimized) {
+                                        isSheetMinimized = false
+                                    }
+                                }
+                            )
+                            .clickable { isSheetMinimized = !isSheetMinimized }
+                            .padding(top = 10.dp, bottom = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            Modifier
+                                .width(44.dp)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(HToGoColors.OutlineSoft)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 18.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Filled.Warning, null, tint = HToGoColors.AccentAmber, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Carga pendiente en la base", fontWeight = FontWeight.Bold, color = HToGoColors.AccentAmber, fontSize = 13.sp)
-                                }
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    errorCargaBase ?: "Hay garrafones apartados en la base para este pedido. Debes cargarlos al vehículo antes de iniciar la ruta (CU-011 / CU-019).",
-                                    fontSize = 11.sp,
-                                    color = HToGoColors.TextPrimary
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Button(
-                                    onClick = {
-                                        val idInt = entrega.pedidoId.toIntOrNull() ?: return@Button
-                                        repartidorViewModel.cargarApartadosBase(
-                                            id = idInt,
-                                            onSuccess = {
-                                                errorCargaBase = null
-                                                mostrarAviso("Garrafones cargados al vehículo")
-                                                posicion?.let { pos ->
-                                                    repartidorViewModel.marcarEnCamino(idInt, pos.lat, pos.lon)
-                                                }
-                                            },
-                                            onError = { err ->
-                                                mostrarAviso(err, largo = true)
-                                            }
-                                        )
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentAmber),
-                                    modifier = Modifier.fillMaxWidth().height(36.dp),
-                                    shape = RoundedCornerShape(18.dp)
+                            if (isSheetMinimized) {
+                                Surface(
+                                    shape = RoundedCornerShape(99.dp),
+                                    color = if (estado == EstadoRuta.LLEGADO) HToGoColors.StatusEntregado.copy(alpha = .15f)
+                                    else HToGoColors.Primary.copy(alpha = .15f)
                                 ) {
-                                    Icon(Icons.Filled.Warehouse, null, modifier = Modifier.size(14.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("Cargar garrafones al vehículo", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        if (estado == EstadoRuta.LLEGADO) "Llegaste" else "En ruta",
+                                        color = if (estado == EstadoRuta.LLEGADO) HToGoColors.StatusEntregado else HToGoColors.Primary,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
                                 }
+                                Spacer(Modifier.width(10.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        "Pedido #${entrega.pedidoId} · ${entrega.productos}",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = HToGoColors.TextPrimary,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                    val distTexto = when {
+                                        estado == EstadoRuta.LLEGADO -> "En domicilio · Espera: %02d:%02d".format(segundosRestantes / 60, segundosRestantes % 60)
+                                        liveRutaCalculada?.takeIf { it.encontrada }?.distanciaTotalKm != null -> "%.2f km restantes".format(liveRutaCalculada?.distanciaTotalKm)
+                                        distanciaDestinoM != null && distanciaDestinoM < 1000 -> "%.0f m al destino".format(distanciaDestinoM)
+                                        distanciaDestinoM != null -> "%.2f km al destino".format(distanciaDestinoM / 1000)
+                                        else -> entrega.direccion.substringBefore(",")
+                                    }
+                                    Text(
+                                        distTexto,
+                                        fontSize = 11.5.sp,
+                                        color = HToGoColors.TextSecondary,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    "Desglose de entrega",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = HToGoColors.TextSecondary
+                                )
+                                Spacer(Modifier.weight(1f))
+                            }
+                            IconButton(
+                                onClick = { isSheetMinimized = !isSheetMinimized },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    if (isSheetMinimized) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                    contentDescription = if (isSheetMinimized) "Expandir desglose" else "Minimizar desglose",
+                                    tint = HToGoColors.TextSecondary
+                                )
                             }
                         }
                     }
 
-                    if (estado == EstadoRuta.EN_RUTA) {
-                        EnRutaSheet(
-                            entrega, distanciaDestinoM,
-                            rutaKm = liveRutaCalculada?.takeIf { it.encontrada }?.distanciaTotalKm,
-                            rutaNoDisponible = rutaNoDisponible
-                        )
-                        Spacer(Modifier.height(14.dp))
-                        Button(
-                            onClick = {
-                                // RF-014: el backend solo acepta la entrega a ≤ 50 m del domicilio.
-                                when {
-                                    distanciaDestinoM == null -> mostrarAviso("Esperando la señal del GPS…")
-                                    distanciaDestinoM > RADIO_ENTREGA_M -> mostrarAviso("Estás a %.0f m del domicilio. Acércate a menos de %d m.".format(distanciaDestinoM, RADIO_ENTREGA_M), largo = true)
-                                    else -> estado = EstadoRuta.LLEGADO
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(54.dp),
-                            shape = RoundedCornerShape(27.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                    if (!isSheetMinimized) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 18.dp)
                         ) {
-                            Icon(Icons.Filled.Flag, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Llegué al destino", fontWeight = FontWeight.SemiBold)
-                        }
-                    } else {
-                        LlegadoSheet(entrega, segundosRestantes)
-                        Spacer(Modifier.height(14.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(
-                                onClick = { mostrarModalNoEntregado = true },
-                                modifier = Modifier.weight(1f).height(54.dp),
-                                shape = RoundedCornerShape(27.dp),
-                                enabled = puedeMarcarNoEntregado,
-                                border = BorderStroke(
-                                    1.5.dp,
-                                    if (puedeMarcarNoEntregado) HToGoColors.AccentRose else HToGoColors.OutlineSoft
-                                )
-                            ) {
-                                Icon(
-                                    if (puedeMarcarNoEntregado) Icons.Filled.Cancel else Icons.Filled.Lock,
-                                    null,
-                                    tint = if (puedeMarcarNoEntregado) HToGoColors.AccentRose else HToGoColors.TextTertiary
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    "No entregado",
-                                    color = if (puedeMarcarNoEntregado) HToGoColors.AccentRose else HToGoColors.TextTertiary,
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                            if (errorCargaBase != null) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = HToGoColors.AccentAmber.copy(alpha = 0.12f),
+                                    border = BorderStroke(1.dp, HToGoColors.AccentAmber),
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                                ) {
+                                    Column(Modifier.padding(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Filled.Warning, null, tint = HToGoColors.AccentAmber, modifier = Modifier.size(18.dp))
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Carga pendiente en la base", fontWeight = FontWeight.Bold, color = HToGoColors.AccentAmber, fontSize = 13.sp)
+                                        }
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            errorCargaBase ?: "Hay garrafones apartados en la base para este pedido. Debes cargarlos al vehículo antes de iniciar la ruta (CU-011 / CU-019).",
+                                            fontSize = 11.sp,
+                                            color = HToGoColors.TextPrimary
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        Button(
+                                            onClick = {
+                                                val idInt = entrega.pedidoId.toIntOrNull() ?: return@Button
+                                                repartidorViewModel.cargarApartadosBase(
+                                                    id = idInt,
+                                                    onSuccess = {
+                                                        errorCargaBase = null
+                                                        mostrarAviso("Garrafones cargados al vehículo")
+                                                        posicion?.let { pos ->
+                                                            repartidorViewModel.marcarEnCamino(idInt, pos.lat, pos.lon)
+                                                        }
+                                                    },
+                                                    onError = { err ->
+                                                        mostrarAviso(err, largo = true)
+                                                    }
+                                                )
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentAmber),
+                                            modifier = Modifier.fillMaxWidth().height(36.dp),
+                                            shape = RoundedCornerShape(18.dp)
+                                        ) {
+                                            Icon(Icons.Filled.Warehouse, null, modifier = Modifier.size(14.dp))
+                                            Spacer(Modifier.width(6.dp))
+                                            Text("Cargar garrafones al vehículo", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+                                    }
+                                }
                             }
-                            Button(
-                                onClick = { mostrarModalEntregado = true },
-                                modifier = Modifier.weight(1.5f).height(54.dp),
-                                shape = RoundedCornerShape(27.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = HToGoColors.StatusEntregado
+
+                            if (estado == EstadoRuta.EN_RUTA) {
+                                EnRutaSheet(
+                                    entrega, distanciaDestinoM,
+                                    rutaKm = liveRutaCalculada?.takeIf { it.encontrada }?.distanciaTotalKm,
+                                    rutaNoDisponible = rutaNoDisponible
                                 )
-                            ) {
-                                Icon(Icons.Filled.CheckCircle, null)
-                                Spacer(Modifier.width(4.dp))
-                                Text("Marcar entregado", fontWeight = FontWeight.SemiBold)
+                                Spacer(Modifier.height(14.dp))
+                                Button(
+                                    onClick = {
+                                        // RF-014: el backend solo acepta la entrega a ≤ 50 m del domicilio.
+                                        when {
+                                            distanciaDestinoM == null -> mostrarAviso("Esperando la señal del GPS…")
+                                            distanciaDestinoM > RADIO_ENTREGA_M -> mostrarAviso("Estás a %.0f m del domicilio. Acércate a menos de %d m.".format(distanciaDestinoM, RADIO_ENTREGA_M), largo = true)
+                                            else -> estado = EstadoRuta.LLEGADO
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                                    shape = RoundedCornerShape(27.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                                ) {
+                                    Icon(Icons.Filled.Flag, null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Llegué al destino", fontWeight = FontWeight.SemiBold)
+                                }
+                            } else {
+                                LlegadoSheet(entrega, segundosRestantes)
+                                Spacer(Modifier.height(14.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(
+                                        onClick = { mostrarModalNoEntregado = true },
+                                        modifier = Modifier.weight(1f).height(54.dp),
+                                        shape = RoundedCornerShape(27.dp),
+                                        enabled = puedeMarcarNoEntregado,
+                                        border = BorderStroke(
+                                            1.5.dp,
+                                            if (puedeMarcarNoEntregado) HToGoColors.AccentRose else HToGoColors.OutlineSoft
+                                        )
+                                    ) {
+                                        Icon(
+                                            if (puedeMarcarNoEntregado) Icons.Filled.Cancel else Icons.Filled.Lock,
+                                            null,
+                                            tint = if (puedeMarcarNoEntregado) HToGoColors.AccentRose else HToGoColors.TextTertiary
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            "No entregado",
+                                            color = if (puedeMarcarNoEntregado) HToGoColors.AccentRose else HToGoColors.TextTertiary,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                    Button(
+                                        onClick = { mostrarModalEntregado = true },
+                                        modifier = Modifier.weight(1.5f).height(54.dp),
+                                        shape = RoundedCornerShape(27.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = HToGoColors.StatusEntregado
+                                        )
+                                    ) {
+                                        Icon(Icons.Filled.CheckCircle, null)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Marcar entregado", fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
                             }
+                            Spacer(Modifier.height(14.dp))
                         }
                     }
                 }
@@ -1349,3 +1479,4 @@ private fun ModalNoEntregado(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
 }
+
