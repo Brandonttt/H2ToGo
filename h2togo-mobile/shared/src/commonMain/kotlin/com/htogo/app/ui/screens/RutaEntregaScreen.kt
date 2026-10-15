@@ -1,6 +1,7 @@
 package com.htogo.app.ui.screens
 
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.foundation.layout.consumeWindowInsets
 import com.htogo.app.plataforma.AppNavegacion
 import com.htogo.app.plataforma.LocalUiPlataforma
 import com.htogo.app.plataforma.Plataforma
@@ -274,7 +275,8 @@ fun RutaEntregaScreen(
     val puedeMarcarNoEntregado = estado == EstadoRuta.LLEGADO && segundosRestantes <= 0
 
     Scaffold(containerColor = HToGoColors.Background) { padding ->
-        BoxWithConstraints(Modifier.padding(padding).fillMaxSize()) {
+        // consumeWindowInsets: la barra superior ya no vuelve a sumar la barra de estado.
+        BoxWithConstraints(Modifier.padding(padding).consumeWindowInsets(padding).fillMaxSize()) {
             val maxScreenHeight = maxHeight
             var isSheetMinimized by remember { mutableStateOf(false) }
             val sheetHeight by animateDpAsState(
@@ -295,6 +297,7 @@ fun RutaEntregaScreen(
                 routePoints = routePoints,
                 seguirRepartidor = true,
                 estadoPedido = livePedidoEnRuta?.estado,
+                margenInferior = sheetHeight, // el repartidor se centra arriba del panel
                 modifier = Modifier.fillMaxSize()
             )
 

@@ -1,72 +1,196 @@
 package com.htogo.app.ui.components
 
-import android.annotation.SuppressLint
-import android.util.Log
-import android.webkit.ConsoleMessage
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
+// HTML de los mapas (Leaflet), común a Android (WebView) e iOS (WKWebView). La página avisa a la
+// app con enviarNativo('listo') al terminar de cargar y, en el selector, con
+// enviarNativo('ubicacion:lat,lon') al mover el pin.
 
-/**
- * Mapa Leaflet con el repartidor, el destino y la ruta. La página se carga una sola vez y los
- * cambios (posición en vivo, ruta recalculada) se aplican con JavaScript, para que el mapa no
- * parpadee ni pierda el zoom en cada actualización del GPS.
- *
- * El marcador del repartidor se desliza entre posiciones del GPS y lleva una flecha con su rumbo;
- * con [seguirRepartidor] la cámara lo sigue (rumbo arriba o norte arriba) hasta que el usuario
- * arrastra el mapa, y un botón lo vuelve a centrar.
- *
- * @param originLat posición del repartidor; null mientras no se conoce (no se dibuja el marcador).
- * @param repartidorLabel texto del globo del marcador del repartidor.
- */
-@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
-@Composable
-fun OsmRouteMapViewAndroid(
-    originLat: Double?,
-    originLon: Double?,
-    destLat: Double,
-    destLon: Double,
-    modifier: Modifier = Modifier,
-    routePoints: List<Pair<Double, Double>> = emptyList(),
-    isInteractive: Boolean = true,
-    repartidorLabel: String = "Tu ubicación",
-    /** Navegación del repartidor: la cámara lo sigue y el mapa gira con su rumbo (brújula para alternar). */
-    seguirRepartidor: Boolean = false,
-    /** Aviso mientras no hay posición; null para no mostrarlo (p. ej. el cliente tiene el suyo). */
-    avisoSinUbicacion: String? = "Buscando señal GPS...",
-    /** RF-007: estado del pedido ("asignado", "en_camino"…); colorea los marcadores y muestra una etiqueta. */
-    estadoPedido: String? = null
-) {
-    val context = LocalContext.current
-    val css = remember { LeafletAssets.getCss(context) }
-    val js = remember { LeafletAssets.getJs(context) }
-    var listo by remember { mutableStateOf(false) }
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+internal fun htmlMapaSelector(
+    css: String, js: String, latitude: Double, longitude: Double, zoom: Int,
+    isInteractive: Boolean, isDraggablePin: Boolean, heightDp: Int
+): String = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+          <style>
+            $css
 
-    // La página no depende de datos que cambien: se arma una vez con el destino inicial.
-    val html = remember {
-        """
+            html, body {
+              width: 100%;
+              height: 100%;
+              margin: 0;
+              padding: 0;
+              background-color: #f1f5f9;
+            }
+            #map {
+              width: 100%;
+              height: ${heightDp}px;
+              min-height: ${heightDp}px;
+              background-color: #f1f5f9;
+            }
+            .custom-pin {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .leaflet-control-attribution {
+              display: none !important;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="map"></div>
+          <script>
+            $js
+          </script>
+          <script>
+            // Mensajes a la app (Android: HToGoNativo; iOS: webkit.messageHandlers.htogo).
+            function enviarNativo(m) {
+              try {
+                if (window.HToGoNativo) window.HToGoNativo.postMessage(m);
+                else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.htogo)
+                  window.webkit.messageHandlers.htogo.postMessage(m);
+              } catch (e) {}
+            }
+
+            var map = null;
+            var marker = null;
+            var initialLat = $latitude;
+            var initialLon = $longitude;
+            var initialZoom = $zoom;
+            var isInteractive = $isInteractive;
+            var isDraggable = $isDraggablePin;
+            var fallbackHeight = $heightDp;
+
+            function fixMapHeight() {
+              var mapDiv = document.getElementById('map');
+              if (!mapDiv) return;
+              var h = window.innerHeight;
+              if (h && h > 50) {
+                mapDiv.style.height = h + 'px';
+              } else {
+                mapDiv.style.height = fallbackHeight + 'px';
+              }
+            }
+
+            var pinSvg = '<svg width="38" height="38" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+              '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#0284C7" stroke="#FFFFFF" stroke-width="1.8"/>' +
+              '<circle cx="12" cy="9" r="3.2" fill="#FFFFFF"/>' +
+            '</svg>';
+
+            var customIcon = L.divIcon({
+              className: 'custom-pin',
+              html: pinSvg,
+              iconSize: [38, 38],
+              iconAnchor: [19, 38]
+            });
+
+            function initMap() {
+              try {
+                if (map) return;
+                fixMapHeight();
+                var mapDiv = document.getElementById('map');
+                if (!mapDiv) return;
+
+                map = L.map('map', {
+                  center: [initialLat, initialLon],
+                  zoom: initialZoom,
+                  zoomControl: isInteractive,
+                  dragging: isInteractive,
+                  touchZoom: isInteractive,
+                  doubleClickZoom: isInteractive,
+                  scrollWheelZoom: isInteractive,
+                  attributionControl: false
+                });
+
+                // Capa de Google Maps (alternativa)
+                var googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20 });
+                // Capa OpenStreetMap Humanitaria (HOT) con subdominios públicos libres
+                var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+                  subdomains: 'abc',
+                  maxZoom: 19
+                });
+                var currentTileLayer = osmLayer; // OSM por defecto; Google como alternativa
+                currentTileLayer.addTo(map);
+
+                window.setCapa = function(tipo) {
+                  if (currentTileLayer) map.removeLayer(currentTileLayer);
+                  currentTileLayer = (tipo === 'osm') ? osmLayer : googleLayer;
+                  currentTileLayer.addTo(map);
+                };
+
+                marker = L.marker([initialLat, initialLon], {
+                  icon: customIcon,
+                  draggable: isDraggable
+                }).addTo(map);
+
+                if (isDraggable) {
+                  marker.on('dragend', function() {
+                    var pos = marker.getLatLng();
+                    enviarNativo('ubicacion:' + pos.lat + ',' + pos.lng);
+                  });
+                }
+
+                if (isInteractive && isDraggable) {
+                  map.on('click', function(e) {
+                    marker.setLatLng(e.latlng);
+                    enviarNativo('ubicacion:' + e.latlng.lat + ',' + e.latlng.lng);
+                  });
+                }
+
+                if (window.ResizeObserver) {
+                  var ro = new ResizeObserver(function() {
+                    fixMapHeight();
+                    if (map) {
+                      map.invalidateSize(true);
+                      console.log("ResizeObserver: map size is " + map.getSize().x + "x" + map.getSize().y);
+                    }
+                  });
+                  ro.observe(mapDiv);
+                }
+
+                setTimeout(function() { fixMapHeight(); if (map) map.invalidateSize(true); }, 100);
+                setTimeout(function() { fixMapHeight(); if (map) map.invalidateSize(true); }, 350);
+                setTimeout(function() { fixMapHeight(); if (map) map.invalidateSize(true); }, 800);
+                console.log("OsmMapView Leaflet initialized at [" + initialLat + ", " + initialLon + "] size=" + map.getSize().x + "x" + map.getSize().y);
+              } catch(e) {
+                console.error("Error initMap: " + e.message);
+              }
+            }
+
+            function updatePosition(lat, lon) {
+              try {
+                fixMapHeight();
+                if (!map) {
+                  initMap();
+                }
+                if (map && marker) {
+                  map.setView([lat, lon], map.getZoom() || initialZoom);
+                  marker.setLatLng([lat, lon]);
+                  setTimeout(function() { fixMapHeight(); if (map) map.invalidateSize(true); }, 150);
+                  console.log("OsmMapView position updated to [" + lat + ", " + lon + "] size=" + map.getSize().x + "x" + map.getSize().y);
+                }
+              } catch(e) {
+                console.error("Error updatePosition: " + e.message);
+              }
+            }
+
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+              initMap();
+            } else {
+              document.addEventListener('DOMContentLoaded', initMap);
+            }
+            enviarNativo('listo');
+          </script>
+        </body>
+        </html>
+""".trimIndent()
+
+internal fun htmlMapaRuta(
+    css: String, js: String, destLat: Double, destLon: Double,
+    isInteractive: Boolean, seguirRepartidor: Boolean
+): String = """
         <!DOCTYPE html>
         <html>
         <head>
@@ -84,13 +208,13 @@ fun OsmRouteMapViewAndroid(
             .ctl { position: absolute; right: 12px; width: 44px; height: 44px; border-radius: 22px; background: #fff;
                    box-shadow: 0 2px 8px rgba(15,23,42,.25); display: flex; align-items: center; justify-content: center;
                    z-index: 1000; -webkit-tap-highlight-color: transparent; }
-            #brujula { top: 150px; }
+            #brujula { top: calc(var(--arriba, 96px) + 54px); }
             #brujula svg { transition: transform .6s ease-out; }
-            #estado { position: absolute; left: 12px; top: 96px; z-index: 1000; display: none; align-items: center; gap: 6px;
+            #estado { position: absolute; left: 12px; top: var(--arriba, 96px); z-index: 1000; display: none; align-items: center; gap: 6px;
                        background: #fff; border-radius: 99px; padding: 6px 12px; box-shadow: 0 2px 8px rgba(15,23,42,.2);
                        font: 600 12px sans-serif; color: #0F172A; }
             #estado i { width: 10px; height: 10px; border-radius: 5px; background: var(--estado, #0284C7); display: inline-block; }
-            #centrar { top: 202px; display: none; color: #0284C7; font: 600 12px sans-serif; width: auto; padding: 0 14px; }
+            #centrar { top: calc(var(--arriba, 96px) + 106px); display: none; color: #0284C7; font: 600 12px sans-serif; width: auto; padding: 0 14px; }
             .leaflet-control-attribution { display: none !important; }
           </style>
         </head>
@@ -104,6 +228,15 @@ fun OsmRouteMapViewAndroid(
           <div id="estado"><i></i><span></span></div>
           <script>$js</script>
           <script>
+            // Mensajes a la app (Android: HToGoNativo; iOS: webkit.messageHandlers.htogo).
+            function enviarNativo(m) {
+              try {
+                if (window.HToGoNativo) window.HToGoNativo.postMessage(m);
+                else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.htogo)
+                  window.webkit.messageHandlers.htogo.postMessage(m);
+              } catch (e) {}
+            }
+
             // Marcador del repartidor: círculo con gota y una flecha exterior que apunta a su rumbo.
             var repIcon = L.divIcon({ className: 'pin', iconSize: [48, 48], iconAnchor: [24, 24], html:
               '<div class="rep"><svg class="rumbo" width="48" height="48" viewBox="0 0 48 48">' +
@@ -131,7 +264,7 @@ fun OsmRouteMapViewAndroid(
               div.style.top = (girado ? (h - lado) / 2 : 0) + 'px';
               if (typeof map !== 'undefined' && map) {
                 map.invalidateSize({ pan: false });
-                if (SEGUIR && siguiendo && repPos) map.setView(repPos, map.getZoom(), { animate: false });
+                if (SEGUIR && siguiendo && repPos) map.setView(centroVisible(repPos, map.getZoom()), map.getZoom(), { animate: false });
               }
             }
             ajustarTamano();
@@ -140,7 +273,7 @@ fun OsmRouteMapViewAndroid(
               center: [$destLat, $destLon], zoom: 15, zoomControl: false, attributionControl: false,
               dragging: $isInteractive, touchZoom: $isInteractive, doubleClickZoom: $isInteractive, scrollWheelZoom: $isInteractive
             });
-            // Capa estándar limpia (Google Maps Road) que funciona siempre sin bloqueos ni marcas de agua en WebViews Android
+            // Capa de Google Maps (alternativa)
             var googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20 });
             // Capa OpenStreetMap Humanitaria (HOT) con subdominios públicos libres
             var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
@@ -214,7 +347,8 @@ fun OsmRouteMapViewAndroid(
               var delta = ((objetivo - anguloMapa) % 360 + 540) % 360 - 180; // giro más corto
               anguloMapa += delta;
               var debeGirar = objetivo !== 0 || Math.abs(anguloMapa % 360) > 0.5;
-              if (debeGirar !== girado) { girado = debeGirar; ajustarTamano(); if (repPos && siguiendo) map.setView(repPos, map.getZoom(), { animate: false }); }
+              if (debeGirar !== girado) { girado = debeGirar; ajustarTamano(); }
+              if (repPos && SEGUIR && siguiendo) map.setView(centroVisible(repPos, map.getZoom()), map.getZoom(), { animate: false });
               document.getElementById('map').style.transform = 'rotate(' + (-anguloMapa) + 'deg)';
               brujula.querySelector('svg').style.transform = 'rotate(' + (-anguloMapa) + 'deg)';
             }
@@ -225,10 +359,24 @@ fun OsmRouteMapViewAndroid(
             }
             // Respeta el zoom que elija el usuario; el acercamiento a 17 es solo al empezar o al centrar.
             var zoomFijado = false;
+            // Alto (px) del panel de la app que tapa la parte de abajo del mapa: el repartidor se
+            // centra en la parte visible, no en el centro de la pantalla.
+            var inferior = 0;
+            function centroVisible(p, z) {
+              if (!inferior) return p;
+              var a = anguloMapa * Math.PI / 180, d = inferior / 2;
+              var pt = map.project(p, z).add([-d * Math.sin(a), d * Math.cos(a)]);
+              return map.unproject(pt, z);
+            }
             function seguirA(p) {
               if (!(SEGUIR && siguiendo)) return;
-              map.setView(p, zoomFijado ? map.getZoom() : 17, { animate: false });
+              var z = zoomFijado ? map.getZoom() : 17;
+              map.setView(centroVisible(p, z), z, { animate: false });
               zoomFijado = true;
+            }
+            function setMargenInferior(px) {
+              inferior = px;
+              if (repPos && SEGUIR && siguiendo) seguirA(repPos);
             }
 
             // Desliza el marcador hasta la nueva posición (~1 s) con la cámara detrás.
@@ -259,11 +407,11 @@ fun OsmRouteMapViewAndroid(
             });
             centrar.addEventListener('click', function () {
               siguiendo = true; centrar.style.display = 'none'; aplicarRotacion();
-              if (repPos) map.setView(repPos, Math.max(map.getZoom(), 16));
+              if (repPos) { var z = Math.max(map.getZoom(), 16); map.setView(centroVisible(repPos, z), z); }
             });
             brujula.addEventListener('click', function () {
               rumboArriba = !rumboArriba;
-              if (!siguiendo) { siguiendo = true; centrar.style.display = 'none'; if (repPos) map.setView(repPos, Math.max(map.getZoom(), 16)); }
+              if (!siguiendo) { siguiendo = true; centrar.style.display = 'none'; if (repPos) { var z = Math.max(map.getZoom(), 16); map.setView(centroVisible(repPos, z), z); } }
               aplicarRotacion();
             });
 
@@ -298,134 +446,13 @@ fun OsmRouteMapViewAndroid(
               if (!(SEGUIR && siguiendo) && repLat !== null && (!encuadrado || (ruta.length >= 2 && firma !== rutaPrevia))) {
                 var b = rutaActual.length >= 2 ? L.latLngBounds(rutaActual) : L.latLngBounds([[repLat, repLon], destino]);
                 b.extend([repLat, repLon]);
-                if (b.isValid()) map.fitBounds(b, { padding: [70, 70], maxZoom: 16 });
+                if (b.isValid()) map.fitBounds(b, { paddingTopLeft: [50, 130], paddingBottomRight: [50, 50 + inferior], maxZoom: 16 });
                 encuadrado = true;
               }
               if (ruta.length >= 2) rutaPrevia = firma;
             }
+            enviarNativo('listo');
           </script>
         </body>
         </html>
-        """.trimIndent()
-    }
-
-    val rutaJson = remember(routePoints) {
-        routePoints.joinToString(prefix = "[", postfix = "]") { "[${it.first},${it.second}]" }
-    }
-    val etiquetaJs = remember(repartidorLabel) { repartidorLabel.replace("\\", "").replace("'", "\\'") }
-    var esGoogleMaps by remember { mutableStateOf(false) }
-
-    LaunchedEffect(listo, originLat, originLon, destLat, destLon, rutaJson, etiquetaJs) {
-        if (!listo) return@LaunchedEffect
-        val rep = if (originLat != null && originLon != null) "$originLat, $originLon" else "null, null"
-        webViewRef?.evaluateJavascript("actualizar($rep, $destLat, $destLon, $rutaJson, '$etiquetaJs');", null)
-    }
-
-    LaunchedEffect(listo, estadoPedido) {
-        if (!listo || estadoPedido == null) return@LaunchedEffect
-        val (color, texto) = when (estadoPedido.lowercase()) {
-            "pendiente", "pendiente_programado" -> "#94A3B8" to "Buscando repartidor"
-            "asignado" -> "#F59E0B" to "Repartidor asignado"
-            "en_camino" -> "#0284C7" to "En camino"
-            "entregado" -> "#10B981" to "Entregado"
-            "no_entregado" -> "#EF4444" to "No entregado"
-            "cancelado" -> "#EF4444" to "Cancelado"
-            else -> "#0284C7" to ""
-        }
-        val cerrado = estadoPedido.lowercase() in setOf("entregado", "no_entregado", "cancelado")
-        webViewRef?.evaluateJavascript("setEstado('$color', '$texto', $cerrado);", null)
-    }
-
-    Box(modifier = modifier) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    layoutParams = android.view.ViewGroup.LayoutParams(
-                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.loadWithOverviewMode = false
-                    settings.useWideViewPort = false
-                    // La política de tiles de OpenStreetMap exige identificar la app.
-                    settings.userAgentString = "HToGo-App/1.0 (Android; info@h2togo.mx) AppleWebKit/537.36"
-                    webChromeClient = object : WebChromeClient() {
-                        override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
-                            Log.d("OsmRouteMap", "[JS] ${consoleMessage?.message()}")
-                            return true
-                        }
-                    }
-                    webViewClient = object : WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            listo = true
-                        }
-                    }
-                    loadDataWithBaseURL("https://openstreetmap.org", html, "text/html", "UTF-8", null)
-                    webViewRef = this
-                }
-            }
-        )
-
-        // CU-017 Flujo S1: Indicador de búsqueda de señal GPS
-        if (avisoSinUbicacion != null && (originLat == null || originLon == null)) {
-            androidx.compose.material3.Surface(
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.75f),
-                modifier = Modifier
-                    .align(androidx.compose.ui.Alignment.TopCenter)
-                    .padding(top = 96.dp)
-            ) {
-                androidx.compose.foundation.layout.Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                ) {
-                    androidx.compose.material3.CircularProgressIndicator(
-                        modifier = Modifier.size(12.dp),
-                        color = androidx.compose.ui.graphics.Color.White,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    androidx.compose.material3.Text(
-                        avisoSinUbicacion,
-                        color = androidx.compose.ui.graphics.Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
-                    )
-                }
-            }
-        }
-
-        var capaOsm by remember { mutableStateOf(true) }
-
-        // CU-017: Selector de capas de mapa (Google Maps / OSM)
-        androidx.compose.material3.Surface(
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.95f),
-            shadowElevation = 4.dp,
-            modifier = Modifier
-                .align(androidx.compose.ui.Alignment.TopEnd)
-                .padding(top = 96.dp, end = 12.dp)
-                .clickable {
-                    capaOsm = !capaOsm
-                    webViewRef?.evaluateJavascript(
-                        "setCapa('${if (capaOsm) "osm" else "google"}');",
-                        null
-                    )
-                }
-        ) {
-            androidx.compose.foundation.layout.Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-            ) {
-                androidx.compose.material3.Text(
-                    if (capaOsm) "🗺️ OSM" else "🗺️ Google Maps",
-                    fontSize = 11.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    color = if (capaOsm) androidx.compose.ui.graphics.Color(0xFF0284C7) else androidx.compose.ui.graphics.Color(0xFF1A73E8)
-                )
-            }
-        }
-    }
-}
+""".trimIndent()

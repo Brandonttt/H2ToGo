@@ -25,10 +25,17 @@ targets:
         # Permite http://localhost para probar contra el backend local desde el simulador.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        # GPS del repartidor durante la entrega (CU-011/CU-006), también en segundo plano.
+        NSLocationWhenInUseUsageDescription: H2ToGo usa tu ubicación para mostrarte la ruta de entrega y compartirla con el cliente mientras repartes.
+        NSLocationAlwaysAndWhenInUseUsageDescription: H2ToGo usa tu ubicación durante una entrega, aunque abras otra app, para que el cliente vea por dónde vas.
+        UIBackgroundModes: [location]
+        # Para saber si Google Maps o Waze están instalados (abrir la navegación).
+        LSApplicationQueriesSchemes: [comgooglemaps, waze]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.htogo.app
         PRODUCT_NAME: H2ToGo
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # El framework Shared lo compila Gradle en la fase previa.
         FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
         OTHER_LDFLAGS: ["$(inherited)", "-framework", "Shared"]

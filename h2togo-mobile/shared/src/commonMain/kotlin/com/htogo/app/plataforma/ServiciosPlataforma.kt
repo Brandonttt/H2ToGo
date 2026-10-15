@@ -39,19 +39,24 @@ private object SinServicios : ServiciosPlataforma {
     override val posicionEntrega: StateFlow<Posicion?> = MutableStateFlow(null)
 }
 
-/** Piezas de interfaz propias de cada plataforma: mapas (WebView/WKWebView), red y permisos. */
-interface UiPlataforma {
-    @Composable
-    fun MapaSelector(
-        latitude: Double, longitude: Double, modifier: Modifier, heightDp: Int, zoom: Int,
-        isInteractive: Boolean, isDraggablePin: Boolean, onLocationChange: ((Double, Double) -> Unit)?
-    )
+/** Control de una vista web ya creada (para ejecutar JavaScript desde Kotlin). */
+interface ControlWeb {
+    fun ejecutar(js: String)
+}
 
+/** Piezas de interfaz propias de cada plataforma: visor web (mapas), red y permisos. */
+interface UiPlataforma {
+    /**
+     * Visor web (WebView / WKWebView) con [html]. La página manda mensajes con enviarNativo(m)
+     * que llegan a [alMensaje]; [alCrear] entrega el control para ejecutar JavaScript.
+     */
     @Composable
-    fun MapaRuta(
-        originLat: Double?, originLon: Double?, destLat: Double, destLon: Double, modifier: Modifier,
-        routePoints: List<Pair<Double, Double>>, isInteractive: Boolean, repartidorLabel: String,
-        seguirRepartidor: Boolean, avisoSinUbicacion: String?, estadoPedido: String?
+    fun VistaWeb(
+        html: String,
+        modifier: Modifier,
+        interactiva: Boolean,
+        alCrear: (ControlWeb) -> Unit,
+        alMensaje: (String) -> Unit
     )
 
     /** true mientras hay internet (RN-029). */

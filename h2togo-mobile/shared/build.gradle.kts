@@ -27,6 +27,7 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.materialIconsExtended)
             implementation(compose.ui)
+            implementation(compose.components.resources) // Leaflet (composeResources/files/leaflet)
             implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
@@ -53,6 +54,10 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
         }
     }
+}
+
+compose.resources {
+    packageOfResClass = "com.htogo.shared.recursos"
 }
 
 android {

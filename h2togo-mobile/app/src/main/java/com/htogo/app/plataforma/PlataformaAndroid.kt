@@ -23,8 +23,6 @@ import com.htogo.app.data.api.GeocodingHelper
 import com.htogo.app.data.location.EntregaEnCursoService
 import com.htogo.app.data.location.Posicion
 import com.htogo.app.data.location.UbicacionAndroid
-import com.htogo.app.ui.components.OsmMapViewAndroid
-import com.htogo.app.ui.components.OsmRouteMapViewAndroid
 import kotlinx.coroutines.flow.StateFlow
 
 /** Servicios de Android para el código compartido (se registra en HToGoApp). */
@@ -70,24 +68,17 @@ class ServiciosAndroid(context: Context) : ServiciosPlataforma {
     }
 }
 
-/** Mapas en WebView (Leaflet), conectividad y permisos de Android. */
+/** Visor web de los mapas (Leaflet), conectividad y permisos de Android. */
 object UiPlataformaAndroid : UiPlataforma {
 
     @Composable
-    override fun MapaSelector(
-        latitude: Double, longitude: Double, modifier: Modifier, heightDp: Int, zoom: Int,
-        isInteractive: Boolean, isDraggablePin: Boolean, onLocationChange: ((Double, Double) -> Unit)?
-    ) = OsmMapViewAndroid(latitude, longitude, modifier, heightDp, zoom, isInteractive, isDraggablePin, onLocationChange)
-
-    @Composable
-    override fun MapaRuta(
-        originLat: Double?, originLon: Double?, destLat: Double, destLon: Double, modifier: Modifier,
-        routePoints: List<Pair<Double, Double>>, isInteractive: Boolean, repartidorLabel: String,
-        seguirRepartidor: Boolean, avisoSinUbicacion: String?, estadoPedido: String?
-    ) = OsmRouteMapViewAndroid(
-        originLat, originLon, destLat, destLon, modifier, routePoints, isInteractive, repartidorLabel,
-        seguirRepartidor, avisoSinUbicacion, estadoPedido
-    )
+    override fun VistaWeb(
+        html: String,
+        modifier: Modifier,
+        interactiva: Boolean,
+        alCrear: (ControlWeb) -> Unit,
+        alMensaje: (String) -> Unit
+    ) = VistaWebAndroid(html, modifier, interactiva, alCrear, alMensaje)
 
     @Composable
     override fun rememberHayConexion(): State<Boolean> {

@@ -751,6 +751,7 @@ fun SeguimientoPedidoScreen(
                 repartidorLabel = "Tu repartidor",
                 avisoSinUbicacion = null, // el aviso del cliente se muestra abajo (CU-006 S1)
                 estadoPedido = livePedido?.estado,
+                margenInferior = screenHeight * 0.62f, // encuadra arriba del panel del pedido
                 modifier = Modifier.fillMaxSize()
             )
         } else {

@@ -85,18 +85,27 @@ Gradle 8.9 necesita un JDK 17–21 (`JAVA_HOME`); con JDK 25 falla.
 |---|---|
 | 1. Prueba inicial: módulo `shared`, login compartido, app iOS | ✅ Probado en simulador (iPhone 17, iOS 27) contra el backend local |
 | 2. Capa de datos compartida: APIs con Ktor, DTOs con kotlinx.serialization, sesión con multiplatform-settings, WebSocket STOMP con Ktor | ✅ Android e iOS la usan |
-| 3. ViewModels, navegación y las 25 pantallas a `commonMain` | ✅ La app completa corre en iOS (sin mapas, GPS ni notificaciones) |
-| 4. Mapa (WKWebView con el mismo HTML de Leaflet), GPS (CoreLocation), notificaciones (APNs), enlaces | Pendiente |
+| 3. ViewModels, navegación y las 25 pantallas a `commonMain` | ✅ La app completa corre en iOS |
+| 4. Mapas (mismo Leaflet en WKWebView), GPS (CoreLocation, también en segundo plano), geocodificador (CLGeocoder), Maps/Waze, "sin conexión", notificaciones con la app abierta, ícono | ✅ |
+| 4b. Notificaciones push con la app cerrada (APNs + Firebase) | Pendiente: requiere Apple Developer Program (99 USD/año) |
 | 5. iPhone real y TestFlight (requiere Apple Developer Program) | Pendiente |
 
 Desde la fase 3 la app (ViewModels, navegación, 25 pantallas, componentes y la raíz `HToGoRaiz`)
 vive en `shared/commonMain`, con los mismos paquetes que tenía en Android. Lo que depende del
 sistema operativo se pide a través de dos contratos en `com.htogo.app.plataforma`:
 
-- `UiPlataforma` (por `LocalUiPlataforma`): mapas, conectividad y permiso de ubicación.
-  Android: `UiPlataformaAndroid` (Leaflet en WebView). iOS: `UiPlataformaIos` (por ahora sin mapas).
+- `UiPlataforma` (por `LocalUiPlataforma`): visor web para los mapas, conectividad y permiso de
+  ubicación. Android: `UiPlataformaAndroid` (WebView). iOS: `UiPlataformaIos` (WKWebView, NWPathMonitor).
 - `ServiciosPlataforma` (por `Plataforma.servicios`): geocodificador, GPS de la entrega, ajustes
-  y apps de navegación. Android: `ServiciosAndroid`. iOS: `ServiciosIos` (vacío hasta la fase 4).
+  y apps de navegación. Android: `ServiciosAndroid`. iOS: `ServiciosIos` (CoreLocation, CLGeocoder).
+
+Los mapas (`ui/components/Mapas.kt` y el HTML/JS de Leaflet en `MapasHtml.kt`) son comunes: la
+página habla con la app con `enviarNativo(m)` y Leaflet se carga desde
+`shared/src/commonMain/composeResources/files/leaflet/`. Un cambio al mapa aplica a las dos apps.
+Las notificaciones por WebSocket con la app abierta están en `CanalNotificaciones` (común);
+Android las muestra con su `Notificador` e iOS con notificaciones locales.
+
+Para probar el GPS en el simulador de iOS: `xcrun simctl location booted set 19.3862,-99.1700`.
 
 Utilidades comunes: `mostrarAviso` (Toast / aviso flotante en iOS), `String.format` propio
 (`com.htogo.app.util.format`), fechas en hora de la CDMX con kotlinx-datetime (`util/Fechas.kt`) y
