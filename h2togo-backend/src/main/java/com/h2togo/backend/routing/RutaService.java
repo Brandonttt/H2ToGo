@@ -71,17 +71,21 @@ public class RutaService {
         if (!Integer.valueOf(idCliente).equals(pedido.get("id_cliente"))) {
             throw new AccessDeniedException("Solo el cliente del pedido puede ver su seguimiento (RN-016).");
         }
-        if (!"en_camino".equals(pedido.get("estado_actual"))) {
-            throw new BusinessRuleException("ESTADO_INVALIDO", "La ruta se muestra mientras el pedido va en camino.");
+        String estado = (String) pedido.get("estado_actual");
+        if (!"asignado".equals(estado) && !"en_camino".equals(estado)) {
+            throw new BusinessRuleException("ESTADO_INVALIDO", "La ruta se muestra cuando el pedido está asignado o en camino.");
         }
         return calcular((Integer) pedido.get("id_repartidor"), (Integer) pedido.get("id_direccion_entrega"));
     }
 
-    /** A* desde la ubicación guardada del repartidor hasta la dirección de entrega. */
+    /** A* desde la ubicación guardada del repartidor (o base del negocio) hasta la dirección de entrega. */
     private RouteResponse calcular(int idRepartidor, Integer idDireccion) {
         Map<String, Object> origen = jdbc.queryForMap("""
-                SELECT ST_Y(ubicacion_actual::geometry) AS lat, ST_X(ubicacion_actual::geometry) AS lon
-                FROM repartidores WHERE id_usuario = :rep""",
+                SELECT ST_Y(COALESCE(r.ubicacion_actual, n.ubicacion_base)::geometry) AS lat,
+                       ST_X(COALESCE(r.ubicacion_actual, n.ubicacion_base)::geometry) AS lon
+                FROM repartidores r
+                LEFT JOIN negocios n ON n.id_negocio = r.id_negocio
+                WHERE r.id_usuario = :rep""",
                 new MapSqlParameterSource("rep", idRepartidor));
         if (origen.get("lat") == null) {
             throw new BusinessRuleException("SIN_UBICACION",

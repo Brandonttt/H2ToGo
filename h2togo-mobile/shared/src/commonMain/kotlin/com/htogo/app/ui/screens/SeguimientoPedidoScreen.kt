@@ -743,11 +743,11 @@ fun SeguimientoPedidoScreen(
         if (latDestino != null && lonDestino != null) {
             // Mapa real: domicilio + repartidor en vivo (WebSocket, con consultas de respaldo).
             OsmRouteMapView(
-                originLat = ubicacionRepartidor?.lat,
-                originLon = ubicacionRepartidor?.lon,
+                originLat = ubicacionRepartidor?.lat ?: rutaSeguimiento.firstOrNull()?.first,
+                originLon = ubicacionRepartidor?.lon ?: rutaSeguimiento.firstOrNull()?.second,
                 destLat = latDestino,
                 destLon = lonDestino,
-                routePoints = if (order.estado == EstadoPedido.EN_CAMINO) rutaSeguimiento else emptyList(),
+                routePoints = if (order.estado == EstadoPedido.EN_CAMINO || order.estado == EstadoPedido.ASIGNADO) rutaSeguimiento else emptyList(),
                 repartidorLabel = "Tu repartidor",
                 avisoSinUbicacion = null, // el aviso del cliente se muestra abajo (CU-006 S1)
                 estadoPedido = livePedido?.estado,

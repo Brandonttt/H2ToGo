@@ -23,6 +23,7 @@ import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -368,17 +369,30 @@ class ClienteViewModel : ViewModel() {
         val token = sessionManager.obtenerToken() ?: return
         rastreoJob = viewModelScope.launch {
             var conectado = false
-            // Ruta por calles: se recalcula cuando el repartidor avanza > 60 m (máx. cada 15 s).
+
+            // Consulta inicial inmediata de ubicación y ruta
             launch {
-                _ubicacionRepartidor.collect { u ->
-                    if (u == null || _pedidoActivo.value?.estado?.lowercase() != "en_camino") return@collect
-                    val previo = origenRutaSeguimiento
-                    val movido = previo == null || com.htogo.app.data.location.distanciaM(previo.lat, previo.lon, u.lat, u.lon) > 60
-                    if (movido && ahoraMs() - rutaSeguimientoMs >= 15_000) {
-                        actualizarRutaSeguimiento(idPedido, u)
-                    }
-                }
+                consultarUbicacion(idPedido)
+                actualizarRutaSeguimiento(idPedido, _ubicacionRepartidor.value)
             }
+
+            // Ruta por calles: se actualiza cuando el repartidor avanza > 60 m (máx. cada 15 s)
+            // o de inmediato si todavía no tenemos la ruta (_rutaSeguimiento vacía).
+            launch {
+                combine(_pedidoActivo, _ubicacionRepartidor) { pedido, u -> pedido to u }
+                    .collect { (pedido, u) ->
+                        val est = pedido?.estado?.lowercase()
+                        if (est !in setOf("asignado", "en_camino")) return@collect
+                        val necesitaRuta = _rutaSeguimiento.value.isEmpty()
+                        val previo = origenRutaSeguimiento
+                        val movido = previo == null || (u != null && com.htogo.app.data.location.distanciaM(previo.lat, previo.lon, u.lat, u.lon) > 60)
+                        if (necesitaRuta || (movido && ahoraMs() - rutaSeguimientoMs >= 15_000)) {
+                            actualizarRutaSeguimiento(idPedido, u)
+                        }
+                    }
+            }
+
+            // Canal WebSocket en tiempo real
             launch {
                 while (isActive) {
                     StompCliente.suscribir(StompCliente.topicoUbicacion(idPedido), token)
@@ -394,17 +408,26 @@ class ClienteViewModel : ViewModel() {
                     delay(5_000) // reintento tras caída de red o rechazo del servidor
                 }
             }
+
+            // Respaldo de ubicación si no hay WebSocket o si aún no tenemos posición
             launch {
                 while (isActive) {
-                    if (!conectado) consultarUbicacion(idPedido)
+                    if (!conectado || _ubicacionRepartidor.value == null) {
+                        consultarUbicacion(idPedido)
+                    }
                     delay(10_000)
                 }
             }
+
+            // Refresco periódico del detalle del pedido y reintento de ruta si falta
             launch {
                 while (isActive) {
                     delay(20_000)
                     refrescarDetalle(idPedido)
                     val estado = _pedidoActivo.value?.estado?.lowercase()
+                    if (_rutaSeguimiento.value.isEmpty() && estado in setOf("asignado", "en_camino")) {
+                        actualizarRutaSeguimiento(idPedido, _ubicacionRepartidor.value)
+                    }
                     if (estado in setOf("entregado", "no_entregado", "cancelado")) {
                         _ubicacionRepartidor.value = null
                         detenerRastreo() // pedido cerrado: corta WebSocket y consultas
@@ -414,16 +437,17 @@ class ClienteViewModel : ViewModel() {
         }
     }
 
-    private suspend fun actualizarRutaSeguimiento(idPedido: Int, desde: UbicacionEnVivo) {
+    private suspend fun actualizarRutaSeguimiento(idPedido: Int, desde: UbicacionEnVivo?) {
         rutaSeguimientoMs = ahoraMs()
         try {
             val resp = apiClient.pedidosApi.rutaSeguimiento(idPedido)
             val ruta = resp.body()
-            _rutaSeguimiento.value = if (resp.isSuccessful && ruta != null && ruta.encontrada)
-                ruta.coordenadas.map { it.lat to it.lon } else emptyList()
-            origenRutaSeguimiento = desde
+            if (resp.isSuccessful && ruta != null && ruta.encontrada && ruta.coordenadas.isNotEmpty()) {
+                _rutaSeguimiento.value = ruta.coordenadas.map { it.lat to it.lon }
+                origenRutaSeguimiento = desde ?: UbicacionEnVivo(ruta.coordenadas.first().lat, ruta.coordenadas.first().lon)
+            }
         } catch (_: Exception) {
-            // Sin red: se reintenta con la siguiente posición.
+            // Sin red: se reintenta en el próximo ciclo sin borrar la ruta previa
         }
     }
 
