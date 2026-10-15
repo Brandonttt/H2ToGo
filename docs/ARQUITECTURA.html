@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arquitectura H2ToGo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: columna de lectura de ~72ch con figuras que se abren a 1120px; azules de la app H2ToGo. */
+:root {
+  --bg: #F4F8FB;
+  --surface: #FFFFFF;
+  --fg: #0F172A;
+  --muted: #55657A;
+  --line: #D3DEE8;
+  --line-strong: #8EA3B8;
+  --accent: #0077B6;
+  --accent-soft: #E1F2FB;
+  --deep: #03045E;
+  --pend: #B45309;
+  --pend-soft: #FDF3E4;
+  --ok: #0E7C5A;
+  --ok-soft: #E3F5EE;
+  --bad: #B42318;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A1420; --surface: #0F1D2C; --fg: #E3EAF2; --muted: #93A4B8; --line: #22354A; --line-strong: #4D6680;
+    --accent: #4CC3E8; --accent-soft: #10304A; --deep: #9FD8F5; --pend: #F2B35B; --pend-soft: #33240F;
+    --ok: #4ED1A0; --ok-soft: #0E2E24; --bad: #F2867A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A1420; --surface: #0F1D2C; --fg: #E3EAF2; --muted: #93A4B8; --line: #22354A; --line-strong: #4D6680;
+  --accent: #4CC3E8; --accent-soft: #10304A; --deep: #9FD8F5; --pend: #F2B35B; --pend-soft: #33240F;
+  --ok: #4ED1A0; --ok-soft: #0E2E24; --bad: #F2867A; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 80px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 56px; }
+.prose { max-width: 74ch; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.02em; color: var(--deep); }
+h2 { font-size: clamp(1.4rem, 3vw, 1.85rem); font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 1.1rem; font-weight: 700; }
+p { margin: 0; }
+section { display: grid; gap: 18px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.lede { font-size: 1.12rem; color: var(--muted); max-width: 68ch; }
+code, .mono { font-family: var(--font-mono); font-size: 0.88em; }
+code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+header { display: grid; gap: 14px; }
+nav.toc { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
+nav.toc a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
+nav.toc a:hover, nav.toc a:focus-visible { border-bottom-color: var(--accent); outline: none; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.fact { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; }
+.fact b { font-family: var(--font-display); font-size: 1.6rem; color: var(--deep); font-variant-numeric: tabular-nums; }
+.fact span { font-size: 13px; color: var(--muted); }
+
+figure { margin: 0; display: grid; gap: 10px; }
+.canvas { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; overflow-x: auto; }
+.canvas svg { display: block; width: 100%; min-width: 860px; height: auto; color: var(--fg); }
+figcaption { font-size: 14px; color: var(--muted); max-width: 80ch; }
+
+/* Diagramas: todo color sale de los tokens */
+.dg text { font-family: var(--font-body); font-size: 12px; fill: var(--fg); }
+.dg .t-title { font-weight: 600; font-size: 13px; }
+.dg .t-small { font-size: 11px; fill: var(--muted); }
+.dg .t-mono { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+.dg .t-region { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--accent); }
+.dg .t-pend { fill: var(--pend); font-size: 11px; font-weight: 600; }
+.dg .t-edge { font-size: 11px; fill: var(--muted); }
+.dg .t-edge-new { font-size: 11px; fill: var(--ok); font-weight: 600; }
+.dg .box { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.2; }
+.dg .box-key { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+.dg .box-new { fill: var(--ok-soft); stroke: var(--ok); stroke-width: 1.5; }
+.dg .box-pend { fill: var(--pend-soft); stroke: var(--pend); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.dg .region { fill: none; stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 7 5; }
+.dg .region-solid { fill: none; stroke: var(--line-strong); stroke-width: 1; }
+.dg .edge { fill: none; stroke: var(--line-strong); stroke-width: 1.4; }
+.dg .edge-new { fill: none; stroke: var(--ok); stroke-width: 1.6; }
+.dg .edge-dash { fill: none; stroke: var(--line-strong); stroke-width: 1.3; stroke-dasharray: 5 4; }
+.dg .edge-bad { fill: none; stroke: var(--bad); stroke-width: 1.4; stroke-dasharray: 5 4; }
+.dg .head { fill: var(--line-strong); }
+.dg .head-new { fill: var(--ok); }
+.dg .head-bad { fill: var(--bad); }
+.dg .dot { fill: var(--accent); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
+.sw.key { background: var(--accent-soft); border: 1.5px solid var(--accent); }
+.sw.new { background: var(--ok-soft); border: 1.5px solid var(--ok); }
+.sw.pend { background: var(--pend-soft); border: 1.5px dashed var(--pend); }
+
+.table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 680px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--bg); }
+tr:last-child td { border-bottom: none; }
+td.was { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--bad); }
+td.is { font-weight: 500; }
+.tag { display: inline-block; font-family: var(--font-mono); font-size: 11px; padding: 1px 7px; border-radius: 99px; white-space: nowrap; }
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.tag.pend { background: var(--pend-soft); color: var(--pend); }
+
+.qa { display: grid; gap: 10px; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0 18px; }
+details[open] { border-color: var(--line-strong); }
+summary { cursor: pointer; padding: 14px 0; font-weight: 600; list-style: none; display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "+"; font-family: var(--font-mono); color: var(--accent); width: 1ch; }
+details[open] summary::before { content: "−"; }
+summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.answer { padding: 0 0 16px 26px; display: grid; gap: 10px; color: var(--fg); max-width: 78ch; }
+.answer .trap { font-size: 14px; color: var(--pend); }
+.qgroup { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-top: 14px; }
+
+.mods { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.mod { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.mod.core { border-color: var(--accent); }
+.mod h3 { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.mod h3 code { font-weight: 500; }
+.mod p { font-size: 14px; color: var(--muted); }
+.mod ul { margin: 0; padding-left: 18px; font-size: 14px; display: grid; gap: 4px; }
+.mod .rf { font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+
+@media (prefers-reduced-motion: no-preference) { details { transition: border-color .15s; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <span class="eyebrow">TT 2026-B176 · ESCOM IPN · estado al 15 oct 2026</span>
+  <h1>Arquitectura de H2ToGo</h1>
+  <p class="lede">La arquitectura tal como quedó implementada, contrastada con lo que describe la tesis (sección 4.6). Incluye el diagrama de despliegue corregido, la arquitectura general, el flujo de notificaciones con RabbitMQ y Firebase, los módulos del backend y las preguntas difíciles que puede hacer un asesor técnico.</p>
+  <nav class="toc" aria-label="Contenido">
+    <a href="#cambios">Qué cambió</a>
+    <a href="#despliegue">Despliegue en Azure</a>
+    <a href="#general">Arquitectura general</a>
+    <a href="#notificaciones">Notificaciones</a>
+    <a href="#modulos">Módulos del backend</a>
+    <a href="#pedido">Ciclo del pedido</a>
+    <a href="#preguntas">Preguntas difíciles</a>
+  </nav>
+</header>
+
+<div class="facts" aria-label="Cifras del sistema">
+  <div class="fact"><b>20</b><span>módulos (paquetes) en el backend</span></div>
+  <div class="fact"><b>19</b><span>tablas en PostgreSQL + PostGIS</span></div>
+  <div class="fact"><b>27,278</b><span>nodos del grafo vial OSM en memoria</span></div>
+  <div class="fact"><b>89</b><span>pruebas automáticas (unitarias + integración)</span></div>
+  <div class="fact"><b>2</b><span>plataformas con un solo código: Android e iOS</span></div>
+</div>
+
+<section id="cambios">
+  <span class="eyebrow">Antes de los diagramas</span>
+  <h2>Qué dice la tesis y qué se implementó</h2>
+  <p class="prose">Si el asesor compara los diagramas nuevos con las ilustraciones 8, 9 y 12 de la tesis, estas son las diferencias. Conviene decirlas tú primero: cada una tiene una razón técnica y eso suma puntos.</p>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Componente</th><th>Tesis</th><th>Implementado</th><th>Por qué</th></tr></thead>
+    <tbody>
+      <tr><td>Base de datos</td><td class="was">MariaDB</td><td class="is">PostgreSQL 16 + PostGIS 3.4</td><td>Consultas geográficas nativas: <code>ST_DWithin</code> para el radio de entrega (50 m), la proximidad (500 m) y la zona de cobertura.</td></tr>
+      <tr><td>Autenticación</td><td class="was">JWT</td><td class="is">Token opaco guardado en la BD</td><td>RN-018 exige una sola sesión activa y poder cerrarla desde otro dispositivo. Un JWT no se puede revocar sin una lista negra; el token en BD se invalida con un UPDATE.</td></tr>
+      <tr><td>Notificaciones</td><td class="was">NotificacionService directo</td><td class="is">RabbitMQ (cola + reintentos + DLQ) → WebSocket y Firebase FCM</td><td>La petición del usuario no espera al envío; si FCM falla, se reintenta sin perder el mensaje.</td></tr>
+      <tr><td>Mapa en la app</td><td class="was">Google Maps SDK</td><td class="is">OpenStreetMap con Leaflet en un WebView</td><td>Sin costo ni clave de API, y el mismo mapa sirve en Android, iOS y el panel admin. Google Maps o Waze solo se abren para navegar.</td></tr>
+      <tr><td>App móvil</td><td class="was">Kotlin / Android</td><td class="is">Kotlin Multiplatform + Compose Multiplatform (Android e iOS)</td><td>Pantallas, ViewModels, red y WebSocket se escriben una vez; solo GPS, mapa y notificaciones son por plataforma.</td></tr>
+      <tr><td>Panel admin</td><td class="was">Azure Static Web Apps</td><td class="is">Servido por el mismo backend en <code>/admin/</code></td><td>Mismo origen: sin CORS y sin un recurso extra en Azure.</td></tr>
+      <tr><td>Proximidad 500 m</td><td class="was">Haversine en un WebSocketHandler</td><td class="is"><code>UbicacionService</code> + PostGIS (<code>ST_DWithin</code>)</td><td>La misma regla aplica si la ubicación llega por REST o por STOMP.</td></tr>
+      <tr><td>Módulos del backend</td><td class="was">6 controladores</td><td class="is">20 paquetes por dominio</td><td>El alcance creció: inventario por lotes, jornadas, solicitudes de cambio, administración y jobs programados.</td></tr>
+      <tr><td>Acceso a datos</td><td class="was">Solo JPA / Hibernate</td><td class="is">JPA + SQL con <code>NamedParameterJdbcTemplate</code></td><td>Las consultas PostGIS y los UPDATE condicionales (concurrencia) se escriben mejor en SQL directo.</td></tr>
+      <tr><td>CI/CD</td><td class="was">Azure Pipelines</td><td class="is">GitHub Actions (pruebas) + script <code>az acr build</code></td><td>Azure Pipelines requiere agente hospedado o pago; se dejó como pendiente.</td></tr>
+      <tr><td>Monitoreo</td><td class="was">Azure Monitor + App Insights</td><td class="is">Log Analytics (Azure Monitor); App Insights pendiente</td><td>Los logs de consola cubren lo necesario por ahora.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="despliegue">
+  <span class="eyebrow">Ilustración 8 corregida</span>
+  <h2>Despliegue en Microsoft Azure</h2>
+  <p class="prose">Todo corre en un solo <em>Container Apps Environment</em>, una red privada donde cada servicio es una app. Solo la API tiene ingreso público (HTTPS y WSS); la base de datos y RabbitMQ son internos y se alcanzan por nombre (<code>h2togo-db:5432</code>, <code>h2togo-rabbitmq:5672</code>).</p>
+  <figure>
+    <div class="legend" aria-hidden="true">
+      <span><i class="sw key"></i>Núcleo del sistema</span>
+      <span><i class="sw new"></i>Agregado respecto a la tesis</span>
+      <span><i class="sw pend"></i>Pendiente</span>
+    </div>
+    <div class="canvas">
+    <svg class="dg" viewBox="0 0 1110 720" role="img" aria-label="Diagrama de despliegue: la app móvil y el panel se conectan por HTTPS y WSS a la API Spring Boot en Azure Container Apps, que usa PostgreSQL con PostGIS y RabbitMQ internos, envía push por Firebase y SMS por Twilio; la app carga el mapa de OpenStreetMap directamente.">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker>
+        <marker id="a1n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-new"/></marker>
+      </defs>
+
+      <!-- Usuarios -->
+      <text x="40" y="96" class="t-region">Usuarios</text>
+      <rect x="40" y="120" width="170" height="92" rx="10" class="box-key"/>
+      <text x="125" y="144" text-anchor="middle" class="t-title">App móvil H2ToGo</text>
+      <text x="125" y="162" text-anchor="middle" class="t-small">Cliente y Repartidor</text>
+      <text x="125" y="180" text-anchor="middle" class="t-small">Android + iOS</text>
+      <text x="125" y="198" text-anchor="middle" class="t-mono">Kotlin Multiplatform</text>
+
+      <rect x="40" y="290" width="170" height="64" rx="10" class="box"/>
+      <text x="125" y="316" text-anchor="middle" class="t-title">Panel admin</text>
+      <text x="125" y="334" text-anchor="middle" class="t-small">Administrador · navegador</text>
+
+      <rect x="40" y="470" width="170" height="70" rx="10" class="box"/>
+      <text x="125" y="494" text-anchor="middle" class="t-title">GitHub</text>
+      <text x="125" y="512" text-anchor="middle" class="t-small">Equipo de desarrollo</text>
+      <text x="125" y="528" text-anchor="middle" class="t-mono">Actions: mvn test</text>
+
+      <!-- Azure -->
+      <rect x="250" y="60" width="580" height="610" rx="14" class="region"/>
+      <text x="268" y="84" class="t-region">Microsoft Azure · East US</text>
+      <rect x="270" y="100" width="540" height="330" rx="10" class="region-solid"/>
+      <text x="286" y="120" class="t-small">Container Apps Environment · cae-h2togo (red interna)</text>
+
+      <rect x="290" y="134" width="250" height="176" rx="10" class="box-key"/>
+      <text x="415" y="158" text-anchor="middle" class="t-title">h2togo-api · Spring Boot 3</text>
+      <text x="415" y="176" text-anchor="middle" class="t-mono">Java 21 · ingreso público</text>
+      <text x="306" y="202" class="t-small">• API REST /api/v1</text>
+      <text x="306" y="220" class="t-small">• STOMP sobre WebSocket /ws</text>
+      <text x="306" y="238" class="t-small">• Panel admin estático /admin/</text>
+      <text x="306" y="256" class="t-small">• A* sobre grafo OSM (en memoria)</text>
+      <text x="306" y="274" class="t-small">• Jobs @Scheduled (programados)</text>
+      <text x="306" y="292" class="t-small">• Swagger /swagger-ui.html</text>
+
+      <rect x="610" y="134" width="180" height="70" rx="10" class="box-new"/>
+      <text x="700" y="160" text-anchor="middle" class="t-title">h2togo-rabbitmq</text>
+      <text x="700" y="178" text-anchor="middle" class="t-mono">RabbitMQ 3.13</text>
+      <text x="700" y="194" text-anchor="middle" class="t-small">solo red interna</text>
+
+      <rect x="610" y="244" width="180" height="76" rx="10" class="box-key"/>
+      <text x="700" y="268" text-anchor="middle" class="t-title">h2togo-db</text>
+      <text x="700" y="286" text-anchor="middle" class="t-mono">PostgreSQL 16</text>
+      <text x="700" y="302" text-anchor="middle" class="t-mono">+ PostGIS 3.4 · interna</text>
+
+      <rect x="290" y="470" width="150" height="62" rx="10" class="box"/>
+      <text x="365" y="496" text-anchor="middle" class="t-title">Container Registry</text>
+      <text x="365" y="514" text-anchor="middle" class="t-small">imágenes Docker</text>
+
+      <rect x="460" y="470" width="130" height="62" rx="10" class="box"/>
+      <text x="525" y="496" text-anchor="middle" class="t-title">Azure Monitor</text>
+      <text x="525" y="514" text-anchor="middle" class="t-small">Log Analytics</text>
+
+      <rect x="610" y="470" width="180" height="62" rx="10" class="box"/>
+      <text x="700" y="496" text-anchor="middle" class="t-title">Azure File Share</text>
+      <text x="700" y="514" text-anchor="middle" class="t-small">volumen pgdata</text>
+
+      <rect x="290" y="580" width="220" height="56" rx="10" class="box-pend"/>
+      <text x="400" y="604" text-anchor="middle" class="t-title">Azure Pipelines</text>
+      <text x="400" y="622" text-anchor="middle" class="t-pend">pendiente (hoy: script)</text>
+      <rect x="530" y="580" width="260" height="56" rx="10" class="box-pend"/>
+      <text x="660" y="604" text-anchor="middle" class="t-title">Application Insights</text>
+      <text x="660" y="622" text-anchor="middle" class="t-pend">pendiente</text>
+
+      <!-- Externos -->
+      <text x="880" y="54" class="t-region">Servicios externos</text>
+      <rect x="880" y="66" width="190" height="50" rx="10" class="box"/>
+      <text x="975" y="88" text-anchor="middle" class="t-title">OpenStreetMap</text>
+      <text x="975" y="105" text-anchor="middle" class="t-small">teselas del mapa</text>
+      <rect x="880" y="136" width="190" height="50" rx="10" class="box-new"/>
+      <text x="975" y="158" text-anchor="middle" class="t-title">Firebase (FCM)</text>
+      <text x="975" y="175" text-anchor="middle" class="t-small">push Android</text>
+      <rect x="880" y="200" width="190" height="50" rx="10" class="box-new"/>
+      <text x="975" y="222" text-anchor="middle" class="t-title">Twilio</text>
+      <text x="975" y="239" text-anchor="middle" class="t-small">SMS del código OTP</text>
+      <rect x="880" y="270" width="190" height="50" rx="10" class="box-pend"/>
+      <text x="975" y="292" text-anchor="middle" class="t-title">Apple APNs</text>
+      <text x="975" y="309" text-anchor="middle" class="t-pend">pendiente · 99 USD/año</text>
+      <rect x="880" y="340" width="190" height="50" rx="10" class="box"/>
+      <text x="975" y="362" text-anchor="middle" class="t-title">Google Maps / Waze</text>
+      <text x="975" y="379" text-anchor="middle" class="t-small">navegación externa</text>
+      <rect x="880" y="420" width="190" height="64" rx="10" class="box"/>
+      <text x="975" y="444" text-anchor="middle" class="t-title">Grafo vial OSM</text>
+      <text x="975" y="461" text-anchor="middle" class="t-small">va dentro del jar</text>
+      <text x="975" y="476" text-anchor="middle" class="t-mono">sample_map.json</text>
+
+      <!-- Aristas -->
+      <path d="M210,166 L290,190" class="edge" marker-end="url(#a1)"/>
+      <text x="216" y="152" class="t-edge">HTTPS REST</text>
+      <text x="216" y="232" class="t-edge">+ WSS STOMP</text>
+      <path d="M210,322 L290,270" class="edge" marker-end="url(#a1)"/>
+      <text x="218" y="284" class="t-edge">HTTPS</text>
+      <path d="M210,505 L290,501" class="edge" marker-end="url(#a1)"/>
+      <text x="214" y="560" class="t-edge">az acr build</text>
+      <path d="M365,470 L365,312" class="edge" marker-end="url(#a1)"/>
+      <text x="372" y="452" class="t-edge">pull imagen</text>
+      <path d="M540,170 L608,170" class="edge-new" marker-end="url(#a1n)" marker-start="url(#a1n)"/>
+      <text x="546" y="160" class="t-edge-new">AMQP</text>
+      <path d="M540,282 L608,282" class="edge" marker-end="url(#a1)"/>
+      <text x="548" y="274" class="t-edge">JDBC</text>
+      <path d="M700,320 L700,468" class="edge" marker-end="url(#a1)"/>
+      <text x="708" y="400" class="t-edge">monta volumen</text>
+      <path d="M525,310 L525,468" class="edge-dash" marker-end="url(#a1)"/>
+      <text x="532" y="452" class="t-edge">logs</text>
+      <polyline points="500,134 500,92 848,92 848,161 878,161" class="edge-new" marker-end="url(#a1n)"/>
+      <text x="560" y="86" class="t-edge-new">FCM HTTP v1 (cuenta de servicio)</text>
+      <path d="M540,226 L878,226" class="edge-new" marker-end="url(#a1n)"/>
+      <text x="800" y="220" text-anchor="end" class="t-edge-new">SMS OTP</text>
+      <path d="M970,420 C 900,380 860,330 540,296" class="edge-dash" marker-end="url(#a1)"/>
+      <text x="842" y="410" class="t-edge">se carga al arrancar</text>
+      <polyline points="90,120 90,26 975,26 975,64" class="edge" marker-end="url(#a1)"/>
+      <text x="420" y="20" class="t-edge">teselas del mapa (Leaflet en WebView)</text>
+      <polyline points="1070,161 1094,161 1094,42 160,42 160,118" class="edge-new" marker-end="url(#a1n)"/>
+      <text x="420" y="56" class="t-edge-new">push con la app cerrada (Android)</text>
+      <polyline points="40,190 22,190 22,694 1090,694 1090,365 1072,365" class="edge-dash" marker-end="url(#a1)"/>
+      <text x="420" y="710" class="t-edge">abre la navegación del repartidor (deep link)</text>
+    </svg>
+    </div>
+    <figcaption>Cambios respecto a la ilustración 8: MariaDB pasa a PostgreSQL con PostGIS, se agregan RabbitMQ, Firebase y Twilio, el panel admin lo sirve la propia API y Azure Pipelines y App Insights quedan como pendientes. El mapa ya no usa Google Maps SDK: la app pide las teselas a OpenStreetMap.</figcaption>
+  </figure>
+</section>
+
+<section id="general">
+  <span class="eyebrow">Ilustración 9 corregida</span>
+  <h2>Arquitectura general: app y backend</h2>
+  <p class="prose">La app y el backend hablan por dos canales. REST para todo lo que es petición y respuesta (crear pedido, aceptar, entregar). STOMP sobre WebSocket para lo que el servidor empuja: la posición del repartidor y las notificaciones. El backend sigue capas: un filtro de seguridad, controladores, servicios con las reglas de negocio y acceso a datos.</p>
+  <figure>
+    <div class="canvas">
+    <svg class="dg" viewBox="0 0 1100 790" role="img" aria-label="Arquitectura general: en la app, las pantallas Compose usan ViewModels que llaman a ApiClient por REST y a StompCliente por WebSocket; en el backend, las peticiones pasan por un filtro de token, controladores, servicios y repositorios hacia PostgreSQL con PostGIS.">
+      <defs>
+        <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker>
+        <marker id="a2n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-new"/></marker>
+      </defs>
+
+      <!-- App -->
+      <rect x="20" y="20" width="1060" height="290" rx="12" class="region"/>
+      <text x="38" y="44" class="t-region">App móvil · módulo shared (commonMain) · MVVM</text>
+
+      <rect x="40" y="62" width="200" height="86" rx="10" class="box"/>
+      <text x="140" y="88" text-anchor="middle" class="t-title">Pantallas Compose</text>
+      <text x="140" y="106" text-anchor="middle" class="t-small">25 pantallas · navegación</text>
+      <text x="140" y="124" text-anchor="middle" class="t-small">cliente y repartidor</text>
+
+      <rect x="290" y="62" width="200" height="86" rx="10" class="box-key"/>
+      <text x="390" y="88" text-anchor="middle" class="t-title">ViewModels</text>
+      <text x="390" y="106" text-anchor="middle" class="t-mono">Auth · Cliente · Repartidor</text>
+      <text x="390" y="124" text-anchor="middle" class="t-small">estado con StateFlow</text>
+
+      <rect x="290" y="166" width="200" height="44" rx="8" class="box"/>
+      <text x="390" y="186" text-anchor="middle" class="t-title">SessionManager</text>
+      <text x="390" y="202" text-anchor="middle" class="t-small">token y ajustes locales</text>
+
+      <rect x="540" y="62" width="160" height="86" rx="10" class="box"/>
+      <text x="620" y="88" text-anchor="middle" class="t-title">ApiClient</text>
+      <text x="620" y="106" text-anchor="middle" class="t-mono">Ktor · JSON</text>
+      <text x="620" y="124" text-anchor="middle" class="t-small">peticiones REST</text>
+
+      <rect x="720" y="62" width="160" height="86" rx="10" class="box-new"/>
+      <text x="800" y="88" text-anchor="middle" class="t-title">StompCliente</text>
+      <text x="800" y="106" text-anchor="middle" class="t-mono">WebSocket</text>
+      <text x="800" y="124" text-anchor="middle" class="t-small">heart-beat 10 s</text>
+
+      <rect x="900" y="62" width="160" height="44" rx="8" class="box-new"/>
+      <text x="980" y="82" text-anchor="middle" class="t-title">CanalNotificaciones</text>
+      <text x="980" y="98" text-anchor="middle" class="t-small">avisos en vivo</text>
+      <rect x="900" y="116" width="160" height="94" rx="8" class="box"/>
+      <text x="980" y="138" text-anchor="middle" class="t-title">Mapas</text>
+      <text x="980" y="156" text-anchor="middle" class="t-small">Leaflet + OSM</text>
+      <text x="980" y="172" text-anchor="middle" class="t-small">en WebView, mismo</text>
+      <text x="980" y="188" text-anchor="middle" class="t-small">HTML en ambas apps</text>
+
+      <path d="M240,105 L288,105" class="edge" marker-end="url(#a2)"/>
+      <text x="246" y="97" class="t-edge">eventos</text>
+      <path d="M390,148 L390,164" class="edge" marker-end="url(#a2)"/>
+      <path d="M490,92 L538,92" class="edge" marker-end="url(#a2)"/>
+      <polyline points="490,134 512,134 512,218 840,218 840,150" class="edge" marker-end="url(#a2)"/>
+      <text x="520" y="212" class="t-edge">ubicación y avisos en vivo</text>
+      <path d="M900,84 L882,84" class="edge" marker-end="url(#a2)"/>
+
+      <!-- Plataforma -->
+      <rect x="40" y="232" width="460" height="68" rx="10" class="region-solid"/>
+      <text x="56" y="252" class="t-small">Por plataforma (UiPlataforma / ServiciosPlataforma)</text>
+      <text x="56" y="272" class="t-title">Android</text>
+      <text x="124" y="272" class="t-small">GPS · WebView · Firebase · Geocoder</text>
+      <text x="56" y="290" class="t-title">iOS</text>
+      <text x="124" y="290" class="t-small">CoreLocation · WKWebView · notif. locales</text>
+      <text x="1060" y="296" text-anchor="end" class="t-pend">push en iOS con la app cerrada: pendiente (APNs)</text>
+
+      <!-- Canales -->
+      <path d="M620,148 L620,402" class="edge" marker-end="url(#a2)"/>
+      <text x="612" y="340" text-anchor="end" class="t-edge">REST JSON · Bearer token</text>
+      <path d="M760,148 L760,402" class="edge-new" marker-end="url(#a2n)" marker-start="url(#a2n)"/>
+      <text x="768" y="340" class="t-edge-new">STOMP: CONNECT · SUBSCRIBE · MESSAGE</text>
+
+      <!-- Backend -->
+      <rect x="20" y="370" width="1060" height="400" rx="12" class="region"/>
+      <text x="38" y="394" class="t-region">Backend · Spring Boot 3 · Java 21 · capas</text>
+
+      <rect x="560" y="404" width="230" height="52" rx="8" class="box"/>
+      <text x="675" y="426" text-anchor="middle" class="t-title">Seguridad</text>
+      <text x="675" y="443" text-anchor="middle" class="t-small">filtro REST · interceptor STOMP</text>
+
+      <rect x="560" y="482" width="230" height="52" rx="8" class="box"/>
+      <text x="675" y="504" text-anchor="middle" class="t-title">Controladores</text>
+      <text x="675" y="521" text-anchor="middle" class="t-small">REST y @MessageMapping</text>
+
+      <rect x="560" y="560" width="230" height="60" rx="8" class="box-key"/>
+      <text x="675" y="584" text-anchor="middle" class="t-title">Servicios (@Transactional)</text>
+      <text x="675" y="602" text-anchor="middle" class="t-small">reglas de negocio RN / RF</text>
+
+      <rect x="560" y="646" width="230" height="52" rx="8" class="box"/>
+      <text x="675" y="668" text-anchor="middle" class="t-title">Acceso a datos</text>
+      <text x="675" y="685" text-anchor="middle" class="t-small">JPA y SQL directo (PostGIS)</text>
+
+      <rect x="860" y="640" width="200" height="64" rx="10" class="box-key"/>
+      <text x="960" y="664" text-anchor="middle" class="t-title">PostgreSQL + PostGIS</text>
+      <text x="960" y="682" text-anchor="middle" class="t-small">19 tablas</text>
+
+      <rect x="860" y="404" width="200" height="64" rx="10" class="box-new"/>
+      <text x="960" y="428" text-anchor="middle" class="t-title">Broker STOMP</text>
+      <text x="960" y="446" text-anchor="middle" class="t-small">tópicos por pedido y</text>
+      <text x="960" y="460" text-anchor="middle" class="t-small">colas por usuario</text>
+
+      <rect x="860" y="500" width="200" height="64" rx="10" class="box-new"/>
+      <text x="960" y="524" text-anchor="middle" class="t-title">PushService</text>
+      <text x="960" y="542" text-anchor="middle" class="t-small">RabbitMQ, tras el commit</text>
+
+      <rect x="40" y="420" width="230" height="74" rx="10" class="box"/>
+      <text x="155" y="444" text-anchor="middle" class="t-title">Routing A*</text>
+      <text x="155" y="462" text-anchor="middle" class="t-small">grafo OSM en memoria</text>
+      <text x="155" y="478" text-anchor="middle" class="t-mono">heurística Haversine</text>
+
+      <rect x="40" y="520" width="230" height="74" rx="10" class="box"/>
+      <text x="155" y="544" text-anchor="middle" class="t-title">Jobs programados</text>
+      <text x="155" y="562" text-anchor="middle" class="t-small">pedidos programados (1 min)</text>
+      <text x="155" y="578" text-anchor="middle" class="t-small">lotes y sesiones (diario)</text>
+
+      <rect x="40" y="620" width="230" height="74" rx="10" class="box"/>
+      <text x="155" y="644" text-anchor="middle" class="t-title">Twilio · FCM</text>
+      <text x="155" y="662" text-anchor="middle" class="t-small">SMS OTP · push Android</text>
+      <text x="155" y="678" text-anchor="middle" class="t-mono">clientes HTTP salientes</text>
+
+      <rect x="300" y="620" width="220" height="74" rx="10" class="box"/>
+      <text x="410" y="644" text-anchor="middle" class="t-title">Panel admin</text>
+      <text x="410" y="662" text-anchor="middle" class="t-small">HTML + JS + Leaflet</text>
+      <text x="410" y="678" text-anchor="middle" class="t-mono">/admin/ → /api/v1/admin</text>
+
+      <path d="M675,456 L675,480" class="edge" marker-end="url(#a2)"/>
+      <path d="M675,534 L675,558" class="edge" marker-end="url(#a2)"/>
+      <path d="M675,620 L675,644" class="edge" marker-end="url(#a2)"/>
+      <path d="M790,672 L858,672" class="edge" marker-end="url(#a2)"/>
+      <text x="800" y="664" class="t-edge">SQL</text>
+      <path d="M520,640 L558,522" class="edge" marker-end="url(#a2)"/>
+      <path d="M560,586 L272,458" class="edge" marker-end="url(#a2)"/>
+      <text x="380" y="494" class="t-edge">calcula ruta</text>
+      <path d="M272,557 L558,594" class="edge" marker-end="url(#a2)"/>
+      <path d="M790,592 L858,540" class="edge-new" marker-end="url(#a2n)"/>
+      <text x="798" y="610" class="t-edge-new">notificar</text>
+      <path d="M790,500 L858,446" class="edge-new" marker-end="url(#a2n)"/>
+      <text x="796" y="468" class="t-edge-new">difunde</text>
+      <path d="M960,500 L960,470" class="edge-new" marker-end="url(#a2n)"/>
+      <text x="966" y="490" class="t-edge-new">aviso WS</text>
+      <polyline points="1060,532 1070,532 1070,744 155,744 155,696" class="edge-new" marker-end="url(#a2n)"/>
+      <text x="600" y="760" class="t-edge-new">entrega FCM</text>
+    </svg>
+    </div>
+    <figcaption>Los ViewModels nunca tocan la red directamente: usan ApiClient (REST) y StompCliente (tiempo real). En el backend todo pasa por el filtro de token antes del controlador; los servicios concentran las reglas de negocio y llaman a A*, al broker STOMP y a RabbitMQ.</figcaption>
+  </figure>
+</section>
+
+<section id="notificaciones">
+  <span class="eyebrow">Lo nuevo: RabbitMQ + Firebase</span>
+  <h2>Cómo viaja una notificación</h2>
+  <p class="prose">Ejemplo: el repartidor marca un pedido como entregado. El servicio guarda el cambio y declara "avisa al cliente", pero el mensaje sale <strong>solo si la transacción confirma</strong>. Así nunca se avisa de algo que se revirtió. Después de eso, la petición del repartidor ya respondió; el envío ocurre en segundo plano.</p>
+  <figure>
+    <div class="canvas">
+    <svg class="dg" viewBox="0 0 1100 420" role="img" aria-label="Flujo de una notificación: el servicio confirma la transacción, publica en el exchange h2togo.eventos, la cola h2togo.notificaciones la entrega al listener con cuatro intentos, y se entrega por WebSocket y por Firebase; si se agotan los intentos va a la cola de mensajes fallidos.">
+      <defs>
+        <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker>
+        <marker id="a3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-bad"/></marker>
+      </defs>
+      <rect x="20" y="60" width="170" height="80" rx="10" class="box"/>
+      <text x="105" y="86" text-anchor="middle" class="t-title">EntregaService</text>
+      <text x="105" y="104" text-anchor="middle" class="t-small">guarda "entregado"</text>
+      <text x="105" y="122" text-anchor="middle" class="t-mono">@Transactional</text>
+
+      <rect x="230" y="60" width="160" height="80" rx="10" class="box"/>
+      <text x="310" y="86" text-anchor="middle" class="t-title">PushService</text>
+      <text x="310" y="104" text-anchor="middle" class="t-small">espera el commit</text>
+      <text x="310" y="122" text-anchor="middle" class="t-mono">DespuesDelCommit</text>
+
+      <rect x="430" y="60" width="180" height="80" rx="10" class="box-key"/>
+      <text x="520" y="86" text-anchor="middle" class="t-title">h2togo.eventos</text>
+      <text x="520" y="104" text-anchor="middle" class="t-small">exchange tipo topic</text>
+      <text x="520" y="122" text-anchor="middle" class="t-mono">rk: notificacion.push</text>
+
+      <rect x="650" y="60" width="190" height="80" rx="10" class="box-key"/>
+      <text x="745" y="86" text-anchor="middle" class="t-title">h2togo.notificaciones</text>
+      <text x="745" y="104" text-anchor="middle" class="t-small">cola durable</text>
+      <text x="745" y="122" text-anchor="middle" class="t-mono">mensajes en JSON</text>
+
+      <rect x="880" y="60" width="200" height="80" rx="10" class="box"/>
+      <text x="980" y="86" text-anchor="middle" class="t-title">NotificacionesListener</text>
+      <text x="980" y="104" text-anchor="middle" class="t-small">4 intentos: 1 s, 2 s, 4 s</text>
+      <text x="980" y="122" text-anchor="middle" class="t-mono">@RabbitListener</text>
+
+      <path d="M190,100 L228,100" class="edge" marker-end="url(#a3)"/>
+      <path d="M390,100 L428,100" class="edge" marker-end="url(#a3)"/>
+      <text x="394" y="92" class="t-edge">publica</text>
+      <path d="M610,100 L648,100" class="edge" marker-end="url(#a3)"/>
+      <text x="614" y="92" class="t-edge">enruta</text>
+      <path d="M840,100 L878,100" class="edge" marker-end="url(#a3)"/>
+      <text x="842" y="92" class="t-edge">consume</text>
+
+      <rect x="760" y="200" width="200" height="60" rx="10" class="box"/>
+      <text x="860" y="225" text-anchor="middle" class="t-title">EntregaNotificaciones</text>
+      <text x="860" y="243" text-anchor="middle" class="t-small">dos canales</text>
+      <path d="M980,140 L980,170 L860,170 L860,198" class="edge" marker-end="url(#a3)"/>
+
+      <rect x="430" y="300" width="250" height="70" rx="10" class="box-key"/>
+      <text x="555" y="324" text-anchor="middle" class="t-title">WebSocket /user/queue/notificaciones</text>
+      <text x="555" y="342" text-anchor="middle" class="t-small">app abierta · Android e iOS</text>
+      <text x="555" y="358" text-anchor="middle" class="t-mono">inmediato</text>
+
+      <rect x="720" y="300" width="160" height="70" rx="10" class="box"/>
+      <text x="800" y="324" text-anchor="middle" class="t-title">FcmClient</text>
+      <text x="800" y="342" text-anchor="middle" class="t-small">token del usuario</text>
+      <text x="800" y="358" text-anchor="middle" class="t-mono">HTTP v1</text>
+
+      <rect x="920" y="300" width="160" height="70" rx="10" class="box"/>
+      <text x="1000" y="324" text-anchor="middle" class="t-title">Firebase</text>
+      <text x="1000" y="342" text-anchor="middle" class="t-small">Android con la app</text>
+      <text x="1000" y="358" text-anchor="middle" class="t-small">cerrada</text>
+
+      <path d="M800,260 L620,298" class="edge" marker-end="url(#a3)"/>
+      <path d="M840,260 L810,298" class="edge" marker-end="url(#a3)"/>
+      <path d="M880,335 L918,335" class="edge" marker-end="url(#a3)"/>
+
+      <rect x="430" y="196" width="230" height="64" rx="10" class="box-pend"/>
+      <text x="545" y="220" text-anchor="middle" class="t-title">h2togo.notificaciones.dlq</text>
+      <text x="545" y="238" text-anchor="middle" class="t-small">mensajes fallidos, para revisar</text>
+      <path d="M700,140 L620,194" class="edge-bad" marker-end="url(#a3b)"/>
+      <text x="676" y="186" class="t-edge">rechazo tras 4 intentos (vía DLX)</text>
+
+      <text x="20" y="200" class="t-title">Reglas que conviene saber</text>
+      <text x="20" y="222" class="t-small">• Si FCM responde 429 o 5xx, se lanza error y RabbitMQ reintenta.</text>
+      <text x="20" y="242" class="t-small">• Si el token FCM es inválido, se borra; no se reintenta.</text>
+      <text x="20" y="262" class="t-small">• Cada aviso lleva un id: la app descarta duplicados</text>
+      <text x="20" y="278" class="t-small">  si llega por los dos canales o por un reintento.</text>
+      <text x="20" y="298" class="t-small">• Sin broker (desarrollo y pruebas) se entrega directo</text>
+      <text x="20" y="314" class="t-small">  con la misma interfaz: NotificacionesDirectas.</text>
+      <text x="20" y="334" class="t-small">• Si RabbitMQ está caído al publicar, el cambio de</text>
+      <text x="20" y="350" class="t-small">  negocio no se revierte; el aviso se registra como perdido.</text>
+    </svg>
+    </div>
+    <figcaption>La garantía es <em>al menos una vez</em>: un aviso puede llegar dos veces, pero no se pierde mientras RabbitMQ esté arriba. Por eso cada notificación lleva un id para descartar duplicados.</figcaption>
+  </figure>
+</section>
+
+<section id="modulos">
+  <span class="eyebrow">Ilustración 12 corregida</span>
+  <h2>Módulos del backend</h2>
+  <p class="prose">El código está organizado por dominio: cada paquete tiene su controlador, servicio, entidades y DTOs. El centro es <code>pedidos</code>; casi todo lo demás existe para alimentarlo o para reaccionar a sus cambios.</p>
+  <figure>
+    <div class="canvas">
+    <svg class="dg" viewBox="0 0 1100 600" role="img" aria-label="Mapa de módulos del backend: pedidos al centro, que aparta y consume inventario, valida cobertura con zonas y direcciones, y notifica por el módulo de notificaciones; tracking lee pedidos activos y avisa la proximidad; routing calcula rutas; scheduling activa pedidos programados.">
+      <defs>
+        <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker>
+      </defs>
+
+      <text x="20" y="30" class="t-region">Acceso y gestión</text>
+      <rect x="20" y="42" width="240" height="58" rx="8" class="box"/>
+      <text x="36" y="66" class="t-title">auth</text>
+      <text x="36" y="86" class="t-small">registro, OTP, login de sesión única</text>
+      <rect x="20" y="112" width="240" height="58" rx="8" class="box"/>
+      <text x="36" y="136" class="t-title">usuarios · solicitudes</text>
+      <text x="36" y="156" class="t-small">perfil y cambios que aprueba el admin</text>
+      <rect x="20" y="182" width="240" height="58" rx="8" class="box"/>
+      <text x="36" y="206" class="t-title">admin</text>
+      <text x="36" y="226" class="t-small">tablero, altas y bajas, consultas</text>
+
+      <text x="20" y="290" class="t-region">Oferta de la purificadora</text>
+      <rect x="20" y="302" width="240" height="58" rx="8" class="box"/>
+      <text x="36" y="326" class="t-title">negocios · catalogo</text>
+      <text x="36" y="346" class="t-small">horarios, marcas y precios</text>
+      <rect x="20" y="372" width="240" height="58" rx="8" class="box"/>
+      <text x="36" y="396" class="t-title">repartidores · vehiculos</text>
+      <text x="36" y="416" class="t-small">jornada y carga del vehículo</text>
+      <rect x="20" y="442" width="240" height="58" rx="8" class="box"/>
+      <text x="36" y="466" class="t-title">zonas · direcciones</text>
+      <text x="36" y="486" class="t-small">cobertura Benito Juárez (PostGIS)</text>
+
+      <rect x="400" y="200" width="300" height="150" rx="12" class="box-key"/>
+      <text x="550" y="228" text-anchor="middle" class="t-title">pedidos (núcleo)</text>
+      <text x="420" y="256" class="t-small">PedidoService · crear, cancelar, historial</text>
+      <text x="420" y="278" class="t-small">AsignacionService · aceptar, en camino</text>
+      <text x="420" y="300" class="t-small">EntregaService · llegada, entregado,</text>
+      <text x="420" y="318" class="t-small">no entregado, ausencias</text>
+      <text x="420" y="338" class="t-mono">máquina de estados + historial</text>
+
+      <rect x="400" y="440" width="300" height="64" rx="10" class="box"/>
+      <text x="550" y="466" text-anchor="middle" class="t-title">inventario</text>
+      <text x="550" y="486" text-anchor="middle" class="t-small">lotes con caducidad, apartados, movimientos</text>
+
+      <rect x="400" y="42" width="300" height="64" rx="10" class="box"/>
+      <text x="550" y="68" text-anchor="middle" class="t-title">scheduling</text>
+      <text x="550" y="88" text-anchor="middle" class="t-small">programados · lotes por caducar · sesiones</text>
+
+      <text x="840" y="30" class="t-region">Tiempo real</text>
+      <rect x="840" y="42" width="240" height="78" rx="8" class="box-key"/>
+      <text x="856" y="66" class="t-title">tracking</text>
+      <text x="856" y="86" class="t-small">ubicación (máx. 1 escritura / 5 s),</text>
+      <text x="856" y="104" class="t-small">rastreo, proximidad y llegada</text>
+      <rect x="840" y="160" width="240" height="70" rx="8" class="box"/>
+      <text x="856" y="184" class="t-title">routing</text>
+      <text x="856" y="204" class="t-small">A* + Haversine sobre grafo OSM</text>
+      <text x="856" y="220" class="t-small">(sentido de las calles incluido)</text>
+      <rect x="840" y="290" width="240" height="78" rx="8" class="box-new"/>
+      <text x="856" y="314" class="t-title">notificaciones</text>
+      <text x="856" y="334" class="t-small">RabbitMQ, FCM, WebSocket</text>
+      <text x="856" y="352" class="t-small">y SMS (Twilio)</text>
+
+      <rect x="20" y="540" width="1060" height="46" rx="8" class="region-solid"/>
+      <text x="36" y="568" class="t-title">Transversal</text>
+      <text x="130" y="568" class="t-small">security (token opaco, autorización por rol y por pedido) · config (WebSocket, CORS, OpenAPI, reloj) · common (errores uniformes ApiError, excepciones de negocio)</text>
+
+      <path d="M550,350 L550,438" class="edge" marker-end="url(#a4)"/>
+      <text x="558" y="400" class="t-edge">aparta y consume garrafones</text>
+      <path d="M402,300 L262,470" class="edge" marker-end="url(#a4)"/>
+      <text x="272" y="490" class="t-edge">valida cobertura</text>
+      <path d="M402,270 L262,400" class="edge" marker-end="url(#a4)"/>
+      <text x="272" y="420" class="t-edge">exige jornada y carga</text>
+      <path d="M402,240 L262,336" class="edge" marker-end="url(#a4)"/>
+      <text x="272" y="356" class="t-edge">precios y horario</text>
+      <path d="M700,300 L838,322" class="edge" marker-end="url(#a4)"/>
+      <text x="712" y="336" class="t-edge">avisa cada cambio</text>
+      <path d="M838,90 L700,236" class="edge" marker-end="url(#a4)"/>
+      <text x="764" y="190" text-anchor="end" class="t-edge">lee pedidos activos</text>
+      <path d="M960,120 L960,158" class="edge" marker-end="url(#a4)"/>
+      <text x="968" y="144" class="t-edge">origen = ubicación actual</text>
+      <path d="M1060,120 L1060,288" class="edge" marker-end="url(#a4)"/>
+      <text x="1052" y="260" text-anchor="end" class="t-edge">proximidad 500 m</text>
+      <path d="M550,106 L550,198" class="edge" marker-end="url(#a4)"/>
+      <text x="558" y="160" class="t-edge">activa programados</text>
+      <polyline points="700,74 770,74 770,472 702,472" class="edge-dash" marker-end="url(#a4)"/>
+      <text x="778" y="440" class="t-edge">lotes por caducar</text>
+    </svg>
+    </div>
+    <figcaption>Las flechas apuntan en la dirección de la dependencia: <code>pedidos</code> llama a inventario y a notificaciones; tracking lee pedidos y dispara avisos. Abajo, lo transversal que usan todos los módulos.</figcaption>
+  </figure>
+
+  <h3>Los seis módulos que más te van a preguntar</h3>
+  <div class="mods">
+    <article class="mod core">
+      <h3>Pedidos <code>pedidos</code></h3>
+      <p>El ciclo de vida completo y la parte con más reglas de negocio.</p>
+      <ul>
+        <li><b>AsignacionService</b>: lista los pedidos disponibles y la aceptación. Solo gana el primero, con un UPDATE condicional.</li>
+        <li><b>EntregaService</b>: "Llegué" y entrega a 50 m o menos, entregas parciales que recalculan el total, ausencias que suspenden al cliente.</li>
+        <li><b>PedidoService</b>: crear (directo, precio máximo o programado), cancelar e historial inmutable.</li>
+      </ul>
+      <span class="rf">RF-001 · RF-013 · RF-014 · RF-019 · RN-005 · RN-006 · RN-032 · RN-033</span>
+    </article>
+    <article class="mod core">
+      <h3>Rastreo <code>tracking</code></h3>
+      <p>La posición del repartidor en tiempo real.</p>
+      <ul>
+        <li>Recibe la ubicación por REST (<code>PUT /repartidores/me/ubicacion</code>) o por STOMP; guarda como máximo una vez cada 5 s.</li>
+        <li>Rebota la posición a <code>/topic/pedidos/{id}/ubicacion</code>; solo el cliente y el repartidor de ese pedido pueden suscribirse (<code>AccesoRastreo</code>).</li>
+        <li>Proximidad (500 m) y llegada: una sola notificación por pedido.</li>
+      </ul>
+      <span class="rf">CU-006 · RF-005 · RN-010 · RN-016</span>
+    </article>
+    <article class="mod core">
+      <h3>Rutas <code>routing</code></h3>
+      <p>A* propio, sin servicios externos.</p>
+      <ul>
+        <li><b>OsmGraphLoader</b> carga el grafo (27,278 nodos) al arrancar; las aristas pesan su distancia Haversine y respetan los sentidos únicos.</li>
+        <li><b>AEstrella</b>: cola de prioridad por f(n) = g(n) + h(n), con h = Haversine al destino.</li>
+        <li>Rechaza destinos fuera de Benito Juárez (422).</li>
+      </ul>
+      <span class="rf">RF-018 · CU-011 · CU-017</span>
+    </article>
+    <article class="mod">
+      <h3>Notificaciones <code>notificaciones</code></h3>
+      <p>Interfaz <code>PushService</code> con dos implementaciones, elegidas por configuración.</p>
+      <ul>
+        <li><b>NotificacionesEnCola</b> (producción): RabbitMQ con reintentos y DLQ.</li>
+        <li><b>NotificacionesDirectas</b> (desarrollo y pruebas): mismo contrato, sin broker.</li>
+        <li><b>FcmClient</b> y <b>TwilioSmsService</b>: clientes HTTP salientes.</li>
+      </ul>
+      <span class="rf">RF-005 · CU-002 (OTP)</span>
+    </article>
+    <article class="mod">
+      <h3>Inventario <code>inventario</code></h3>
+      <p>Garrafones por lote, en la base del negocio y en el vehículo.</p>
+      <ul>
+        <li>Lotes con fecha de caducidad; se carga primero lo que vence antes.</li>
+        <li>Al aceptar se apartan garrafones en el vehículo (o en la base, si faltan); al entregar se consumen.</li>
+        <li>Cada entrada y salida queda registrada como movimiento.</li>
+      </ul>
+      <span class="rf">RN-008 · RN-022 · RN-030 (parcial)</span>
+    </article>
+    <article class="mod">
+      <h3>Seguridad <code>auth</code> + <code>security</code></h3>
+      <p>Una sola regla para REST y para WebSocket.</p>
+      <ul>
+        <li>Contraseñas con BCrypt; token aleatorio de 30 días que se renueva con el uso (expira tras 30 días sin actividad).</li>
+        <li>Sesión única: un login nuevo pide confirmar y cierra la anterior.</li>
+        <li>El interceptor STOMP valida el token en CONNECT y autoriza cada SUBSCRIBE.</li>
+      </ul>
+      <span class="rf">CU-002 · RF-015 · RF-016 · RN-018 · RNF-004</span>
+    </article>
+  </div>
+</section>
+
+<section id="pedido">
+  <span class="eyebrow">Máquina de estados</span>
+  <h2>Ciclo de vida de un pedido</h2>
+  <p class="prose">Cada transición queda en <code>historial_estados_pedido</code> con hora y coordenadas. La cancelación solo procede mientras ningún repartidor haya tomado el pedido.</p>
+  <figure>
+    <div class="canvas">
+    <svg class="dg" viewBox="0 0 1100 250" role="img" aria-label="Estados del pedido: programado pasa a pendiente a la hora indicada; pendiente pasa a asignado cuando un repartidor acepta; asignado pasa a en camino; en camino termina en entregado o no entregado; pendiente y programado pueden cancelarse.">
+      <defs>
+        <marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker>
+        <marker id="a5b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-bad"/></marker>
+      </defs>
+      <rect x="20" y="60" width="150" height="50" rx="25" class="box"/>
+      <text x="95" y="90" text-anchor="middle" class="t-title">programado</text>
+      <rect x="230" y="60" width="150" height="50" rx="25" class="box"/>
+      <text x="305" y="90" text-anchor="middle" class="t-title">pendiente</text>
+      <rect x="440" y="60" width="150" height="50" rx="25" class="box"/>
+      <text x="515" y="90" text-anchor="middle" class="t-title">asignado</text>
+      <rect x="650" y="60" width="150" height="50" rx="25" class="box-key"/>
+      <text x="725" y="90" text-anchor="middle" class="t-title">en camino</text>
+      <rect x="900" y="20" width="170" height="50" rx="25" class="box-new"/>
+      <text x="985" y="50" text-anchor="middle" class="t-title">entregado</text>
+      <rect x="900" y="100" width="170" height="50" rx="25" class="box-pend"/>
+      <text x="985" y="130" text-anchor="middle" class="t-title">no entregado</text>
+      <rect x="230" y="180" width="150" height="50" rx="25" class="box"/>
+      <text x="305" y="210" text-anchor="middle" class="t-title">cancelado</text>
+
+      <path d="M170,85 L228,85" class="edge" marker-end="url(#a5)"/>
+      <text x="176" y="54" class="t-edge">llega la hora</text>
+      <text x="176" y="68" class="t-mono">(job cada 1 min)</text>
+      <path d="M380,85 L438,85" class="edge" marker-end="url(#a5)"/>
+      <text x="386" y="54" class="t-edge">acepta</text>
+      <text x="386" y="68" class="t-mono">(UPDATE cond.)</text>
+      <path d="M590,85 L648,85" class="edge" marker-end="url(#a5)"/>
+      <text x="596" y="54" class="t-edge">en camino</text>
+      <text x="596" y="68" class="t-mono">(con carga)</text>
+      <path d="M800,78 L898,48" class="edge" marker-end="url(#a5)"/>
+      <text x="812" y="44" class="t-edge">≤ 50 m</text>
+      <path d="M800,95 L898,122" class="edge" marker-end="url(#a5)"/>
+      <text x="806" y="140" class="t-edge">10 min de espera</text>
+      <path d="M305,110 L305,178" class="edge-bad" marker-end="url(#a5b)"/>
+      <path d="M95,110 C 95,190 160,205 228,205" class="edge-bad" marker-end="url(#a5b)"/>
+      <text x="316" y="150" class="t-edge">el cliente cancela</text>
+      <text x="725" y="140" text-anchor="middle" class="t-edge-new">"Llegué" avisa al cliente</text>
+      <text x="725" y="156" text-anchor="middle" class="t-mono">(no cambia el estado)</text>
+    </svg>
+    </div>
+    <figcaption>"No entregado" solo se habilita 10 minutos después de que el repartidor pulsó "Llegué" (RN-012); dos ausencias seguidas suspenden al cliente 3 días (RN-006).</figcaption>
+  </figure>
+</section>
+
+<section id="preguntas">
+  <span class="eyebrow">Preparación</span>
+  <h2>Preguntas difíciles y cómo responderlas</h2>
+  <p class="prose">Las respuestas están basadas en el código actual. Donde hay una debilidad real, la respuesta la reconoce y dice cómo se resolvería: es mejor que te lo escuche a ti que descubrirlo él.</p>
+
+  <div class="qa">
+    <div class="qgroup">Decisiones de diseño</div>
+    <details>
+      <summary>¿Por qué token opaco y no JWT, si JWT es el estándar?</summary>
+      <div class="answer">
+        <p>Por RN-018: una sola sesión activa por usuario y poder cerrarla desde otro dispositivo. Un JWT es válido hasta que expira; para revocarlo habría que mantener una lista negra en BD, con lo que se pierde su ventaja de no consultar la base. El token opaco es un valor aleatorio guardado en <code>usuarios.token_sesion</code>: cerrar sesión o iniciar en otro equipo lo reemplaza y el anterior deja de funcionar al instante.</p>
+        <p>El costo es una consulta por petición (por un campo indexado). A la escala del proyecto es despreciable.</p>
+        <p class="trap">Si insiste: la tesis dice JWT. Reconócelo y explica que el requisito de sesión única llevó al cambio; está en la lista de cambios al texto.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Para qué RabbitMQ si solo tienen una instancia del backend?</summary>
+      <div class="answer">
+        <p>No es por escalar, es por desacoplar y por confiabilidad. Sin cola, la petición del repartidor esperaría a que Firebase responda, y si Firebase falla el aviso se pierde. Con la cola, la petición responde de inmediato y el listener reintenta 4 veces con espera exponencial (1, 2 y 4 s). Lo que no se pudo entregar queda en una cola de mensajes fallidos (DLQ) para revisarlo, en lugar de desaparecer.</p>
+        <p>Además el exchange es de tipo <em>topic</em>: futuros eventos (por ejemplo <code>pedido.*</code>) pueden usar la misma infraestructura con sus propias colas.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Qué pasa si RabbitMQ se cae?</summary>
+      <div class="answer">
+        <p>El cambio de negocio ya se confirmó en la BD y no se revierte por no poder avisar. La publicación falla, se registra en el log como notificación perdida y el sistema sigue funcionando. El cliente igual ve el estado correcto, porque la pantalla de seguimiento consulta el pedido cada 20 s.</p>
+        <p class="trap">Mejora posible: el patrón <em>outbox</em> (guardar el evento en una tabla en la misma transacción y publicarlo después) garantiza que ningún aviso se pierda. Menciónalo como trabajo a futuro.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Por qué se envía la notificación después del commit?</summary>
+      <div class="answer">
+        <p>Para no avisar de algo que no ocurrió. Si el servicio publicara dentro de la transacción y luego algo fallara (por ejemplo, la validación de 50 m), la BD se revierte pero el cliente ya habría recibido "Pedido entregado". <code>DespuesDelCommit</code> registra la acción con <code>TransactionSynchronization.afterCommit</code>.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Por qué cambiaron de MariaDB a PostgreSQL?</summary>
+      <div class="answer">
+        <p>Por PostGIS. El sistema hace tres consultas geográficas clave: ¿la dirección está dentro de Benito Juárez?, ¿el repartidor está a 50 m o menos para entregar? y ¿está a menos de 500 m para avisar? Con el tipo <code>geography</code> y <code>ST_DWithin</code> eso se calcula en metros reales sobre el elipsoide y con índice espacial. MariaDB tiene funciones espaciales, pero más limitadas para cálculos geodésicos.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Por qué combinan JPA con SQL directo?</summary>
+      <div class="answer">
+        <p>JPA (con <code>ddl-auto: validate</code>) para las entidades y el CRUD común; <code>NamedParameterJdbcTemplate</code> donde JPA estorba: consultas PostGIS, UPDATE condicionales para concurrencia y <code>SELECT … FOR UPDATE</code> sobre inventario. Hibernate valida al arrancar que las entidades coincidan con el esquema, así que un desajuste se detecta en el despliegue y no en producción.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Por qué OpenStreetMap con Leaflet y no Google Maps como dice la tesis?</summary>
+      <div class="answer">
+        <p>El cálculo de rutas ya usaba OSM. Usar también OSM para dibujar el mapa elimina la clave de API y el costo, y el mismo código HTML/JS del mapa sirve en Android, iOS y el panel admin. Para la navegación giro a giro, el repartidor abre Google Maps o Waze con un enlace; no tiene caso replicar eso.</p>
+      </div>
+    </details>
+
+    <div class="qgroup">Algoritmos y concurrencia</div>
+    <details>
+      <summary>¿Cómo garantizan que dos repartidores no acepten el mismo pedido?</summary>
+      <div class="answer">
+        <p>Con un UPDATE condicional atómico: <code>UPDATE pedidos SET id_repartidor = :rep, estado_actual = 'asignado' WHERE id_pedido = :id AND estado_actual = 'pendiente' AND id_repartidor IS NULL</code>. PostgreSQL bloquea la fila durante el UPDATE; el segundo repartidor reevalúa la condición, ya no se cumple, afecta 0 filas y recibe 409 <code>PEDIDO_YA_ASIGNADO</code>.</p>
+        <p>Hay una prueba de integración que lanza aceptaciones concurrentes y verifica que solo una gana (<code>aceptacionConcurrenteSoloUnoGana</code>).</p>
+        <p class="trap">Para el inventario se usa <code>SELECT … FOR UPDATE</code>: bloqueo pesimista sobre las filas que se van a descontar.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿A* garantiza la ruta más corta? ¿Por qué Haversine?</summary>
+      <div class="answer">
+        <p>Sí, si la heurística es admisible: nunca sobreestima el costo real. La distancia Haversine en línea recta siempre es menor o igual que cualquier camino por calles, así que A* encuentra la ruta óptima. Explora menos nodos que Dijkstra porque prioriza los que apuntan hacia el destino.</p>
+        <p>Detalles: las aristas pesan su distancia real en km, se respetan los sentidos únicos (<code>oneway</code> de OSM) y el origen y el destino se ajustan al nodo más cercano del grafo.</p>
+        <p class="trap">Limitación honesta: optimiza distancia, no tiempo; no considera tráfico ni semáforos. Es la métrica que define la tesis.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Cuánta memoria ocupa el grafo y cuánto tarda?</summary>
+      <div class="answer">
+        <p>El grafo de Benito Juárez tiene 27,278 nodos y viene de 8,555 vías de OSM (unos 5 MB de JSON). Se carga una vez al arrancar (<code>RoutingWarmup</code>) y se queda en memoria, de solo lectura, así que lo pueden consultar varias peticiones al mismo tiempo sin bloqueos. Un cálculo dentro de la alcaldía toma milisegundos.</p>
+        <p class="trap">Punto débil que puede detectar: el nodo más cercano se busca recorriendo los 27,278 nodos (O(n)) en cada cálculo. Funciona por el tamaño del grafo; la mejora sería un índice espacial (k-d tree o una rejilla) para bajarlo a O(log n).</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Por qué WebSocket con STOMP y no consultar cada pocos segundos?</summary>
+      <div class="answer">
+        <p>Con consultas periódicas, cada cliente golpea la API y la BD aunque nada haya cambiado. Con STOMP, el repartidor publica una vez y el broker reparte la posición a los suscritos del tópico del pedido. STOMP aporta tópicos, suscripciones y destinos por usuario (<code>/user/queue/…</code>) sin inventar un protocolo propio.</p>
+        <p>Hay respaldo: si el WebSocket no conecta, la app consulta <code>/ubicacion-repartidor</code> cada 10 s.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Cómo detectan que una conexión WebSocket murió?</summary>
+      <div class="answer">
+        <p>Con heart-beats STOMP cada 10 s en ambos sentidos. Si la app no recibe nada en 30 s, da la conexión por muerta y reconecta. Además, al volver la app al frente reconecta siempre, porque iOS suspende la app en segundo plano y el socket puede quedar "zombie". Ese era justo el error por el que dejaban de llegar los avisos en iPhone.</p>
+      </div>
+    </details>
+
+    <div class="qgroup">Seguridad</div>
+    <details>
+      <summary>¿Cualquiera puede suscribirse a la ubicación de un repartidor?</summary>
+      <div class="answer">
+        <p>No. <code>StompAuthChannelInterceptor</code> valida el token en el CONNECT con la misma regla que REST, y en cada SUBSCRIBE a <code>/topic/pedidos/{id}/ubicacion</code> consulta <code>AccesoRastreo</code>: solo el cliente dueño del pedido y su repartidor asignado pueden escuchar (RN-016). Las notificaciones van a <code>/user/queue</code>, que Spring entrega solo a la sesión de ese usuario.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Cómo protegen contraseñas, secretos y credenciales?</summary>
+      <div class="answer">
+        <p>Contraseñas con BCrypt. Los secretos (BD, Twilio, cuenta de servicio de Firebase, RabbitMQ) se pasan como variables de entorno y secretos de Container Apps, no en el código; <code>google-services.json</code> está en <code>.gitignore</code>. La BD y RabbitMQ no tienen ingreso público.</p>
+        <p class="trap">Pendientes que conviene admitir: el OTP fijo <code>123456</code> sigue activo para las pruebas y hay que cambiar la contraseña demo del admin antes de la entrega. Ya están en la lista de pendientes.</p>
+      </div>
+    </details>
+
+    <div class="qgroup">Escalabilidad y operación</div>
+    <details>
+      <summary>¿Qué pasa si necesitan dos instancias del backend?</summary>
+      <div class="answer">
+        <p>Hoy hay tres piezas en memoria que asumen una sola instancia:</p>
+        <p>1) El broker STOMP simple: un cliente conectado a la instancia A no recibiría lo que publica la B. Solución: el relay STOMP de RabbitMQ (ya está en la infraestructura), con <code>enableStompBrokerRelay</code>.<br>2) Los avisos de proximidad y llegada, que se guardan en memoria para no repetirse; en dos instancias podrían duplicarse. Solución: guardarlos en la BD o en Redis.<br>3) El límite de una escritura de ubicación cada 5 s, también en memoria.</p>
+        <p>RabbitMQ ya está listo para varias instancias: varios consumidores comparten la cola.</p>
+        <p class="trap">Es una decisión consciente: para el alcance (una alcaldía) una instancia basta. RNF-007 pide 100 usuarios simultáneos y la prueba de carga está pendiente.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Por qué PostgreSQL en un contenedor y no un servicio administrado?</summary>
+      <div class="answer">
+        <p>Por costo y para respetar la arquitectura del TT (contenedor con volumen en Azure Files). El riesgo es que un archivo compartido SMB no es el almacenamiento que Microsoft recomienda para bases de datos. El plan B documentado es Azure Database for PostgreSQL Flexible Server, que sí soporta PostGIS. La BD es una app separada del backend para que redesplegar la API nunca toque los datos.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Cómo prueban el sistema?</summary>
+      <div class="answer">
+        <p>89 pruebas automáticas. Las unitarias cubren las reglas aisladas (por ejemplo, proximidad y llegada). Las de integración usan Testcontainers con PostgreSQL + PostGIS y RabbitMQ reales y recorren flujos completos: registro y login, crear, aceptar, en camino, llegada y entrega, aceptación concurrente, entrega fuera de rango, suspensión por ausencias y jobs. GitHub Actions corre las pruebas en cada push a main. En la app hay pruebas de contrato que verifican que los DTOs coincidan con el JSON del backend.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Cómo funciona la app en iOS si se desarrolló en Kotlin?</summary>
+      <div class="answer">
+        <p>Con Kotlin Multiplatform. El módulo <code>shared</code> compila a JVM para Android y a un framework nativo para iOS. Pantallas (Compose Multiplatform), ViewModels, red (Ktor), WebSocket y lógica se escriben una vez. Solo se implementa por plataforma lo que depende del sistema: GPS, el WebView del mapa, notificaciones y geocodificación, mediante interfaces (<code>UiPlataforma</code>, <code>ServiciosPlataforma</code>).</p>
+        <p class="trap">Limitación: en iOS no hay push con la app cerrada, porque APNs requiere la cuenta de Apple Developer (99 USD al año). Con la app abierta las notificaciones sí funcionan, por WebSocket y notificaciones locales.</p>
+      </div>
+    </details>
+    <details>
+      <summary>¿Qué pasa si el repartidor pierde señal a media entrega?</summary>
+      <div class="answer">
+        <p>El cliente ve "Última ubicación hace N min" cuando no llegan posiciones en más de 2 minutos (CU-006 S1). La llegada se guarda en el teléfono, así que el conteo de 10 minutos para "no entregado" sigue aunque se cierre la app. La entrega final se valida en el servidor con la posición que manda el teléfono, no con la última guardada.</p>
+      </div>
+    </details>
+  </div>
+</section>
+</div>
+</body>
+</html>
