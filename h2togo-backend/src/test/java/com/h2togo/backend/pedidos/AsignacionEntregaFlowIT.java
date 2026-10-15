@@ -3,6 +3,7 @@ package com.h2togo.backend.pedidos;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -214,6 +215,19 @@ class AsignacionEntregaFlowIT {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT, LON)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("en_camino"));
 
+        // "Llegué": avisa al cliente; repetirlo devuelve la misma hora de llegada.
+        String llegada = mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/llegada").header("Authorization", "Bearer " + r.token())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT, LON)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.llegoEn").exists())
+                .andReturn().getResponse().getContentAsString();
+        mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/llegada").header("Authorization", "Bearer " + r.token())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT, LON)))
+                .andExpect(status().isOk()).andExpect(content().json(llegada));
+        // Solo el repartidor asignado puede avisar la llegada.
+        mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/llegada").header("Authorization", "Bearer " + c.token())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT, LON)))
+                .andExpect(status().isForbidden());
+
         mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/resultado").header("Authorization", "Bearer " + r.token())
                         .contentType(MediaType.APPLICATION_JSON).content(entrega(LAT, LON, ped[1], 2)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("entregado"));
@@ -315,7 +329,11 @@ class AsignacionEntregaFlowIT {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT, LON)))
                 .andExpect(status().isOk());
 
-        // Muy lejos del domicilio (~11 km).
+        // Muy lejos del domicilio (~11 km): ni "Llegué" ni la entrega.
+        mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/llegada").header("Authorization", "Bearer " + r.token())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT + 0.1, LON)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("FUERA_DE_RANGO"));
         mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/resultado").header("Authorization", "Bearer " + r.token())
                         .contentType(MediaType.APPLICATION_JSON).content(entrega(LAT + 0.1, LON, ped[1], 2)))
                 .andExpect(status().isUnprocessableEntity())

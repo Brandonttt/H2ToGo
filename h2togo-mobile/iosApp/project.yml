@@ -20,6 +20,13 @@ targets:
       properties:
         CFBundleDisplayName: H2ToGo
         UILaunchScreen: {}
+        # Ciclo de vida con escenas (obligatorio en iOS recientes): la ventana la crea SceneDelegate.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         CADisableMinimumFrameDurationOnPhone: true
         # Permite http://localhost para probar contra el backend local desde el simulador.
@@ -35,6 +42,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.htogo.app
         PRODUCT_NAME: H2ToGo
+        # Firma automática con el equipo personal (gratis) para instalar en iPhone real.
+        DEVELOPMENT_TEAM: 4K37T5237R
+        CODE_SIGN_STYLE: Automatic
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # El framework Shared lo compila Gradle en la fase previa.
         FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"

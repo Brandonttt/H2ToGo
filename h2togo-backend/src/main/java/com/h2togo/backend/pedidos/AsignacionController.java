@@ -6,6 +6,7 @@ import com.h2togo.backend.pedidos.dto.ResultadoEntregaRequest;
 import com.h2togo.backend.pedidos.dto.UbicacionRequest;
 import com.h2togo.backend.security.SecurityUtils;
 import jakarta.validation.Valid;
+import java.util.Map;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,6 +43,13 @@ public class AsignacionController {
     @PostMapping("/{id}/cargar-apartados-base")
     public PedidoResponse cargarApartadosBase(@PathVariable int id) {
         return asignacionService.cargarApartadosBase(SecurityUtils.exigirRol(RolUsuario.repartidor), id);
+    }
+
+    /** CU-012: el repartidor llegó al domicilio; avisa al cliente. 200 con {@code llegoEn}. */
+    @PostMapping("/{id}/llegada")
+    public Map<String, String> llegada(@PathVariable int id, @Valid @RequestBody UbicacionRequest request) {
+        return Map.of("llegoEn", entregaService.llegada(SecurityUtils.exigirRol(RolUsuario.repartidor), id,
+                request.lat(), request.lon()).toString());
     }
 
     @PostMapping("/{id}/resultado")

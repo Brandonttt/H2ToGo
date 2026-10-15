@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.util.ahoraCdmx
 import com.htogo.app.util.fechaCdmx
 import kotlinx.datetime.DatePeriod
@@ -162,6 +163,7 @@ fun HistorialPedidosScreen(
         }
     }
 
+    BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
         topBar = { HistHeader(query = query, onQuery = { query = it }, onBack = onBack) },
         bottomBar = {

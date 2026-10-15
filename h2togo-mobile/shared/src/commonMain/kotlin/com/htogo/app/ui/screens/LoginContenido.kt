@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Lock
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
@@ -44,7 +46,9 @@ fun LoginContenido(
     onLogin: (correo: String, password: String, forzar: Boolean) -> Unit,
     onLimpiarError: () -> Unit = {},
     onForgot: () -> Unit = {},
-    onRegister: () -> Unit = {}
+    onRegister: () -> Unit = {},
+    /** Regresar al onboarding; null si no hay pantalla previa (p. ej. tras cerrar sesión). */
+    onBack: (() -> Unit)? = null
 ) {
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -57,6 +61,15 @@ fun LoginContenido(
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(HToGoColors.PrimarySoft, HToGoColors.Background)))
     ) {
+        if (onBack != null) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(start = 8.dp, top = 4.dp)
+                    .zIndex(1f)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás", tint = HToGoColors.TextPrimary)
+            }
+        }
         Column(
             Modifier
                 .fillMaxSize()

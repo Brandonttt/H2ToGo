@@ -13,19 +13,28 @@ object Plataforma {
     /** Registra el token de notificaciones del dispositivo tras iniciar sesión (FCM / APNs). */
     var registrarDispositivo: () -> Unit = {}
 
+    /** Íconos de la barra de estado claros (true) u oscuros; ver [com.htogo.app.ui.components.BarraEstadoClara]. */
+    var barraEstadoClara: (Boolean) -> Unit = {}
+
     /** GPS, geocodificador, etc. de la plataforma (ver [ServiciosPlataforma]). */
     var servicios: ServiciosPlataforma
         get() = ServiciosRegistro.servicios
         set(value) { ServiciosRegistro.servicios = value }
 }
 
-/** Mensaje breve al usuario: Toast en Android; en iOS, una franja que pinta la raíz de la app. */
-expect fun mostrarAviso(texto: String, largo: Boolean = false)
+/**
+ * Mensaje breve al usuario, igual en Android e iOS: una tarjeta arriba de la pantalla que pinta
+ * la raíz de la app ([AvisosEnPantalla]). [largo]: se queda más tiempo (errores, instrucciones).
+ */
+fun mostrarAviso(texto: String, largo: Boolean = false) = AvisosEnPantalla.mostrar(texto, largo)
 
-/** Aviso pendiente en plataformas sin Toast (iOS); la raíz de la app lo muestra y lo limpia. */
+/** Aviso en pantalla; [id] distingue dos avisos seguidos con el mismo texto. */
+data class Aviso(val texto: String, val largo: Boolean, val id: Long = ahoraMs())
+
+/** Aviso actual; la raíz de la app lo muestra y lo limpia. */
 object AvisosEnPantalla {
-    private val _actual = MutableStateFlow<String?>(null)
-    val actual: StateFlow<String?> = _actual.asStateFlow()
-    fun mostrar(texto: String) { _actual.value = texto }
-    fun limpiar() { _actual.value = null }
+    private val _actual = MutableStateFlow<Aviso?>(null)
+    val actual: StateFlow<Aviso?> = _actual.asStateFlow()
+    fun mostrar(texto: String, largo: Boolean = false) { _actual.value = Aviso(texto, largo) }
+    fun limpiar(aviso: Aviso) { _actual.compareAndSet(aviso, null) }
 }

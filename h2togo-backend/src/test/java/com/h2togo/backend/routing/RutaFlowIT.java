@@ -170,11 +170,11 @@ class RutaFlowIT {
                 .andExpect(jsonPath("$.encontrada").value(true))
                 .andExpect(jsonPath("$.coordenadas.length()").value(org.hamcrest.Matchers.greaterThan(0)));
 
-        // CU-006: el cliente ve la ruta por calles solo cuando va en camino.
+        // CU-006: el cliente ve la ruta por calles desde que el pedido está asignado.
         String tokenCli = (String) esc[2];
         mvc.perform(get("/api/v1/pedidos/" + idPedido + "/ruta-seguimiento").header("Authorization", "Bearer " + tokenCli))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.codigo").value("ESTADO_INVALIDO"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.encontrada").value(true));
         mvc.perform(post("/api/v1/pedidos/" + idPedido + "/en-camino").header("Authorization", "Bearer " + tokenRep)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT_REP, LON_REP)))
                 .andExpect(status().isOk());

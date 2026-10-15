@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.BarraEstadoClara
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import com.htogo.app.plataforma.mostrarAviso
@@ -164,7 +165,10 @@ fun PerfilRepartidorScreen(
     var notifEmail by remember { mutableStateOf(false) }
     var notifNovedades by remember { mutableStateOf(true) }
 
+    BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
+        // Sin margen superior: el encabezado pinta su degradado detrás de la barra de estado.
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         containerColor = HToGoColors.Background,
         bottomBar = {
             RepartidorBottomBar(
@@ -322,7 +326,7 @@ fun PerfilRepartidorScreen(
                 }
                 Spacer(Modifier.height(20.dp))
                 Text(
-                    "HToGo · v1.0.0",
+                    "H2ToGo · v1.0.0",
                     fontSize = 11.sp, color = HToGoColors.TextTertiary,
                     modifier = Modifier
                         .fillMaxWidth()

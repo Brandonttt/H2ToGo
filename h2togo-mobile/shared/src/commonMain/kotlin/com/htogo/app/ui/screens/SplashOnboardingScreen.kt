@@ -72,7 +72,8 @@ fun SplashOnboardingScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .safeDrawingPadding() // debajo de la isla dinámica / barra de estado
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Brand mark
@@ -96,7 +97,7 @@ fun SplashOnboardingScreen(
                 }
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "HToGo",
+                    "H2ToGo",
                     color = HToGoColors.PrimaryDark,
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp

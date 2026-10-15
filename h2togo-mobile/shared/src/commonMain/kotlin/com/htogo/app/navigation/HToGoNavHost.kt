@@ -146,7 +146,11 @@ fun HToGoNavHost(
                     }
                 },
                 onRegister = { navController.navigate(HToGoRoutes.REGISTRO) },
-                onForgot   = { /* TODO recovery flow */ }
+                onForgot   = { /* TODO recovery flow */ },
+                // Desde el onboarding se puede regresar; tras cerrar sesión el login es la raíz.
+                onBack = if (navController.previousBackStackEntry != null) {
+                    { navController.popBackStack() }
+                } else null
             )
         }
         composable(HToGoRoutes.REGISTRO) {

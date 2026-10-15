@@ -13,7 +13,7 @@ h2togo-mobile/
 │   ├── androidMain/  piezas solo de Android
 │   ├── iosMain/      piezas solo de iOS (MainViewController)
 │   └── commonTest/   pruebas del código común
-└── iosApp/     App iOS (SwiftUI que muestra la UI de Compose)
+└── iosApp/     App iOS (UIKit: SceneDelegate + ContenedorCompose, que muestra la UI de Compose)
     └── project.yml   proyecto de Xcode (se genera con XcodeGen)
 ```
 
@@ -107,7 +107,7 @@ Android las muestra con su `Notificador` e iOS con notificaciones locales.
 
 Para probar el GPS en el simulador de iOS: `xcrun simctl location booted set 19.3862,-99.1700`.
 
-Utilidades comunes: `mostrarAviso` (Toast / aviso flotante en iOS), `String.format` propio
+Utilidades comunes: `mostrarAviso` (tarjeta flotante arriba, igual en Android e iOS), `BarraEstadoClara()` (íconos claros en pantallas con encabezado oscuro), `String.format` propio
 (`com.htogo.app.util.format`), fechas en hora de la CDMX con kotlinx-datetime (`util/Fechas.kt`) y
 selectores de fecha y hora de Material 3 (`SelectorFecha`, `SelectorHora`).
 

@@ -16,6 +16,7 @@ import com.htogo.app.data.dto.PedidoResponse
 import com.htogo.app.data.dto.PerfilNegocioResponse
 import com.htogo.app.data.dto.PedidoResumenDto
 import com.htogo.app.data.local.SessionManager
+import com.htogo.app.data.notificaciones.CanalNotificaciones
 import com.htogo.app.data.realtime.EventoStomp
 import com.htogo.app.data.realtime.StompCliente
 import kotlinx.coroutines.Job
@@ -350,6 +351,10 @@ class ClienteViewModel : ViewModel() {
 
     private var rastreoJob: Job? = null
 
+    private val _repartidorLlego = MutableStateFlow(false)
+    /** CU-012: el repartidor avisó que ya está en el domicilio ("Llegué al destino"). */
+    val repartidorLlego: StateFlow<Boolean> = _repartidorLlego.asStateFlow()
+
     private val _rutaSeguimiento = MutableStateFlow<List<Pair<Double, Double>>>(emptyList())
     /** Ruta por calles del repartidor al domicilio; vacía mientras no hay (el mapa dibuja línea recta). */
     val rutaSeguimiento: StateFlow<List<Pair<Double, Double>>> = _rutaSeguimiento.asStateFlow()
@@ -364,11 +369,21 @@ class ClienteViewModel : ViewModel() {
     fun iniciarRastreo(idPedido: Int) {
         rastreoJob?.cancel()
         _ubicacionRepartidor.value = null
+        _repartidorLlego.value = false
         _rutaSeguimiento.value = emptyList()
         origenRutaSeguimiento = null
         val token = sessionManager.obtenerToken() ?: return
         rastreoJob = viewModelScope.launch {
             var conectado = false
+
+            // Aviso de llegada por el canal de notificaciones (además del tópico y la consulta REST).
+            launch {
+                CanalNotificaciones.avisos.collect { a ->
+                    if (a.datos["tipo"] == "repartidor_llego" && a.datos["idPedido"] == idPedido.toString()) {
+                        _repartidorLlego.value = true
+                    }
+                }
+            }
 
             // Consulta inicial inmediata de ubicación y ruta
             launch {
@@ -400,7 +415,10 @@ class ClienteViewModel : ViewModel() {
                         .collect { evento ->
                             when (evento) {
                                 is EventoStomp.Conectado -> conectado = true
-                                is EventoStomp.Mensaje -> parsearUbicacion(evento.cuerpo)?.let { _ubicacionRepartidor.value = it }
+                                is EventoStomp.Mensaje -> {
+                                    if (esAvisoLlegada(evento.cuerpo)) _repartidorLlego.value = true
+                                    else parsearUbicacion(evento.cuerpo)?.let { _ubicacionRepartidor.value = it }
+                                }
                                 else -> Unit
                             }
                         }
@@ -456,6 +474,13 @@ class ClienteViewModel : ViewModel() {
         rastreoJob = null
     }
 
+    /** El tópico del pedido también lleva {"evento":"llegada"} cuando el repartidor llega. */
+    private fun esAvisoLlegada(json: String): Boolean = try {
+        com.htogo.shared.data.jsonApi.parseToJsonElement(json).jsonObject["evento"]?.jsonPrimitive?.content == "llegada"
+    } catch (e: Exception) {
+        false
+    }
+
     private fun parsearUbicacion(json: String): UbicacionEnVivo? = try {
         val o = com.htogo.shared.data.jsonApi.parseToJsonElement(json).jsonObject
         UbicacionEnVivo(o.getValue("lat").jsonPrimitive.double, o.getValue("lon").jsonPrimitive.double)
@@ -467,6 +492,7 @@ class ClienteViewModel : ViewModel() {
         try {
             val resp = apiClient.pedidosApi.ubicacionRepartidor(idPedido)
             resp.body()?.let { u ->
+                if (u.llegoEn != null) _repartidorLlego.value = true
                 val previa = _ubicacionRepartidor.value
                 // Misma posición que ya teníamos: no la marca como reciente.
                 if (previa == null || previa.lat != u.lat || previa.lon != u.lon) {

@@ -19,7 +19,8 @@ fun LoginScreen(
     authViewModel: AuthViewModel = viewModel { AuthViewModel() },
     onLoginSuccess: (SesionResponse) -> Unit = {},
     onForgot: () -> Unit = {},
-    onRegister: () -> Unit = {}
+    onRegister: () -> Unit = {},
+    onBack: (() -> Unit)? = null
 ) {
     val uiState by authViewModel.uiState.collectAsState()
 
@@ -42,6 +43,7 @@ fun LoginScreen(
         onLogin = { correo, password, forzar -> authViewModel.login(correo, password, forzar) },
         onLimpiarError = { if (uiState is AuthUiState.Error) authViewModel.resetState() },
         onForgot = onForgot,
-        onRegister = onRegister
+        onRegister = onRegister,
+        onBack = onBack
     )
 }

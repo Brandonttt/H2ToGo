@@ -8,8 +8,10 @@ import com.h2togo.backend.pedidos.dto.ResultadoEntregaRequest;
 import com.h2togo.backend.pedidos.dto.ResultadoEntregaRequest.Linea;
 import com.h2togo.backend.pedidos.dto.ResultadoEntregaRequest.Resultado;
 import com.h2togo.backend.tracking.ProximidadService;
+import com.h2togo.backend.tracking.RastreoService;
 import com.h2togo.backend.usuarios.Repartidor;
 import com.h2togo.backend.usuarios.RepartidorRepository;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,13 +38,14 @@ public class EntregaService {
     private final RepartidorRepository repartidorRepository;
     private final PushService pushService;
     private final ProximidadService proximidadService;
+    private final RastreoService rastreoService;
     private final int radioM;
     private final int ausenciasUmbral;
     private final int suspensionDias;
 
     public EntregaService(NamedParameterJdbcTemplate jdbc, PedidoRepository pedidoRepository,
             RepartidorRepository repartidorRepository, PushService pushService,
-            ProximidadService proximidadService,
+            ProximidadService proximidadService, RastreoService rastreoService,
             @Value("${h2togo.pedidos.entrega-radio-m}") int radioM,
             @Value("${h2togo.pedidos.ausencias-umbral}") int ausenciasUmbral,
             @Value("${h2togo.pedidos.suspension-dias}") int suspensionDias,
@@ -53,6 +56,7 @@ public class EntregaService {
         this.repartidorRepository = repartidorRepository;
         this.pushService = pushService;
         this.proximidadService = proximidadService;
+        this.rastreoService = rastreoService;
         this.radioM = radioM;
         this.ausenciasUmbral = ausenciasUmbral;
         this.suspensionDias = suspensionDias;
@@ -89,20 +93,29 @@ public class EntregaService {
         return enriquecedor.enriquecer(PedidoMapper.toResponse(p), idPedido);
     }
 
+    /**
+     * CU-012: el repartidor avisa que llegó al domicilio (≤ radio, RF-014). Se avisa al cliente
+     * una sola vez por notificación y por el tópico del pedido; repetirlo no vuelve a notificar.
+     */
+    public OffsetDateTime llegada(int idRepartidor, int idPedido, double lat, double lon) {
+        Map<String, Object> pedido = cargarPedido(idPedido);
+        if (!Integer.valueOf(idRepartidor).equals(pedido.get("id_repartidor"))) {
+            throw new AccessDeniedException("No eres el repartidor asignado a este pedido.");
+        }
+        if (!"en_camino".equals(pedido.get("estado_actual"))) {
+            throw new BusinessRuleException("TRANSICION_INVALIDA", "El pedido debe estar en camino.");
+        }
+        validarRadio((Integer) pedido.get("id_direccion_entrega"), lat, lon);
+        OffsetDateTime llegoEn = proximidadService.avisarLlegada(idPedido, (Integer) pedido.get("id_cliente"));
+        rastreoService.publicarLlegada(idPedido, llegoEn);
+        return llegoEn;
+    }
+
     // ---------------------------------------------------------------- ENTREGADO
 
     private void entregar(int idPedido, int idRepartidor, int idVehiculo, int idCliente, int idDireccion,
             int idNegocio, ResultadoEntregaRequest req) {
-        // RF-014: el repartidor debe estar a ≤ radio del domicilio.
-        Boolean dentro = jdbc.queryForObject("""
-                SELECT ST_DWithin(d.ubicacion, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, :radio)
-                FROM direcciones_clientes d WHERE d.id_direccion = :dir""",
-                new MapSqlParameterSource().addValue("lon", req.lon()).addValue("lat", req.lat())
-                        .addValue("radio", radioM).addValue("dir", idDireccion), Boolean.class);
-        if (!Boolean.TRUE.equals(dentro)) {
-            throw new BusinessRuleException("FUERA_DE_RANGO",
-                    "Debes estar a menos de " + radioM + " m del domicilio para entregar (RF-014).");
-        }
+        validarRadio(idDireccion, req.lat(), req.lon());
 
         procesarLineas(idPedido, idNegocio, req.lineas());
         consumirEntregado(idPedido, idVehiculo, idRepartidor);
@@ -116,6 +129,19 @@ public class EntregaService {
         jdbc.update("UPDATE clientes SET ausencias_consecutivas = 0 WHERE id_usuario = :c",
                 new MapSqlParameterSource("c", idCliente));
         insertarHistorial(idPedido, "entregado", null, req.lat(), req.lon());
+    }
+
+    /** RF-014: el repartidor debe estar a ≤ radio del domicilio. */
+    private void validarRadio(int idDireccion, Double lat, Double lon) {
+        Boolean dentro = jdbc.queryForObject("""
+                SELECT ST_DWithin(d.ubicacion, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, :radio)
+                FROM direcciones_clientes d WHERE d.id_direccion = :dir""",
+                new MapSqlParameterSource().addValue("lon", lon).addValue("lat", lat)
+                        .addValue("radio", radioM).addValue("dir", idDireccion), Boolean.class);
+        if (!Boolean.TRUE.equals(dentro)) {
+            throw new BusinessRuleException("FUERA_DE_RANGO",
+                    "Debes estar a menos de " + radioM + " m del domicilio para entregar (RF-014).");
+        }
     }
 
     private void procesarLineas(int idPedido, int idNegocio, List<Linea> lineas) {

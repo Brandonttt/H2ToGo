@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.util.format
 
 import androidx.compose.foundation.BorderStroke
@@ -97,6 +98,7 @@ fun BuscarPurificadorasScreen(
         }
     }
 
+    BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
         containerColor = HToGoColors.Background,
         topBar = { Header(query, { query = it }, onBack) }

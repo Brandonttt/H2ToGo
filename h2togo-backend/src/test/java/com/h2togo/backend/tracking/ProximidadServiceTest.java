@@ -1,5 +1,6 @@
 package com.h2togo.backend.tracking;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -8,6 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.h2togo.backend.notificaciones.PushService;
+import java.time.OffsetDateTime;
 import org.junit.jupiter.api.Test;
 
 /** El aviso de proximidad se envía una sola vez por pedido (dedup en memoria, §10 #2). */
@@ -34,5 +36,22 @@ class ProximidadServiceTest {
         service.avisarProximidad(10, 99);
 
         verify(push, times(2)).notificar(eq(99), anyString(), anyString(), anyMap());
+    }
+
+    @Test
+    void laLlegadaSeAvisaUnaVezYConservaLaPrimeraHora() {
+        PushService push = mock(PushService.class);
+        ProximidadService service = new ProximidadService(push);
+
+        assertThat(service.llegada(10)).isEmpty();
+        OffsetDateTime primera = service.avisarLlegada(10, 99);
+        OffsetDateTime segunda = service.avisarLlegada(10, 99);
+
+        assertThat(segunda).isEqualTo(primera);
+        assertThat(service.llegada(10)).contains(primera);
+        verify(push, times(1)).notificar(eq(99), eq("Tu repartidor llegó"), anyString(), anyMap());
+
+        service.olvidar(10);
+        assertThat(service.llegada(10)).isEmpty();
     }
 }

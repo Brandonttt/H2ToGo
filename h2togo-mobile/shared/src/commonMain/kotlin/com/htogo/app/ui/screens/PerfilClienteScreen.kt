@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.util.textoConAnio
 
 import com.htogo.app.plataforma.mostrarAviso
@@ -140,7 +141,10 @@ fun PerfilClienteScreen(
 
     var notif by remember { mutableStateOf(sessionManager.estanNotificacionesActivas()) }
 
+    BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
+        // Sin margen superior: el encabezado pinta su degradado detrás de la barra de estado.
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         bottomBar = {
             ClienteBottomBar(
                 selected = ClienteTab.PERFIL,
@@ -229,7 +233,7 @@ fun PerfilClienteScreen(
             }
 
             item {
-                Text("HToGo v1.0.0 · Build 142",
+                Text("H2ToGo v1.0.0 · Build 142",
                     fontSize = 11.sp, color = HToGoColors.TextTertiary,
                     modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center)

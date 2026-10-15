@@ -1,5 +1,10 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.BarraEstadoClara
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.WindowInsets
 import com.htogo.app.util.format
 
 import androidx.compose.foundation.background
@@ -65,7 +70,7 @@ fun PerfilPurificadoraScreen(
     horario: String = "Lun–Sáb · 8:00 AM – 7:00 PM",
     diasCerrados: String = "Cerrado los domingos",
     abiertoAhora: Boolean = true,
-    tiempoEnPlataforma: String = "Purificadora verificada HToGo",
+    tiempoEnPlataforma: String = "Purificadora verificada H2ToGo",
     onBack: () -> Unit = {},
     onPedir: () -> Unit = {},
     clienteViewModel: ClienteViewModel = viewModel { ClienteViewModel() }
@@ -137,7 +142,10 @@ fun PerfilPurificadoraScreen(
         }
     }
 
+    BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
+        // Sin margen superior: el encabezado pinta su degradado detrás de la barra de estado.
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         containerColor = HToGoColors.Background,
         bottomBar = {
             Box(

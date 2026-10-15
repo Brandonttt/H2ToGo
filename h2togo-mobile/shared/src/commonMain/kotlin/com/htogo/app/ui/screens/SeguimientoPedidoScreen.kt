@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -624,6 +625,7 @@ fun SeguimientoPedidoScreen(
     val livePedido by clienteViewModel.pedidoActivo.collectAsState()
     val ubicacionRepartidor by clienteViewModel.ubicacionRepartidor.collectAsState()
     val rutaSeguimiento by clienteViewModel.rutaSeguimiento.collectAsState()
+    val repartidorLlego by clienteViewModel.repartidorLlego.collectAsState()
 
     LaunchedEffect(pedidoId) {
         if (pedidoId != null) {
@@ -678,7 +680,7 @@ fun SeguimientoPedidoScreen(
     }
 
     val historialPedido = livePedido?.historial
-    val pasos = remember(order.estado) {
+    val pasos = remember(order.estado, repartidorLlego) {
         when (order.estado) {
             EstadoPedido.PENDIENTE -> listOf(
                 TrackingStep("Pedido recibido", "En espera de repartidor", TrackingStep.StepState.ACTIVE),
@@ -695,7 +697,7 @@ fun SeguimientoPedidoScreen(
             EstadoPedido.EN_CAMINO -> listOf(
                 TrackingStep("Pedido recibido", "Confirmado", TrackingStep.StepState.DONE),
                 TrackingStep("Repartidor asignado", "Pedido preparado", TrackingStep.StepState.DONE),
-                TrackingStep("En camino a tu domicilio", "En ruta a tu casa", TrackingStep.StepState.ACTIVE),
+                TrackingStep("En camino a tu domicilio", if (repartidorLlego) "¡Llegó! Está afuera de tu domicilio" else "En ruta a tu casa", TrackingStep.StepState.ACTIVE),
                 TrackingStep("Entregado", "Pendiente", TrackingStep.StepState.PENDING)
             )
             EstadoPedido.ENTREGADO -> listOf(
@@ -770,6 +772,7 @@ fun SeguimientoPedidoScreen(
             }
             val u = ubicacionRepartidor
             val aviso = when {
+                repartidorLlego -> null // ya está en el domicilio: se muestra el aviso de llegada
                 u == null -> "Ubicación del repartidor no disponible por ahora"
                 ahoraMs - u.recibidaMs > 120_000 ->
                     "Última ubicación hace ${(ahoraMs - u.recibidaMs) / 60_000} min"
@@ -826,6 +829,17 @@ fun SeguimientoPedidoScreen(
             )
         }
 
+        // CU-012: el repartidor pulsó "Llegué al destino". Primero una tarjeta animada; al
+        // cerrarla queda un recordatorio arriba que la vuelve a abrir.
+        val avisoLlegada = order.estado == EstadoPedido.EN_CAMINO && repartidorLlego
+        var llegadaVista by rememberSaveable(order.id) { mutableStateOf(false) }
+        if (avisoLlegada && llegadaVista) {
+            AvisoRepartidorAfuera(
+                Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 70.dp)
+                    .clickable { llegadaVista = false }
+            )
+        }
+
         Box(Modifier.align(Alignment.BottomCenter)) {
             TrackingSheet(
                 order = order,
@@ -835,6 +849,126 @@ fun SeguimientoPedidoScreen(
                 onAbrirPurificadora = onAbrirPurificadora,
                 onCancelarPedido = { mostrarDialogCancelar = true }
             )
+        }
+
+        // Encima de todo: tarjeta animada al llegar el aviso.
+        if (avisoLlegada && !llegadaVista) {
+            RepartidorLlegoOverlay(
+                nombreRepartidor = order.driverName,
+                telefono = order.driverPhone,
+                onCerrar = { llegadaVista = true }
+            )
+        }
+    }
+}
+
+/** CU-012: aviso a pantalla completa cuando el repartidor llega, con anillos que laten. */
+@Composable
+private fun RepartidorLlegoOverlay(nombreRepartidor: String, telefono: String?, onCerrar: () -> Unit) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+    val escala by animateFloatAsState(
+        if (visible) 1f else 0.6f,
+        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "escalaLlegada"
+    )
+    val opacidad by animateFloatAsState(if (visible) 1f else 0f, tween(250), label = "opacidadLlegada")
+    val pulso = rememberInfiniteTransition(label = "pulsoLlegada")
+    val anillo by pulso.animateFloat(
+        0f, 1f, infiniteRepeatable(tween(1600, easing = LinearEasing)), label = "anilloLlegada"
+    )
+    val rebote by pulso.animateFloat(
+        0f, -8f, infiniteRepeatable(tween(600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "reboteLlegada"
+    )
+    val uriHandler = LocalUriHandler.current
+
+    Box(
+        Modifier.fillMaxSize()
+            .graphicsLayer { alpha = opacidad }
+            .background(Color.Black.copy(alpha = 0.55f))
+            .clickable(onClick = onCerrar),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = Color.White,
+            shadowElevation = 12.dp,
+            modifier = Modifier.padding(horizontal = 28.dp).fillMaxWidth()
+                .graphicsLayer { scaleX = escala; scaleY = escala }
+                .clickable(enabled = false) {} // los toques en la tarjeta no la cierran
+        ) {
+            Column(
+                Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
+                    // Dos anillos desfasados que crecen y se desvanecen.
+                    listOf(anillo, (anillo + 0.5f) % 1f).forEach { t ->
+                        Box(
+                            Modifier.size(150.dp)
+                                .graphicsLayer { scaleX = 0.45f + 0.55f * t; scaleY = 0.45f + 0.55f * t; alpha = 1f - t }
+                                .clip(CircleShape)
+                                .background(HToGoColors.AccentEmerald.copy(alpha = 0.35f))
+                        )
+                    }
+                    Box(
+                        Modifier.size(78.dp).graphicsLayer { translationY = rebote.dp.toPx() }
+                            .clip(CircleShape).background(HToGoColors.AccentEmerald),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.LocalShipping, null, tint = Color.White, modifier = Modifier.size(40.dp))
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "¡Tu repartidor llegó!",
+                    fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = HToGoColors.TextPrimary
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "$nombreRepartidor ya está afuera de tu domicilio con tu pedido. Sal a recibirlo.",
+                    fontSize = 16.sp, color = HToGoColors.TextSecondary,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 22.sp
+                )
+                Spacer(Modifier.height(22.dp))
+                Button(
+                    onClick = onCerrar,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(26.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentEmerald)
+                ) {
+                    Text("¡Voy para allá!", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+                if (telefono != null) {
+                    Spacer(Modifier.height(6.dp))
+                    TextButton(onClick = { runCatching { uriHandler.openUri("tel:$telefono") } }) {
+                        Icon(Icons.Filled.Call, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Llamar al repartidor", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Recordatorio compacto tras cerrar la tarjeta de llegada; al tocarlo se vuelve a abrir. */
+@Composable
+private fun AvisoRepartidorAfuera(modifier: Modifier = Modifier) {
+    val pulso = rememberInfiniteTransition(label = "pulsoAfuera")
+    val alfa by pulso.animateFloat(
+        0.35f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "alfaAfuera"
+    )
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = HToGoColors.AccentEmerald,
+        shadowElevation = 6.dp,
+        modifier = modifier
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(10.dp).graphicsLayer { alpha = alfa }.clip(CircleShape).background(Color.White))
+            Spacer(Modifier.width(10.dp))
+            Text("Tu repartidor está afuera", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

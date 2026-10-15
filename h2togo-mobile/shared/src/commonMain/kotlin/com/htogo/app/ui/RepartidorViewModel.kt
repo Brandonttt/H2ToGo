@@ -752,6 +752,31 @@ class RepartidorViewModel : ViewModel() {
         }
     }
 
+    /**
+     * CU-012: avisa al backend que el repartidor llegó (≤ 50 m) para que notifique al cliente.
+     * [onError] recibe el código HTTP, o null si no hubo red.
+     */
+    fun avisarLlegada(
+        id: Int,
+        lat: Double,
+        lon: Double,
+        onSuccess: () -> Unit,
+        onError: (String, Int?) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.repartidorApi.avisarLlegada(id, mapOf("lat" to lat, "lon" to lon))
+                if (resp.isSuccessful) {
+                    onSuccess()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo avisar al cliente (${resp.code()})", resp.code())
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Error de red al avisar al cliente", null)
+            }
+        }
+    }
+
     fun cargarApartadosBase(
         id: Int,
         onSuccess: (PedidoResponse) -> Unit = {},

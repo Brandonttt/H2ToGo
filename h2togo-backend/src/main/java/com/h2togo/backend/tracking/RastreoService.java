@@ -1,6 +1,7 @@
 package com.h2togo.backend.tracking;
 
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,12 +25,14 @@ public class RastreoService {
     private final NamedParameterJdbcTemplate jdbc;
     private final UbicacionService ubicacionService;
     private final SimpMessagingTemplate messaging;
+    private final ProximidadService proximidadService;
 
     public RastreoService(NamedParameterJdbcTemplate jdbc, UbicacionService ubicacionService,
-            SimpMessagingTemplate messaging) {
+            SimpMessagingTemplate messaging, ProximidadService proximidadService) {
         this.jdbc = jdbc;
         this.ubicacionService = ubicacionService;
         this.messaging = messaging;
+        this.proximidadService = proximidadService;
     }
 
     public static String topico(int idPedido) {
@@ -40,6 +43,12 @@ public class RastreoService {
      * Persiste la posición (con el throttle y el aviso de proximidad de {@link UbicacionService})
      * y la reenvía a los clientes de todos los pedidos activos del repartidor.
      */
+    /** Avisa por el tópico del pedido que el repartidor llegó (la pantalla del cliente lo muestra). */
+    public void publicarLlegada(int idPedido, OffsetDateTime llegoEn) {
+        Object payload = Map.of("evento", "llegada", "llegoEn", llegoEn.toString());
+        messaging.convertAndSend(topico(idPedido), payload);
+    }
+
     @Transactional
     public void publicar(int idRepartidor, double lat, double lon) {
         ubicacionService.reportar(idRepartidor, lat, lon);
@@ -54,7 +63,8 @@ public class RastreoService {
 
     /**
      * Última posición conocida del repartidor de un pedido activo, para pintar el mapa antes del
-     * primer mensaje del WebSocket (o como respaldo si el WebSocket no conecta).
+     * primer mensaje del WebSocket (o como respaldo si el WebSocket no conecta). Incluye
+     * {@code llegoEn} si el repartidor ya avisó que llegó al domicilio.
      */
     @Transactional(readOnly = true)
     public Optional<Map<String, Object>> ultimaUbicacion(int idPedido) {
@@ -65,10 +75,15 @@ public class RastreoService {
                 WHERE p.id_pedido = :p AND r.ubicacion_actual IS NOT NULL
                   AND p.estado_actual IN """ + ACTIVOS,
                 new MapSqlParameterSource("p", idPedido),
-                rs -> rs.next()
-                        ? Optional.of(Map.<String, Object>of("lat", rs.getDouble("lat"), "lon", rs.getDouble("lon"),
-                                "timestamp", rs.getObject("timestamp", OffsetDateTime.class).toString()))
-                        : Optional.empty());
+                rs -> {
+                    if (!rs.next()) {
+                        return Optional.empty();
+                    }
+                    Map<String, Object> u = new HashMap<>(Map.of("lat", rs.getDouble("lat"), "lon", rs.getDouble("lon"),
+                            "timestamp", rs.getObject("timestamp", OffsetDateTime.class).toString()));
+                    proximidadService.llegada(idPedido).ifPresent(t -> u.put("llegoEn", t.toString()));
+                    return Optional.of(u);
+                });
     }
 
 }

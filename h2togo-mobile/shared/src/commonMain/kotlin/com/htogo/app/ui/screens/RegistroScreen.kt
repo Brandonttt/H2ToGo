@@ -556,7 +556,7 @@ private fun BloquePurificadora(
                 ModoPurifOption(
                     seleccionado = modo == ModoPurificadora.UNIRSE,
                     titulo = "Pertenezco a una purificadora existente",
-                    subtitulo = "Mi jefe ya tiene cuenta en HToGo",
+                    subtitulo = "Mi jefe ya tiene cuenta en H2ToGo",
                     icon = Icons.Filled.Apartment
                 ) { onModoChange(ModoPurificadora.UNIRSE) }
                 ModoPurifOption(

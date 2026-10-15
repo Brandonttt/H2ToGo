@@ -8,12 +8,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.htogo.app.data.notificaciones.DestinoNotificacion
 import com.htogo.app.data.notificaciones.desdeIntent
 import com.htogo.app.data.notificaciones.DispositivoFcm
 import com.htogo.app.data.notificaciones.NotificacionesEnVivo
 import com.htogo.app.data.notificaciones.Notificador
+import com.htogo.app.plataforma.Plataforma
 
 class MainActivity : ComponentActivity() {
 
@@ -23,6 +25,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // Pantallas con encabezado oscuro piden íconos claros en la barra de estado.
+        Plataforma.barraEstadoClara = { claros ->
+            WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = !claros
+        }
         Notificador.crearCanal(this)
         DestinoNotificacion.desdeIntent(intent)
         if (!Notificador.puedeNotificar(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.ui.components.SelectorFecha
 import com.htogo.app.ui.components.SelectorHora
 import com.htogo.app.util.ahoraCdmx
@@ -931,6 +932,7 @@ fun NuevoPedidoScreen(
         )
     }
 
+    BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
         topBar = { NuevoPedidoTopBar(onBack) },
         bottomBar = {

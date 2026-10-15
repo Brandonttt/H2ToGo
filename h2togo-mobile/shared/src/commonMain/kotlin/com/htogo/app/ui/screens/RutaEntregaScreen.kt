@@ -253,6 +253,7 @@ fun RutaEntregaScreen(
     val idPedidoRuta = livePedidoEnRuta?.id
     var estado by remember { mutableStateOf(EstadoRuta.EN_RUTA) }
     var mostrarModalEntregado by remember { mutableStateOf(false) }
+    var avisandoLlegada by remember { mutableStateOf(false) }
     var mostrarModalNoEntregado by remember { mutableStateOf(false) }
 
     // RN-012: la llegada se guarda en disco; al volver a la pantalla se retoma el conteo.
@@ -577,14 +578,41 @@ fun RutaEntregaScreen(
                                         when {
                                             distanciaDestinoM == null -> mostrarAviso("Esperando la señal del GPS…")
                                             distanciaDestinoM > RADIO_ENTREGA_M -> mostrarAviso("Estás a %.0f m del domicilio. Acércate a menos de %d m.".format(distanciaDestinoM, RADIO_ENTREGA_M), largo = true)
-                                            else -> estado = EstadoRuta.LLEGADO
+                                            idPedidoRuta == null -> estado = EstadoRuta.LLEGADO
+                                            else -> {
+                                                val pos = posicion!! // hay distancia, así que hay posición
+                                                avisandoLlegada = true
+                                                repartidorViewModel.avisarLlegada(
+                                                    idPedidoRuta, pos.lat, pos.lon,
+                                                    onSuccess = {
+                                                        avisandoLlegada = false
+                                                        estado = EstadoRuta.LLEGADO
+                                                        mostrarAviso("Le avisamos al cliente que llegaste")
+                                                    },
+                                                    onError = { msg, codigo ->
+                                                        avisandoLlegada = false
+                                                        // Sin red o backend sin el endpoint: la espera de 10 min corre igual.
+                                                        if (codigo == null || codigo == 404) {
+                                                            estado = EstadoRuta.LLEGADO
+                                                            mostrarAviso("Llegada registrada, pero no se pudo avisar al cliente. Llámalo si no sale.", largo = true)
+                                                        } else {
+                                                            mostrarAviso(msg, largo = true)
+                                                        }
+                                                    }
+                                                )
+                                            }
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth().height(54.dp),
+                                    enabled = !avisandoLlegada,
                                     shape = RoundedCornerShape(27.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                                 ) {
-                                    Icon(Icons.Filled.Flag, null)
+                                    if (avisandoLlegada) {
+                                        CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                                    } else {
+                                        Icon(Icons.Filled.Flag, null)
+                                    }
                                     Spacer(Modifier.width(8.dp))
                                     Text("Llegué al destino", fontWeight = FontWeight.SemiBold)
                                 }

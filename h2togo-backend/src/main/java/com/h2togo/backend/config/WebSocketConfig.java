@@ -4,6 +4,7 @@ import com.h2togo.backend.security.StompAuthChannelInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
@@ -16,10 +17,14 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  *   <li>Notificaciones en la app: cada usuario se suscribe a {@code /user/queue/notificaciones}
  *       y solo recibe las suyas (destino de usuario de Spring).</li>
  * </ul>
+ * Heart-beats STOMP cada 10 s en ambos sentidos: la app detecta una conexión muerta (p. ej. tras
+ * suspenderse en iOS) y se reconecta, y el servidor cierra las sesiones que dejaron de latir.
  */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private static final long LATIDO_MS = 10_000;
 
     private final StompAuthChannelInterceptor authInterceptor;
 
@@ -34,7 +39,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/topic", "/queue");
+        ThreadPoolTaskScheduler latidos = new ThreadPoolTaskScheduler();
+        latidos.setPoolSize(1);
+        latidos.setThreadNamePrefix("ws-heartbeat-");
+        latidos.initialize();
+        registry.enableSimpleBroker("/topic", "/queue")
+                .setHeartbeatValue(new long[] {LATIDO_MS, LATIDO_MS})
+                .setTaskScheduler(latidos);
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");
     }

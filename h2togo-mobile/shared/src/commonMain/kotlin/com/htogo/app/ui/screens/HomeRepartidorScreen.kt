@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.util.textoLargo
 
 import com.htogo.app.plataforma.mostrarAviso
@@ -103,7 +104,10 @@ fun HomeRepartidorScreen(
         repartidorViewModel.cargarMisEntregas()
     }
 
+    BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
+        // Sin margen superior: el encabezado pinta su degradado detrás de la barra de estado.
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         containerColor = HToGoColors.Background,
         bottomBar = {
             RepartidorBottomBar(

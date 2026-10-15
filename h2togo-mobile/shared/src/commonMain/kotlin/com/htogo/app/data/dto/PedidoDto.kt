@@ -71,7 +71,9 @@ data class InfoRepartidorDto(
 data class UbicacionRepartidorDto(
     @SerialName("lat") val lat: Double = 0.0,
     @SerialName("lon") val lon: Double = 0.0,
-    @SerialName("timestamp") val timestamp: String? = null
+    @SerialName("timestamp") val timestamp: String? = null,
+    /** Hora en que el repartidor avisó que llegó al domicilio; null si aún no llega. */
+    @SerialName("llegoEn") val llegoEn: String? = null
 )
 
 @Serializable

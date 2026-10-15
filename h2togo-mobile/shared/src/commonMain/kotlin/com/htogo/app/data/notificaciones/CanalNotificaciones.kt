@@ -7,6 +7,9 @@ import com.htogo.shared.data.jsonApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -27,6 +30,10 @@ object CanalNotificaciones {
 
     private var job: Job? = null
 
+    private val _avisos = MutableSharedFlow<AvisoBackend>(extraBufferCapacity = 16)
+    /** Los avisos que llegan, para que las pantallas abiertas reaccionen (p. ej. "tu repartidor llegó"). */
+    val avisos: SharedFlow<AvisoBackend> = _avisos.asSharedFlow()
+
     fun iniciar(scope: CoroutineScope, mostrar: (AvisoBackend) -> Unit) {
         if (job?.isActive == true) return
         val sesion = SessionManager.getInstance()
@@ -40,7 +47,12 @@ object CanalNotificaciones {
                 val conexion = launch {
                     StompCliente.suscribir(StompCliente.COLA_NOTIFICACIONES, token)
                         .takeWhile { it !is EventoStomp.Desconectado }
-                        .collect { evento -> if (evento is EventoStomp.Mensaje) leer(evento.cuerpo)?.let(mostrar) }
+                        .collect { evento ->
+                            if (evento is EventoStomp.Mensaje) leer(evento.cuerpo)?.let { aviso ->
+                                _avisos.tryEmit(aviso)
+                                mostrar(aviso)
+                            }
+                        }
                 }
                 // Vigila la sesión: si cambia el token (logout / otra cuenta), corta la conexión.
                 while (conexion.isActive && sesion.obtenerToken() == token) delay(3_000)
