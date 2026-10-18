@@ -179,14 +179,29 @@ fun RutaEntregaScreen(
         )
     }
 
-    val routePoints = remember(liveRutaCalculada) {
-        liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) } ?: emptyList()
-    }
-
-    // ---- GPS real del repartidor (con soporte para modo de simulación de prueba) ----
+    // ---- GPS real del repartidor (con soporte para modo de simulación FakeGPS demostrativo) ----
     var posicionSimulada by remember { mutableStateOf<com.htogo.app.data.location.Posicion?>(null) }
+    var simulandoRecorrido by remember { mutableStateOf(false) }
+    var pasoSimulado by remember { mutableStateOf(0) }
+    var totalPasosSimulados by remember { mutableStateOf(0) }
     val posicionReal by EntregaEnCurso.posicion.collectAsState()
     val posicion = posicionSimulada ?: posicionReal
+
+    val routePoints = remember(liveRutaCalculada, posicionSimulada, entrega.latDestino, entrega.lonDestino) {
+        val reales = liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) }.orEmpty()
+        if (reales.size >= 2) {
+            reales
+        } else if (posicionSimulada != null) {
+            com.htogo.app.data.location.generarRutaDemoCalles(
+                destLat = entrega.latDestino,
+                destLon = entrega.lonDestino,
+                origenLat = posicionSimulada?.lat,
+                origenLon = posicionSimulada?.lon
+            )
+        } else {
+            emptyList()
+        }
+    }
 
     var tienePermiso by remember { mutableStateOf(UbicacionTracker.tienePermiso()) }
     val pedirPermiso = LocalUiPlataforma.current.rememberSolicitudUbicacion { tienePermiso = it }
@@ -204,7 +219,54 @@ fun RutaEntregaScreen(
     var errorCargaBase by remember { mutableStateOf<String?>(null) }
     var enCaminoSolicitado by remember(entrega.pedidoId) { mutableStateOf(false) }
 
-    // Si se activa la simulación, reportamos la posición simulada al backend y recalculamos ruta
+    // Recorrido automático paso a paso sobre las calles de la ruta (FakeGPS en vivo)
+    LaunchedEffect(simulandoRecorrido) {
+        if (!simulandoRecorrido) return@LaunchedEffect
+        val idInt = entrega.pedidoId.toIntOrNull()
+        val actual = posicionSimulada
+        if (actual == null || UbicacionTracker.distanciaM(actual.lat, actual.lon, entrega.latDestino, entrega.lonDestino) < 80.0) {
+            val latIni = (entrega.latDestino + 0.0075).coerceIn(19.355, 19.402)
+            val lonIni = (entrega.lonDestino - 0.0055).coerceIn(-99.190, -99.140)
+            val posIni = com.htogo.app.data.location.Posicion(latIni, lonIni, 5f)
+            posicionSimulada = posIni
+            if (idInt != null) {
+                repartidorViewModel.alMoverse(idInt, posIni, forzar = true)
+            }
+            var espera = 0
+            while (espera < 6 && (liveRutaCalculada?.coordenadas?.size ?: 0) < 2) {
+                delay(250)
+                espera++
+            }
+        }
+        val puntosBase = liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) }
+            ?.takeIf { it.size >= 2 }
+            ?: com.htogo.app.data.location.generarRutaDemoCalles(
+                destLat = entrega.latDestino,
+                destLon = entrega.lonDestino,
+                origenLat = posicionSimulada?.lat,
+                origenLon = posicionSimulada?.lon
+            )
+        val pasos = com.htogo.app.data.location.interpolarPasosRuta(
+            ruta = puntosBase,
+            destLat = entrega.latDestino,
+            destLon = entrega.lonDestino,
+            pasoMetros = 45.0
+        )
+        totalPasosSimulados = pasos.size
+        for ((index, pto) in pasos.withIndex()) {
+            if (!simulandoRecorrido) break
+            pasoSimulado = index + 1
+            posicionSimulada = com.htogo.app.data.location.Posicion(pto.first, pto.second, 5f)
+            repartidorViewModel.reportarUbicacionSimulada(pto.first, pto.second)
+            delay(1_400L)
+        }
+        if (simulandoRecorrido) {
+            simulandoRecorrido = false
+            mostrarAviso("🏁 FakeGPS: Llegaste al domicilio (< 30 m). Ya puedes pulsar 'Llegué al destino'", largo = true)
+        }
+    }
+
+    // Si se activa la simulación puntual, reportamos la posición simulada al backend y recalculamos ruta
     LaunchedEffect(posicionSimulada) {
         val sim = posicionSimulada ?: return@LaunchedEffect
         val idInt = entrega.pedidoId.toIntOrNull() ?: return@LaunchedEffect
@@ -217,7 +279,9 @@ fun RutaEntregaScreen(
                 }
             })
         }
-        repartidorViewModel.alMoverse(idInt, sim, forzar = true)
+        if (!simulandoRecorrido) {
+            repartidorViewModel.alMoverse(idInt, sim, forzar = true)
+        }
     }
 
     // El GPS vive en un servicio en primer plano: sigue reportando aunque se abra Waze/Maps.
@@ -341,33 +405,50 @@ fun RutaEntregaScreen(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    if (posicionSimulada == null) "🧪 Simular GPS en Benito Juárez (a 30 m)"
-                                    else "📍 Usar GPS real del teléfono"
+                                    if (simulandoRecorrido) "⏸️ Pausar recorrido en vivo (FakeGPS)"
+                                    else "▶️ Simular recorrido completo (FakeGPS)"
                                 )
                             },
                             onClick = {
                                 menuOpciones = false
-                                if (posicionSimulada == null) {
-                                    // Simula estar a ~30 metros del domicilio para probar la llegada y entrega
-                                    val latSim = entrega.latDestino + 0.00025
-                                    val lonSim = entrega.lonDestino + 0.00015
-                                    posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
-                                    mostrarAviso("GPS simulado en Benito Juárez (a ~30 m del destino)")
+                                simulandoRecorrido = !simulandoRecorrido
+                                if (simulandoRecorrido) {
+                                    mostrarAviso("🛰️ Iniciando recorrido FakeGPS calle por calle…")
                                 } else {
-                                    posicionSimulada = null
-                                    mostrarAviso("Volviendo al GPS real")
+                                    mostrarAviso("⏸️ Recorrido FakeGPS en pausa")
                                 }
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("🚗 Saltar al inicio de la ruta (~1 km)") },
+                            onClick = {
+                                menuOpciones = false
+                                simulandoRecorrido = false
+                                val latSim = (entrega.latDestino + 0.0075).coerceIn(19.355, 19.402)
+                                val lonSim = (entrega.lonDestino - 0.0055).coerceIn(-99.190, -99.140)
+                                posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
+                                mostrarAviso("GPS simulado al inicio de la ruta en Benito Juárez")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("🏁 Saltar al domicilio (a ~20 m para entregar)") },
+                            onClick = {
+                                menuOpciones = false
+                                simulandoRecorrido = false
+                                val latSim = entrega.latDestino + 0.00015
+                                val lonSim = entrega.lonDestino + 0.00010
+                                posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
+                                mostrarAviso("GPS simulado a ~20 m del domicilio")
                             }
                         )
                         if (posicionSimulada != null) {
                             DropdownMenuItem(
-                                text = { Text("🚗 Simular en ruta (a 1.2 km)") },
+                                text = { Text("📍 Volver al GPS real del teléfono") },
                                 onClick = {
                                     menuOpciones = false
-                                    val latSim = entrega.latDestino + 0.010
-                                    val lonSim = entrega.lonDestino - 0.005
-                                    posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
-                                    mostrarAviso("GPS simulado en ruta en Benito Juárez (a ~1.2 km)")
+                                    simulandoRecorrido = false
+                                    posicionSimulada = null
+                                    mostrarAviso("Volviendo al GPS real")
                                 }
                             )
                         }
@@ -375,27 +456,53 @@ fun RutaEntregaScreen(
                 }
             }
 
-            // Indicador compacto si el GPS está en modo simulación de prueba
+            // Indicador interactivo si el FakeGPS está activo
             if (posicionSimulada != null) {
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = Color(0xFF7C3AED).copy(alpha = 0.92f),
-                    shadowElevation = 3.dp,
+                    color = Color(0xFF7C3AED).copy(alpha = 0.94f),
+                    shadowElevation = 4.dp,
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .statusBarsPadding()
                         .padding(top = 60.dp, start = 12.dp)
-                        .clickable { posicionSimulada = null }
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "🧪 Simulado ✕",
+                            if (simulandoRecorrido) "🛰️ FakeGPS ($pasoSimulado/$totalPasosSimulados)"
+                            else "🧪 FakeGPS activo",
                             color = Color.White,
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                simulandoRecorrido = !simulandoRecorrido
+                            }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            if (simulandoRecorrido) "⏸" else "▶",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable { simulandoRecorrido = !simulandoRecorrido }
+                                .padding(horizontal = 4.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "✕",
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable {
+                                    simulandoRecorrido = false
+                                    posicionSimulada = null
+                                }
+                                .padding(horizontal = 4.dp)
                         )
                     }
                 }

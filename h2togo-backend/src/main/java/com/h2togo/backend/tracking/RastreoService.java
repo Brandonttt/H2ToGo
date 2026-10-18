@@ -49,6 +49,12 @@ public class RastreoService {
         messaging.convertAndSend(topico(idPedido), payload);
     }
 
+    /** Avisa por el tópico del pedido que el pedido fue entregado o no entregado en tiempo real. */
+    public void publicarCierre(int idPedido, String evento) {
+        Object payload = Map.of("evento", evento, "timestamp", OffsetDateTime.now().toString());
+        messaging.convertAndSend(topico(idPedido), payload);
+    }
+
     @Transactional
     public void publicar(int idRepartidor, double lat, double lon) {
         ubicacionService.reportar(idRepartidor, lat, lon);

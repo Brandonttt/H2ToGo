@@ -376,11 +376,31 @@ class ClienteViewModel : ViewModel() {
         rastreoJob = viewModelScope.launch {
             var conectado = false
 
-            // Aviso de llegada por el canal de notificaciones (además del tópico y la consulta REST).
+            // Avisos instantáneos por el canal de notificaciones (/user/queue/notificaciones).
             launch {
                 CanalNotificaciones.avisos.collect { a ->
-                    if (a.datos["tipo"] == "repartidor_llego" && a.datos["idPedido"] == idPedido.toString()) {
-                        _repartidorLlego.value = true
+                    if (a.datos["idPedido"] != idPedido.toString()) return@collect
+                    when (a.datos["tipo"]) {
+                        "repartidor_llego" -> _repartidorLlego.value = true
+                        "pedido_entregado" -> {
+                            // Cambio optimista inmediato en UI (0 ms) + sincronización con el servidor
+                            _pedidoActivo.value = _pedidoActivo.value?.takeIf { it.id == idPedido }?.copy(estado = "entregado")
+                            _ubicacionRepartidor.value = null
+                            refrescarDetalle(idPedido)
+                            cargarHistorial()
+                            detenerRastreo()
+                        }
+                        "pedido_no_entregado" -> {
+                            _pedidoActivo.value = _pedidoActivo.value?.takeIf { it.id == idPedido }?.copy(estado = "no_entregado")
+                            _ubicacionRepartidor.value = null
+                            refrescarDetalle(idPedido)
+                            cargarHistorial()
+                            detenerRastreo()
+                        }
+                        "pedido_en_camino", "pedido_asignado" -> {
+                            refrescarDetalle(idPedido)
+                            actualizarRutaSeguimiento(idPedido, _ubicacionRepartidor.value)
+                        }
                     }
                 }
             }
@@ -407,7 +427,7 @@ class ClienteViewModel : ViewModel() {
                     }
             }
 
-            // Canal WebSocket en tiempo real
+            // Canal WebSocket en tiempo real del pedido (/topic/pedidos/{id}/ubicacion)
             launch {
                 while (isActive) {
                     StompCliente.suscribir(StompCliente.topicoUbicacion(idPedido), token)
@@ -416,8 +436,18 @@ class ClienteViewModel : ViewModel() {
                             when (evento) {
                                 is EventoStomp.Conectado -> conectado = true
                                 is EventoStomp.Mensaje -> {
-                                    if (esAvisoLlegada(evento.cuerpo)) _repartidorLlego.value = true
-                                    else parsearUbicacion(evento.cuerpo)?.let { _ubicacionRepartidor.value = it }
+                                    when (extraerEventoTopico(evento.cuerpo)) {
+                                        "llegada" -> _repartidorLlego.value = true
+                                        "entregado", "no_entregado" -> {
+                                            val nuevoEstado = extraerEventoTopico(evento.cuerpo)!!
+                                            _pedidoActivo.value = _pedidoActivo.value?.takeIf { it.id == idPedido }?.copy(estado = nuevoEstado)
+                                            _ubicacionRepartidor.value = null
+                                            refrescarDetalle(idPedido)
+                                            cargarHistorial()
+                                            detenerRastreo()
+                                        }
+                                        else -> parsearUbicacion(evento.cuerpo)?.let { _ubicacionRepartidor.value = it }
+                                    }
                                 }
                                 else -> Unit
                             }
@@ -437,10 +467,10 @@ class ClienteViewModel : ViewModel() {
                 }
             }
 
-            // Refresco periódico del detalle del pedido y reintento de ruta si falta
+            // Refresco periódico de respaldo del detalle del pedido (cada 6 s) y reintento de ruta si falta
             launch {
                 while (isActive) {
-                    delay(20_000)
+                    delay(6_000)
                     refrescarDetalle(idPedido)
                     val estado = _pedidoActivo.value?.estado?.lowercase()
                     if (_rutaSeguimiento.value.isEmpty() && estado in setOf("asignado", "en_camino")) {
@@ -448,6 +478,7 @@ class ClienteViewModel : ViewModel() {
                     }
                     if (estado in setOf("entregado", "no_entregado", "cancelado")) {
                         _ubicacionRepartidor.value = null
+                        cargarHistorial()
                         detenerRastreo() // pedido cerrado: corta WebSocket y consultas
                     }
                 }
@@ -474,11 +505,11 @@ class ClienteViewModel : ViewModel() {
         rastreoJob = null
     }
 
-    /** El tópico del pedido también lleva {"evento":"llegada"} cuando el repartidor llega. */
-    private fun esAvisoLlegada(json: String): Boolean = try {
-        com.htogo.shared.data.jsonApi.parseToJsonElement(json).jsonObject["evento"]?.jsonPrimitive?.content == "llegada"
+    /** El tópico del pedido lleva {"evento":"llegada" | "entregado" | "no_entregado"}. */
+    private fun extraerEventoTopico(json: String): String? = try {
+        com.htogo.shared.data.jsonApi.parseToJsonElement(json).jsonObject["evento"]?.jsonPrimitive?.content
     } catch (e: Exception) {
-        false
+        null
     }
 
     private fun parsearUbicacion(json: String): UbicacionEnVivo? = try {

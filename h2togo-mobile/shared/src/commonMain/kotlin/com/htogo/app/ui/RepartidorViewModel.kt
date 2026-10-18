@@ -711,6 +711,17 @@ class RepartidorViewModel : ViewModel() {
         }
     }
 
+    /** Envía al backend la posición simulada de FakeGPS para que el cliente la reciba en vivo por WebSocket. */
+    fun reportarUbicacionSimulada(lat: Double, lon: Double) {
+        viewModelScope.launch {
+            try {
+                apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to lat, "lon" to lon))
+            } catch (_: Exception) {
+                // Sin red: continúa la simulación local en el mapa.
+            }
+        }
+    }
+
     /** Carga el detalle real de un pedido del repartidor (pedido apartado, o tras reiniciarse la app). */
     fun cargarPedidoEnRuta(idPedido: Int) {
         viewModelScope.launch {

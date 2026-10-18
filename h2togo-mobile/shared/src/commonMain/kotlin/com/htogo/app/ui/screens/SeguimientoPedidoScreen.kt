@@ -246,7 +246,17 @@ private fun MapFab(icon: ImageVector) {
 }
 
 @Composable
-private fun FloatingTopBar(orderId: String, onBack: () -> Unit) {
+private fun FloatingTopBar(
+    orderId: String,
+    onBack: () -> Unit,
+    enModoDemo: Boolean = false,
+    simulandoRecorrido: Boolean = false,
+    onAlternarRecorridoDemo: () -> Unit = {},
+    onSaltarInicioDemo: () -> Unit = {},
+    onSaltarLlegadaDemo: () -> Unit = {},
+    onDesactivarDemo: () -> Unit = {}
+) {
+    var menuAbierto by remember { mutableStateOf(false) }
     Row(
         Modifier
             .fillMaxWidth()
@@ -276,6 +286,49 @@ private fun FloatingTopBar(orderId: String, onBack: () -> Unit) {
                     fontSize = 13.sp, color = HToGoColors.TextSecondary)
             }
         }
+        Box {
+            Surface(
+                shape = CircleShape,
+                color = if (enModoDemo) Color(0xFF7C3AED) else Color.White,
+                shadowElevation = 4.dp,
+                modifier = Modifier.size(40.dp).clickable { menuAbierto = true }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = "Simulador FakeGPS",
+                        tint = if (enModoDemo) Color.White else HToGoColors.TextPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (simulandoRecorrido) "⏸️ Pausar recorrido en vivo (FakeGPS)"
+                            else "▶️ Simular recorrido completo (FakeGPS)",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    },
+                    onClick = { menuAbierto = false; onAlternarRecorridoDemo() }
+                )
+                DropdownMenuItem(
+                    text = { Text("🚗 Saltar al inicio de la ruta (~1 km)") },
+                    onClick = { menuAbierto = false; onSaltarInicioDemo() }
+                )
+                DropdownMenuItem(
+                    text = { Text("🏁 Saltar al domicilio (llegada)") },
+                    onClick = { menuAbierto = false; onSaltarLlegadaDemo() }
+                )
+                if (enModoDemo) {
+                    DropdownMenuItem(
+                        text = { Text("📍 Volver al rastreo real") },
+                        onClick = { menuAbierto = false; onDesactivarDemo() }
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -290,6 +343,16 @@ private fun TrackingSheet(
 ) {
     val isEntregado = order.estado == EstadoPedido.ENTREGADO
     var isMinimized by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+
+    // Al marcarse como entregado (o cerrado), expande la pestaña automáticamente y muestra el botón de confirmación.
+    LaunchedEffect(order.estado) {
+        if (order.estado in setOf(EstadoPedido.ENTREGADO, EstadoPedido.NO_ENTREGADO, EstadoPedido.CANCELADO)) {
+            isMinimized = false
+            kotlinx.coroutines.delay(120)
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
 
     val sheetMaxHeight = maxScreenHeight * 0.62f
     val sheetMinHeight = 88.dp
@@ -382,7 +445,7 @@ private fun TrackingSheet(
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(scrollState)
                         .padding(horizontal = 18.dp)
                 ) {
                     DriverCard(order, onAbrirPurificadora)
@@ -738,21 +801,80 @@ fun SeguimientoPedidoScreen(
         }
     }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(HToGoColors.Background)) {
-        val screenHeight = maxHeight
-        val latDestino = livePedido?.latEntrega
-        val lonDestino = livePedido?.lonEntrega
-        if (latDestino != null && lonDestino != null) {
-            // Mapa real: domicilio + repartidor en vivo (WebSocket, con consultas de respaldo).
-            OsmRouteMapView(
-                originLat = ubicacionRepartidor?.lat ?: rutaSeguimiento.firstOrNull()?.first,
-                originLon = ubicacionRepartidor?.lon ?: rutaSeguimiento.firstOrNull()?.second,
+    // Simulador FakeGPS demostrativo para la vista del cliente.
+    var posicionDemo by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var simulandoDemo by remember { mutableStateOf(false) }
+    var pasoDemo by remember { mutableStateOf(0) }
+    var totalPasosDemo by remember { mutableStateOf(0) }
+
+    LaunchedEffect(order.estado) {
+        if (order.estado in setOf(EstadoPedido.ENTREGADO, EstadoPedido.NO_ENTREGADO, EstadoPedido.CANCELADO)) {
+            simulandoDemo = false
+            posicionDemo = null
+        }
+    }
+
+    val latDestino = livePedido?.latEntrega
+    val lonDestino = livePedido?.lonEntrega
+    val rutaBaseDemo = remember(rutaSeguimiento, latDestino, lonDestino, ubicacionRepartidor) {
+        if (rutaSeguimiento.size >= 2) {
+            rutaSeguimiento
+        } else if (latDestino != null && lonDestino != null) {
+            com.htogo.app.data.location.generarRutaDemoCalles(
                 destLat = latDestino,
                 destLon = lonDestino,
-                routePoints = if (order.estado == EstadoPedido.EN_CAMINO || order.estado == EstadoPedido.ASIGNADO) rutaSeguimiento else emptyList(),
-                repartidorLabel = "Tu repartidor",
+                origenLat = ubicacionRepartidor?.lat,
+                origenLon = ubicacionRepartidor?.lon
+            )
+        } else {
+            emptyList()
+        }
+    }
+
+    LaunchedEffect(simulandoDemo, latDestino, lonDestino) {
+        if (!simulandoDemo || latDestino == null || lonDestino == null) return@LaunchedEffect
+        val pasosRuta = com.htogo.app.data.location.interpolarPasosRuta(
+            ruta = rutaBaseDemo,
+            destLat = latDestino,
+            destLon = lonDestino,
+            pasoMetros = 45.0
+        )
+        totalPasosDemo = pasosRuta.size
+        var idx = if (pasoDemo in 0 until pasosRuta.lastIndex) pasoDemo else 0
+        while (simulandoDemo && idx < pasosRuta.size) {
+            pasoDemo = idx
+            posicionDemo = pasosRuta[idx]
+            idx++
+            if (idx < pasosRuta.size) {
+                kotlinx.coroutines.delay(1_400L)
+            }
+        }
+        if (idx >= pasosRuta.size) {
+            simulandoDemo = false
+            mostrarAviso("Recorrido FakeGPS completado: repartidor en el domicilio")
+        }
+    }
+
+    BoxWithConstraints(Modifier.fillMaxSize().background(HToGoColors.Background)) {
+        val screenHeight = maxHeight
+        val latEfectivaRepartidor = posicionDemo?.first ?: ubicacionRepartidor?.lat ?: rutaSeguimiento.firstOrNull()?.first
+        val lonEfectivaRepartidor = posicionDemo?.second ?: ubicacionRepartidor?.lon ?: rutaSeguimiento.firstOrNull()?.second
+        val puntosRutaMapa = when {
+            posicionDemo != null && rutaBaseDemo.size >= 2 -> rutaBaseDemo
+            order.estado == EstadoPedido.EN_CAMINO || order.estado == EstadoPedido.ASIGNADO -> rutaSeguimiento
+            else -> emptyList()
+        }
+        if (latDestino != null && lonDestino != null) {
+            // Mapa real: domicilio + repartidor en vivo (WebSocket, con consultas de respaldo) o FakeGPS.
+            OsmRouteMapView(
+                originLat = latEfectivaRepartidor,
+                originLon = lonEfectivaRepartidor,
+                destLat = latDestino,
+                destLon = lonDestino,
+                routePoints = puntosRutaMapa,
+                repartidorLabel = if (posicionDemo != null) "Tu repartidor (FakeGPS)" else "Tu repartidor",
                 avisoSinUbicacion = null, // el aviso del cliente se muestra abajo (CU-006 S1)
-                estadoPedido = livePedido?.estado,
+                estadoPedido = if (posicionDemo != null) "en_camino" else livePedido?.estado,
                 margenInferior = screenHeight * 0.62f, // encuadra arriba del panel del pedido
                 modifier = Modifier.fillMaxSize()
             )
@@ -761,11 +883,91 @@ fun SeguimientoPedidoScreen(
         }
 
         Box(Modifier.fillMaxWidth().align(Alignment.TopCenter)) {
-            FloatingTopBar(order.id, onBack)
+            FloatingTopBar(
+                orderId = order.id,
+                onBack = onBack,
+                enModoDemo = posicionDemo != null || simulandoDemo,
+                simulandoRecorrido = simulandoDemo,
+                onAlternarRecorridoDemo = {
+                    if (simulandoDemo) {
+                        simulandoDemo = false
+                        mostrarAviso("Simulación FakeGPS en pausa")
+                    } else {
+                        pasoDemo = 0
+                        simulandoDemo = true
+                        mostrarAviso("Iniciando recorrido FakeGPS por la ruta...")
+                    }
+                },
+                onSaltarInicioDemo = {
+                    if (latDestino != null && lonDestino != null) {
+                        simulandoDemo = false
+                        pasoDemo = 0
+                        val inicio = rutaBaseDemo.firstOrNull() ?: (latDestino + 0.0085 to lonDestino - 0.0065)
+                        posicionDemo = inicio
+                        mostrarAviso("FakeGPS: repartidor al inicio de la ruta")
+                    }
+                },
+                onSaltarLlegadaDemo = {
+                    if (latDestino != null && lonDestino != null) {
+                        simulandoDemo = false
+                        posicionDemo = (latDestino + 0.00016) to (lonDestino + 0.00010)
+                        mostrarAviso("FakeGPS: repartidor afuera del domicilio")
+                    }
+                },
+                onDesactivarDemo = {
+                    simulandoDemo = false
+                    pasoDemo = 0
+                    posicionDemo = null
+                    mostrarAviso("Volviendo al rastreo en tiempo real")
+                }
+            )
+        }
+
+        if (posicionDemo != null || simulandoDemo) {
+            Surface(
+                shape = RoundedCornerShape(99.dp),
+                color = Color(0xFF7C3AED),
+                shadowElevation = 6.dp,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(start = 16.dp, top = 66.dp)
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val etiqueta = if (simulandoDemo && totalPasosDemo > 0) {
+                        "🛰️ FakeGPS (${pasoDemo + 1}/$totalPasosDemo)"
+                    } else {
+                        "🛰️ Modo Demo GPS"
+                    }
+                    Text(etiqueta, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        if (simulandoDemo) "⏸" else "▶",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { simulandoDemo = !simulandoDemo }
+                    )
+                    Text(
+                        "✕",
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            simulandoDemo = false
+                            pasoDemo = 0
+                            posicionDemo = null
+                        }
+                    )
+                }
+            }
         }
 
         // CU-006 S1: en camino pero sin posición, o sin cambios en más de 2 minutos.
-        if (order.estado == EstadoPedido.EN_CAMINO) {
+        if (order.estado == EstadoPedido.EN_CAMINO && posicionDemo == null) {
             var ahoraMs by remember { mutableStateOf(ahoraMs()) }
             LaunchedEffect(Unit) {
                 while (true) { kotlinx.coroutines.delay(15_000); ahoraMs = ahoraMs() }
