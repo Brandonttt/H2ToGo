@@ -1,5 +1,6 @@
 package com.htogo.app.plataforma
 
+import com.htogo.app.data.location.EntregaEnCurso
 import com.htogo.app.data.api.ApiClient
 import com.htogo.app.data.location.Posicion
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -100,7 +101,8 @@ internal object UbicacionIos {
     private fun publicar(l: CLLocation) {
         val p = l.coordinate.useContents { Posicion(latitude, longitude, l.horizontalAccuracy.toFloat()) }
         posicion.value = p
-        if (!siguiendo) return
+        // Sin entrega en curso o con FakeGPS activo, la posición real no se reporta.
+        if (!siguiendo || EntregaEnCurso.simulacionActiva.value) return
         val ahora = ahoraMs()
         if (ahora - ultimoReporte < REPORTE_MS) return
         ultimoReporte = ahora

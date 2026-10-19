@@ -31,6 +31,7 @@ object HToGoRoutes {
     const val PRODUCTOS_PRECIOS  = "prods"         // CU-23 catálogo del negocio
     const val PEDIDOS_DISPONIBLES = "ped"          // 11
     const val RUTA_ENTREGA       = "ruta"          // 12
+    const val PLAN_RUTA          = "plan_ruta"     // Ruta del día (agenda + orden óptimo)
     const val INGRESOS           = "ingresos"      // 13 (antes "ganancias")
     const val HISTORIAL_REPARTIDOR = "hist_r"      // CU-013 Historial de entregas
     const val PERFIL_REPARTIDOR  = "perfil_r"      // 14

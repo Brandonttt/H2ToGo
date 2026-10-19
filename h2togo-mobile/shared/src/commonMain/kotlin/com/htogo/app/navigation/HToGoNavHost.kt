@@ -19,6 +19,7 @@ import com.htogo.app.ui.screens.LoginScreen
 import com.htogo.app.ui.screens.NuevoPedidoAbiertoScreen
 import com.htogo.app.ui.screens.NuevoPedidoScreen
 import com.htogo.app.ui.screens.PedidosDisponiblesScreen
+import com.htogo.app.ui.screens.PlanRutaScreen
 import com.htogo.app.ui.screens.PerfilClienteScreen
 import com.htogo.app.ui.screens.PerfilPurificadoraScreen
 import com.htogo.app.ui.screens.PerfilRepartidorScreen
@@ -102,6 +103,7 @@ fun HToGoNavHost(
             destino.tipo == "pedido_nuevo" -> HToGoRoutes.PEDIDOS_DISPONIBLES
             destino.tipo == "solicitud_resuelta" -> HToGoRoutes.PRODUCTOS_PRECIOS
             destino.tipo == "lotes_por_caducar" -> HToGoRoutes.INVENTARIO
+            destino.tipo == "ruta_recalculada" -> HToGoRoutes.PLAN_RUTA
             destino.tipo == DestinoNotificacion.TIPO_ENTREGA_EN_CURSO -> {
                 // Si el proceso se reinició, recupera el pedido para que la pantalla de ruta tenga datos.
                 destino.idPedido?.let { repartidorViewModel.cargarPedidoEnRuta(it) }
@@ -337,6 +339,14 @@ fun HToGoNavHost(
                 onSwitchRol        = { navController.navigate(HToGoRoutes.HOME_CLIENTE) },
                 onPedidosDisponibles = { navController.navigate(HToGoRoutes.PEDIDOS_DISPONIBLES) },
                 onHistorial        = { navController.navigate(HToGoRoutes.HISTORIAL_REPARTIDOR) },
+                onPlanRuta         = { navController.navigate(HToGoRoutes.PLAN_RUTA) },
+                repartidorViewModel = repartidorViewModel
+            )
+        }
+        composable(HToGoRoutes.PLAN_RUTA) {
+            PlanRutaScreen(
+                onBack      = { if (!navController.popBackStack()) navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
+                onIrAParada = { navController.navigate(HToGoRoutes.RUTA_ENTREGA) },
                 repartidorViewModel = repartidorViewModel
             )
         }
@@ -383,7 +393,14 @@ fun HToGoNavHost(
             RutaEntregaScreen(
                 // Si se llegó sin pantalla previa (p. ej. desde una notificación), vuelve al inicio.
                 onBack       = { if (!navController.popBackStack()) navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
-                onCompletada = { navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR) },
+                // Si la entrega venía de la ruta del día, regresa a ella para la siguiente parada.
+                onCompletada = {
+                    navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR)
+                    if (repartidorViewModel.enRutaDelDia) {
+                        repartidorViewModel.enRutaDelDia = false
+                        navController.navigate(HToGoRoutes.PLAN_RUTA)
+                    }
+                },
                 repartidorViewModel = repartidorViewModel
             )
         }

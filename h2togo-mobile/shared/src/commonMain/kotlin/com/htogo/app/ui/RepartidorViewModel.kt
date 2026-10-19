@@ -6,7 +6,10 @@ import com.htogo.shared.data.mensajeDeError
 import com.htogo.app.plataforma.ahoraMs
 import com.htogo.app.plataforma.Plataforma
 import com.htogo.app.data.api.ApiClient
+import com.htogo.app.data.dto.AgendaPedidoDto
+import com.htogo.app.data.dto.ParadaDto
 import com.htogo.app.data.dto.PedidoDisponibleResponse
+import com.htogo.app.data.dto.RutaOptimaDto
 import com.htogo.app.data.dto.PedidoResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -860,6 +863,107 @@ class RepartidorViewModel : ViewModel() {
         }
     }
 
+    // ---------------------------------------------------------------- Ruta del día (OR-Tools)
+
+    private val _agenda = MutableStateFlow<List<AgendaPedidoDto>>(emptyList())
+    /** Programados de hoy: libres para reservar o ya reservados por este repartidor. */
+    val agenda: StateFlow<List<AgendaPedidoDto>> = _agenda.asStateFlow()
+
+    private val _rutaOptima = MutableStateFlow<RutaOptimaDto?>(null)
+    /** Orden óptimo de todas sus paradas; null mientras no se ha calculado. */
+    val rutaOptima: StateFlow<RutaOptimaDto?> = _rutaOptima.asStateFlow()
+
+    private val _calculandoPlan = MutableStateFlow(false)
+    val calculandoPlan: StateFlow<Boolean> = _calculandoPlan.asStateFlow()
+
+    private val _errorPlan = MutableStateFlow<String?>(null)
+    val errorPlan: StateFlow<String?> = _errorPlan.asStateFlow()
+
+    /** La entrega en curso salió de la ruta del día: al terminarla se regresa a la ruta. */
+    var enRutaDelDia = false
+
+    /** Recarga la agenda y recalcula la ruta óptima (también tras un aviso de RN-009). */
+    fun cargarPlan() {
+        viewModelScope.launch {
+            _calculandoPlan.value = true
+            try {
+                val agenda = apiClient.repartidorApi.agenda()
+                if (agenda.isSuccessful) _agenda.value = agenda.body().orEmpty()
+                val ruta = apiClient.repartidorApi.rutaOptima()
+                if (ruta.isSuccessful && ruta.body() != null) {
+                    _rutaOptima.value = ruta.body()
+                    _errorPlan.value = null
+                } else {
+                    _errorPlan.value = parseError(ruta.errorBody()?.string())
+                        ?: "No se pudo calcular la ruta (${ruta.code()})"
+                }
+            } catch (e: Exception) {
+                _errorPlan.value = e.message ?: "Error de red al calcular la ruta"
+            } finally {
+                _calculandoPlan.value = false
+            }
+        }
+    }
+
+    fun reservar(idPedido: Int, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.repartidorApi.reservar(idPedido)
+                if (resp.isSuccessful) {
+                    cargarPlan()
+                    cargarMisEntregas()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo reservar (${resp.code()})")
+                    cargarPlan() // p. ej. otro repartidor lo tomó: refresca la agenda
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Error de red al reservar")
+            }
+        }
+    }
+
+    fun liberar(idPedido: Int, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.repartidorApi.liberar(idPedido)
+                if (resp.isSuccessful) {
+                    cargarPlan()
+                    cargarMisEntregas()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo liberar (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Error de red al liberar")
+            }
+        }
+    }
+
+    /**
+     * Prepara la siguiente parada para la pantalla de ruta: un reservado se acepta (aparta los
+     * garrafones) y uno ya asignado solo se carga. Al terminar la entrega se vuelve a la ruta.
+     */
+    fun iniciarParada(parada: ParadaDto, onListo: () -> Unit, onError: (String) -> Unit) {
+        enRutaDelDia = true
+        _pedidoDisponibleSeleccionado.value = null
+        if (parada.estado == "pendiente" || parada.estado == "pendiente_programado") {
+            aceptarPedido(parada.idPedido, onSuccess = { onListo() }, onError = onError)
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.pedidosApi.obtenerDetallePedido(parada.idPedido)
+                if (resp.isSuccessful && resp.body() != null) {
+                    _pedidoEnRuta.value = resp.body()
+                    onListo()
+                } else {
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo abrir el pedido (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Error de red al abrir el pedido")
+            }
+        }
+    }
+
     private fun parseError(errorJson: String?): String? {
         return mensajeDeError(errorJson)
     }
@@ -894,6 +998,10 @@ class RepartidorViewModel : ViewModel() {
         _inventarioBase.value = null
         _inventarioVehiculo.value = null
         _solicitudes.value = emptyList()
+        _agenda.value = emptyList()
+        _rutaOptima.value = null
+        _errorPlan.value = null
+        enRutaDelDia = false
         detenerNavegacion()
     }
 }

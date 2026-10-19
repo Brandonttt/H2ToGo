@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "h2togo.routing.precargar", havingValue = "true", matchIfMissing = true)
 public class RoutingWarmup {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(RoutingWarmup.class);
+
     private final OsmGraphLoader osmGraphLoader;
 
     public RoutingWarmup(OsmGraphLoader osmGraphLoader) {
@@ -23,6 +25,9 @@ public class RoutingWarmup {
 
     @EventListener(ApplicationReadyEvent.class)
     public void precargar() {
-        osmGraphLoader.getGrafo();
+        // También la red principal, para que la primera ruta no pague ese cálculo.
+        var grafo = osmGraphLoader.getGrafo();
+        log.info("Red vial principal: {} de {} nodos (el resto son fragmentos sin salida).",
+                grafo.componentePrincipal().size(), grafo.totalNodos());
     }
 }

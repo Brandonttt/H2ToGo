@@ -47,6 +47,20 @@ public class AsignacionService {
         this.vehiculoRepository = vehiculoRepository;
     }
 
+    /**
+     * Condición SQL "el pedido {@code p} lo puede surtir el negocio del repartidor {@code r}": es
+     * directo a su negocio, o es abierto y el negocio ofrece todas las marcas al precio máximo o
+     * menos (RN-025). La comparten la lista de disponibles y la agenda de programados.
+     */
+    public static final String COMPATIBLE_CON_REPARTIDOR = """
+            ( p.id_negocio_solicitado = r.id_negocio
+              OR ( p.tipo_solicitud = 'abierta' AND NOT EXISTS (
+                     SELECT 1 FROM detalles_pedido dp
+                     WHERE dp.id_pedido = p.id_pedido AND NOT EXISTS (
+                         SELECT 1 FROM productos_negocio pn
+                         WHERE pn.id_negocio = r.id_negocio AND pn.id_marca = dp.id_marca
+                           AND pn.activo AND pn.precio <= p.precio_maximo_garrafon)) ) )""";
+
     // ---------------------------------------------------------------- CU-010: disponibles
 
     @Transactional(readOnly = true)
@@ -67,13 +81,8 @@ public class AsignacionService {
                 JOIN repartidores r ON r.id_usuario = :rep
                 JOIN usuarios u ON u.id_usuario = p.id_cliente
                 WHERE p.estado_actual = 'pendiente' AND d.en_zona_cobertura
-                  AND ( p.id_negocio_solicitado = r.id_negocio
-                     OR ( p.tipo_solicitud = 'abierta' AND NOT EXISTS (
-                            SELECT 1 FROM detalles_pedido dp
-                            WHERE dp.id_pedido = p.id_pedido AND NOT EXISTS (
-                                SELECT 1 FROM productos_negocio pn
-                                WHERE pn.id_negocio = r.id_negocio AND pn.id_marca = dp.id_marca
-                                  AND pn.activo AND pn.precio <= p.precio_maximo_garrafon)) ) )
+                  AND (p.id_repartidor IS NULL OR p.id_repartidor = :rep) -- reservados: solo su repartidor
+                  AND """ + COMPATIBLE_CON_REPARTIDOR + """
                 ORDER BY distancia_m ASC NULLS LAST""",
                 new MapSqlParameterSource("rep", idRepartidor));
         if (rows.isEmpty()) {
@@ -118,7 +127,13 @@ public class AsignacionService {
         int idNegocio = r.getIdNegocio();
 
         Map<String, Object> pedido = cargarPedidoParaAceptar(idPedido);
-        if (!"pendiente".equals(pedido.get("estado_actual"))) {
+        // Un programado reservado en la agenda lo acepta su repartidor aunque aún no sea su hora.
+        Object reservadoPor = pedido.get("id_repartidor");
+        boolean libre = "pendiente".equals(pedido.get("estado_actual"))
+                && (reservadoPor == null || Integer.valueOf(idRepartidor).equals(reservadoPor));
+        boolean reservadoPorMi = "pendiente_programado".equals(pedido.get("estado_actual"))
+                && Integer.valueOf(idRepartidor).equals(reservadoPor);
+        if (!libre && !reservadoPorMi) {
             throw new ConflictException("PEDIDO_YA_ASIGNADO", "El pedido ya no está disponible.");
         }
         String tipo = (String) pedido.get("tipo_solicitud");
@@ -136,7 +151,9 @@ public class AsignacionService {
         int filas = jdbc.update("""
                 UPDATE pedidos SET id_repartidor = :rep, estado_actual = 'asignado'::estado_pedido,
                     id_vehiculo_utilizado = :veh
-                WHERE id_pedido = :id AND estado_actual = 'pendiente' AND id_repartidor IS NULL""",
+                WHERE id_pedido = :id
+                  AND ( (estado_actual = 'pendiente' AND (id_repartidor IS NULL OR id_repartidor = :rep))
+                     OR (estado_actual = 'pendiente_programado' AND id_repartidor = :rep) )""",
                 new MapSqlParameterSource().addValue("rep", idRepartidor)
                         .addValue("veh", idVehiculo).addValue("id", idPedido));
         if (filas == 0) {
@@ -270,7 +287,7 @@ public class AsignacionService {
         try {
             return jdbc.queryForMap("""
                     SELECT estado_actual::text, tipo_solicitud::text, id_negocio_solicitado,
-                           precio_maximo_garrafon, id_cliente
+                           precio_maximo_garrafon, id_cliente, id_repartidor
                     FROM pedidos WHERE id_pedido = :id""", new MapSqlParameterSource("id", idPedido));
         } catch (org.springframework.dao.EmptyResultDataAccessException e) {
             throw new NotFoundException("PEDIDO_NO_ENCONTRADO", "Pedido no encontrado.");

@@ -2,6 +2,7 @@ package com.h2togo.backend.pedidos;
 
 import com.h2togo.backend.catalogo.ProductoNegocio;
 import com.h2togo.backend.catalogo.ProductoNegocioRepository;
+import com.h2togo.backend.notificaciones.PushService;
 import com.h2togo.backend.common.BusinessRuleException;
 import com.h2togo.backend.common.NotFoundException;
 import com.h2togo.backend.common.PagedResponse;
@@ -27,6 +28,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
@@ -59,6 +61,7 @@ public class PedidoService {
     private final PedidoEnriquecedor enriquecedor;
     private final NamedParameterJdbcTemplate jdbc;
     private final AvisoNuevoPedido avisoNuevoPedido;
+    private final PushService pushService;
 
     @PersistenceContext
     private EntityManager em;
@@ -66,7 +69,7 @@ public class PedidoService {
     public PedidoService(PedidoRepository pedidoRepository, DireccionClienteRepository direccionRepository,
             NegocioRepository negocioRepository, HorarioNegocioRepository horarioRepository,
             ProductoNegocioRepository productoRepository, NamedParameterJdbcTemplate jdbc,
-            AvisoNuevoPedido avisoNuevoPedido,
+            AvisoNuevoPedido avisoNuevoPedido, PushService pushService,
             PedidoEnriquecedor enriquecedor) {
         this.pedidoRepository = pedidoRepository;
         this.direccionRepository = direccionRepository;
@@ -76,6 +79,7 @@ public class PedidoService {
         this.jdbc = jdbc;
         this.enriquecedor = enriquecedor;
         this.avisoNuevoPedido = avisoNuevoPedido;
+        this.pushService = pushService;
     }
 
     // ---------------------------------------------------------------- CU-004: crear
@@ -239,6 +243,12 @@ public class PedidoService {
         p.agregarHistorial(h);
         pedidoRepository.saveAndFlush(p);
         em.refresh(p);
+        // RN-009: si estaba reservado en la ruta de un repartidor, su ruta se recalcula sin él.
+        if (p.getIdRepartidor() != null) {
+            pushService.notificar(p.getIdRepartidor(), "Pedido cancelado",
+                    "El cliente canceló el pedido #" + idPedido + ". Recalculamos tu ruta.",
+                    Map.of("tipo", "ruta_recalculada", "idPedido", String.valueOf(idPedido)));
+        }
         return PedidoMapper.toResponse(p);
     }
 

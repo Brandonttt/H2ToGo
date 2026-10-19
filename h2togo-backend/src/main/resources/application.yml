@@ -71,6 +71,13 @@ h2togo:
     entrega-radio-m: 50
     # Radio de aviso de proximidad al cliente (RF-005/RN-010).
     proximidad-radio-m: 500
+  # Ruta óptima de varias paradas (OR-Tools): supuestos del modelo de tiempo.
+  planeacion:
+    # Velocidad promedio de manejo en Benito Juárez y minutos por entrega.
+    velocidad-kmh: 20
+    servicio-min: 5
+    # Margen alrededor de la hora de un pedido programado (± minutos).
+    ventana-min: 30
   twilio:
     account-sid: ${TWILIO_ACCOUNT_SID:AC_AQUI_TU_SID}
     auth-token: ${TWILIO_AUTH_TOKEN:AQUI_TU_TOKEN}

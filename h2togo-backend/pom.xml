@@ -85,6 +85,22 @@
             <version>1.33.1</version>
         </dependency>
 
+        <!-- Google OR-Tools: orden óptimo de las paradas (problema del viajero con ventanas de
+             horario y capacidad). Trae binarios nativos por plataforma; se excluye el único que
+             nadie usa (macOS Intel). Quedan Linux x86-64 (Azure, CI), Linux ARM64 (Docker en Mac),
+             macOS ARM y Windows x86-64 (desarrollo). -->
+        <dependency>
+            <groupId>com.google.ortools</groupId>
+            <artifactId>ortools-java</artifactId>
+            <version>9.14.6206</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.ortools</groupId>
+                    <artifactId>ortools-darwin-x86-64</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- Twilio SDK para el envío de SMS OTP en producción -->
         <dependency>
             <groupId>com.twilio.sdk</groupId>

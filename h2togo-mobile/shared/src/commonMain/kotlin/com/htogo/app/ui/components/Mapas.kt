@@ -125,7 +125,9 @@ fun OsmRouteMapView(
     /** RF-007: estado del pedido; colorea los marcadores y muestra una etiqueta. */
     estadoPedido: String? = null,
     /** Alto del panel de la pantalla que tapa la parte de abajo del mapa. */
-    margenInferior: Dp = 0.dp
+    margenInferior: Dp = 0.dp,
+    /** Ruta del día: paradas (lat, lon) en orden de visita; se numeran 1, 2, 3… */
+    paradas: List<Pair<Double, Double>> = emptyList()
 ) {
     val leaflet = rememberLeaflet()
     var control by remember { mutableStateOf<ControlWeb?>(null) }
@@ -184,6 +186,13 @@ fun OsmRouteMapView(
         if (!listo) return@LaunchedEffect
         val rep = if (originLat != null && originLon != null) "$originLat, $originLon" else "null, null"
         control?.ejecutar("actualizar($rep, $destLat, $destLon, $rutaJson, '$etiquetaJs');")
+    }
+
+    val paradasJson = remember(paradas) {
+        paradas.mapIndexed { i, p -> "[${p.first},${p.second},${i + 1}]" }.joinToString(prefix = "[", postfix = "]")
+    }
+    LaunchedEffect(listo, paradasJson) {
+        if (listo && paradas.isNotEmpty()) control?.ejecutar("setParadas($paradasJson);")
     }
 
     LaunchedEffect(listo, margenInferior) {

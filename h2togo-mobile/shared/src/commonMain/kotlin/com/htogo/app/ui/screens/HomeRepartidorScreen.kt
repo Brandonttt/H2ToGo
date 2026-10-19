@@ -59,6 +59,7 @@ fun HomeRepartidorScreen(
     onSwitchRol: () -> Unit = {},
     onPedidosDisponibles: () -> Unit = {},
     onHistorial: () -> Unit = {},
+    onPlanRuta: () -> Unit = {},
     repartidorViewModel: RepartidorViewModel = viewModel { RepartidorViewModel() }
 ) {
     val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance() }
@@ -388,6 +389,31 @@ fun HomeRepartidorScreen(
                             Text("Ver pedidos disponibles", color = Color.White, fontWeight = FontWeight.SemiBold)
                         }
                     }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            // Ruta del día: agenda de programados + orden óptimo de todas las paradas (OR-Tools).
+            Card(
+                onClick = onPlanRuta,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = HToGoColors.PrimaryDark)
+            ) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) { Icon(Icons.Filled.Map, null, tint = Color.White) }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Mi ruta del día", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        Text(
+                            "Toma programados de hoy y entrégalos en el mejor orden",
+                            fontSize = 13.sp, color = Color.White.copy(alpha = 0.75f)
+                        )
+                    }
+                    Icon(Icons.Filled.PlayArrow, null, tint = Color.White)
                 }
             }
 

@@ -1,6 +1,7 @@
 package com.htogo.app.data.location
 
 import com.htogo.app.plataforma.Plataforma
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /** Fachada común del GPS para las pantallas. */
@@ -15,4 +16,10 @@ object EntregaEnCurso {
     val posicion: StateFlow<Posicion?> get() = Plataforma.servicios.posicionEntrega
     fun iniciar(idPedido: Int) = Plataforma.servicios.iniciarEntrega(idPedido)
     fun detener() = Plataforma.servicios.detenerEntrega()
+
+    /**
+     * FakeGPS activo: el GPS real deja de reportarse al backend mientras dura la simulación, para
+     * que el cliente no vea el marcador saltar entre la posición simulada y la verdadera.
+     */
+    val simulacionActiva = MutableStateFlow(false)
 }

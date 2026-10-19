@@ -93,7 +93,7 @@ class EntregaEnCursoService : Service() {
             UbicacionAndroid.posiciones(this@EntregaEnCursoService).collect { p ->
                 _posicion.value = p
                 val ahora = System.currentTimeMillis()
-                if (ahora - ultimoReporte >= REPORTE_MS) {
+                if (ahora - ultimoReporte >= REPORTE_MS && !EntregaEnCurso.simulacionActiva.value) {
                     ultimoReporte = ahora
                     // El backend lo reenvía al cliente por WebSocket y evalúa el aviso de 500 m.
                     launch(Dispatchers.IO) {

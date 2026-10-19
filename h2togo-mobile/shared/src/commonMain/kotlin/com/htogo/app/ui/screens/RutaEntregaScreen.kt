@@ -186,6 +186,9 @@ fun RutaEntregaScreen(
     var totalPasosSimulados by remember { mutableStateOf(0) }
     val posicionReal by EntregaEnCurso.posicion.collectAsState()
     val posicion = posicionSimulada ?: posicionReal
+    // Con FakeGPS activo el servicio de ubicación no reporta el GPS real (ver EntregaEnCurso).
+    LaunchedEffect(posicionSimulada != null) { EntregaEnCurso.simulacionActiva.value = posicionSimulada != null }
+    DisposableEffect(Unit) { onDispose { EntregaEnCurso.simulacionActiva.value = false } }
 
     val routePoints = remember(liveRutaCalculada, posicionSimulada, entrega.latDestino, entrega.lonDestino) {
         val reales = liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) }.orEmpty()

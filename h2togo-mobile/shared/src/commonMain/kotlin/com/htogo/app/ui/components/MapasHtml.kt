@@ -216,6 +216,10 @@ internal fun htmlMapaRuta(
             #estado i { width: 10px; height: 10px; border-radius: 5px; background: var(--estado, #0284C7); display: inline-block; }
             #centrar { top: calc(var(--arriba, 96px) + 106px); display: none; color: #0284C7; font: 600 12px sans-serif; width: auto; padding: 0 14px; }
             .leaflet-control-attribution { display: none !important; }
+            .parada { width: 26px; height: 26px; border-radius: 13px; background: #0F172A; color: #fff;
+                      border: 2px solid #fff; box-shadow: 0 1px 4px rgba(15,23,42,.35);
+                      font: 700 12px sans-serif; display: flex; align-items: center; justify-content: center; }
+            .parada.siguiente { background: #10B981; width: 30px; height: 30px; border-radius: 15px; font-size: 13px; }
           </style>
         </head>
         <body>
@@ -423,6 +427,25 @@ internal fun htmlMapaRuta(
               chip.querySelector('span').textContent = texto;
               chip.style.display = texto ? 'flex' : 'none';
               if (linea && linea._rutaReal) linea.setStyle({ color: color });
+            }
+
+            // Ruta del día: marcadores numerados en el orden óptimo. lista = [[lat, lon, número], ...];
+            // la primera es la siguiente parada (verde). Encuadra todas junto con el repartidor.
+            var marcadoresParadas = [];
+            function setParadas(lista) {
+              marcadoresParadas.forEach(function (m) { map.removeLayer(m); });
+              marcadoresParadas = [];
+              if (!lista.length) return;
+              map.removeLayer(markerDest);
+              lista.forEach(function (p, i) {
+                var icono = L.divIcon({ className: 'pin', iconSize: [30, 30], iconAnchor: [15, 15],
+                  html: '<div class="parada' + (i === 0 ? ' siguiente' : '') + '">' + p[2] + '</div>' });
+                marcadoresParadas.push(L.marker([p[0], p[1]], { icon: icono, zIndexOffset: 500 - i }).addTo(map));
+              });
+              var b = L.latLngBounds(lista.map(function (p) { return [p[0], p[1]]; }));
+              if (repPos) b.extend(repPos);
+              if (b.isValid()) map.fitBounds(b, { paddingTopLeft: [40, 120], paddingBottomRight: [40, 40 + inferior], maxZoom: 16 });
+              encuadrado = true;
             }
 
             // Llamada desde Kotlin en cada cambio. ruta = [[lat,lon],...] o [] (línea recta punteada).
