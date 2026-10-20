@@ -56,7 +56,12 @@ import com.htogo.app.ui.components.RepartidorBottomBar
 import com.htogo.app.ui.components.RepartidorTab
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
+import androidx.compose.material.icons.filled.Search
+import com.htogo.app.data.api.GeocodingHelper
+import com.htogo.app.ui.components.OsmMapView
 import com.htogo.app.data.dto.aMapaJson
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private data class PerfilUsuario(
     val nombre: String,
@@ -426,7 +431,7 @@ fun PerfilRepartidorScreen(
                 solicitudPendiente = solicitudPendienteDireccion,
                 direccionPropuestaTexto = direccionPropuesta,
                 onDismiss = { showModalCambioDireccion = false },
-                onEnviar = { calle, numExt, numInt, col, cp, ref ->
+                onEnviar = { calle, numExt, numInt, col, cp, ref, lat, lon ->
                     repartidorViewModel.solicitarCambioDireccionBase(
                         calle = calle,
                         numeroExterior = numExt,
@@ -434,6 +439,8 @@ fun PerfilRepartidorScreen(
                         colonia = col,
                         codigoPostal = cp,
                         referencias = ref,
+                        lat = lat,
+                        lon = lon,
                         onSuccess = {
                             showModalCambioDireccion = false
                             mostrarAviso("Solicitud de cambio de dirección enviada al administrador", largo = true)
@@ -802,7 +809,7 @@ private fun ModalCambioDireccionBase(
     solicitudPendiente: SolicitudResponse?,
     direccionPropuestaTexto: String?,
     onDismiss: () -> Unit,
-    onEnviar: (calle: String, numExt: String, numInt: String?, col: String, cp: String, ref: String?) -> Unit
+    onEnviar: (calle: String, numExt: String, numInt: String?, col: String, cp: String, ref: String?, lat: Double, lon: Double) -> Unit
 ) {
     if (solicitudPendiente != null) {
         AlertDialog(
@@ -846,6 +853,12 @@ private fun ModalCambioDireccionBase(
             shape = RoundedCornerShape(16.dp)
         )
     } else {
+        var lat by remember(direccionActual) {
+            mutableStateOf(direccionActual?.lat?.takeIf { it != 0.0 } ?: 19.376692)
+        }
+        var lon by remember(direccionActual) {
+            mutableStateOf(direccionActual?.lon?.takeIf { it != 0.0 } ?: -99.165057)
+        }
         var calle by remember { mutableStateOf(direccionActual?.calle ?: "") }
         var numExt by remember { mutableStateOf(direccionActual?.numeroExterior ?: "") }
         var numInt by remember { mutableStateOf(direccionActual?.numeroInterior ?: "") }
@@ -854,6 +867,73 @@ private fun ModalCambioDireccionBase(
         var referencias by remember { mutableStateOf(direccionActual?.referencias ?: "") }
         var error by remember { mutableStateOf<String?>(null) }
         var enviando by remember { mutableStateOf(false) }
+
+        var isGeocoding by remember { mutableStateOf(false) }
+        var geocodeMessage by remember { mutableStateOf<String?>(null) }
+        var isReverseGeocoding by remember { mutableStateOf(false) }
+        val tieneCoordsIniciales = direccionActual?.lat != null && direccionActual.lon != null &&
+            (direccionActual.lat != 0.0 || direccionActual.lon != 0.0)
+        var initialGeocodingIgnored by remember { mutableStateOf(tieneCoordsIniciales) }
+        val coroutineScope = rememberCoroutineScope()
+
+        LaunchedEffect(calle, numExt, colonia) {
+            if (initialGeocodingIgnored) {
+                initialGeocodingIgnored = false
+                return@LaunchedEffect
+            }
+            if (isReverseGeocoding) return@LaunchedEffect
+            if (calle.trim().length >= 3) {
+                delay(900)
+                isGeocoding = true
+                geocodeMessage = "Buscando en mapa..."
+                val numQuery = numExt.trim().takeUnless { it.equals("S/N", ignoreCase = true) }.orEmpty()
+                val query = listOf(
+                    "${calle.trim()} $numQuery".trim(),
+                    colonia.trim()
+                ).filter { it.isNotBlank() }.joinToString(", ")
+                val result = GeocodingHelper.buscarCoordenadas(query)
+                if (result != null) {
+                    lat = result.lat
+                    lon = result.lon
+                    geocodeMessage = GeocodingHelper.mensajeUbicacion(result)
+                    if (!result.postcode.isNullOrBlank() && cp.isBlank()) {
+                        cp = result.postcode
+                    }
+                } else {
+                    geocodeMessage = null
+                }
+                isGeocoding = false
+            }
+        }
+
+        fun ubicarEnMapaManual() {
+            if (calle.isBlank()) {
+                error = "Ingresa la calle para ubicar en el mapa"
+                return
+            }
+            coroutineScope.launch {
+                isGeocoding = true
+                geocodeMessage = "Buscando dirección..."
+                val numQuery = numExt.trim().takeUnless { it.equals("S/N", ignoreCase = true) }.orEmpty()
+                val query = listOf(
+                    "${calle.trim()} $numQuery".trim(),
+                    colonia.trim()
+                ).filter { it.isNotBlank() }.joinToString(", ")
+                val result = GeocodingHelper.buscarCoordenadas(query)
+                if (result != null) {
+                    lat = result.lat
+                    lon = result.lon
+                    geocodeMessage = if (result.exacto) "✓ Pin ubicado: ${result.displayName.take(45)}..."
+                    else GeocodingHelper.mensajeUbicacion(result)
+                    if (!result.postcode.isNullOrBlank()) {
+                        cp = result.postcode
+                    }
+                } else {
+                    geocodeMessage = "No se localizó exactamente. Puedes mover el pin en el mapa."
+                }
+                isGeocoding = false
+            }
+        }
 
         ModalBottomSheet(
             onDismissRequest = { if (!enviando) onDismiss() },
@@ -928,22 +1008,26 @@ private fun ModalCambioDireccionBase(
                     )
                 }
 
-                OutlinedTextField(
-                    value = colonia,
-                    onValueChange = { colonia = it; error = null },
-                    label = { Text("Colonia *") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = cp,
-                    onValueChange = { cp = it; error = null },
-                    label = { Text("Código postal *") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedTextField(
+                        value = colonia,
+                        onValueChange = { colonia = it; error = null },
+                        label = { Text("Colonia *") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1.3f)
+                    )
+                    OutlinedTextField(
+                        value = cp,
+                        onValueChange = { cp = it; error = null },
+                        label = { Text("Código postal *") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(0.9f)
+                    )
+                }
 
                 OutlinedTextField(
                     value = referencias,
@@ -953,6 +1037,93 @@ private fun ModalCambioDireccionBase(
                     maxLines = 2,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Ubicación interactiva en el mapa OSM
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.LocationOn, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "Ubicación en el mapa",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = HToGoColors.TextPrimary
+                            )
+                        }
+                        TextButton(
+                            onClick = { ubicarEnMapaManual() },
+                            enabled = !isGeocoding && calle.isNotBlank(),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Icon(Icons.Filled.Search, null, modifier = Modifier.size(14.dp), tint = HToGoColors.Primary)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Ubicar en mapa", fontSize = 11.sp, color = HToGoColors.Primary, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+
+                    if (isGeocoding || geocodeMessage != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (isGeocoding) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(12.dp),
+                                    strokeWidth = 1.5.dp,
+                                    color = HToGoColors.Primary
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Buscando en mapa...", fontSize = 11.sp, color = HToGoColors.Primary)
+                            } else if (geocodeMessage != null) {
+                                Text(
+                                    geocodeMessage!!,
+                                    fontSize = 11.sp,
+                                    color = if (geocodeMessage!!.startsWith("✓")) Color(0xFF16A34A) else HToGoColors.TextSecondary
+                                )
+                            }
+                        }
+                    } else {
+                        Text(
+                            "Al escribir tu dirección se ubicará en el mapa. También puedes tocar o arrastrar el pin.",
+                            fontSize = 11.sp,
+                            color = HToGoColors.TextSecondary
+                        )
+                    }
+
+                    OsmMapView(
+                        latitude = lat,
+                        longitude = lon,
+                        zoom = 16,
+                        isInteractive = true,
+                        isDraggablePin = true,
+                        onLocationChange = { newLat, newLon ->
+                            lat = newLat
+                            lon = newLon
+                            coroutineScope.launch {
+                                isReverseGeocoding = true
+                                isGeocoding = true
+                                geocodeMessage = "Detectando dirección..."
+                                val res = GeocodingHelper.obtenerDireccionDeCoordenadas(newLat, newLon)
+                                if (res != null) {
+                                    if (!res.road.isNullOrBlank()) calle = res.road
+                                    if (!res.houseNumber.isNullOrBlank()) numExt = res.houseNumber
+                                    if (!res.neighbourhood.isNullOrBlank()) colonia = res.neighbourhood
+                                    if (!res.postcode.isNullOrBlank()) cp = res.postcode
+                                    geocodeMessage = "✓ Dirección detectada desde el mapa"
+                                }
+                                isGeocoding = false
+                                delay(600)
+                                isReverseGeocoding = false
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(210.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                    )
+                }
 
                 if (error != null) {
                     Text(error!!, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
@@ -981,7 +1152,9 @@ private fun ModalCambioDireccionBase(
                                     numInt.trim().ifBlank { null },
                                     colonia.trim(),
                                     cp.trim(),
-                                    referencias.trim().ifBlank { null }
+                                    referencias.trim().ifBlank { null },
+                                    lat,
+                                    lon
                                 )
                             }
                         },
