@@ -909,6 +909,13 @@ class RepartidorViewModel : ViewModel() {
     /** La entrega en curso salió de la ruta del día: al terminarla se regresa a la ruta. */
     var enRutaDelDia = false
 
+    /**
+     * Posición del FakeGPS compartida entre la ruta del día y la pantalla de entrega. Cada parada
+     * abre una pantalla nueva: sin esto la simulación volvía a empezar en la purificadora en vez de
+     * seguir desde el domicilio recién entregado. null = se usa el GPS real.
+     */
+    var ultimaPosicionSimulada: com.htogo.app.data.location.Posicion? = null
+
     /** Coordenadas de la base de la purificadora del repartidor (para partir de ahí en FakeGPS). */
     fun ubicacionPurificadora(): Pair<Double, Double>? {
         val dir = _miNegocio.value?.direccionObj

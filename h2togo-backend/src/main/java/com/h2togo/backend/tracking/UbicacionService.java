@@ -58,6 +58,24 @@ public class UbicacionService {
         }
     }
 
+    /**
+     * Fija la ubicación sin el límite de 5 s: al registrar "Llegué" o el resultado de una entrega,
+     * el repartidor está en ese domicilio y de ahí debe partir la ruta a su siguiente parada. Sin
+     * esto podía quedar guardado un punto anterior (el GPS deja de reportar al detenerse y el último
+     * reporte en movimiento pudo descartarse por el límite).
+     */
+    @Transactional
+    public void fijar(int idRepartidor, double lat, double lon) {
+        ultimaEscritura.put(idRepartidor, Instant.now());
+        jdbc.update("""
+                UPDATE repartidores
+                SET ubicacion_actual = ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+                    ubicacion_reportada_en = now()
+                WHERE id_usuario = :id""",
+                new MapSqlParameterSource().addValue("lon", lon).addValue("lat", lat)
+                        .addValue("id", idRepartidor));
+    }
+
     private boolean debePersistir(int idRepartidor) {
         Instant ahora = Instant.now();
         Instant previa = ultimaEscritura.get(idRepartidor);

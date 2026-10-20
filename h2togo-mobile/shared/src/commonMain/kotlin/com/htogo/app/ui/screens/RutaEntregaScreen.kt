@@ -182,7 +182,9 @@ fun RutaEntregaScreen(
     }
 
     // ---- GPS real del repartidor (con soporte para modo de simulación FakeGPS demostrativo) ----
-    var posicionSimulada by remember { mutableStateOf<com.htogo.app.data.location.Posicion?>(null) }
+    // FakeGPS: continúa desde la última posición simulada (p. ej. la parada anterior de la ruta del día).
+    var posicionSimulada by remember { mutableStateOf(repartidorViewModel.ultimaPosicionSimulada) }
+    LaunchedEffect(posicionSimulada) { repartidorViewModel.ultimaPosicionSimulada = posicionSimulada }
     var simulandoRecorrido by remember { mutableStateOf(false) }
     var pasoSimulado by remember { mutableStateOf(0) }
     var totalPasosSimulados by remember { mutableStateOf(0) }

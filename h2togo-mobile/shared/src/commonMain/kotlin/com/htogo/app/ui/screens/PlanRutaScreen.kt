@@ -76,7 +76,14 @@ fun PlanRutaScreen(
     var abriendo by remember { mutableStateOf(false) }
 
     // FakeGPS para simular el recorrido completo de la ruta OR-Tools partiendo desde la purificadora
-    var posicionSimulada by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    // FakeGPS compartido con la pantalla de entrega: tras entregar, sigue desde ese domicilio.
+    var posicionSimulada by remember {
+        mutableStateOf(repartidorViewModel.ultimaPosicionSimulada?.let { it.lat to it.lon })
+    }
+    LaunchedEffect(posicionSimulada) {
+        repartidorViewModel.ultimaPosicionSimulada =
+            posicionSimulada?.let { com.htogo.app.data.location.Posicion(it.first, it.second, 5f) }
+    }
     var simulandoRecorrido by remember { mutableStateOf(false) }
     var pasoSimulado by remember { mutableStateOf(0) }
     var totalPasosSimulados by remember { mutableStateOf(0) }
@@ -113,7 +120,8 @@ fun PlanRutaScreen(
     // Simulación paso a paso desde la purificadora siguiendo toda la ruta OR-Tools
     LaunchedEffect(simulandoRecorrido) {
         if (!simulandoRecorrido) return@LaunchedEffect
-        val base = ubicacionPurificadora
+        // Desde donde vaya la simulación (la última entrega); solo la primera vez, desde la purificadora.
+        val base = posicionSimulada ?: ubicacionPurificadora
         posicionSimulada = base
         var recalculoListo = false
         repartidorViewModel.cargarPlanDesdeUbicacion(base.first, base.second) {
@@ -201,6 +209,7 @@ fun PlanRutaScreen(
                                 text = {
                                     Text(
                                         if (simulandoRecorrido) "⏸️ Pausar recorrido OR-Tools (FakeGPS)"
+                                        else if (posicionSimulada != null) "▶️ Simular ruta desde aquí (FakeGPS)"
                                         else "▶️ Simular ruta desde purificadora (FakeGPS)",
                                         fontWeight = FontWeight.SemiBold
                                     )

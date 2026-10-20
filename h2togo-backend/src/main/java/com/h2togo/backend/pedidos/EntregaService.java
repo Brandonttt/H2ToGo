@@ -9,6 +9,7 @@ import com.h2togo.backend.pedidos.dto.ResultadoEntregaRequest.Linea;
 import com.h2togo.backend.pedidos.dto.ResultadoEntregaRequest.Resultado;
 import com.h2togo.backend.tracking.ProximidadService;
 import com.h2togo.backend.tracking.RastreoService;
+import com.h2togo.backend.tracking.UbicacionService;
 import com.h2togo.backend.usuarios.Repartidor;
 import com.h2togo.backend.usuarios.RepartidorRepository;
 import java.time.OffsetDateTime;
@@ -39,6 +40,7 @@ public class EntregaService {
     private final PushService pushService;
     private final ProximidadService proximidadService;
     private final RastreoService rastreoService;
+    private final UbicacionService ubicacionService;
     private final int radioM;
     private final int ausenciasUmbral;
     private final int suspensionDias;
@@ -46,6 +48,7 @@ public class EntregaService {
     public EntregaService(NamedParameterJdbcTemplate jdbc, PedidoRepository pedidoRepository,
             RepartidorRepository repartidorRepository, PushService pushService,
             ProximidadService proximidadService, RastreoService rastreoService,
+            UbicacionService ubicacionService,
             @Value("${h2togo.pedidos.entrega-radio-m}") int radioM,
             @Value("${h2togo.pedidos.ausencias-umbral}") int ausenciasUmbral,
             @Value("${h2togo.pedidos.suspension-dias}") int suspensionDias,
@@ -57,6 +60,7 @@ public class EntregaService {
         this.pushService = pushService;
         this.proximidadService = proximidadService;
         this.rastreoService = rastreoService;
+        this.ubicacionService = ubicacionService;
         this.radioM = radioM;
         this.ausenciasUmbral = ausenciasUmbral;
         this.suspensionDias = suspensionDias;
@@ -91,6 +95,8 @@ public class EntregaService {
                     Map.of("tipo", "pedido_no_entregado", "idPedido", String.valueOf(idPedido)));
         }
         proximidadService.olvidar(idPedido); // limpia el flag de proximidad al cerrar
+        // La siguiente parada de su ruta parte de este domicilio, no de un punto anterior.
+        ubicacionService.fijar(idRepartidor, req.lat(), req.lon());
         Pedido p = pedidoRepository.findById(idPedido).orElseThrow();
         return enriquecedor.enriquecer(PedidoMapper.toResponse(p), idPedido);
     }
@@ -108,6 +114,7 @@ public class EntregaService {
             throw new BusinessRuleException("TRANSICION_INVALIDA", "El pedido debe estar en camino.");
         }
         validarRadio((Integer) pedido.get("id_direccion_entrega"), lat, lon);
+        ubicacionService.fijar(idRepartidor, lat, lon);
         OffsetDateTime llegoEn = proximidadService.avisarLlegada(idPedido, (Integer) pedido.get("id_cliente"));
         rastreoService.publicarLlegada(idPedido, llegoEn);
         return llegoEn;

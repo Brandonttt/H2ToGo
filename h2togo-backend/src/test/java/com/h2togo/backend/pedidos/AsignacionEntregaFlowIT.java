@@ -3,6 +3,7 @@ package com.h2togo.backend.pedidos;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -215,6 +216,11 @@ class AsignacionEntregaFlowIT {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT, LON)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("en_camino"));
 
+        // Última ubicación reportada lejos (~5.5 km), como si el GPS hubiera dejado de reportar.
+        mvc.perform(put("/api/v1/repartidores/me/ubicacion").header("Authorization", "Bearer " + r.token())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT + 0.05, LON)))
+                .andExpect(status().isNoContent());
+
         // "Llegué": avisa al cliente; repetirlo devuelve la misma hora de llegada.
         String llegada = mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/llegada").header("Authorization", "Bearer " + r.token())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"lat\":%s,\"lon\":%s}".formatted(LAT, LON)))
@@ -231,6 +237,12 @@ class AsignacionEntregaFlowIT {
         mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/resultado").header("Authorization", "Bearer " + r.token())
                         .contentType(MediaType.APPLICATION_JSON).content(entrega(LAT, LON, ped[1], 2)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("entregado"));
+
+        // La ubicación queda en el domicilio entregado: de ahí parte la ruta a la siguiente parada.
+        Double latGuardada = jdbc.queryForObject(
+                "SELECT ST_Y(ubicacion_actual::geometry) FROM repartidores WHERE id_usuario = :id",
+                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource("id", r.idRep()), Double.class);
+        assertThat(latGuardada).isCloseTo(LAT, org.assertj.core.data.Offset.offset(1e-6));
 
         // El vehículo quedó con 8 (cargó 10, entregó 2).
         mvc.perform(get("/api/v1/inventario/vehiculo").header("Authorization", "Bearer " + r.token()))
