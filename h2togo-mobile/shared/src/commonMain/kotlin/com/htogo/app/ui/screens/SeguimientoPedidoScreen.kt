@@ -314,7 +314,7 @@ private fun FloatingTopBar(
                     onClick = { menuAbierto = false; onAlternarRecorridoDemo() }
                 )
                 DropdownMenuItem(
-                    text = { Text("🚗 Saltar al inicio de la ruta (~1 km)") },
+                    text = { Text("🏪 Saltar a la purificadora (inicio de ruta)") },
                     onClick = { menuAbierto = false; onSaltarInicioDemo() }
                 )
                 DropdownMenuItem(
@@ -689,6 +689,8 @@ fun SeguimientoPedidoScreen(
     val ubicacionRepartidor by clienteViewModel.ubicacionRepartidor.collectAsState()
     val rutaSeguimiento by clienteViewModel.rutaSeguimiento.collectAsState()
     val repartidorLlego by clienteViewModel.repartidorLlego.collectAsState()
+    val purificadoras by clienteViewModel.purificadoras.collectAsState()
+    val perfilPurificadora by clienteViewModel.perfilPurificadora.collectAsState()
 
     LaunchedEffect(pedidoId) {
         if (pedidoId != null) {
@@ -816,15 +818,31 @@ fun SeguimientoPedidoScreen(
 
     val latDestino = livePedido?.latEntrega
     val lonDestino = livePedido?.lonEntrega
-    val rutaBaseDemo = remember(rutaSeguimiento, latDestino, lonDestino, ubicacionRepartidor) {
+    val ubicacionPurificadora = remember(livePedido, purificadoras, perfilPurificadora, order.purificadoraName) {
+        val idNeg = livePedido?.idNegocioSolicitado
+        val dirPerfil = perfilPurificadora?.takeIf {
+            (idNeg != null && it.id == idNeg) || it.nombreComercial.equals(order.purificadoraName, ignoreCase = true)
+        }?.direccionObj
+        if (dirPerfil?.lat != null && dirPerfil.lon != null && (dirPerfil.lat != 0.0 || dirPerfil.lon != 0.0)) {
+            dirPerfil.lat to dirPerfil.lon
+        } else {
+            val neg = purificadoras.firstOrNull {
+                (idNeg != null && it.id == idNeg) || it.nombreComercial.equals(order.purificadoraName, ignoreCase = true)
+            } ?: purificadoras.firstOrNull()
+            if (neg?.lat != null && neg.lon != null && (neg.lat != 0.0 || neg.lon != 0.0)) {
+                neg.lat to neg.lon
+            } else null
+        }
+    }
+    val rutaBaseDemo = remember(rutaSeguimiento, latDestino, lonDestino, ubicacionRepartidor, ubicacionPurificadora) {
         if (rutaSeguimiento.size >= 2) {
             rutaSeguimiento
         } else if (latDestino != null && lonDestino != null) {
             com.htogo.app.data.location.generarRutaDemoCalles(
                 destLat = latDestino,
                 destLon = lonDestino,
-                origenLat = ubicacionRepartidor?.lat,
-                origenLon = ubicacionRepartidor?.lon
+                origenLat = ubicacionPurificadora?.first ?: ubicacionRepartidor?.lat,
+                origenLon = ubicacionPurificadora?.second ?: ubicacionRepartidor?.lon
             )
         } else {
             emptyList()
@@ -876,6 +894,9 @@ fun SeguimientoPedidoScreen(
                 avisoSinUbicacion = null, // el aviso del cliente se muestra abajo (CU-006 S1)
                 estadoPedido = if (posicionDemo != null) "en_camino" else livePedido?.estado,
                 margenInferior = screenHeight * 0.62f, // encuadra arriba del panel del pedido
+                baseLat = ubicacionPurificadora?.first,
+                baseLon = ubicacionPurificadora?.second,
+                baseLabel = order.purificadoraName,
                 modifier = Modifier.fillMaxSize()
             )
         } else {
@@ -902,9 +923,9 @@ fun SeguimientoPedidoScreen(
                     if (latDestino != null && lonDestino != null) {
                         simulandoDemo = false
                         pasoDemo = 0
-                        val inicio = rutaBaseDemo.firstOrNull() ?: (latDestino + 0.0085 to lonDestino - 0.0065)
+                        val inicio = ubicacionPurificadora ?: rutaBaseDemo.firstOrNull() ?: (latDestino + 0.0085 to lonDestino - 0.0065)
                         posicionDemo = inicio
-                        mostrarAviso("FakeGPS: repartidor al inicio de la ruta")
+                        mostrarAviso("FakeGPS: repartidor en la purificadora (${order.purificadoraName})")
                     }
                 },
                 onSaltarLlegadaDemo = {

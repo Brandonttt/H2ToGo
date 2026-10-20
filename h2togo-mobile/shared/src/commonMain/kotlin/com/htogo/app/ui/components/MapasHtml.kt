@@ -216,10 +216,13 @@ internal fun htmlMapaRuta(
             #estado i { width: 10px; height: 10px; border-radius: 5px; background: var(--estado, #0284C7); display: inline-block; }
             #centrar { top: calc(var(--arriba, 96px) + 106px); display: none; color: #0284C7; font: 600 12px sans-serif; width: auto; padding: 0 14px; }
             .leaflet-control-attribution { display: none !important; }
-            .parada { width: 26px; height: 26px; border-radius: 13px; background: #0F172A; color: #fff;
-                      border: 2px solid #fff; box-shadow: 0 1px 4px rgba(15,23,42,.35);
-                      font: 700 12px sans-serif; display: flex; align-items: center; justify-content: center; }
-            .parada.siguiente { background: #10B981; width: 30px; height: 30px; border-radius: 15px; font-size: 13px; }
+            .parada { width: 28px; height: 28px; border-radius: 14px; background: #0F172A; color: #fff;
+                      border: 2.5px solid #fff; box-shadow: 0 2px 6px rgba(15,23,42,.45);
+                      font: 800 12px sans-serif; display: flex; align-items: center; justify-content: center; }
+            .parada.siguiente { width: 32px; height: 32px; border-radius: 16px; font-size: 13px; }
+            .base-pin { width: 32px; height: 32px; border-radius: 10px; background: #0F172A; color: #fff;
+                        border: 2.5px solid #38BDF8; box-shadow: 0 2px 6px rgba(15,23,42,.45);
+                        font: 700 15px sans-serif; display: flex; align-items: center; justify-content: center; }
           </style>
         </head>
         <body>
@@ -298,8 +301,9 @@ internal fun htmlMapaRuta(
             [100, 350, 800].forEach(function (ms) { setTimeout(ajustarTamano, ms); });
 
             var markerDest = L.marker([$destLat, $destLon], { icon: destIcon }).addTo(map).bindPopup('<b>Destino de entrega</b>');
-            var markerRep = null, linea = null, encuadrado = false, rutaPrevia = '';
-            var rutaActual = [], destino = [$destLat, $destLon];
+            var markerRep = null, markerBase = null, lineasRuta = [], encuadrado = false, rutaPrevia = '';
+            var rutaActual = [], paradasActuales = [], destino = [$destLat, $destLon];
+            var PALETA_TRAMOS = ['#10B981', '#7C3AED', '#EA580C', '#2563EB', '#DB2777', '#0891B2'];
             var repPos = null, rumbo = 0, anim = null;
             var siguiendo = SEGUIR, rumboArriba = true, anguloMapa = 0;
             var brujula = document.getElementById('brujula'), centrar = document.getElementById('centrar');
@@ -318,16 +322,105 @@ internal fun htmlMapaRuta(
               return (Math.atan2(y, x) / r + 360) % 360;
             }
 
-            // Línea: desde la posición actual por el resto de la ruta (lo ya recorrido desaparece).
+            function limpiarLineas() {
+              for (var i = 0; i < lineasRuta.length; i++) {
+                map.removeLayer(lineasRuta[i]);
+              }
+              lineasRuta = [];
+            }
+
+            function agregarSegmentoColor(pts, colorHex, esReal) {
+              if (!pts || pts.length < 2) return;
+              if (esReal) {
+                var borde = L.polyline(pts, {
+                  color: '#FFFFFF', weight: 10, opacity: 0.92, lineJoin: 'round', lineCap: 'round'
+                }).addTo(map);
+                var principal = L.polyline(pts, {
+                  color: colorHex, weight: 6, opacity: 0.96, lineJoin: 'round', lineCap: 'round'
+                }).addTo(map);
+                var guia = L.polyline(pts, {
+                  color: '#FFFFFF', weight: 1.8, opacity: 0.6, dashArray: '6, 12', lineJoin: 'round', lineCap: 'round'
+                }).addTo(map);
+                lineasRuta.push(borde, principal, guia);
+              } else {
+                var punteada = L.polyline(pts, {
+                  color: colorHex, weight: 4.5, opacity: 0.85, dashArray: '8, 8', lineJoin: 'round'
+                }).addTo(map);
+                lineasRuta.push(punteada);
+              }
+            }
+
+            // Divide la polilínea completa en tramos por parada [Origen->P1, P1->P2, P2->P3...]
+            function dividirPorParadas(ruta, paradas) {
+              var tramos = [];
+              var inicioIdx = 0;
+              for (var k = 0; k < paradas.length; k++) {
+                var meta = [paradas[k][0], paradas[k][1]];
+                if (k === paradas.length - 1) {
+                  var tramoFinal = ruta.slice(inicioIdx);
+                  if (tramoFinal.length >= 2) tramos.push({ color: PALETA_TRAMOS[k % PALETA_TRAMOS.length], puntos: tramoFinal });
+                  break;
+                }
+                var dMinGlobal = Infinity, idxGlobal = inicioIdx;
+                for (var i = inicioIdx + 1; i < ruta.length; i++) {
+                  var d = distM(ruta[i], meta);
+                  if (d < dMinGlobal) { dMinGlobal = d; idxGlobal = i; }
+                }
+                var umbral = Math.max(95, dMinGlobal + 20);
+                var idxCorte = idxGlobal;
+                for (var j = inicioIdx + 1; j < ruta.length - 1; j++) {
+                  var dj = distM(ruta[j], meta);
+                  var djNext = distM(ruta[j + 1], meta);
+                  if (dj <= umbral && dj <= djNext) {
+                    idxCorte = j;
+                    break;
+                  }
+                }
+                var sub = ruta.slice(inicioIdx, idxCorte + 1);
+                if (sub.length >= 2) {
+                  tramos.push({ color: PALETA_TRAMOS[k % PALETA_TRAMOS.length], puntos: sub });
+                }
+                inicioIdx = idxCorte;
+              }
+              return tramos;
+            }
+
+            // Línea: en ruta multi-parada (OR-Tools) pinta cada tramo de distinto color; en ruta individual usa color de alto contraste.
             function dibujarLinea() {
+              limpiarLineas();
+              if (paradasActuales.length > 0 && rutaActual.length >= 2) {
+                var tramos = dividirPorParadas(rutaActual, paradasActuales);
+                if (repPos && tramos.length > 0) {
+                  var mejorT = 0, mejorIdx = 0, dMin = Infinity;
+                  for (var t = 0; t < tramos.length; t++) {
+                    var ptsT = tramos[t].puntos;
+                    for (var p = 0; p < ptsT.length; p++) {
+                      var d = distM(repPos, ptsT[p]);
+                      if (d < dMin) { dMin = d; mejorT = t; mejorIdx = p; }
+                    }
+                  }
+                  for (var t2 = mejorT; t2 < tramos.length; t2++) {
+                    var seg = (t2 === mejorT)
+                      ? [repPos].concat(tramos[t2].puntos.slice(mejorIdx + 1))
+                      : tramos[t2].puntos;
+                    agregarSegmentoColor(seg, tramos[t2].color, true);
+                  }
+                } else {
+                  for (var t3 = 0; t3 < tramos.length; t3++) {
+                    agregarSegmentoColor(tramos[t3].puntos, tramos[t3].color, true);
+                  }
+                }
+                return;
+              }
+
               var puntos = [];
               if (rutaActual.length >= 2) {
                 puntos = rutaActual;
                 if (repPos) {
-                  var mejor = 0, dMin = Infinity;
+                  var mejor = 0, dMinRuta = Infinity;
                   for (var i = 0; i < rutaActual.length; i++) {
-                    var d = distM(repPos, rutaActual[i]);
-                    if (d < dMin) { dMin = d; mejor = i; }
+                    var dr = distM(repPos, rutaActual[i]);
+                    if (dr < dMinRuta) { dMinRuta = dr; mejor = i; }
                   }
                   puntos = [repPos].concat(rutaActual.slice(mejor + 1));
                   if (puntos.length < 2) puntos = [repPos, destino];
@@ -335,14 +428,8 @@ internal fun htmlMapaRuta(
               } else if (repPos) {
                 puntos = [repPos, destino];
               }
-              var estilo = rutaActual.length >= 2
-                ? { color: '#0284C7', weight: 6, opacity: 0.85, lineJoin: 'round' }
-                : { color: '#0284C7', weight: 4, opacity: 0.7, dashArray: '8, 8' };
-              if (puntos.length < 2) { if (linea) { map.removeLayer(linea); linea = null; } return; }
-              if (linea && linea._rutaReal === (rutaActual.length >= 2)) { linea.setLatLngs(puntos); return; }
-              if (linea) map.removeLayer(linea);
-              linea = L.polyline(puntos, estilo).addTo(map);
-              linea._rutaReal = rutaActual.length >= 2;
+              if (puntos.length < 2) return;
+              agregarSegmentoColor(puntos, '#7C3AED', rutaActual.length >= 2);
             }
 
             // Gira el mapa (rumbo arriba) solo mientras sigue al repartidor; si no, norte arriba.
@@ -426,23 +513,45 @@ internal fun htmlMapaRuta(
               var chip = document.getElementById('estado');
               chip.querySelector('span').textContent = texto;
               chip.style.display = texto ? 'flex' : 'none';
-              if (linea && linea._rutaReal) linea.setStyle({ color: color });
+              dibujarLinea();
+            }
+
+            function setBase(lat, lon, nombre) {
+              if (markerBase) { map.removeLayer(markerBase); markerBase = null; }
+              if (lat === null || lon === null) return;
+              var baseIcon = L.divIcon({
+                className: 'pin', iconSize: [32, 32], iconAnchor: [16, 16],
+                html: '<div class="base-pin" title="Purificadora">🏪</div>'
+              });
+              markerBase = L.marker([lat, lon], { icon: baseIcon, zIndexOffset: 450 })
+                .addTo(map)
+                .bindPopup('<b>🏪 ' + (nombre || 'Purificadora') + ' (Punto de partida)</b>');
             }
 
             // Ruta del día: marcadores numerados en el orden óptimo. lista = [[lat, lon, número], ...];
-            // la primera es la siguiente parada (verde). Encuadra todas junto con el repartidor.
+            // cada parada se colorea igual que su tramo de ruta correspondiente.
             var marcadoresParadas = [];
             function setParadas(lista) {
               marcadoresParadas.forEach(function (m) { map.removeLayer(m); });
               marcadoresParadas = [];
-              if (!lista.length) return;
+              paradasActuales = lista || [];
+              if (!paradasActuales.length) {
+                dibujarLinea();
+                return;
+              }
               map.removeLayer(markerDest);
-              lista.forEach(function (p, i) {
-                var icono = L.divIcon({ className: 'pin', iconSize: [30, 30], iconAnchor: [15, 15],
-                  html: '<div class="parada' + (i === 0 ? ' siguiente' : '') + '">' + p[2] + '</div>' });
-                marcadoresParadas.push(L.marker([p[0], p[1]], { icon: icono, zIndexOffset: 500 - i }).addTo(map));
+              paradasActuales.forEach(function (p, i) {
+                var colorParada = PALETA_TRAMOS[i % PALETA_TRAMOS.length];
+                var icono = L.divIcon({ className: 'pin', iconSize: [32, 32], iconAnchor: [16, 16],
+                  html: '<div class="parada' + (i === 0 ? ' siguiente' : '') + '" style="background:' + colorParada + '">' + p[2] + '</div>' });
+                marcadoresParadas.push(
+                  L.marker([p[0], p[1]], { icon: icono, zIndexOffset: 500 - i })
+                    .addTo(map)
+                    .bindPopup('<b>Parada ' + p[2] + ' · Tramo ' + p[2] + '</b>')
+                );
               });
-              var b = L.latLngBounds(lista.map(function (p) { return [p[0], p[1]]; }));
+              dibujarLinea();
+              var b = L.latLngBounds(paradasActuales.map(function (p) { return [p[0], p[1]]; }));
               if (repPos) b.extend(repPos);
               if (b.isValid()) map.fitBounds(b, { paddingTopLeft: [40, 120], paddingBottomRight: [40, 40 + inferior], maxZoom: 16 });
               encuadrado = true;

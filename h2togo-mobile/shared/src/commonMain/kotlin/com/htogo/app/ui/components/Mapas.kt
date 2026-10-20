@@ -127,7 +127,11 @@ fun OsmRouteMapView(
     /** Alto del panel de la pantalla que tapa la parte de abajo del mapa. */
     margenInferior: Dp = 0.dp,
     /** Ruta del día: paradas (lat, lon) en orden de visita; se numeran 1, 2, 3… */
-    paradas: List<Pair<Double, Double>> = emptyList()
+    paradas: List<Pair<Double, Double>> = emptyList(),
+    /** Ubicación opcional de la purificadora base para mostrar su marcador de salida. */
+    baseLat: Double? = null,
+    baseLon: Double? = null,
+    baseLabel: String = "Purificadora"
 ) {
     val leaflet = rememberLeaflet()
     var control by remember { mutableStateOf<ControlWeb?>(null) }
@@ -192,7 +196,17 @@ fun OsmRouteMapView(
         paradas.mapIndexed { i, p -> "[${p.first},${p.second},${i + 1}]" }.joinToString(prefix = "[", postfix = "]")
     }
     LaunchedEffect(listo, paradasJson) {
-        if (listo && paradas.isNotEmpty()) control?.ejecutar("setParadas($paradasJson);")
+        if (listo) control?.ejecutar("setParadas($paradasJson);")
+    }
+
+    val baseLabelJs = remember(baseLabel) { baseLabel.replace("\\", "").replace("'", "\\'") }
+    LaunchedEffect(listo, baseLat, baseLon, baseLabelJs) {
+        if (!listo) return@LaunchedEffect
+        if (baseLat != null && baseLon != null && (baseLat != 0.0 || baseLon != 0.0)) {
+            control?.ejecutar("setBase($baseLat, $baseLon, '$baseLabelJs');")
+        } else {
+            control?.ejecutar("setBase(null, null, '');")
+        }
     }
 
     LaunchedEffect(listo, margenInferior) {

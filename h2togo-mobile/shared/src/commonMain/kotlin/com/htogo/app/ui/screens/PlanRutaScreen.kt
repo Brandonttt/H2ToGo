@@ -2,17 +2,22 @@ package com.htogo.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +33,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.htogo.app.data.dto.AgendaPedidoDto
 import com.htogo.app.data.dto.ParadaDto
 import com.htogo.app.data.dto.RutaOptimaDto
+import com.htogo.app.data.location.EntregaEnCurso
 import com.htogo.app.data.notificaciones.CanalNotificaciones
 import com.htogo.app.plataforma.mostrarAviso
 import com.htogo.app.ui.RepartidorViewModel
@@ -37,6 +43,20 @@ import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.util.conDecimales
 import com.htogo.app.util.fechaCdmx
 import com.htogo.app.util.horaAmPm
+import kotlinx.coroutines.delay
+
+/** Paleta de alto contraste sincronizada con PALETA_TRAMOS en MapasHtml.kt para distinguir cada tramo de la ruta OR-Tools. */
+private val ColoresTramoRuta = listOf(
+    Color(0xFF10B981), // Tramo 1: Verde Esmeralda
+    Color(0xFF7C3AED), // Tramo 2: Violeta intenso
+    Color(0xFFEA580C), // Tramo 3: Naranja vivo
+    Color(0xFF2563EB), // Tramo 4: Azul Rey
+    Color(0xFFDB2777), // Tramo 5: Rosa / Magenta
+    Color(0xFF0891B2)  // Tramo 6: Turquesa / Cian
+)
+
+private fun colorTramo(orden: Int): Color =
+    ColoresTramoRuta[(orden - 1).coerceAtLeast(0) % ColoresTramoRuta.size]
 
 /**
  * Ruta del día del repartidor: el orden óptimo de sus paradas (OR-Tools en el backend), el mapa
@@ -52,13 +72,83 @@ fun PlanRutaScreen(
     val agenda by repartidorViewModel.agenda.collectAsState()
     val calculando by repartidorViewModel.calculandoPlan.collectAsState()
     val error by repartidorViewModel.errorPlan.collectAsState()
+    val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
     var abriendo by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { repartidorViewModel.cargarPlan() }
+    // FakeGPS para simular el recorrido completo de la ruta OR-Tools partiendo desde la purificadora
+    var posicionSimulada by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var simulandoRecorrido by remember { mutableStateOf(false) }
+    var pasoSimulado by remember { mutableStateOf(0) }
+    var totalPasosSimulados by remember { mutableStateOf(0) }
+    var menuFakeGps by remember { mutableStateOf(false) }
+
+    val ubicacionPurificadora = remember(liveMiNegocio, ruta) {
+        val dir = liveMiNegocio?.direccionObj
+        when {
+            dir?.lat != null && dir.lon != null && (dir.lat != 0.0 || dir.lon != 0.0) -> dir.lat to dir.lon
+            ruta != null && (ruta!!.origenLat != 0.0 || ruta!!.origenLon != 0.0) -> ruta!!.origenLat to ruta!!.origenLon
+            else -> 19.376692 to -99.165057
+        }
+    }
+    val nombrePurificadora = liveMiNegocio?.nombreComercial?.ifBlank { null } ?: "Purificadora"
+
+    LaunchedEffect(posicionSimulada != null) {
+        EntregaEnCurso.simulacionActiva.value = posicionSimulada != null
+    }
+    DisposableEffect(Unit) {
+        onDispose { EntregaEnCurso.simulacionActiva.value = false }
+    }
+
+    LaunchedEffect(Unit) {
+        if (liveMiNegocio == null) repartidorViewModel.cargarMiNegocio()
+        repartidorViewModel.cargarPlan()
+    }
     // RN-009: si un cliente cancela un pedido de la ruta (o se activa un programado), se recalcula.
     LaunchedEffect(Unit) {
         CanalNotificaciones.avisos.collect { aviso ->
             if (aviso.datos["tipo"] == "ruta_recalculada") repartidorViewModel.cargarPlan()
+        }
+    }
+
+    // Simulación paso a paso desde la purificadora siguiendo toda la ruta OR-Tools
+    LaunchedEffect(simulandoRecorrido) {
+        if (!simulandoRecorrido) return@LaunchedEffect
+        val base = ubicacionPurificadora
+        posicionSimulada = base
+        var recalculoListo = false
+        repartidorViewModel.cargarPlanDesdeUbicacion(base.first, base.second) {
+            recalculoListo = true
+        }
+        var espera = 0
+        while (!recalculoListo && espera < 12) {
+            delay(200)
+            espera++
+        }
+        val rActual = repartidorViewModel.rutaOptima.value ?: ruta
+        val puntosRuta = rActual?.coordenadas?.map { it.lat to it.lon }.orEmpty()
+        if (puntosRuta.size < 2) {
+            simulandoRecorrido = false
+            mostrarAviso("No hay coordenadas de ruta para simular")
+            return@LaunchedEffect
+        }
+        val ultimoPunto = puntosRuta.last()
+        val pasos = com.htogo.app.data.location.interpolarPasosRuta(
+            ruta = puntosRuta,
+            destLat = ultimoPunto.first,
+            destLon = ultimoPunto.second,
+            pasoMetros = 45.0
+        )
+        totalPasosSimulados = pasos.size
+        for ((index, pto) in pasos.withIndex()) {
+            if (!simulandoRecorrido) break
+            pasoSimulado = index + 1
+            posicionSimulada = pto
+            repartidorViewModel.reportarUbicacionSimulada(pto.first, pto.second)
+            delay(1_200L)
+        }
+        if (simulandoRecorrido) {
+            simulandoRecorrido = false
+            mostrarAviso("🏁 FakeGPS: Recorrido completo de la ruta del día finalizado", largo = true)
         }
     }
 
@@ -78,11 +168,76 @@ fun PlanRutaScreen(
                         Text("Mi ruta del día", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                         Text("Orden óptimo calculado con OR-Tools", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
                     }
-                    IconButton(onClick = { repartidorViewModel.cargarPlan() }, enabled = !calculando) {
+                    IconButton(
+                        onClick = {
+                            val sim = posicionSimulada
+                            if (sim != null) {
+                                repartidorViewModel.cargarPlanDesdeUbicacion(sim.first, sim.second)
+                            } else {
+                                repartidorViewModel.cargarPlan()
+                            }
+                        },
+                        enabled = !calculando
+                    ) {
                         if (calculando) {
                             CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                         } else {
                             Icon(Icons.Filled.Refresh, "Recalcular", tint = Color.White)
+                        }
+                    }
+                    Box {
+                        IconButton(onClick = { menuFakeGps = true }) {
+                            Icon(
+                                Icons.Filled.MoreVert,
+                                contentDescription = "Opciones FakeGPS",
+                                tint = if (posicionSimulada != null) Color(0xFFC4B5FD) else Color.White
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuFakeGps,
+                            onDismissRequest = { menuFakeGps = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        if (simulandoRecorrido) "⏸️ Pausar recorrido OR-Tools (FakeGPS)"
+                                        else "▶️ Simular ruta desde purificadora (FakeGPS)",
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                },
+                                onClick = {
+                                    menuFakeGps = false
+                                    simulandoRecorrido = !simulandoRecorrido
+                                    if (simulandoRecorrido) {
+                                        mostrarAviso("🛰️ Saliendo de $nombrePurificadora y siguiendo ruta OR-Tools…")
+                                    } else {
+                                        mostrarAviso("⏸️ Simulación FakeGPS en pausa")
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("🏪 Situar en la purificadora (inicio de ruta)") },
+                                onClick = {
+                                    menuFakeGps = false
+                                    simulandoRecorrido = false
+                                    val base = ubicacionPurificadora
+                                    posicionSimulada = base
+                                    repartidorViewModel.cargarPlanDesdeUbicacion(base.first, base.second)
+                                    mostrarAviso("📍 FakeGPS situado en $nombrePurificadora")
+                                }
+                            )
+                            if (posicionSimulada != null) {
+                                DropdownMenuItem(
+                                    text = { Text("📍 Volver al GPS real del teléfono") },
+                                    onClick = {
+                                        menuFakeGps = false
+                                        simulandoRecorrido = false
+                                        posicionSimulada = null
+                                        repartidorViewModel.cargarPlan()
+                                        mostrarAviso("Volviendo al GPS real")
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -96,7 +251,25 @@ fun PlanRutaScreen(
         ) {
             val r = ruta
             if (r != null && r.paradas.isNotEmpty()) {
-                item { MapaRuta(r) }
+                item {
+                    MapaRuta(
+                        r = r,
+                        posicionSimulada = posicionSimulada,
+                        simulandoRecorrido = simulandoRecorrido,
+                        pasoSimulado = pasoSimulado,
+                        totalPasosSimulados = totalPasosSimulados,
+                        baseLat = ubicacionPurificadora.first,
+                        baseLon = ubicacionPurificadora.second,
+                        nombrePurificadora = nombrePurificadora,
+                        onToggleSimulacion = { simulandoRecorrido = !simulandoRecorrido },
+                        onCerrarSimulacion = {
+                            simulandoRecorrido = false
+                            posicionSimulada = null
+                            repartidorViewModel.cargarPlan()
+                        }
+                    )
+                }
+                item { LeyendaColoresTramos(r, nombrePurificadora) }
                 item { ResumenRuta(r) }
                 item {
                     val siguiente = r.paradas.first()
@@ -167,23 +340,157 @@ fun PlanRutaScreen(
 }
 
 @Composable
-private fun MapaRuta(r: RutaOptimaDto) {
+private fun MapaRuta(
+    r: RutaOptimaDto,
+    posicionSimulada: Pair<Double, Double>?,
+    simulandoRecorrido: Boolean,
+    pasoSimulado: Int,
+    totalPasosSimulados: Int,
+    baseLat: Double,
+    baseLon: Double,
+    nombrePurificadora: String,
+    onToggleSimulacion: () -> Unit,
+    onCerrarSimulacion: () -> Unit
+) {
     val primera = r.paradas.first()
+    val originLatEfectivo = posicionSimulada?.first ?: r.origenLat
+    val originLonEfectivo = posicionSimulada?.second ?: r.origenLon
     Box(
-        Modifier.fillMaxWidth().padding(16.dp).height(280.dp)
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).height(290.dp)
             .clip(RoundedCornerShape(16.dp)).background(HToGoColors.OutlineSoft)
     ) {
         OsmRouteMapView(
-            originLat = r.origenLat,
-            originLon = r.origenLon,
+            originLat = originLatEfectivo,
+            originLon = originLonEfectivo,
             destLat = primera.lat,
             destLon = primera.lon,
             routePoints = r.coordenadas.map { it.lat to it.lon },
-            repartidorLabel = "Tú",
+            repartidorLabel = if (posicionSimulada != null) "Tú (FakeGPS)" else "Tú",
             avisoSinUbicacion = null,
             paradas = r.paradas.map { it.lat to it.lon },
+            baseLat = baseLat,
+            baseLon = baseLon,
+            baseLabel = nombrePurificadora,
             modifier = Modifier.fillMaxSize()
         )
+
+        if (posicionSimulada != null) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFF7C3AED).copy(alpha = 0.95f),
+                shadowElevation = 4.dp,
+                modifier = Modifier.align(Alignment.TopStart).padding(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        if (simulandoRecorrido) "🛰️ FakeGPS ($pasoSimulado/$totalPasosSimulados)"
+                        else "🧪 FakeGPS en $nombrePurificadora",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { onToggleSimulacion() }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (simulandoRecorrido) "⏸" else "▶",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { onToggleSimulacion() }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "✕",
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { onCerrarSimulacion() }
+                    )
+                }
+            }
+        } else {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFF0F172A).copy(alpha = 0.88f),
+                shadowElevation = 4.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(10.dp)
+                    .clickable { onToggleSimulacion() }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.Storefront, null, tint = Color(0xFF38BDF8), modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "▶ Probar FakeGPS desde $nombrePurificadora",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeyendaColoresTramos(r: RutaOptimaDto, nombrePurificadora: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 10.dp)
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            shape = RoundedCornerShape(99.dp),
+            color = Color(0xFF0F172A).copy(alpha = 0.08f),
+            border = BorderStroke(1.dp, Color(0xFF0F172A).copy(alpha = 0.2f))
+        ) {
+            Row(
+                Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("🏪", fontSize = 11.sp)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "Base: $nombrePurificadora",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = HToGoColors.TextPrimary
+                )
+            }
+        }
+        r.paradas.forEach { p ->
+            val color = colorTramo(p.orden)
+            Surface(
+                shape = RoundedCornerShape(99.dp),
+                color = color.copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, color.copy(alpha = 0.45f))
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(color))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "Tramo ${p.orden} → Parada ${p.orden}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = color
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -215,11 +522,12 @@ private fun Dato(valor: String, etiqueta: String, modifier: Modifier) {
 @Composable
 private fun ParadaItem(p: ParadaDto, onLiberar: () -> Unit) {
     val reservado = p.estado == "pendiente_programado" || p.estado == "pendiente"
-    Tarjeta(borde = if (p.orden == 1) HToGoColors.AccentEmerald else HToGoColors.OutlineSoft) {
+    val colorParada = colorTramo(p.orden)
+    Tarjeta(borde = colorParada.copy(alpha = if (p.orden == 1) 0.85f else 0.45f)) {
         Row(verticalAlignment = Alignment.Top) {
             Box(
                 Modifier.size(30.dp).clip(CircleShape)
-                    .background(if (p.orden == 1) HToGoColors.AccentEmerald else HToGoColors.TextPrimary),
+                    .background(colorParada),
                 contentAlignment = Alignment.Center
             ) {
                 Text("${p.orden}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -230,6 +538,7 @@ private fun ParadaItem(p: ParadaDto, onLiberar: () -> Unit) {
                 Text(p.direccion.orEmpty(), fontSize = 13.sp, color = HToGoColors.TextSecondary)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Chip("Tramo ${p.orden}", colorParada)
                     Chip(textoEstado(p.estado), HToGoColors.Primary)
                     Chip("${p.garrafones} garrafones", HToGoColors.TextSecondary)
                     if (p.fueraDeHorario) Chip("Fuera de horario", HToGoColors.AccentRose)

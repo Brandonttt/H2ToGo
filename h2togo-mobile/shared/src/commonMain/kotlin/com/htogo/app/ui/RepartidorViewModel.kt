@@ -681,7 +681,7 @@ class RepartidorViewModel : ViewModel() {
      * repartidor se movió más de 60 m desde el último cálculo, como mucho cada 20 s (o si forzar = true).
      */
     fun alMoverse(idPedido: Int, p: com.htogo.app.data.location.Posicion, forzar: Boolean = false) {
-        if (calculandoRuta) return
+        if (calculandoRuta && !forzar) return
         val ahora = ahoraMs()
         val origen = origenRuta
         val recalcular = forzar || origen == null || (ahora - ultimaRutaMs >= 20_000 &&
@@ -712,6 +712,33 @@ class RepartidorViewModel : ViewModel() {
                 calculandoRuta = false
             }
         }
+    }
+
+    /**
+     * Reporta la ubicación inicial (p. ej. la purificadora en FakeGPS) y espera la ruta A* calculada
+     * por el backend desde ese punto hasta el domicilio del pedido.
+     */
+    suspend fun recalcularRutaDesde(
+        idPedido: Int,
+        p: com.htogo.app.data.location.Posicion
+    ): List<Pair<Double, Double>> {
+        calculandoRuta = true
+        try {
+            apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to p.lat, "lon" to p.lon))
+            val resp = apiClient.repartidorApi.obtenerRuta(idPedido)
+            if (resp.isSuccessful && resp.body() != null) {
+                val body = resp.body()!!
+                _rutaCalculada.value = body
+                _rutaNoDisponible.value = false
+                origenRuta = p
+                ultimaRutaMs = ahoraMs()
+                return body.coordenadas.map { it.lat to it.lon }
+            }
+        } catch (_: Exception) {
+        } finally {
+            calculandoRuta = false
+        }
+        return _rutaCalculada.value?.coordenadas?.map { it.lat to it.lon }.orEmpty()
     }
 
     /** Envía al backend la posición simulada de FakeGPS para que el cliente la reciba en vivo por WebSocket. */
@@ -882,6 +909,19 @@ class RepartidorViewModel : ViewModel() {
     /** La entrega en curso salió de la ruta del día: al terminarla se regresa a la ruta. */
     var enRutaDelDia = false
 
+    /** Coordenadas de la base de la purificadora del repartidor (para partir de ahí en FakeGPS). */
+    fun ubicacionPurificadora(): Pair<Double, Double>? {
+        val dir = _miNegocio.value?.direccionObj
+        if (dir?.lat != null && dir.lon != null && (dir.lat != 0.0 || dir.lon != 0.0)) {
+            return dir.lat to dir.lon
+        }
+        val opt = _rutaOptima.value
+        if (opt != null && (opt.origenLat != 0.0 || opt.origenLon != 0.0)) {
+            return opt.origenLat to opt.origenLon
+        }
+        return null
+    }
+
     /** Recarga la agenda y recalcula la ruta óptima (también tras un aviso de RN-009). */
     fun cargarPlan() {
         viewModelScope.launch {
@@ -901,6 +941,31 @@ class RepartidorViewModel : ViewModel() {
                 _errorPlan.value = e.message ?: "Error de red al calcular la ruta"
             } finally {
                 _calculandoPlan.value = false
+            }
+        }
+    }
+
+    /** Reporta una ubicación inicial (p. ej. la purificadora en modo FakeGPS) y recalcula la ruta OR-Tools desde ahí. */
+    fun cargarPlanDesdeUbicacion(lat: Double, lon: Double, onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            _calculandoPlan.value = true
+            try {
+                apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to lat, "lon" to lon))
+                val agenda = apiClient.repartidorApi.agenda()
+                if (agenda.isSuccessful) _agenda.value = agenda.body().orEmpty()
+                val ruta = apiClient.repartidorApi.rutaOptima()
+                if (ruta.isSuccessful && ruta.body() != null) {
+                    _rutaOptima.value = ruta.body()
+                    _errorPlan.value = null
+                } else {
+                    _errorPlan.value = parseError(ruta.errorBody()?.string())
+                        ?: "No se pudo calcular la ruta (${ruta.code()})"
+                }
+            } catch (e: Exception) {
+                _errorPlan.value = e.message ?: "Error de red al calcular la ruta"
+            } finally {
+                _calculandoPlan.value = false
+                onComplete()
             }
         }
     }

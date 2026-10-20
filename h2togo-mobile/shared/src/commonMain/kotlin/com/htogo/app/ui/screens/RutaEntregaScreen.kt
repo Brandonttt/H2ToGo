@@ -100,6 +100,8 @@ fun RutaEntregaScreen(
     val livePedidoEnRuta by repartidorViewModel.pedidoEnRuta.collectAsState()
     val livePedidoDisponible by repartidorViewModel.pedidoDisponibleSeleccionado.collectAsState()
     val liveRutaCalculada by repartidorViewModel.rutaCalculada.collectAsState()
+    val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
+    val liveRutaOptima by repartidorViewModel.rutaOptima.collectAsState()
     val isLoading by repartidorViewModel.isLoading.collectAsState()
 
     val marcas by repartidorViewModel.marcas.collectAsState()
@@ -190,7 +192,19 @@ fun RutaEntregaScreen(
     LaunchedEffect(posicionSimulada != null) { EntregaEnCurso.simulacionActiva.value = posicionSimulada != null }
     DisposableEffect(Unit) { onDispose { EntregaEnCurso.simulacionActiva.value = false } }
 
-    val routePoints = remember(liveRutaCalculada, posicionSimulada, entrega.latDestino, entrega.lonDestino) {
+    // Coordenadas de la purificadora para partir de ahí en FakeGPS (y mostrar marcador de base)
+    val ubicacionBasePurificadora = remember(liveMiNegocio, liveRutaOptima, entrega.latDestino, entrega.lonDestino) {
+        val dir = liveMiNegocio?.direccionObj
+        when {
+            dir?.lat != null && dir.lon != null && (dir.lat != 0.0 || dir.lon != 0.0) -> dir.lat to dir.lon
+            liveRutaOptima != null && (liveRutaOptima!!.origenLat != 0.0 || liveRutaOptima!!.origenLon != 0.0) ->
+                liveRutaOptima!!.origenLat to liveRutaOptima!!.origenLon
+            else -> (entrega.latDestino + 0.0075).coerceIn(19.355, 19.402) to (entrega.lonDestino - 0.0055).coerceIn(-99.190, -99.140)
+        }
+    }
+    val nombrePurificadora = liveMiNegocio?.nombreComercial?.ifBlank { null } ?: "Purificadora"
+
+    val routePoints = remember(liveRutaCalculada, posicionSimulada, entrega.latDestino, entrega.lonDestino, ubicacionBasePurificadora) {
         val reales = liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) }.orEmpty()
         if (reales.size >= 2) {
             reales
@@ -198,8 +212,8 @@ fun RutaEntregaScreen(
             com.htogo.app.data.location.generarRutaDemoCalles(
                 destLat = entrega.latDestino,
                 destLon = entrega.lonDestino,
-                origenLat = posicionSimulada?.lat,
-                origenLon = posicionSimulada?.lon
+                origenLat = posicionSimulada?.lat ?: ubicacionBasePurificadora.first,
+                origenLon = posicionSimulada?.lon ?: ubicacionBasePurificadora.second
             )
         } else {
             emptyList()
@@ -209,6 +223,9 @@ fun RutaEntregaScreen(
     var tienePermiso by remember { mutableStateOf(UbicacionTracker.tienePermiso()) }
     val pedirPermiso = LocalUiPlataforma.current.rememberSolicitudUbicacion { tienePermiso = it }
     LaunchedEffect(Unit) {
+        if (liveMiNegocio == null) {
+            repartidorViewModel.cargarMiNegocio()
+        }
         if (!tienePermiso) {
             pedirPermiso()
         }
@@ -222,32 +239,27 @@ fun RutaEntregaScreen(
     var errorCargaBase by remember { mutableStateOf<String?>(null) }
     var enCaminoSolicitado by remember(entrega.pedidoId) { mutableStateOf(false) }
 
-    // Recorrido automático paso a paso sobre las calles de la ruta (FakeGPS en vivo)
+    // Recorrido automático paso a paso sobre las calles de la ruta partiendo desde la purificadora (FakeGPS en vivo)
     LaunchedEffect(simulandoRecorrido) {
         if (!simulandoRecorrido) return@LaunchedEffect
         val idInt = entrega.pedidoId.toIntOrNull()
         val actual = posicionSimulada
+        var puntosDesdePurificadora: List<Pair<Double, Double>> = emptyList()
         if (actual == null || UbicacionTracker.distanciaM(actual.lat, actual.lon, entrega.latDestino, entrega.lonDestino) < 80.0) {
-            val latIni = (entrega.latDestino + 0.0075).coerceIn(19.355, 19.402)
-            val lonIni = (entrega.lonDestino - 0.0055).coerceIn(-99.190, -99.140)
+            val (latIni, lonIni) = ubicacionBasePurificadora
             val posIni = com.htogo.app.data.location.Posicion(latIni, lonIni, 5f)
             posicionSimulada = posIni
             if (idInt != null) {
-                repartidorViewModel.alMoverse(idInt, posIni, forzar = true)
-            }
-            var espera = 0
-            while (espera < 6 && (liveRutaCalculada?.coordenadas?.size ?: 0) < 2) {
-                delay(250)
-                espera++
+                puntosDesdePurificadora = repartidorViewModel.recalcularRutaDesde(idInt, posIni)
             }
         }
-        val puntosBase = liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) }
-            ?.takeIf { it.size >= 2 }
+        val puntosBase = puntosDesdePurificadora.takeIf { it.size >= 2 }
+            ?: liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) }?.takeIf { it.size >= 2 }
             ?: com.htogo.app.data.location.generarRutaDemoCalles(
                 destLat = entrega.latDestino,
                 destLon = entrega.lonDestino,
-                origenLat = posicionSimulada?.lat,
-                origenLon = posicionSimulada?.lon
+                origenLat = posicionSimulada?.lat ?: ubicacionBasePurificadora.first,
+                origenLon = posicionSimulada?.lon ?: ubicacionBasePurificadora.second
             )
         val pasos = com.htogo.app.data.location.interpolarPasosRuta(
             ruta = puntosBase,
@@ -366,6 +378,9 @@ fun RutaEntregaScreen(
                 seguirRepartidor = true,
                 estadoPedido = livePedidoEnRuta?.estado,
                 margenInferior = sheetHeight, // el repartidor se centra arriba del panel
+                baseLat = ubicacionBasePurificadora.first,
+                baseLon = ubicacionBasePurificadora.second,
+                baseLabel = nombrePurificadora,
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -409,28 +424,27 @@ fun RutaEntregaScreen(
                             text = {
                                 Text(
                                     if (simulandoRecorrido) "⏸️ Pausar recorrido en vivo (FakeGPS)"
-                                    else "▶️ Simular recorrido completo (FakeGPS)"
+                                    else "▶️ Simular desde purificadora (FakeGPS)"
                                 )
                             },
                             onClick = {
                                 menuOpciones = false
                                 simulandoRecorrido = !simulandoRecorrido
                                 if (simulandoRecorrido) {
-                                    mostrarAviso("🛰️ Iniciando recorrido FakeGPS calle por calle…")
+                                    mostrarAviso("🛰️ Iniciando recorrido FakeGPS desde $nombrePurificadora…")
                                 } else {
                                     mostrarAviso("⏸️ Recorrido FakeGPS en pausa")
                                 }
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("🚗 Saltar al inicio de la ruta (~1 km)") },
+                            text = { Text("🏪 Saltar a la purificadora (inicio de ruta)") },
                             onClick = {
                                 menuOpciones = false
                                 simulandoRecorrido = false
-                                val latSim = (entrega.latDestino + 0.0075).coerceIn(19.355, 19.402)
-                                val lonSim = (entrega.lonDestino - 0.0055).coerceIn(-99.190, -99.140)
+                                val (latSim, lonSim) = ubicacionBasePurificadora
                                 posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
-                                mostrarAviso("GPS simulado al inicio de la ruta en Benito Juárez")
+                                mostrarAviso("GPS simulado en la base: $nombrePurificadora")
                             }
                         )
                         DropdownMenuItem(

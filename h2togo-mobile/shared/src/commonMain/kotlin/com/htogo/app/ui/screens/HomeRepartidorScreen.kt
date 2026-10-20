@@ -90,8 +90,8 @@ fun HomeRepartidorScreen(
     val entregasHoyCount = remember(pedidosEntregados) {
         pedidosEntregados.size
     }
-    val enRutaCount = remember(liveMisEntregas, livePedidoEnRuta) {
-        if (livePedidoEnRuta != null) 1 else liveMisEntregas.count { it.estado.equals("en_camino", ignoreCase = true) }
+    val enRutaCount = remember(pedidosApartados, livePedidoEnRuta) {
+        maxOf(pedidosApartados.size, if (livePedidoEnRuta != null) 1 else 0)
     }
 
     val nombreNegocio = liveMiNegocio?.nombreComercial ?: sessionManager.obtenerNombreNegocio() ?: "Purificadora"
@@ -101,6 +101,8 @@ fun HomeRepartidorScreen(
 
     LaunchedEffect(Unit) {
         notificacionesActivas = sessionManager.estanNotificacionesActivas()
+        repartidorViewModel.cargarPedidosDisponibles()
+        repartidorViewModel.cargarInventarios()
         repartidorViewModel.cargarMiNegocio()
         repartidorViewModel.cargarMisEntregas()
     }
@@ -337,57 +339,58 @@ fun HomeRepartidorScreen(
                         }
                     }
                 }
-            } else {
-                Text(
-                    "Pedidos disponibles (${livePedidosDisponibles.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = HToGoColors.TextPrimary,
-                    modifier = Modifier.padding(horizontal = 20.dp)
-                )
-                Spacer(Modifier.height(8.dp))
-                Card(
-                    onClick = onPedidosDisponibles,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                Modifier.size(44.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
-                                contentAlignment = Alignment.Center
-                            ) { Icon(Icons.Filled.Storefront, null, tint = HToGoColors.Primary) }
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    if (livePedidosDisponibles.isNotEmpty())
-                                        "${livePedidosDisponibles.size} pedidos listos para entrega"
-                                    else
-                                        "No hay pedidos pendientes",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = HToGoColors.TextPrimary
-                                )
-                                Text(
-                                    "En tu zona de cobertura",
-                                    fontSize = 13.sp,
-                                    color = HToGoColors.TextSecondary
-                                )
-                            }
-                            EstadoPedidoChip(EstadoPedido.PENDIENTE)
+                Spacer(Modifier.height(20.dp))
+            }
+
+            Text(
+                "Pedidos disponibles (${livePedidosDisponibles.size})",
+                style = MaterialTheme.typography.titleMedium,
+                color = HToGoColors.TextPrimary,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            Card(
+                onClick = onPedidosDisponibles,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier.size(44.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
+                            contentAlignment = Alignment.Center
+                        ) { Icon(Icons.Filled.Storefront, null, tint = HToGoColors.Primary) }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                if (livePedidosDisponibles.isNotEmpty())
+                                    "${livePedidosDisponibles.size} pedidos listos para entrega"
+                                else
+                                    "No hay pedidos pendientes",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = HToGoColors.TextPrimary
+                            )
+                            Text(
+                                "En tu zona de cobertura",
+                                fontSize = 13.sp,
+                                color = HToGoColors.TextSecondary
+                            )
                         }
-                        Spacer(Modifier.height(14.dp))
-                        Button(
-                            onClick = onPedidosDisponibles,
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                        ) {
-                            Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Ver pedidos disponibles", color = Color.White, fontWeight = FontWeight.SemiBold)
-                        }
+                        EstadoPedidoChip(EstadoPedido.PENDIENTE)
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Button(
+                        onClick = onPedidosDisponibles,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                    ) {
+                        Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Ver pedidos disponibles", color = Color.White, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
