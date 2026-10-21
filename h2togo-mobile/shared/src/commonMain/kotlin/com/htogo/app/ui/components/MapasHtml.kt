@@ -258,17 +258,18 @@ internal fun htmlMapaRuta(
 
             // Dentro de Compose el WebView arranca con altura 0 y "height: 100%" deja el mapa en
             // 0 px: se fija la altura real en píxeles y Leaflet recalcula su tamaño (igual que OsmMapView).
-            // Al girar (rumbo arriba) el contenedor se agranda a la diagonal para no dejar esquinas vacías.
-            var SEGUIR = $seguirRepartidor, girado = false;
+            // Cuando SEGUIR está activo el contenedor mantiene siempre el tamaño de la diagonal (lado × lado)
+            // para que al rotar o arrastrar nunca cambie de dimensiones ni salte el origen de píxeles.
+            var SEGUIR = $seguirRepartidor;
             function ajustarTamano() {
               var div = document.getElementById('map');
               var w = window.innerWidth || 360, h = window.innerHeight;
               h = (h && h > 50 ? h : 400);
-              var lado = girado ? Math.ceil(Math.sqrt(w * w + h * h)) : 0;
-              div.style.width = (girado ? lado : w) + 'px';
-              div.style.height = (girado ? lado : h) + 'px';
-              div.style.left = (girado ? (w - lado) / 2 : 0) + 'px';
-              div.style.top = (girado ? (h - lado) / 2 : 0) + 'px';
+              var lado = SEGUIR ? Math.ceil(Math.sqrt(w * w + h * h)) : 0;
+              div.style.width = (SEGUIR ? lado : w) + 'px';
+              div.style.height = (SEGUIR ? lado : h) + 'px';
+              div.style.left = (SEGUIR ? (w - lado) / 2 : 0) + 'px';
+              div.style.top = (SEGUIR ? (h - lado) / 2 : 0) + 'px';
               if (typeof map !== 'undefined' && map) {
                 map.invalidateSize({ pan: false });
                 if (SEGUIR && siguiendo && repPos) map.setView(centroVisible(repPos, map.getZoom()), map.getZoom(), { animate: false });
@@ -278,7 +279,8 @@ internal fun htmlMapaRuta(
 
             var map = L.map('map', {
               center: [$destLat, $destLon], zoom: 15, zoomControl: false, attributionControl: false,
-              dragging: $isInteractive, touchZoom: $isInteractive, doubleClickZoom: $isInteractive, scrollWheelZoom: $isInteractive
+              dragging: $isInteractive, touchZoom: $isInteractive, doubleClickZoom: $isInteractive, scrollWheelZoom: $isInteractive,
+              inertia: false
             });
             // Capa de Google Maps (alternativa)
             var googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20 });
@@ -305,9 +307,27 @@ internal fun htmlMapaRuta(
             var rutaActual = [], paradasActuales = [], destino = [$destLat, $destLon];
             var PALETA_TRAMOS = ['#10B981', '#7C3AED', '#EA580C', '#2563EB', '#DB2777', '#0891B2'];
             var repPos = null, rumbo = 0, anim = null;
-            var siguiendo = SEGUIR, rumboArriba = true, anguloMapa = 0;
+            var siguiendo = SEGUIR, rumboArriba = false, anguloMapa = 0;
             var brujula = document.getElementById('brujula'), centrar = document.getElementById('centrar');
             if (SEGUIR) brujula.style.display = 'flex';
+
+            // Compensa la rotación CSS del contenedor #map al arrastrar para que el mapa se mueva
+            // exactamente en la dirección del dedo del usuario aunque el Norte esté desactivado.
+            if (map.dragging && map.dragging._draggable) {
+              var draggable = map.dragging._draggable;
+              var origUpdatePosition = draggable._updatePosition;
+              draggable._updatePosition = function () {
+                if ( this._startPos && this._newPos && Math.abs(anguloMapa % 360) > 0.5 ) {
+                  var dx = this._newPos.x - this._startPos.x;
+                  var dy = this._newPos.y - this._startPos.y;
+                  var rad = anguloMapa * Math.PI / 180;
+                  var rx = dx * Math.cos(rad) - dy * Math.sin(rad);
+                  var ry = dx * Math.sin(rad) + dy * Math.cos(rad);
+                  this._newPos = this._startPos.add(L.point(rx, ry));
+                }
+                origUpdatePosition.call(this);
+              };
+            }
 
             function distM(a, b) {
               var R = 6371000, r = Math.PI / 180;
@@ -434,14 +454,15 @@ internal fun htmlMapaRuta(
 
             // Gira el mapa (rumbo arriba) solo mientras sigue al repartidor; si no, norte arriba.
             function aplicarRotacion() {
-              var objetivo = (SEGUIR && siguiendo && rumboArriba) ? rumbo : 0;
+              var objetivo = (SEGUIR && rumboArriba) ? rumbo : 0;
               var delta = ((objetivo - anguloMapa) % 360 + 540) % 360 - 180; // giro más corto
               anguloMapa += delta;
-              var debeGirar = objetivo !== 0 || Math.abs(anguloMapa % 360) > 0.5;
-              if (debeGirar !== girado) { girado = debeGirar; ajustarTamano(); }
               if (repPos && SEGUIR && siguiendo) map.setView(centroVisible(repPos, map.getZoom()), map.getZoom(), { animate: false });
               document.getElementById('map').style.transform = 'rotate(' + (-anguloMapa) + 'deg)';
               brujula.querySelector('svg').style.transform = 'rotate(' + (-anguloMapa) + 'deg)';
+              brujula.style.boxShadow = rumboArriba
+                ? '0 0 0 2.5px #0284C7, 0 2px 8px rgba(15,23,42,.25)'
+                : '0 2px 8px rgba(15,23,42,.25)';
             }
             function ponerRumboFlecha() {
               var el = markerRep && markerRep.getElement();
@@ -491,18 +512,33 @@ internal fun htmlMapaRuta(
               anim = requestAnimationFrame(paso);
             }
 
-            // El usuario explora el mapa: se deja de seguir y vuelve norte arriba.
+            // El usuario explora el mapa: se deja de seguir sin rotar ni redimensionar a mitad del arrastre.
             map.on('dragstart', function () {
-              if (!SEGUIR || !siguiendo) return;
-              siguiendo = false; centrar.style.display = 'flex'; aplicarRotacion();
+              if (!SEGUIR) return;
+              if (anim) { cancelAnimationFrame(anim); anim = null; }
+              if (!siguiendo) return;
+              siguiendo = false;
+              centrar.style.display = 'flex';
             });
             centrar.addEventListener('click', function () {
-              siguiendo = true; centrar.style.display = 'none'; aplicarRotacion();
-              if (repPos) { var z = Math.max(map.getZoom(), 16); map.setView(centroVisible(repPos, z), z); }
+              siguiendo = true;
+              centrar.style.display = 'none';
+              if (repPos) {
+                var z = Math.max(map.getZoom(), 16);
+                map.setView(centroVisible(repPos, z), z, { animate: false });
+              }
+              aplicarRotacion();
             });
             brujula.addEventListener('click', function () {
               rumboArriba = !rumboArriba;
-              if (!siguiendo) { siguiendo = true; centrar.style.display = 'none'; if (repPos) { var z = Math.max(map.getZoom(), 16); map.setView(centroVisible(repPos, z), z); } }
+              if (!siguiendo) {
+                siguiendo = true;
+                centrar.style.display = 'none';
+              }
+              if (repPos) {
+                var z = Math.max(map.getZoom(), 16);
+                map.setView(centroVisible(repPos, z), z, { animate: false });
+              }
               aplicarRotacion();
             });
 

@@ -73,6 +73,7 @@ fun PlanRutaScreen(
     val calculando by repartidorViewModel.calculandoPlan.collectAsState()
     val error by repartidorViewModel.errorPlan.collectAsState()
     val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
+    val entregasCompletadasRuta by repartidorViewModel.entregasCompletadasRuta.collectAsState()
     var abriendo by remember { mutableStateOf(false) }
 
     // FakeGPS para simular el recorrido completo de la ruta OR-Tools partiendo desde la purificadora
@@ -282,6 +283,8 @@ fun PlanRutaScreen(
                 item { ResumenRuta(r) }
                 item {
                     val siguiente = r.paradas.first()
+                    val numActual = entregasCompletadasRuta + 1
+                    val numTotal = entregasCompletadasRuta + r.paradas.size
                     Button(
                         onClick = {
                             abriendo = true
@@ -303,12 +306,20 @@ fun PlanRutaScreen(
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Ir a la parada 1 · ${siguiente.nombreCliente ?: "Cliente"}",
+                            "Ir a la entrega $numActual de $numTotal · ${siguiente.nombreCliente ?: "Cliente"}",
                             fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
-                item { Titulo("Orden de visita", "${r.paradas.size} ${if (r.paradas.size == 1) "parada" else "paradas"}") }
+                item {
+                    val totalRuta = entregasCompletadasRuta + r.paradas.size
+                    val subtituloOrden = if (entregasCompletadasRuta > 0) {
+                        "${r.paradas.size} restantes ($entregasCompletadasRuta de $totalRuta entregadas)"
+                    } else {
+                        "${r.paradas.size} ${if (r.paradas.size == 1) "entrega" else "entregas"}"
+                    }
+                    Titulo("Orden de visita", subtituloOrden)
+                }
                 items(r.paradas, key = { "p${it.idPedido}" }) { p ->
                     ParadaItem(p, onLiberar = {
                         repartidorViewModel.liberar(p.idPedido) { mostrarAviso(it, largo = true) }

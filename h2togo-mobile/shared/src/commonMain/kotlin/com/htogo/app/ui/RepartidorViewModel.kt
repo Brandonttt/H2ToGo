@@ -869,6 +869,15 @@ class RepartidorViewModel : ViewModel() {
                 )
                 val resp = apiClient.repartidorApi.finalizarEntrega(id, req)
                 if (resp.isSuccessful && resp.body() != null) {
+                    val restantes = _rutaOptima.value?.paradas?.filter { it.idPedido != id }.orEmpty()
+                    if (enRutaDelDia && restantes.isNotEmpty()) {
+                        _entregasCompletadasRuta.value += 1
+                        _rutaOptima.value = _rutaOptima.value?.copy(
+                            paradas = restantes.mapIndexed { idx, p -> p.copy(orden = idx + 1) }
+                        )
+                    } else if (restantes.isEmpty()) {
+                        _entregasCompletadasRuta.value = 0
+                    }
                     _pedidoEnRuta.value = null
                     _pedidoDisponibleSeleccionado.value = null
                     _rutaCalculada.value = null
@@ -909,6 +918,10 @@ class RepartidorViewModel : ViewModel() {
     /** La entrega en curso salió de la ruta del día: al terminarla se regresa a la ruta. */
     var enRutaDelDia = false
 
+    private val _entregasCompletadasRuta = MutableStateFlow(0)
+    /** Cantidad de paradas ya entregadas dentro de la sesión actual de "Mi ruta del día". */
+    val entregasCompletadasRuta: StateFlow<Int> = _entregasCompletadasRuta.asStateFlow()
+
     /**
      * Posición del FakeGPS compartida entre la ruta del día y la pantalla de entrega. Cada parada
      * abre una pantalla nueva: sin esto la simulación volvía a empezar en la purificadora en vez de
@@ -938,7 +951,11 @@ class RepartidorViewModel : ViewModel() {
                 if (agenda.isSuccessful) _agenda.value = agenda.body().orEmpty()
                 val ruta = apiClient.repartidorApi.rutaOptima()
                 if (ruta.isSuccessful && ruta.body() != null) {
-                    _rutaOptima.value = ruta.body()
+                    val body = ruta.body()!!
+                    _rutaOptima.value = body
+                    if (body.paradas.isEmpty()) {
+                        _entregasCompletadasRuta.value = 0
+                    }
                     _errorPlan.value = null
                 } else {
                     _errorPlan.value = parseError(ruta.errorBody()?.string())
@@ -962,7 +979,11 @@ class RepartidorViewModel : ViewModel() {
                 if (agenda.isSuccessful) _agenda.value = agenda.body().orEmpty()
                 val ruta = apiClient.repartidorApi.rutaOptima()
                 if (ruta.isSuccessful && ruta.body() != null) {
-                    _rutaOptima.value = ruta.body()
+                    val body = ruta.body()!!
+                    _rutaOptima.value = body
+                    if (body.paradas.isEmpty()) {
+                        _entregasCompletadasRuta.value = 0
+                    }
                     _errorPlan.value = null
                 } else {
                     _errorPlan.value = parseError(ruta.errorBody()?.string())
@@ -1074,6 +1095,8 @@ class RepartidorViewModel : ViewModel() {
         _rutaOptima.value = null
         _errorPlan.value = null
         enRutaDelDia = false
+        _entregasCompletadasRuta.value = 0
+        ultimaPosicionSimulada = null
         detenerNavegacion()
     }
 }

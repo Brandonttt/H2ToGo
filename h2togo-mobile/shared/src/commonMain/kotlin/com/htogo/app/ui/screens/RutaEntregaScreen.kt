@@ -102,11 +102,20 @@ fun RutaEntregaScreen(
     val liveRutaCalculada by repartidorViewModel.rutaCalculada.collectAsState()
     val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
     val liveRutaOptima by repartidorViewModel.rutaOptima.collectAsState()
+    val liveMisEntregas by repartidorViewModel.misEntregas.collectAsState()
+    val entregasCompletadasRuta by repartidorViewModel.entregasCompletadasRuta.collectAsState()
     val isLoading by repartidorViewModel.isLoading.collectAsState()
 
     val marcas by repartidorViewModel.marcas.collectAsState()
     val nombresMarca = remember(marcas) { marcas.associate { it.id to it.nombre } }
-    val entrega = remember(livePedidoEnRuta, livePedidoDisponible, nombresMarca) {
+    val entrega = remember(
+        livePedidoEnRuta,
+        livePedidoDisponible,
+        nombresMarca,
+        liveRutaOptima,
+        liveMisEntregas,
+        entregasCompletadasRuta
+    ) {
         val pEnRuta = livePedidoEnRuta
         val pDisp = livePedidoDisponible
 
@@ -164,6 +173,32 @@ fun RutaEntregaScreen(
             else -> 1
         }
 
+        val idPedidoInt = idStr.toIntOrNull()
+        val paradasOptimas = liveRutaOptima?.paradas.orEmpty()
+        val activosCola = liveMisEntregas.filter {
+            it.estado.equals("asignado", ignoreCase = true) ||
+                it.estado.equals("en_camino", ignoreCase = true) ||
+                it.estado.equals("pendiente_programado", ignoreCase = true) ||
+                it.estado.equals("pendiente", ignoreCase = true)
+        }
+        val (numActual, numTotal) = when {
+            paradasOptimas.isNotEmpty() -> {
+                val idx = paradasOptimas.indexOfFirst { it.idPedido == idPedidoInt }
+                val posEnRestantes = if (idx >= 0) idx + 1 else 1
+                val act = entregasCompletadasRuta + posEnRestantes
+                val tot = entregasCompletadasRuta + paradasOptimas.size
+                act to maxOf(act, tot)
+            }
+            activosCola.isNotEmpty() -> {
+                val idx = activosCola.indexOfFirst { it.id == idPedidoInt }
+                val posEnCola = if (idx >= 0) idx + 1 else 1
+                val act = entregasCompletadasRuta + posEnCola
+                val tot = entregasCompletadasRuta + activosCola.size
+                act to maxOf(act, tot)
+            }
+            else -> 1 to 1
+        }
+
         EntregaActiva(
             pedidoId = idStr,
             cliente = nombre,
@@ -174,8 +209,8 @@ fun RutaEntregaScreen(
             productos = prods,
             garrafonesTotales = cantGarrafones,
             total = totalMonto,
-            entregaActual = 1,
-            totalEntregas = 1,
+            entregaActual = numActual,
+            totalEntregas = numTotal,
             latDestino = latDest,
             lonDestino = lonDest
         )
@@ -227,6 +262,9 @@ fun RutaEntregaScreen(
     LaunchedEffect(Unit) {
         if (liveMiNegocio == null) {
             repartidorViewModel.cargarMiNegocio()
+        }
+        if (liveRutaOptima == null) {
+            repartidorViewModel.cargarPlan()
         }
         if (!tienePermiso) {
             pedirPermiso()
