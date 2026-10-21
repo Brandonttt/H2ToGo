@@ -4,6 +4,7 @@ import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.util.ahoraCdmx
 import com.htogo.app.util.fechaCdmx
+import com.htogo.app.util.fechaHoraLegible
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.minus
 
@@ -73,8 +74,9 @@ private fun grupoPorFecha(iso: String?): String {
     }
 }
 
-/** "2026-10-13T09:30:00-06:00" → "13/10/2026 09:30". */
+/** "2026-10-21T23:24:00Z" → "21/10/2026 05:24 p.m." (en zona horaria CDMX). */
 private fun fechaLegible(iso: String?): String {
+    fechaCdmx(iso)?.let { return it.fechaHoraLegible() }
     if (iso.isNullOrBlank() || iso.length < 16) return iso?.take(10) ?: "—"
     return "${iso.substring(8, 10)}/${iso.substring(5, 7)}/${iso.substring(0, 4)} ${iso.substring(11, 16)}"
 }

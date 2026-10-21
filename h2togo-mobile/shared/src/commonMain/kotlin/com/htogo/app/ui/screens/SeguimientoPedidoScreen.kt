@@ -4,6 +4,8 @@ import androidx.compose.ui.platform.LocalUriHandler
 
 import com.htogo.app.plataforma.mostrarAviso
 import com.htogo.app.plataforma.ahoraMs
+import com.htogo.app.util.diaMesHoraLegible
+import com.htogo.app.util.fechaCdmx
 import com.htogo.app.util.format
 
 import androidx.compose.animation.core.*
@@ -798,8 +800,12 @@ fun SeguimientoPedidoScreen(
                 else -> emptyList()
             }
             val fecha = historialPedido.orEmpty().firstOrNull { it.estado.lowercase() in estado }?.fecha
-            if (paso.state == TrackingStep.StepState.PENDING || fecha.isNullOrBlank() || fecha.length < 16) paso
-            else paso.copy(time = "${fecha.substring(8, 10)}/${fecha.substring(5, 7)} ${fecha.substring(11, 16)} · ${paso.time}")
+            if (paso.state == TrackingStep.StepState.PENDING || fecha.isNullOrBlank()) paso
+            else {
+                val fechaTxt = fechaCdmx(fecha)?.diaMesHoraLegible()
+                    ?: if (fecha.length >= 16) "${fecha.substring(8, 10)}/${fecha.substring(5, 7)} ${fecha.substring(11, 16)}" else fecha
+                paso.copy(time = "$fechaTxt · ${paso.time}")
+            }
         }
     }
 

@@ -2,6 +2,8 @@ package com.htogo.app.ui.screens
 
 import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.ui.components.BarraEstadoClara
+import com.htogo.app.util.fechaCdmx
+import com.htogo.app.util.textoCorto
 import com.htogo.app.util.textoLargo
 
 import com.htogo.app.plataforma.mostrarAviso
@@ -471,7 +473,9 @@ fun HomeRepartidorScreen(
                             "cancelado" -> EstadoPedido.CANCELADO
                             else -> EstadoPedido.PENDIENTE
                         }
-                        val formattedFecha = p.fechaCreacion?.take(10) ?: "Hoy"
+                        val formattedFecha = fechaCdmx(p.fechaCreacion)?.textoCorto()
+                            ?: p.fechaCreacion?.take(10)
+                            ?: "Hoy"
                         ColaItem(
                             id = "${p.id}",
                             cliente = if (p.esProgramado) "Pedido programado" else "Entrega #${p.id}",

@@ -4,6 +4,8 @@ import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.ui.components.SelectorFecha
 import com.htogo.app.data.dto.aMapaJson
 import com.htogo.app.util.ahoraCdmx
+import com.htogo.app.util.fechaCdmx
+import com.htogo.app.util.textoCorto
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
@@ -1305,7 +1307,7 @@ private fun SolicitudVehiculoCard(
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                "Enviada: ${solicitud.fechaSolicitud.take(16).replace('T', ' ')}",
+                "Enviada: ${fechaCdmx(solicitud.fechaSolicitud)?.textoCorto() ?: solicitud.fechaSolicitud.take(16).replace('T', ' ')}",
                 fontSize = 11.sp,
                 color = HToGoColors.TextSecondary
             )
@@ -1545,7 +1547,8 @@ private fun VField(label: String, value: String, modifier: Modifier = Modifier, 
 
 /** Días desde hoy hasta una fecha ISO (yyyy-MM-dd); 0 si no se puede leer. */
 private fun diasHasta(fechaIso: String): Int = try {
-    ahoraCdmx().date.daysUntil(LocalDate.parse(fechaIso.take(10)))
+    val fechaObjetivo = fechaCdmx(fechaIso)?.date ?: LocalDate.parse(fechaIso.take(10))
+    ahoraCdmx().date.daysUntil(fechaObjetivo)
 } catch (e: Exception) {
     0
 }

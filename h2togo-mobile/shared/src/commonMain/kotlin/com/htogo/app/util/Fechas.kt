@@ -18,7 +18,11 @@ fun ahoraCdmx(): LocalDateTime = Clock.System.now().toLocalDateTime(ZONA_CDMX)
 
 /** Fecha ISO del backend ("2026-10-04T12:37:00.123-06:00" o con Z) → hora de la CDMX. */
 fun fechaCdmx(iso: String?): LocalDateTime? =
-    iso?.let { runCatching { Instant.parse(it).toLocalDateTime(ZONA_CDMX) }.getOrNull() }
+    iso?.trim()?.takeIf { it.isNotEmpty() }?.let { raw ->
+        runCatching { Instant.parse(raw).toLocalDateTime(ZONA_CDMX) }
+            .recoverCatching { LocalDateTime.parse(raw.replace(' ', 'T').take(19)) }
+            .getOrNull()
+    }
 
 /** 0 = lunes … 6 = domingo. */
 val LocalDate.indiceSemana: Int get() = dayOfWeek.ordinal
@@ -45,19 +49,32 @@ fun fechaDeSelector(millisUtc: Long): LocalDate =
 fun minutosDesde(iso: String?): Long? =
     iso?.let { runCatching { (Clock.System.now() - Instant.parse(it)).inWholeMinutes }.getOrNull() }
 
-/** "13 oct, 09:30". */
+/** "13 oct, 05:24 p.m." en hora de la CDMX. */
 fun LocalDateTime.textoCorto(): String =
-    "$dayOfMonth ${MESES[monthNumber - 1].take(3)}, ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
+    "$dayOfMonth ${MESES[monthNumber - 1].take(3)}, ${horaAmPm()}"
 
-/** "13 de octubre 2026, 09:30:05". */
+/** "13 de octubre 2026, 05:24 p.m." en hora de la CDMX. */
 fun LocalDateTime.textoCompleto(): String =
-    "$dayOfMonth de ${MESES[monthNumber - 1]} $year, " +
-        listOf(hour, minute, second).joinToString(":") { it.toString().padStart(2, '0') }
+    "$dayOfMonth de ${MESES[monthNumber - 1]} $year, ${horaAmPm()}"
 
-/** "10:00 a.m." / "4:30 p.m.". */
+/** "10:00 a.m." / "05:24 p.m.". */
 fun LocalDateTime.horaAmPm(): String {
     val h12 = if (hour % 12 == 0) 12 else hour % 12
-    return "$h12:${minute.toString().padStart(2, '0')} ${if (hour < 12) "a.m." else "p.m."}"
+    return "${h12.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${if (hour < 12) "a.m." else "p.m."}"
+}
+
+/** "21/10/2026 05:24 p.m." en hora de la CDMX. */
+fun LocalDateTime.fechaHoraLegible(): String {
+    val dd = dayOfMonth.toString().padStart(2, '0')
+    val mm = monthNumber.toString().padStart(2, '0')
+    return "$dd/$mm/$year ${horaAmPm()}"
+}
+
+/** "21/10 05:24 p.m." en hora de la CDMX. */
+fun LocalDateTime.diaMesHoraLegible(): String {
+    val dd = dayOfMonth.toString().padStart(2, '0')
+    val mm = monthNumber.toString().padStart(2, '0')
+    return "$dd/$mm ${horaAmPm()}"
 }
 
 /** Fecha y hora de la CDMX → instante ISO-8601 en UTC para el backend ("2026-10-15T16:00:00Z"). */
