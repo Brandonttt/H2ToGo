@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.util.fechaCdmx
 import com.htogo.app.util.textoCorto
@@ -141,6 +142,7 @@ fun HistorialEntregasRepartidorScreen(
     }
 
     BarraEstadoClara() // el encabezado oscuro llega hasta arriba
+    val refrescando by repartidorViewModel.refrescando.collectAsState()
     Scaffold(
         // Sin margen superior: el encabezado pinta su degradado detrás de la barra de estado.
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
@@ -155,138 +157,141 @@ fun HistorialEntregasRepartidorScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // Header
-            HeaderHistorial(
-                totalEntregas = totalCount,
-                textoBusqueda = textoBusqueda,
-                onTextoBusquedaChange = { textoBusqueda = it },
-                onBack = onBack
-            )
-
-            // Pestañas de filtro
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.background(HToGoColors.Background)
+        // Deslizar hacia abajo para actualizar los datos de la pantalla.
+        DeslizarParaActualizar(refrescando, { repartidorViewModel.refrescar() }, Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
             ) {
-                items(FiltroHistorial.values()) { f ->
-                    val cantidad = when (f) {
-                        FiltroHistorial.TODAS -> totalCount
-                        FiltroHistorial.ENTREGADAS -> entregadasCount
-                        FiltroHistorial.NO_ENTREGADAS -> noEntregadasCount
-                        FiltroHistorial.CANCELADAS -> canceladasCount
-                        FiltroHistorial.EN_CURSO -> enCursoCount
-                    }
-                    val activo = f == filtroSeleccionado
-                    Surface(
-                        shape = RoundedCornerShape(99.dp),
-                        color = if (activo) HToGoColors.Primary else Color.White,
-                        border = BorderStroke(1.dp, if (activo) HToGoColors.Primary else HToGoColors.OutlineSoft),
-                        modifier = Modifier.clickable { filtroSeleccionado = f }
-                    ) {
-                        Row(
-                            Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                // Header
+                HeaderHistorial(
+                    totalEntregas = totalCount,
+                    textoBusqueda = textoBusqueda,
+                    onTextoBusquedaChange = { textoBusqueda = it },
+                    onBack = onBack
+                )
+
+                // Pestañas de filtro
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.background(HToGoColors.Background)
+                ) {
+                    items(FiltroHistorial.values()) { f ->
+                        val cantidad = when (f) {
+                            FiltroHistorial.TODAS -> totalCount
+                            FiltroHistorial.ENTREGADAS -> entregadasCount
+                            FiltroHistorial.NO_ENTREGADAS -> noEntregadasCount
+                            FiltroHistorial.CANCELADAS -> canceladasCount
+                            FiltroHistorial.EN_CURSO -> enCursoCount
+                        }
+                        val activo = f == filtroSeleccionado
+                        Surface(
+                            shape = RoundedCornerShape(99.dp),
+                            color = if (activo) HToGoColors.Primary else Color.White,
+                            border = BorderStroke(1.dp, if (activo) HToGoColors.Primary else HToGoColors.OutlineSoft),
+                            modifier = Modifier.clickable { filtroSeleccionado = f }
                         ) {
-                            Text(
-                                f.label,
-                                fontSize = 13.sp,
-                                fontWeight = if (activo) FontWeight.SemiBold else FontWeight.Medium,
-                                color = if (activo) Color.White else HToGoColors.TextPrimary
-                            )
-                            Surface(
-                                shape = CircleShape,
-                                color = if (activo) Color.White.copy(alpha = 0.25f) else Color(0xFFF1F5F9)
+                            Row(
+                                Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    "$cantidad",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (activo) Color.White else HToGoColors.TextSecondary,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    f.label,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (activo) FontWeight.SemiBold else FontWeight.Medium,
+                                    color = if (activo) Color.White else HToGoColors.TextPrimary
                                 )
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (activo) Color.White.copy(alpha = 0.25f) else Color(0xFFF1F5F9)
+                                ) {
+                                    Text(
+                                        "$cantidad",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (activo) Color.White else HToGoColors.TextSecondary,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // Lista de pedidos o estado vacío (Flujo alterno S1)
-            if (entregasFiltradas.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                // Lista de pedidos o estado vacío (Flujo alterno S1)
+                if (entregasFiltradas.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Surface(
-                            modifier = Modifier.size(80.dp),
-                            shape = CircleShape,
-                            color = HToGoColors.PrimarySoft.copy(alpha = 0.4f)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Filled.History,
-                                    contentDescription = null,
-                                    tint = HToGoColors.Primary,
-                                    modifier = Modifier.size(40.dp)
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            text = if (totalCount == 0) "Sin entregas registradas" else "No se encontraron entregas",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = HToGoColors.TextPrimary,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = if (totalCount == 0)
-                                "Aún no tienes entregas en tu historial. Acepta pedidos disponibles para comenzar a trabajar."
-                            else
-                                "No hay entregas que coincidan con el filtro seleccionado.",
-                            fontSize = 14.sp,
-                            color = HToGoColors.TextSecondary,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
-                        if (totalCount == 0) {
-                            Spacer(Modifier.height(20.dp))
-                            Button(
-                                onClick = onVerDisponibles,
-                                colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary),
-                                shape = RoundedCornerShape(12.dp)
+                            Surface(
+                                modifier = Modifier.size(80.dp),
+                                shape = CircleShape,
+                                color = HToGoColors.PrimarySoft.copy(alpha = 0.4f)
                             ) {
-                                Icon(Icons.Filled.DeliveryDining, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Ver pedidos disponibles", fontWeight = FontWeight.SemiBold)
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Filled.History,
+                                        contentDescription = null,
+                                        tint = HToGoColors.Primary,
+                                        modifier = Modifier.size(40.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                text = if (totalCount == 0) "Sin entregas registradas" else "No se encontraron entregas",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = HToGoColors.TextPrimary,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = if (totalCount == 0)
+                                    "Aún no tienes entregas en tu historial. Acepta pedidos disponibles para comenzar a trabajar."
+                                else
+                                    "No hay entregas que coincidan con el filtro seleccionado.",
+                                fontSize = 14.sp,
+                                color = HToGoColors.TextSecondary,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 24.dp)
+                            )
+                            if (totalCount == 0) {
+                                Spacer(Modifier.height(20.dp))
+                                Button(
+                                    onClick = onVerDisponibles,
+                                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Filled.DeliveryDining, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Ver pedidos disponibles", fontWeight = FontWeight.SemiBold)
+                                }
                             }
                         }
                     }
-                }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(entregasFiltradas, key = { it.id }) { entrega ->
-                        EntregaCard(
-                            entrega = entrega,
-                            onClick = { pedidoSeleccionadoId = entrega.id }
-                        )
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(entregasFiltradas, key = { it.id }) { entrega ->
+                            EntregaCard(
+                                entrega = entrega,
+                                onClick = { pedidoSeleccionadoId = entrega.id }
+                            )
+                        }
                     }
                 }
             }

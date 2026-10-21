@@ -6,6 +6,7 @@ import com.htogo.shared.data.mensajeDeError
 import com.htogo.app.plataforma.ahoraMs
 import com.htogo.app.plataforma.Plataforma
 import com.htogo.app.data.api.ApiClient
+import com.htogo.app.data.notificaciones.CanalNotificaciones
 import com.htogo.app.data.dto.AgendaPedidoDto
 import com.htogo.app.data.dto.ParadaDto
 import com.htogo.app.data.dto.PedidoDisponibleResponse
@@ -14,6 +15,8 @@ import com.htogo.app.data.dto.PedidoResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
 class RepartidorViewModel : ViewModel() {
@@ -71,8 +74,8 @@ class RepartidorViewModel : ViewModel() {
     /** RN-021: solo el dueño ve las acciones que cambian el negocio (inventario base, catálogo, solicitudes). */
     val esDueno: StateFlow<Boolean> = _esDueno.asStateFlow()
 
-    fun cargarMiNegocio() {
-        viewModelScope.launch {
+    fun cargarMiNegocio(): Job {
+        return viewModelScope.launch {
             try {
                 apiClient.authApi.perfil().body()?.let { _esDueno.value = it.repartidor?.esDueno == true }
             } catch (e: Exception) {
@@ -135,8 +138,8 @@ class RepartidorViewModel : ViewModel() {
         }
     }
 
-    fun cargarSolicitudes() {
-        viewModelScope.launch {
+    fun cargarSolicitudes(): Job {
+        return viewModelScope.launch {
             try {
                 val resp = apiClient.solicitudesApi.misSolicitudes()
                 if (resp.isSuccessful && resp.body() != null) {
@@ -379,8 +382,8 @@ class RepartidorViewModel : ViewModel() {
         }
     }
 
-    fun cargarMisEntregas() {
-        viewModelScope.launch {
+    fun cargarMisEntregas(): Job {
+        return viewModelScope.launch {
             try {
                 // Todas las páginas (100 es el máximo del backend), con tope de 1000 entregas: los
                 // ingresos del mes y el historial se calculan sobre esta lista.
@@ -439,8 +442,8 @@ class RepartidorViewModel : ViewModel() {
         cargarInventarioVehiculo()
     }
 
-    fun cargarInventarioBase() {
-        viewModelScope.launch {
+    fun cargarInventarioBase(): Job {
+        return viewModelScope.launch {
             try {
                 val resp = apiClient.inventarioApi.obtenerInventarioBase()
                 if (resp.isSuccessful && resp.body() != null) {
@@ -452,8 +455,8 @@ class RepartidorViewModel : ViewModel() {
         }
     }
 
-    fun cargarInventarioVehiculo() {
-        viewModelScope.launch {
+    fun cargarInventarioVehiculo(): Job {
+        return viewModelScope.launch {
             try {
                 val resp = apiClient.inventarioApi.obtenerInventarioVehiculo()
                 if (resp.isSuccessful && resp.body() != null) {
@@ -611,8 +614,8 @@ class RepartidorViewModel : ViewModel() {
         }
     }
 
-    fun cargarPedidosDisponibles() {
-        viewModelScope.launch {
+    fun cargarPedidosDisponibles(): Job {
+        return viewModelScope.launch {
             _isLoading.value = true
             try {
                 val resp = apiClient.repartidorApi.obtenerPedidosDisponibles()
@@ -1061,12 +1064,59 @@ class RepartidorViewModel : ViewModel() {
         return mensajeDeError(errorJson)
     }
 
+    private val _refrescando = MutableStateFlow(false)
+    /** Deslizar hacia abajo para actualizar: indicador visible mientras se recargan los datos. */
+    val refrescando: StateFlow<Boolean> = _refrescando.asStateFlow()
+
     // Al final de la clase: debe correr después de inicializar todos los StateFlow de arriba.
     // Igual que ClienteViewModel: recarga al iniciar sesión y limpia al cerrarla.
     init {
         viewModelScope.launch {
             sessionManager.token.collect { token ->
                 if (token.isNullOrBlank()) limpiarDatosDeSesion() else recargarDatosDeSesion()
+            }
+        }
+        refrescarAlRecibirAvisos()
+    }
+
+    /** Recarga lo que muestran el inicio, el negocio, los ingresos y el historial. */
+    fun refrescar() {
+        if (_refrescando.value) return
+        viewModelScope.launch {
+            _refrescando.value = true
+            try {
+                listOf(
+                    cargarPedidosDisponibles(), cargarMisEntregas(), cargarMiNegocio(),
+                    cargarInventarioBase(), cargarInventarioVehiculo(), cargarSolicitudes()
+                ).joinAll()
+            } finally {
+                _refrescando.value = false
+            }
+        }
+    }
+
+    /**
+     * Los avisos del backend actualizan la pantalla abierta sin tener que deslizar: un pedido nuevo
+     * aparece en disponibles, una reasignación o cancelación cambia sus entregas, etc.
+     */
+    private fun refrescarAlRecibirAvisos() {
+        viewModelScope.launch {
+            CanalNotificaciones.avisos.collect { aviso ->
+                when (aviso.datos["tipo"]) {
+                    "pedido_nuevo" -> cargarPedidosDisponibles()
+                    "pedido_reasignado", "ruta_recalculada" -> {
+                        cargarPedidosDisponibles()
+                        cargarMisEntregas()
+                    }
+                    "lotes_por_caducar" -> {
+                        cargarInventarioBase()
+                        cargarInventarioVehiculo()
+                    }
+                    "solicitud_resuelta" -> {
+                        cargarSolicitudes()
+                        cargarMiNegocio()
+                    }
+                }
             }
         }
     }

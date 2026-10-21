@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.plataforma.mostrarAviso
 import com.htogo.app.util.format
@@ -84,6 +85,7 @@ fun HomeClienteScreen(
     val livePedidoActivo by clienteViewModel.pedidoActivo.collectAsState()
 
     BarraEstadoClara() // el encabezado oscuro llega hasta arriba
+    val refrescando by clienteViewModel.refrescando.collectAsState()
     Scaffold(
         // Sin margen superior: el encabezado pinta su degradado detrás de la barra de estado.
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
@@ -107,180 +109,183 @@ fun HomeClienteScreen(
             )
         }
     ) { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding)
-                .verticalScroll(rememberScrollState())
-        ) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(HToGoColors.PrimaryDark, HToGoColors.Primary)
-                        )
-                    )
-                    .statusBarsPadding()
-                    .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 14.dp)
+        // Deslizar hacia abajo para actualizar los datos de la pantalla.
+        DeslizarParaActualizar(refrescando, { clienteViewModel.refrescar() }, Modifier.fillMaxSize(), bajoBarraDeEstado = true) {
+            Column(
+                Modifier.fillMaxSize().padding(padding)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Hola, $nombre",
-                                color = Color.White, fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Filled.LocationOn, null,
-                                    tint = HToGoColors.PrimarySoft,
-                                    modifier = Modifier.size(14.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text(direccion,
-                                    color = HToGoColors.PrimarySoft, fontSize = 13.sp,
-                                    maxLines = 1)
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(HToGoColors.PrimaryDark, HToGoColors.Primary)
+                            )
+                        )
+                        .statusBarsPadding()
+                        .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 14.dp)
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Hola, $nombre",
+                                    color = Color.White, fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Filled.LocationOn, null,
+                                        tint = HToGoColors.PrimarySoft,
+                                        modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(direccion,
+                                        color = HToGoColors.PrimarySoft, fontSize = 13.sp,
+                                        maxLines = 1)
+                                }
+                            }
+                            IconButton(onClick = {
+                                val nuevoEstado = !notificacionesActivas
+                                notificacionesActivas = nuevoEstado
+                                sessionManager.guardarNotificacionesActivas(nuevoEstado)
+                                mostrarAviso(if (nuevoEstado) "Notificaciones activadas" else "Notificaciones desactivadas")
+                            }) {
+                                Icon(
+                                    if (notificacionesActivas) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
+                                    contentDescription = if (notificacionesActivas) "Desactivar notificaciones" else "Activar notificaciones",
+                                    tint = if (notificacionesActivas) Color.White else Color.White.copy(alpha = 0.6f)
+                                )
                             }
                         }
-                        IconButton(onClick = {
-                            val nuevoEstado = !notificacionesActivas
-                            notificacionesActivas = nuevoEstado
-                            sessionManager.guardarNotificacionesActivas(nuevoEstado)
-                            mostrarAviso(if (nuevoEstado) "Notificaciones activadas" else "Notificaciones desactivadas")
-                        }) {
-                            Icon(
-                                if (notificacionesActivas) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
-                                contentDescription = if (notificacionesActivas) "Desactivar notificaciones" else "Activar notificaciones",
-                                tint = if (notificacionesActivas) Color.White else Color.White.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        Modifier
-                            .clip(RoundedCornerShape(99.dp))
-                            .background(Color.White.copy(alpha = 0.15f))
-                            .clickable(onClick = onSwitchRol)
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.SwapHoriz, null,
-                            tint = Color.White, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Vista Repartidor",
-                            color = Color.White, fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Card(
-                        onClick = onElegirPurificadora,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
+                        Spacer(Modifier.height(8.dp))
                         Row(
-                            Modifier.padding(14.dp),
+                            Modifier
+                                .clip(RoundedCornerShape(99.dp))
+                                .background(Color.White.copy(alpha = 0.15f))
+                                .clickable(onClick = onSwitchRol)
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Filled.Search, null, tint = HToGoColors.TextTertiary)
-                            Spacer(Modifier.width(10.dp))
-                            Text("¿Buscas una purificadora cerca?",
-                                color = HToGoColors.TextSecondary, fontSize = 14.sp)
+                            Icon(Icons.Filled.SwapHoriz, null,
+                                tint = Color.White, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Vista Repartidor",
+                                color = Color.White, fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Card(
+                            onClick = onElegirPurificadora,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Row(
+                                Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.Search, null, tint = HToGoColors.TextTertiary)
+                                Spacer(Modifier.width(10.dp))
+                                Text("¿Buscas una purificadora cerca?",
+                                    color = HToGoColors.TextSecondary, fontSize = 14.sp)
+                            }
                         }
                     }
                 }
-            }
 
-            if (livePedidoActivo != null && livePedidoActivo!!.estado != "entregado" && livePedidoActivo!!.estado != "cancelado") {
-                Spacer(Modifier.height(20.dp))
-                Text("Pedido en curso",
+                if (livePedidoActivo != null && livePedidoActivo!!.estado != "entregado" && livePedidoActivo!!.estado != "cancelado") {
+                    Spacer(Modifier.height(20.dp))
+                    Text("Pedido en curso",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = HToGoColors.TextPrimary,
+                        modifier = Modifier.padding(horizontal = 20.dp))
+                    Spacer(Modifier.height(8.dp))
+                    PedidoActivoCard(
+                        id = livePedidoActivo!!.id.toString(),
+                        resumen = "${livePedidoActivo!!.garrafonesTotales ?: 1} garrafones",
+                        estadoStr = livePedidoActivo!!.estado,
+                        onClick = onTrackPedido
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                Text("Acciones rápidas",
                     style = MaterialTheme.typography.titleMedium,
                     color = HToGoColors.TextPrimary,
                     modifier = Modifier.padding(horizontal = 20.dp))
                 Spacer(Modifier.height(8.dp))
-                PedidoActivoCard(
-                    id = livePedidoActivo!!.id.toString(),
-                    resumen = "${livePedidoActivo!!.garrafonesTotales ?: 1} garrafones",
-                    estadoStr = livePedidoActivo!!.estado,
-                    onClick = onTrackPedido
-                )
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            Text("Acciones rápidas",
-                style = MaterialTheme.typography.titleMedium,
-                color = HToGoColors.TextPrimary,
-                modifier = Modifier.padding(horizontal = 20.dp))
-            Spacer(Modifier.height(8.dp))
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                QuickActionTile(
-                    Icons.Filled.Storefront, "Elegir purificadora",
-                    "Pide a un negocio específico", Modifier.weight(1f), onElegirPurificadora
-                )
-                QuickActionTile(
-                    Icons.Filled.AttachMoney, "Pedir con precio máximo",
-                    "Te asignamos el primero disponible", Modifier.weight(1f), onPedirAbierto
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                QuickActionTile(Icons.Filled.History, "Repetir último", "Historial", Modifier.weight(1f), onHistorial)
-                QuickActionTile(Icons.Filled.Schedule, "Nuevo pedido", "Directo", Modifier.weight(1f), nuevoPedidoSinPurificadora)
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            Text("Purificadoras cerca de ti",
-                style = MaterialTheme.typography.titleMedium,
-                color = HToGoColors.TextPrimary,
-                modifier = Modifier.padding(horizontal = 20.dp))
-            Spacer(Modifier.height(8.dp))
-            if (livePurificadoras.isNotEmpty()) {
-                livePurificadoras.forEach { p ->
-                    val pLat = p.lat
-                    val pLon = p.lon
-                    val distKm = when {
-                        p.distanciaKm > 0.0 -> p.distanciaKm
-                        defaultDir != null && pLat != null && pLon != null && (pLat != 0.0 || pLon != 0.0) ->
-                            com.htogo.app.data.location.UbicacionTracker.distanciaM(defaultDir.lat, defaultDir.lon, pLat, pLon) / 1000.0
-                        else -> p.distanciaKm
-                    }
-                    val distanciaStr = when {
-                        distKm < 0.05 -> "< 0.1 km"
-                        distKm < 1.0 -> "${(distKm * 1000).toInt().coerceAtLeast(50)} m"
-                        else -> "%.2f km".format(distKm)
-                    }
-                    PurificadoraMini(
-                        nombre = p.nombreComercial,
-                        distancia = distanciaStr,
-                        onAbrir = {
-                            clienteViewModel.purificadoraSeleccionadaId = p.id
-                            clienteViewModel.purificadoraSeleccionadaNombre = p.nombreComercial
-                            clienteViewModel.purificadoraSeleccionadaDistancia = distanciaStr
-                            clienteViewModel.cargarPerfilPurificadora(p.id)
-                            onAbrirPurificadora()
-                        },
-                        onPedir = {
-                            clienteViewModel.purificadoraSeleccionadaId = p.id
-                            clienteViewModel.purificadoraSeleccionadaNombre = p.nombreComercial
-                            clienteViewModel.purificadoraSeleccionadaDistancia = distanciaStr
-                            clienteViewModel.cargarPerfilPurificadora(p.id)
-                            onNuevoPedido()
-                        }
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickActionTile(
+                        Icons.Filled.Storefront, "Elegir purificadora",
+                        "Pide a un negocio específico", Modifier.weight(1f), onElegirPurificadora
+                    )
+                    QuickActionTile(
+                        Icons.Filled.AttachMoney, "Pedir con precio máximo",
+                        "Te asignamos el primero disponible", Modifier.weight(1f), onPedirAbierto
                     )
                 }
-            } else {
-                Text(
-                    "No encontramos purificadoras con cobertura cerca de tu domicilio.",
-                    fontSize = 13.sp, color = HToGoColors.TextSecondary,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                )
-            }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickActionTile(Icons.Filled.History, "Repetir último", "Historial", Modifier.weight(1f), onHistorial)
+                    QuickActionTile(Icons.Filled.Schedule, "Nuevo pedido", "Directo", Modifier.weight(1f), nuevoPedidoSinPurificadora)
+                }
 
-            Spacer(Modifier.height(96.dp))
+                Spacer(Modifier.height(24.dp))
+
+                Text("Purificadoras cerca de ti",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = HToGoColors.TextPrimary,
+                    modifier = Modifier.padding(horizontal = 20.dp))
+                Spacer(Modifier.height(8.dp))
+                if (livePurificadoras.isNotEmpty()) {
+                    livePurificadoras.forEach { p ->
+                        val pLat = p.lat
+                        val pLon = p.lon
+                        val distKm = when {
+                            p.distanciaKm > 0.0 -> p.distanciaKm
+                            defaultDir != null && pLat != null && pLon != null && (pLat != 0.0 || pLon != 0.0) ->
+                                com.htogo.app.data.location.UbicacionTracker.distanciaM(defaultDir.lat, defaultDir.lon, pLat, pLon) / 1000.0
+                            else -> p.distanciaKm
+                        }
+                        val distanciaStr = when {
+                            distKm < 0.05 -> "< 0.1 km"
+                            distKm < 1.0 -> "${(distKm * 1000).toInt().coerceAtLeast(50)} m"
+                            else -> "%.2f km".format(distKm)
+                        }
+                        PurificadoraMini(
+                            nombre = p.nombreComercial,
+                            distancia = distanciaStr,
+                            onAbrir = {
+                                clienteViewModel.purificadoraSeleccionadaId = p.id
+                                clienteViewModel.purificadoraSeleccionadaNombre = p.nombreComercial
+                                clienteViewModel.purificadoraSeleccionadaDistancia = distanciaStr
+                                clienteViewModel.cargarPerfilPurificadora(p.id)
+                                onAbrirPurificadora()
+                            },
+                            onPedir = {
+                                clienteViewModel.purificadoraSeleccionadaId = p.id
+                                clienteViewModel.purificadoraSeleccionadaNombre = p.nombreComercial
+                                clienteViewModel.purificadoraSeleccionadaDistancia = distanciaStr
+                                clienteViewModel.cargarPerfilPurificadora(p.id)
+                                onNuevoPedido()
+                            }
+                        )
+                    }
+                } else {
+                    Text(
+                        "No encontramos purificadoras con cobertura cerca de tu domicilio.",
+                        fontSize = 13.sp, color = HToGoColors.TextSecondary,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(96.dp))
+            }
         }
     }
 }

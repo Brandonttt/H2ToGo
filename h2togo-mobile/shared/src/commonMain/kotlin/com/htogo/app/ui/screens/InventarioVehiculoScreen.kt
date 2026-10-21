@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.ui.components.SelectorFecha
 import com.htogo.app.data.dto.aMapaJson
 import com.htogo.app.util.ahoraCdmx
@@ -275,6 +276,7 @@ fun InventarioVehiculoScreen(
     val totalApartadosVehiculo = remember(marcasVehiculo) { marcasVehiculo.sumOf { it.apartados } }
     val totalDisponiblesVehiculo = remember(marcasVehiculo) { marcasVehiculo.sumOf { it.disponibles } }
 
+    val refrescando by repartidorViewModel.refrescando.collectAsState()
     Scaffold(
         containerColor = HToGoColors.Background,
         topBar = {
@@ -312,304 +314,307 @@ fun InventarioVehiculoScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.padding(padding).fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            when (tab) {
-                TabInventario.EN_BASE -> {
-                    item { ResumenBaseCard(totalGarrafones = totalBaseStock, capacidad = totalCapacidadBase, numMarcas = marcasBase.size) }
-                    item { ProductosPreciosShortcut(onProductosPrecios) }
-                    item { SectionTitle("Marcas en base · ${marcasBase.size}") }
-                    if (marcasBase.isEmpty()) {
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                                border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
-                            ) {
-                                Column(
-                                    Modifier.fillMaxWidth().padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+        // Deslizar hacia abajo para actualizar los datos de la pantalla.
+        DeslizarParaActualizar(refrescando, { repartidorViewModel.refrescar() }, Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.padding(padding).fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                when (tab) {
+                    TabInventario.EN_BASE -> {
+                        item { ResumenBaseCard(totalGarrafones = totalBaseStock, capacidad = totalCapacidadBase, numMarcas = marcasBase.size) }
+                        item { ProductosPreciosShortcut(onProductosPrecios) }
+                        item { SectionTitle("Marcas en base · ${marcasBase.size}") }
+                        if (marcasBase.isEmpty()) {
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
                                 ) {
-                                    Box(
-                                        Modifier.size(52.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
-                                        contentAlignment = Alignment.Center
+                                    Column(
+                                        Modifier.fillMaxWidth().padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        Icon(Icons.Filled.Warehouse, null, tint = HToGoColors.Primary, modifier = Modifier.size(26.dp))
-                                    }
-                                    Spacer(Modifier.height(10.dp))
-                                    Text("Sin marcas registradas", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = HToGoColors.TextPrimary)
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        "Entra a 'Productos y precios' para configurar el catálogo de tu negocio.",
-                                        fontSize = 12.sp,
-                                        color = HToGoColors.TextSecondary,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        items(marcasBase) { m -> MarcaBaseCard(m) }
-                    }
-                    if (esDueno) item {
-                        Button(
-                            onClick = { showRegistrarEntrada = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(54.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                        ) {
-                            Icon(Icons.Filled.Add, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Registrar entrada", fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                    if (esDueno) item {
-                        OutlinedButton(
-                            onClick = { showSalidaManual = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(54.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(1.5.dp, HToGoColors.AccentRose)
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Logout, null, tint = HToGoColors.AccentRose)
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "Registrar salida manual",
-                                color = HToGoColors.AccentRose,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                    item {
-                        Text(
-                            "Usa salida manual para mermas, roturas o entregas que no pasaron por la app.",
-                            fontSize = 11.sp,
-                            color = HToGoColors.TextTertiary,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
-                    }
-                }
-                TabInventario.EN_VEHICULO -> {
-                    item {
-                        ResumenVehiculoCard(
-                            cargados = totalVehiculoStock,
-                            disponibles = totalDisponiblesVehiculo,
-                            apartados = totalApartadosVehiculo,
-                            capacidad = capacidadVehiculo,
-                            numMarcas = marcasVehiculo.size
-                        )
-                    }
-                    item {
-                        Button(
-                            onClick = { showCargarVehiculo = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(54.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                        ) {
-                            Icon(Icons.Filled.MoveToInbox, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Cargar desde la base", fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                    if (marcasVehiculo.isEmpty()) {
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                                border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
-                            ) {
-                                Column(
-                                    Modifier.fillMaxWidth().padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Box(
-                                        Modifier.size(52.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(Icons.Filled.LocalShipping, null, tint = HToGoColors.Primary, modifier = Modifier.size(26.dp))
-                                    }
-                                    Spacer(Modifier.height(10.dp))
-                                    Text("Vehículo sin garrafones", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = HToGoColors.TextPrimary)
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        "Carga garrafones desde la base para salir a ruta y repartir pedidos.",
-                                        fontSize = 12.sp,
-                                        color = HToGoColors.TextSecondary,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        item { SectionTitle("Carga actual · ${marcasVehiculo.size} marcas") }
-                        items(marcasVehiculo) { m -> MarcaVehiculoCard(m) }
-                    }
-                }
-                TabInventario.VEHICULO -> {
-                    val vehiculos = liveMiNegocio?.vehiculos.orEmpty()
-                    val listaAMostrar = if (vehiculos.isNotEmpty()) vehiculos else listOfNotNull(vehiculoActual)
-
-                    // Solicitudes de vehículo pendientes de aprobación del admin (RN-019 / CU-009)
-                    if (solicitudesVehiculo.isNotEmpty()) {
-                        item {
-                            Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)) {
-                                Text(
-                                    "Solicitudes pendientes de aprobación (${solicitudesVehiculo.size})",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = HToGoColors.PrimaryDark
-                                )
-                                Spacer(Modifier.height(2.dp))
-                                Text(
-                                    "Toda alta, modificación o baja requiere aprobación del administrador (RN-019).",
-                                    fontSize = 12.sp,
-                                    color = HToGoColors.TextSecondary
-                                )
-                            }
-                        }
-                        items(solicitudesVehiculo) { sol ->
-                            SolicitudVehiculoCard(
-                                solicitud = sol,
-                                onCancelar = {
-                                    repartidorViewModel.cancelarSolicitud(
-                                        id = sol.id,
-                                        onSuccess = {
-                                            mostrarAviso("Solicitud cancelada")
-                                        },
-                                        onError = { err ->
-                                            mostrarAviso(err, largo = true)
+                                        Box(
+                                            Modifier.size(52.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(Icons.Filled.Warehouse, null, tint = HToGoColors.Primary, modifier = Modifier.size(26.dp))
                                         }
-                                    )
-                                }
-                            )
-                        }
-                        item {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(vertical = 6.dp),
-                                color = HToGoColors.OutlineSoft
-                            )
-                        }
-                    }
-
-                    item {
-                        Row(
-                            Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    "Vehículos registrados",
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = HToGoColors.TextPrimary
-                                )
-                                Text(
-                                    "${listaAMostrar.size} vehículo(s) en tu negocio · RN-014",
-                                    fontSize = 12.sp,
-                                    color = HToGoColors.TextSecondary
-                                )
-                            }
-                            if (esDueno) Button(
-                                onClick = {
-                                    vehiculoParaEditar = null
-                                    showEditarVehiculoDialog = true
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Icon(Icons.Filled.Add, null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Agregar", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                    }
-
-                    if (listaAMostrar.isEmpty()) {
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                                border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
-                            ) {
-                                Column(
-                                    Modifier.fillMaxWidth().padding(28.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Box(
-                                        Modifier.size(56.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(Icons.Filled.DirectionsCar, null, tint = HToGoColors.Primary, modifier = Modifier.size(28.dp))
-                                    }
-                                    Spacer(Modifier.height(12.dp))
-                                    Text("No tienes vehículos registrados", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = HToGoColors.TextPrimary)
-                                    Spacer(Modifier.height(6.dp))
-                                    Text(
-                                        "Para iniciar jornada y recibir pedidos necesitas tener al menos un vehículo registrado (RN-014).",
-                                        fontSize = 12.sp,
-                                        color = HToGoColors.TextSecondary,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                    )
-                                    if (!esDueno) {
                                         Spacer(Modifier.height(10.dp))
+                                        Text("Sin marcas registradas", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = HToGoColors.TextPrimary)
+                                        Spacer(Modifier.height(4.dp))
                                         Text(
-                                            "Pide al dueño del negocio que solicite el alta del vehículo.",
+                                            "Entra a 'Productos y precios' para configurar el catálogo de tu negocio.",
                                             fontSize = 12.sp,
                                             color = HToGoColors.TextSecondary,
                                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                         )
                                     }
-                                    if (esDueno) Spacer(Modifier.height(16.dp))
-                                    if (esDueno) Button(
-                                        onClick = {
-                                            vehiculoParaEditar = null
-                                            showEditarVehiculoDialog = true
-                                        },
-                                        shape = RoundedCornerShape(12.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                                }
+                            }
+                        } else {
+                            items(marcasBase) { m -> MarcaBaseCard(m) }
+                        }
+                        if (esDueno) item {
+                            Button(
+                                onClick = { showRegistrarEntrada = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(54.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                            ) {
+                                Icon(Icons.Filled.Add, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Registrar entrada", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        if (esDueno) item {
+                            OutlinedButton(
+                                onClick = { showSalidaManual = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(54.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(1.5.dp, HToGoColors.AccentRose)
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.Logout, null, tint = HToGoColors.AccentRose)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Registrar salida manual",
+                                    color = HToGoColors.AccentRose,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                        item {
+                            Text(
+                                "Usa salida manual para mermas, roturas o entregas que no pasaron por la app.",
+                                fontSize = 11.sp,
+                                color = HToGoColors.TextTertiary,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
+                    }
+                    TabInventario.EN_VEHICULO -> {
+                        item {
+                            ResumenVehiculoCard(
+                                cargados = totalVehiculoStock,
+                                disponibles = totalDisponiblesVehiculo,
+                                apartados = totalApartadosVehiculo,
+                                capacidad = capacidadVehiculo,
+                                numMarcas = marcasVehiculo.size
+                            )
+                        }
+                        item {
+                            Button(
+                                onClick = { showCargarVehiculo = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(54.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                            ) {
+                                Icon(Icons.Filled.MoveToInbox, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Cargar desde la base", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        if (marcasVehiculo.isEmpty()) {
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
+                                ) {
+                                    Column(
+                                        Modifier.fillMaxWidth().padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        Icon(Icons.Filled.Add, null, modifier = Modifier.size(16.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text("Registrar primer vehículo", fontWeight = FontWeight.SemiBold)
+                                        Box(
+                                            Modifier.size(52.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(Icons.Filled.LocalShipping, null, tint = HToGoColors.Primary, modifier = Modifier.size(26.dp))
+                                        }
+                                        Spacer(Modifier.height(10.dp))
+                                        Text("Vehículo sin garrafones", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = HToGoColors.TextPrimary)
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            "Carga garrafones desde la base para salir a ruta y repartir pedidos.",
+                                            fontSize = 12.sp,
+                                            color = HToGoColors.TextSecondary,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
                                     }
                                 }
                             }
+                        } else {
+                            item { SectionTitle("Carga actual · ${marcasVehiculo.size} marcas") }
+                            items(marcasVehiculo) { m -> MarcaVehiculoCard(m) }
                         }
-                    } else {
-                        items(listaAMostrar) { v ->
-                            val esActivo = liveVehiculo?.idVehiculo != null && liveVehiculo?.idVehiculo == v.id
-                            val solPendiente = solicitudesVehiculo.firstOrNull { it.idVehiculo == v.id }
-                            VehiculoDetalleCard(
-                                vehiculo = v,
-                                esJornadaActiva = esActivo,
-                                solicitudPendiente = solPendiente,
-                                puedeSolicitar = esDueno,
-                                onIniciarJornada = {
-                                    vehiculoParaJornada = v
-                                    showIniciarJornadaDialog = true
-                                },
-                                onSolicitarCambio = {
-                                    vehiculoParaEditar = v
-                                    showEditarVehiculoDialog = true
-                                },
-                                onEliminar = {
-                                    vehiculoParaEliminar = v
+                    }
+                    TabInventario.VEHICULO -> {
+                        val vehiculos = liveMiNegocio?.vehiculos.orEmpty()
+                        val listaAMostrar = if (vehiculos.isNotEmpty()) vehiculos else listOfNotNull(vehiculoActual)
+
+                        // Solicitudes de vehículo pendientes de aprobación del admin (RN-019 / CU-009)
+                        if (solicitudesVehiculo.isNotEmpty()) {
+                            item {
+                                Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)) {
+                                    Text(
+                                        "Solicitudes pendientes de aprobación (${solicitudesVehiculo.size})",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = HToGoColors.PrimaryDark
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        "Toda alta, modificación o baja requiere aprobación del administrador (RN-019).",
+                                        fontSize = 12.sp,
+                                        color = HToGoColors.TextSecondary
+                                    )
                                 }
-                            )
-                            Spacer(Modifier.height(12.dp))
+                            }
+                            items(solicitudesVehiculo) { sol ->
+                                SolicitudVehiculoCard(
+                                    solicitud = sol,
+                                    onCancelar = {
+                                        repartidorViewModel.cancelarSolicitud(
+                                            id = sol.id,
+                                            onSuccess = {
+                                                mostrarAviso("Solicitud cancelada")
+                                            },
+                                            onError = { err ->
+                                                mostrarAviso(err, largo = true)
+                                            }
+                                        )
+                                    }
+                                )
+                            }
+                            item {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 6.dp),
+                                    color = HToGoColors.OutlineSoft
+                                )
+                            }
+                        }
+
+                        item {
+                            Row(
+                                Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        "Vehículos registrados",
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = HToGoColors.TextPrimary
+                                    )
+                                    Text(
+                                        "${listaAMostrar.size} vehículo(s) en tu negocio · RN-014",
+                                        fontSize = 12.sp,
+                                        color = HToGoColors.TextSecondary
+                                    )
+                                }
+                                if (esDueno) Button(
+                                    onClick = {
+                                        vehiculoParaEditar = null
+                                        showEditarVehiculoDialog = true
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.Filled.Add, null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Agregar", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+
+                        if (listaAMostrar.isEmpty()) {
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
+                                ) {
+                                    Column(
+                                        Modifier.fillMaxWidth().padding(28.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Box(
+                                            Modifier.size(56.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(Icons.Filled.DirectionsCar, null, tint = HToGoColors.Primary, modifier = Modifier.size(28.dp))
+                                        }
+                                        Spacer(Modifier.height(12.dp))
+                                        Text("No tienes vehículos registrados", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = HToGoColors.TextPrimary)
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(
+                                            "Para iniciar jornada y recibir pedidos necesitas tener al menos un vehículo registrado (RN-014).",
+                                            fontSize = 12.sp,
+                                            color = HToGoColors.TextSecondary,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+                                        if (!esDueno) {
+                                            Spacer(Modifier.height(10.dp))
+                                            Text(
+                                                "Pide al dueño del negocio que solicite el alta del vehículo.",
+                                                fontSize = 12.sp,
+                                                color = HToGoColors.TextSecondary,
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                            )
+                                        }
+                                        if (esDueno) Spacer(Modifier.height(16.dp))
+                                        if (esDueno) Button(
+                                            onClick = {
+                                                vehiculoParaEditar = null
+                                                showEditarVehiculoDialog = true
+                                            },
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                                        ) {
+                                            Icon(Icons.Filled.Add, null, modifier = Modifier.size(16.dp))
+                                            Spacer(Modifier.width(6.dp))
+                                            Text("Registrar primer vehículo", fontWeight = FontWeight.SemiBold)
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            items(listaAMostrar) { v ->
+                                val esActivo = liveVehiculo?.idVehiculo != null && liveVehiculo?.idVehiculo == v.id
+                                val solPendiente = solicitudesVehiculo.firstOrNull { it.idVehiculo == v.id }
+                                VehiculoDetalleCard(
+                                    vehiculo = v,
+                                    esJornadaActiva = esActivo,
+                                    solicitudPendiente = solPendiente,
+                                    puedeSolicitar = esDueno,
+                                    onIniciarJornada = {
+                                        vehiculoParaJornada = v
+                                        showIniciarJornadaDialog = true
+                                    },
+                                    onSolicitarCambio = {
+                                        vehiculoParaEditar = v
+                                        showEditarVehiculoDialog = true
+                                    },
+                                    onEliminar = {
+                                        vehiculoParaEliminar = v
+                                    }
+                                )
+                                Spacer(Modifier.height(12.dp))
+                            }
                         }
                     }
                 }

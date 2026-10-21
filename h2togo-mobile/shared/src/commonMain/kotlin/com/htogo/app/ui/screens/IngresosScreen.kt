@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.util.format
 import com.htogo.app.util.ahoraCdmx
 import com.htogo.app.util.fechaCdmx
@@ -152,6 +153,7 @@ fun IngresosScreen(
         }
     }
 
+    val refrescando by repartidorViewModel.refrescando.collectAsState()
     Scaffold(
         containerColor = HToGoColors.Background,
         bottomBar = {
@@ -164,45 +166,48 @@ fun IngresosScreen(
             )
         }
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Brush.linearGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary)))
-                    .padding(start = 8.dp, end = 18.dp, top = 8.dp, bottom = 16.dp)
-            ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = Color.White)
+        // Deslizar hacia abajo para actualizar los datos de la pantalla.
+        DeslizarParaActualizar(refrescando, { repartidorViewModel.refrescar() }, Modifier.fillMaxSize()) {
+            Column(Modifier.padding(padding).fillMaxSize()) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Brush.linearGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary)))
+                        .padding(start = 8.dp, end = 18.dp, top = 8.dp, bottom = 16.dp)
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = Color.White)
+                            }
+                            Spacer(Modifier.width(2.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(saludo, color = Color.White.copy(alpha = .7f), fontSize = 13.sp)
+                                Text(
+                                    nombreRepartidor,
+                                    color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
-                        Spacer(Modifier.width(2.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(saludo, color = Color.White.copy(alpha = .7f), fontSize = 13.sp)
-                            Text(
-                                nombreRepartidor,
-                                color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold
-                            )
-                        }
+                        Spacer(Modifier.height(14.dp))
+                        TabsPill(tab) { tab = it }
                     }
-                    Spacer(Modifier.height(14.dp))
-                    TabsPill(tab) { tab = it }
                 }
-            }
 
-            LazyColumn(Modifier.fillMaxSize()) {
-                item {
-                    BigCard(resumen, modifier = Modifier.padding(18.dp))
-                }
-                item {
-                    SectionHeader("Desglose ${resumen.etiquetaPeriodo}")
-                    BreakdownCard(resumen, modifier = Modifier.padding(horizontal = 18.dp))
-                }
-                item {
-                    Spacer(Modifier.height(20.dp))
-                    SectionHeader("Esta semana")
-                    ChartCard(resumen, modifier = Modifier.padding(horizontal = 18.dp))
-                    Spacer(Modifier.height(24.dp))
+                LazyColumn(Modifier.fillMaxSize()) {
+                    item {
+                        BigCard(resumen, modifier = Modifier.padding(18.dp))
+                    }
+                    item {
+                        SectionHeader("Desglose ${resumen.etiquetaPeriodo}")
+                        BreakdownCard(resumen, modifier = Modifier.padding(horizontal = 18.dp))
+                    }
+                    item {
+                        Spacer(Modifier.height(20.dp))
+                        SectionHeader("Esta semana")
+                        ChartCard(resumen, modifier = Modifier.padding(horizontal = 18.dp))
+                        Spacer(Modifier.height(24.dp))
+                    }
                 }
             }
         }

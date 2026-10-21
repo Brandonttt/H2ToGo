@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.DeslizarParaActualizar
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -254,106 +255,109 @@ fun PlanRutaScreen(
             }
         }
     ) { padding ->
-        val disponibles = agenda.filter { !it.reservadoPorMi }
-        LazyColumn(
-            Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
-            contentPadding = PaddingValues(bottom = 32.dp)
-        ) {
-            val r = ruta
-            if (r != null && r.paradas.isNotEmpty()) {
-                item {
-                    MapaRuta(
-                        r = r,
-                        posicionSimulada = posicionSimulada,
-                        simulandoRecorrido = simulandoRecorrido,
-                        pasoSimulado = pasoSimulado,
-                        totalPasosSimulados = totalPasosSimulados,
-                        baseLat = ubicacionPurificadora.first,
-                        baseLon = ubicacionPurificadora.second,
-                        nombrePurificadora = nombrePurificadora,
-                        onToggleSimulacion = { simulandoRecorrido = !simulandoRecorrido },
-                        onCerrarSimulacion = {
-                            simulandoRecorrido = false
-                            posicionSimulada = null
-                            repartidorViewModel.cargarPlan()
-                        }
-                    )
-                }
-                item { LeyendaColoresTramos(r, nombrePurificadora) }
-                item { ResumenRuta(r) }
-                item {
-                    val siguiente = r.paradas.first()
-                    val numActual = entregasCompletadasRuta + 1
-                    val numTotal = entregasCompletadasRuta + r.paradas.size
-                    Button(
-                        onClick = {
-                            abriendo = true
-                            repartidorViewModel.iniciarParada(
-                                siguiente,
-                                onListo = { abriendo = false; onIrAParada() },
-                                onError = { abriendo = false; mostrarAviso(it, largo = true) }
+        // Deslizar hacia abajo para actualizar los datos de la pantalla.
+        DeslizarParaActualizar(calculando, { posicionSimulada?.let { repartidorViewModel.cargarPlanDesdeUbicacion(it.first, it.second) } ?: repartidorViewModel.cargarPlan() }, Modifier.fillMaxSize()) {
+            val disponibles = agenda.filter { !it.reservadoPorMi }
+            LazyColumn(
+                Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
+                contentPadding = PaddingValues(bottom = 32.dp)
+            ) {
+                val r = ruta
+                if (r != null && r.paradas.isNotEmpty()) {
+                    item {
+                        MapaRuta(
+                            r = r,
+                            posicionSimulada = posicionSimulada,
+                            simulandoRecorrido = simulandoRecorrido,
+                            pasoSimulado = pasoSimulado,
+                            totalPasosSimulados = totalPasosSimulados,
+                            baseLat = ubicacionPurificadora.first,
+                            baseLon = ubicacionPurificadora.second,
+                            nombrePurificadora = nombrePurificadora,
+                            onToggleSimulacion = { simulandoRecorrido = !simulandoRecorrido },
+                            onCerrarSimulacion = {
+                                simulandoRecorrido = false
+                                posicionSimulada = null
+                                repartidorViewModel.cargarPlan()
+                            }
+                        )
+                    }
+                    item { LeyendaColoresTramos(r, nombrePurificadora) }
+                    item { ResumenRuta(r) }
+                    item {
+                        val siguiente = r.paradas.first()
+                        val numActual = entregasCompletadasRuta + 1
+                        val numTotal = entregasCompletadasRuta + r.paradas.size
+                        Button(
+                            onClick = {
+                                abriendo = true
+                                repartidorViewModel.iniciarParada(
+                                    siguiente,
+                                    onListo = { abriendo = false; onIrAParada() },
+                                    onError = { abriendo = false; mostrarAviso(it, largo = true) }
+                                )
+                            },
+                            enabled = !abriendo,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).height(54.dp),
+                            shape = RoundedCornerShape(27.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                        ) {
+                            if (abriendo) {
+                                CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Filled.Navigation, null)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Ir a la entrega $numActual de $numTotal · ${siguiente.nombreCliente ?: "Cliente"}",
+                                fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
-                        },
-                        enabled = !abriendo,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).height(54.dp),
-                        shape = RoundedCornerShape(27.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                    ) {
-                        if (abriendo) {
-                            CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Filled.Navigation, null)
                         }
-                        Spacer(Modifier.width(8.dp))
+                    }
+                    item {
+                        val totalRuta = entregasCompletadasRuta + r.paradas.size
+                        val subtituloOrden = if (entregasCompletadasRuta > 0) {
+                            "${r.paradas.size} restantes ($entregasCompletadasRuta de $totalRuta entregadas)"
+                        } else {
+                            "${r.paradas.size} ${if (r.paradas.size == 1) "entrega" else "entregas"}"
+                        }
+                        Titulo("Orden de visita", subtituloOrden)
+                    }
+                    items(r.paradas, key = { "p${it.idPedido}" }) { p ->
+                        ParadaItem(p, onLiberar = {
+                            repartidorViewModel.liberar(p.idPedido) { mostrarAviso(it, largo = true) }
+                        })
+                    }
+                    if (r.omitidos.isNotEmpty()) {
+                        item { Titulo("No entran en esta ruta", "${r.omitidos.size}") }
+                        items(r.omitidos, key = { "o${it.idPedido}" }) { o ->
+                            Tarjeta(borde = HToGoColors.AccentRose.copy(alpha = 0.4f)) {
+                                Text(o.nombreCliente ?: "Pedido #${o.idPedido}", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                Text(o.direccion.orEmpty(), fontSize = 13.sp, color = HToGoColors.TextSecondary)
+                                Spacer(Modifier.height(4.dp))
+                                Text(o.motivo, fontSize = 13.sp, color = HToGoColors.AccentRose)
+                            }
+                        }
+                    }
+                } else if (!calculando) {
+                    item { SinParadas(error) }
+                }
+
+                item { Titulo("Programados de hoy", if (disponibles.isEmpty()) "" else "${disponibles.size} sin repartidor") }
+                if (disponibles.isEmpty()) {
+                    item {
                         Text(
-                            "Ir a la entrega $numActual de $numTotal · ${siguiente.nombreCliente ?: "Cliente"}",
-                            fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis
+                            "No hay pedidos programados para hoy que tu purificadora pueda surtir.",
+                            fontSize = 13.sp, color = HToGoColors.TextSecondary,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                         )
                     }
                 }
-                item {
-                    val totalRuta = entregasCompletadasRuta + r.paradas.size
-                    val subtituloOrden = if (entregasCompletadasRuta > 0) {
-                        "${r.paradas.size} restantes ($entregasCompletadasRuta de $totalRuta entregadas)"
-                    } else {
-                        "${r.paradas.size} ${if (r.paradas.size == 1) "entrega" else "entregas"}"
-                    }
-                    Titulo("Orden de visita", subtituloOrden)
-                }
-                items(r.paradas, key = { "p${it.idPedido}" }) { p ->
-                    ParadaItem(p, onLiberar = {
-                        repartidorViewModel.liberar(p.idPedido) { mostrarAviso(it, largo = true) }
+                items(disponibles, key = { "a${it.idPedido}" }) { a ->
+                    AgendaItem(a, onReservar = {
+                        repartidorViewModel.reservar(a.idPedido) { mostrarAviso(it, largo = true) }
                     })
                 }
-                if (r.omitidos.isNotEmpty()) {
-                    item { Titulo("No entran en esta ruta", "${r.omitidos.size}") }
-                    items(r.omitidos, key = { "o${it.idPedido}" }) { o ->
-                        Tarjeta(borde = HToGoColors.AccentRose.copy(alpha = 0.4f)) {
-                            Text(o.nombreCliente ?: "Pedido #${o.idPedido}", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                            Text(o.direccion.orEmpty(), fontSize = 13.sp, color = HToGoColors.TextSecondary)
-                            Spacer(Modifier.height(4.dp))
-                            Text(o.motivo, fontSize = 13.sp, color = HToGoColors.AccentRose)
-                        }
-                    }
-                }
-            } else if (!calculando) {
-                item { SinParadas(error) }
-            }
-
-            item { Titulo("Programados de hoy", if (disponibles.isEmpty()) "" else "${disponibles.size} sin repartidor") }
-            if (disponibles.isEmpty()) {
-                item {
-                    Text(
-                        "No hay pedidos programados para hoy que tu purificadora pueda surtir.",
-                        fontSize = 13.sp, color = HToGoColors.TextSecondary,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
-                    )
-                }
-            }
-            items(disponibles, key = { "a${it.idPedido}" }) { a ->
-                AgendaItem(a, onReservar = {
-                    repartidorViewModel.reservar(a.idPedido) { mostrarAviso(it, largo = true) }
-                })
             }
         }
     }

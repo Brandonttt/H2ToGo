@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.util.ahoraCdmx
 import com.htogo.app.util.fechaCdmx
@@ -164,6 +165,7 @@ fun HistorialPedidosScreen(
     }
 
     BarraEstadoClara() // el encabezado oscuro llega hasta arriba
+    val refrescando by clienteViewModel.refrescando.collectAsState()
     Scaffold(
         topBar = { HistHeader(query = query, onQuery = { query = it }, onBack = onBack) },
         bottomBar = {
@@ -176,42 +178,45 @@ fun HistorialPedidosScreen(
         },
         containerColor = HToGoColors.Background
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            FilterTabs(dynamicTabs, activeTab) { activeTab = it }
+        // Deslizar hacia abajo para actualizar los datos de la pantalla.
+        DeslizarParaActualizar(refrescando, { clienteViewModel.refrescar() }, Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize().padding(padding)) {
+                FilterTabs(dynamicTabs, activeTab) { activeTab = it }
 
-            LazyColumn(
-                Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
-            ) {
-                val activo = pedidoActivoLive
-                val hayPedidoActivo = activo != null && activo.estado != "entregado" && activo.estado != "cancelado"
+                LazyColumn(
+                    Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
+                    val activo = pedidoActivoLive
+                    val hayPedidoActivo = activo != null && activo.estado != "entregado" && activo.estado != "cancelado"
 
-                if (pedidosFiltrados.isEmpty() && !hayPedidoActivo) {
-                    item {
-                        EmptyStateHistorial(onPedir = onRepetir)
+                    if (pedidosFiltrados.isEmpty() && !hayPedidoActivo) {
+                        item {
+                            EmptyStateHistorial(onPedir = onRepetir)
+                        }
                     }
-                }
-                if (hayPedidoActivo && activo != null) {
-                    item {
-                        GroupLabel("En curso")
-                        ActiveOrderCard(
-                            id = activo.id.toString(),
-                            resumen = "${activo.garrafonesTotales ?: 1} × Garrafón 20 L",
-                            onOpen = { onPedidoTap(activo.id) }
-                        )
+                    if (hayPedidoActivo && activo != null) {
+                        item {
+                            GroupLabel("En curso")
+                            ActiveOrderCard(
+                                id = activo.id.toString(),
+                                resumen = "${activo.garrafonesTotales ?: 1} × Garrafón 20 L",
+                                onOpen = { onPedidoTap(activo.id) }
+                            )
+                        }
                     }
-                }
 
-                val grupos = pedidosFiltrados.groupBy { it.grupo }
-                grupos.forEach { (grupo, pedidos) ->
-                    item { GroupLabel(grupo) }
-                    items(pedidos) { p ->
-                        HistCard(
-                            p = p,
-                            onTap = { onPedidoTap(p.id.toIntOrNull()) },
-                            onAbrirPurificadora = onAbrirPurificadora,
-                            onRepeat = onRepetir
-                        )
+                    val grupos = pedidosFiltrados.groupBy { it.grupo }
+                    grupos.forEach { (grupo, pedidos) ->
+                        item { GroupLabel(grupo) }
+                        items(pedidos) { p ->
+                            HistCard(
+                                p = p,
+                                onTap = { onPedidoTap(p.id.toIntOrNull()) },
+                                onAbrirPurificadora = onAbrirPurificadora,
+                                onRepeat = onRepetir
+                            )
+                        }
                     }
                 }
             }

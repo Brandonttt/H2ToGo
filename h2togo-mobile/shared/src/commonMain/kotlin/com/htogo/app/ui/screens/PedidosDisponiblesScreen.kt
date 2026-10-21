@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.plataforma.mostrarAviso
 import com.htogo.app.util.format
 
@@ -221,6 +222,7 @@ fun PedidosDisponiblesScreen(
     var pedidoSeleccionado by remember { mutableStateOf<PedidoDisponible?>(null) }
     var isAceptando by remember { mutableStateOf(false) }
 
+    val refrescando by repartidorViewModel.refrescando.collectAsState()
     Scaffold(
         containerColor = HToGoColors.Background,
         topBar = {
@@ -258,62 +260,65 @@ fun PedidosDisponiblesScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
-            if (errorMsg != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        errorMsg!!,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
-            }
-
-            if (isLoading && pedidos.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = HToGoColors.Primary)
-                }
-            } else if (pedidos.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Filled.Warehouse,
-                            null,
-                            tint = HToGoColors.TextTertiary,
-                            modifier = Modifier.size(56.dp)
-                        )
-                        Spacer(Modifier.height(12.dp))
+        // Deslizar hacia abajo para actualizar los datos de la pantalla.
+        DeslizarParaActualizar(refrescando, { repartidorViewModel.refrescar() }, Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+            ) {
+                if (errorMsg != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
                         Text(
-                            "No hay pedidos disponibles en este momento",
-                            color = HToGoColors.TextSecondary,
-                            fontWeight = FontWeight.Medium
+                            errorMsg!!,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(12.dp)
                         )
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = { repartidorViewModel.cargarPedidosDisponibles() }) {
-                            Text("Actualizar")
-                        }
                     }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(16.dp)
-                ) {
-                    items(pedidos) { pedido ->
-                        PedidoDisponibleCard(
-                            pedido = pedido,
-                            onClick = { pedidoSeleccionado = pedido }
-                        )
+
+                if (isLoading && pedidos.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = HToGoColors.Primary)
+                    }
+                } else if (pedidos.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Filled.Warehouse,
+                                null,
+                                tint = HToGoColors.TextTertiary,
+                                modifier = Modifier.size(56.dp)
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "No hay pedidos disponibles en este momento",
+                                color = HToGoColors.TextSecondary,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(onClick = { repartidorViewModel.cargarPedidosDisponibles() }) {
+                                Text("Actualizar")
+                            }
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(16.dp)
+                    ) {
+                        items(pedidos) { pedido ->
+                            PedidoDisponibleCard(
+                                pedido = pedido,
+                                onClick = { pedidoSeleccionado = pedido }
+                            )
+                        }
                     }
                 }
             }

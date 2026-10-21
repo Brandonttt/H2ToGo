@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.util.textoLargo
 
@@ -108,6 +109,7 @@ fun HomeRepartidorScreen(
     }
 
     BarraEstadoClara() // el encabezado oscuro llega hasta arriba
+    val refrescando by repartidorViewModel.refrescando.collectAsState()
     Scaffold(
         // Sin margen superior: el encabezado pinta su degradado detrás de la barra de estado.
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
@@ -122,177 +124,237 @@ fun HomeRepartidorScreen(
             )
         }
     ) { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 24.dp)
-        ) {
-            Box(
-                Modifier.fillMaxWidth().background(
-                    Brush.verticalGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary))
-                ).statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp)
+        // Deslizar hacia abajo para actualizar los datos de la pantalla.
+        DeslizarParaActualizar(refrescando, { repartidorViewModel.refrescar() }, Modifier.fillMaxSize(), bajoBarraDeEstado = true) {
+            Column(
+                Modifier.fillMaxSize().padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 24.dp)
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = .2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                nombre.firstOrNull()?.toString()?.uppercase() ?: "R",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            )
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                "Hola, $nombre",
-                                color = Color.White,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.Storefront,
-                                    null,
-                                    tint = HToGoColors.PrimarySoft,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
+                Box(
+                    Modifier.fillMaxWidth().background(
+                        Brush.verticalGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary))
+                    ).statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp)
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = .2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Text(
-                                    nombreNegocio,
-                                    color = HToGoColors.PrimarySoft,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium
+                                    nombre.firstOrNull()?.toString()?.uppercase() ?: "R",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
                                 )
                             }
-                            Text(
-                                fechaHoy,
-                                color = HToGoColors.PrimarySoft.copy(alpha = .85f),
-                                fontSize = 12.sp
-                            )
-                        }
-                        IconButton(onClick = onHistorial) {
-                            Icon(
-                                Icons.Filled.History,
-                                contentDescription = "Mi historial de entregas",
-                                tint = Color.White
-                            )
-                        }
-                        IconButton(onClick = {
-                            val nuevoEstado = !notificacionesActivas
-                            notificacionesActivas = nuevoEstado
-                            sessionManager.guardarNotificacionesActivas(nuevoEstado)
-                            mostrarAviso(if (nuevoEstado) "Notificaciones activadas" else "Notificaciones desactivadas")
-                        }) {
-                            Icon(
-                                if (notificacionesActivas) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
-                                contentDescription = if (notificacionesActivas) "Desactivar notificaciones" else "Activar notificaciones",
-                                tint = if (notificacionesActivas) Color.White else Color.White.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(20.dp))
-                    Card(
-                        Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
-                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                Modifier.size(10.dp).clip(CircleShape)
-                                    .background(if (enLinea) HToGoColors.StatusEntregado else HToGoColors.StatusPendiente)
-                            )
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(
-                                    if (enLinea) "En línea" else "Fuera de línea",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = HToGoColors.TextPrimary
+                                    "Hola, $nombre",
+                                    color = Color.White,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Filled.Storefront,
+                                        null,
+                                        tint = HToGoColors.PrimarySoft,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        nombreNegocio,
+                                        color = HToGoColors.PrimarySoft,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                                 Text(
-                                    if (enLinea) "Recibiendo pedidos" else "Activa para recibir pedidos",
-                                    fontSize = 12.sp,
-                                    color = HToGoColors.TextSecondary
+                                    fechaHoy,
+                                    color = HToGoColors.PrimarySoft.copy(alpha = .85f),
+                                    fontSize = 12.sp
                                 )
                             }
-                            Switch(
-                                checked = enLinea,
-                                onCheckedChange = { enLinea = it },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = HToGoColors.Primary
+                            IconButton(onClick = onHistorial) {
+                                Icon(
+                                    Icons.Filled.History,
+                                    contentDescription = "Mi historial de entregas",
+                                    tint = Color.White
                                 )
-                            )
+                            }
+                            IconButton(onClick = {
+                                val nuevoEstado = !notificacionesActivas
+                                notificacionesActivas = nuevoEstado
+                                sessionManager.guardarNotificacionesActivas(nuevoEstado)
+                                mostrarAviso(if (nuevoEstado) "Notificaciones activadas" else "Notificaciones desactivadas")
+                            }) {
+                                Icon(
+                                    if (notificacionesActivas) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
+                                    contentDescription = if (notificacionesActivas) "Desactivar notificaciones" else "Activar notificaciones",
+                                    tint = if (notificacionesActivas) Color.White else Color.White.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(20.dp))
+                        Card(
+                            Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    Modifier.size(10.dp).clip(CircleShape)
+                                        .background(if (enLinea) HToGoColors.StatusEntregado else HToGoColors.StatusPendiente)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        if (enLinea) "En línea" else "Fuera de línea",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = HToGoColors.TextPrimary
+                                    )
+                                    Text(
+                                        if (enLinea) "Recibiendo pedidos" else "Activa para recibir pedidos",
+                                        fontSize = 12.sp,
+                                        color = HToGoColors.TextSecondary
+                                    )
+                                }
+                                Switch(
+                                    checked = enLinea,
+                                    onCheckedChange = { enLinea = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = HToGoColors.Primary
+                                    )
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            Spacer(Modifier.height(20.dp))
-            Text(
-                "Tu jornada de hoy",
-                style = MaterialTheme.typography.titleMedium,
-                color = HToGoColors.TextPrimary,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    label = "Entregas",
-                    big = "$entregasHoyCount",
-                    small = "/ ${liveMisEntregas.size}",
-                    icon = Icons.Filled.CheckCircle,
-                    accent = HToGoColors.StatusEntregado,
-                    modifier = Modifier.weight(1f),
-                    onClick = onHistorial
-                )
-                StatCard(
-                    label = "En tu vehículo",
-                    big = "${liveVehiculo?.ocupado ?: 0}",
-                    small = "garrafones",
-                    icon = Icons.Filled.DirectionsCar,
-                    accent = HToGoColors.Primary,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard("En base", "${liveBase?.lotes?.sumOf { it.cantidadActual } ?: 0}", "garrafones", Icons.Filled.Warehouse, HToGoColors.AccentPurple, Modifier.weight(1f))
-                StatCard("Ingresos", "$${totalIngresosHoy.toInt()}", "MXN", Icons.Filled.Payments, HToGoColors.StatusAsignado, Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard("En ruta", "$enRutaCount", if (enRutaCount == 1) "pedido activo" else "pedidos", Icons.Filled.Schedule, HToGoColors.PrimaryDark, Modifier.weight(1f))
-                Spacer(Modifier.weight(1f))
-            }
-
-            Spacer(Modifier.height(24.dp))
-            if (livePedidoEnRuta != null) {
-                val pedido = livePedidoEnRuta!!
-                val cant = pedido.garrafonesTotales ?: (pedido.detalles?.sumOf { it.cantidad } ?: 1)
-                val direccionText = pedido.indicaciones?.ifBlank { null } ?: "Dirección de entrega asignada"
+                Spacer(Modifier.height(20.dp))
                 Text(
-                    "Entrega en curso",
+                    "Tu jornada de hoy",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = HToGoColors.TextPrimary,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        label = "Entregas",
+                        big = "$entregasHoyCount",
+                        small = "/ ${liveMisEntregas.size}",
+                        icon = Icons.Filled.CheckCircle,
+                        accent = HToGoColors.StatusEntregado,
+                        modifier = Modifier.weight(1f),
+                        onClick = onHistorial
+                    )
+                    StatCard(
+                        label = "En tu vehículo",
+                        big = "${liveVehiculo?.ocupado ?: 0}",
+                        small = "garrafones",
+                        icon = Icons.Filled.DirectionsCar,
+                        accent = HToGoColors.Primary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard("En base", "${liveBase?.lotes?.sumOf { it.cantidadActual } ?: 0}", "garrafones", Icons.Filled.Warehouse, HToGoColors.AccentPurple, Modifier.weight(1f))
+                    StatCard("Ingresos", "$${totalIngresosHoy.toInt()}", "MXN", Icons.Filled.Payments, HToGoColors.StatusAsignado, Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard("En ruta", "$enRutaCount", if (enRutaCount == 1) "pedido activo" else "pedidos", Icons.Filled.Schedule, HToGoColors.PrimaryDark, Modifier.weight(1f))
+                    Spacer(Modifier.weight(1f))
+                }
+
+                Spacer(Modifier.height(24.dp))
+                if (livePedidoEnRuta != null) {
+                    val pedido = livePedidoEnRuta!!
+                    val cant = pedido.garrafonesTotales ?: (pedido.detalles?.sumOf { it.cantidad } ?: 1)
+                    val direccionText = pedido.indicaciones?.ifBlank { null } ?: "Dirección de entrega asignada"
+                    Text(
+                        "Entrega en curso",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = HToGoColors.TextPrimary,
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Card(
+                        onClick = onRuta,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    Modifier.size(44.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
+                                    contentAlignment = Alignment.Center
+                                ) { Icon(Icons.Filled.WaterDrop, null, tint = HToGoColors.Primary) }
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        "Pedido #${pedido.id}",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = HToGoColors.TextPrimary
+                                    )
+                                    Text(
+                                        "$cant garrafones",
+                                        fontSize = 13.sp,
+                                        color = HToGoColors.TextSecondary
+                                    )
+                                }
+                                EstadoPedidoChip(EstadoPedido.EN_CAMINO)
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.Map, null, tint = HToGoColors.TextSecondary, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(direccionText, fontSize = 13.sp, color = HToGoColors.TextSecondary)
+                            }
+                            Spacer(Modifier.height(14.dp))
+                            Button(
+                                onClick = onRuta,
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                            ) {
+                                Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Ver ruta de entrega", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(20.dp))
+                }
+
+                Text(
+                    "Pedidos disponibles (${livePedidosDisponibles.size})",
                     style = MaterialTheme.typography.titleMedium,
                     color = HToGoColors.TextPrimary,
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )
                 Spacer(Modifier.height(8.dp))
                 Card(
-                    onClick = onRuta,
+                    onClick = onPedidosDisponibles,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -303,180 +365,123 @@ fun HomeRepartidorScreen(
                             Box(
                                 Modifier.size(44.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
                                 contentAlignment = Alignment.Center
-                            ) { Icon(Icons.Filled.WaterDrop, null, tint = HToGoColors.Primary) }
+                            ) { Icon(Icons.Filled.Storefront, null, tint = HToGoColors.Primary) }
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(
-                                    "Pedido #${pedido.id}",
+                                    if (livePedidosDisponibles.isNotEmpty())
+                                        "${livePedidosDisponibles.size} pedidos listos para entrega"
+                                    else
+                                        "No hay pedidos pendientes",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = HToGoColors.TextPrimary
                                 )
                                 Text(
-                                    "$cant garrafones",
+                                    "En tu zona de cobertura",
                                     fontSize = 13.sp,
                                     color = HToGoColors.TextSecondary
                                 )
                             }
-                            EstadoPedidoChip(EstadoPedido.EN_CAMINO)
-                        }
-                        Spacer(Modifier.height(10.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Map, null, tint = HToGoColors.TextSecondary, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(direccionText, fontSize = 13.sp, color = HToGoColors.TextSecondary)
+                            EstadoPedidoChip(EstadoPedido.PENDIENTE)
                         }
                         Spacer(Modifier.height(14.dp))
                         Button(
-                            onClick = onRuta,
+                            onClick = onPedidosDisponibles,
                             modifier = Modifier.fillMaxWidth().height(48.dp),
                             shape = RoundedCornerShape(24.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                         ) {
                             Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Ver ruta de entrega", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text("Ver pedidos disponibles", color = Color.White, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
-                Spacer(Modifier.height(20.dp))
-            }
 
-            Text(
-                "Pedidos disponibles (${livePedidosDisponibles.size})",
-                style = MaterialTheme.typography.titleMedium,
-                color = HToGoColors.TextPrimary,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-            Spacer(Modifier.height(8.dp))
-            Card(
-                onClick = onPedidosDisponibles,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.height(16.dp))
+                // Ruta del día: agenda de programados + orden óptimo de todas las paradas (OR-Tools).
+                Card(
+                    onClick = onPlanRuta,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = HToGoColors.PrimaryDark)
+                ) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            Modifier.size(44.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
+                            Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
-                        ) { Icon(Icons.Filled.Storefront, null, tint = HToGoColors.Primary) }
+                        ) { Icon(Icons.Filled.Map, null, tint = Color.White) }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
+                            Text("Mi ruta del día", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                             Text(
-                                if (livePedidosDisponibles.isNotEmpty())
-                                    "${livePedidosDisponibles.size} pedidos listos para entrega"
-                                else
-                                    "No hay pedidos pendientes",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = HToGoColors.TextPrimary
-                            )
-                            Text(
-                                "En tu zona de cobertura",
-                                fontSize = 13.sp,
-                                color = HToGoColors.TextSecondary
+                                "Toma programados de hoy y entrégalos en el mejor orden",
+                                fontSize = 13.sp, color = Color.White.copy(alpha = 0.75f)
                             )
                         }
-                        EstadoPedidoChip(EstadoPedido.PENDIENTE)
-                    }
-                    Spacer(Modifier.height(14.dp))
-                    Button(
-                        onClick = onPedidosDisponibles,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                    ) {
-                        Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Ver pedidos disponibles", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Icon(Icons.Filled.PlayArrow, null, tint = Color.White)
                     }
                 }
-            }
 
-            Spacer(Modifier.height(16.dp))
-            // Ruta del día: agenda de programados + orden óptimo de todas las paradas (OR-Tools).
-            Card(
-                onClick = onPlanRuta,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = HToGoColors.PrimaryDark)
-            ) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) { Icon(Icons.Filled.Map, null, tint = Color.White) }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Mi ruta del día", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                        Text(
-                            "Toma programados de hoy y entrégalos en el mejor orden",
-                            fontSize = 13.sp, color = Color.White.copy(alpha = 0.75f)
+                Spacer(Modifier.height(24.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Pedidos apartados aceptados (${pedidosApartados.size})",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = HToGoColors.TextPrimary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Text(
+                    "Pedidos programados o asignados que te corresponden",
+                    fontSize = 12.sp,
+                    color = HToGoColors.TextSecondary,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
+                )
+                Spacer(Modifier.height(8.dp))
+
+                if (pedidosApartados.isEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
+                    ) {
+                        Column(
+                            Modifier.fillMaxWidth().padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Filled.Schedule, null, tint = HToGoColors.TextTertiary, modifier = Modifier.size(36.dp))
+                            Spacer(Modifier.height(8.dp))
+                            Text("No tienes pedidos apartados", fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary, fontSize = 15.sp)
+                            Spacer(Modifier.height(4.dp))
+                            Text("Cuando te asignes o apartes un pedido aparecerá aquí.", fontSize = 12.sp, color = HToGoColors.TextSecondary, textAlign = TextAlign.Center)
+                        }
+                    }
+                } else {
+                    pedidosApartados.forEach { p ->
+                        val chipEstado = when (p.estado.lowercase()) {
+                            "asignado" -> EstadoPedido.ASIGNADO
+                            "en_camino" -> EstadoPedido.EN_CAMINO
+                            "entregado" -> EstadoPedido.ENTREGADO
+                            "cancelado" -> EstadoPedido.CANCELADO
+                            else -> EstadoPedido.PENDIENTE
+                        }
+                        val formattedFecha = p.fechaCreacion?.take(10) ?: "Hoy"
+                        ColaItem(
+                            id = "${p.id}",
+                            cliente = if (p.esProgramado) "Pedido programado" else "Entrega #${p.id}",
+                            colonia = formattedFecha,
+                            cant = "${p.garrafonesTotales ?: 1} garrafones",
+                            monto = "$${p.totalPagar?.toInt() ?: 0}",
+                            estado = chipEstado,
+                            onClick = { onPedidoProgramado(p.id) }
                         )
                     }
-                    Icon(Icons.Filled.PlayArrow, null, tint = Color.White)
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Pedidos apartados aceptados (${pedidosApartados.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = HToGoColors.TextPrimary,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Text(
-                "Pedidos programados o asignados que te corresponden",
-                fontSize = 12.sp,
-                color = HToGoColors.TextSecondary,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
-            )
-            Spacer(Modifier.height(8.dp))
-
-            if (pedidosApartados.isEmpty()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
-                ) {
-                    Column(
-                        Modifier.fillMaxWidth().padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(Icons.Filled.Schedule, null, tint = HToGoColors.TextTertiary, modifier = Modifier.size(36.dp))
-                        Spacer(Modifier.height(8.dp))
-                        Text("No tienes pedidos apartados", fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary, fontSize = 15.sp)
-                        Spacer(Modifier.height(4.dp))
-                        Text("Cuando te asignes o apartes un pedido aparecerá aquí.", fontSize = 12.sp, color = HToGoColors.TextSecondary, textAlign = TextAlign.Center)
-                    }
-                }
-            } else {
-                pedidosApartados.forEach { p ->
-                    val chipEstado = when (p.estado.lowercase()) {
-                        "asignado" -> EstadoPedido.ASIGNADO
-                        "en_camino" -> EstadoPedido.EN_CAMINO
-                        "entregado" -> EstadoPedido.ENTREGADO
-                        "cancelado" -> EstadoPedido.CANCELADO
-                        else -> EstadoPedido.PENDIENTE
-                    }
-                    val formattedFecha = p.fechaCreacion?.take(10) ?: "Hoy"
-                    ColaItem(
-                        id = "${p.id}",
-                        cliente = if (p.esProgramado) "Pedido programado" else "Entrega #${p.id}",
-                        colonia = formattedFecha,
-                        cant = "${p.garrafonesTotales ?: 1} garrafones",
-                        monto = "$${p.totalPagar?.toInt() ?: 0}",
-                        estado = chipEstado,
-                        onClick = { onPedidoProgramado(p.id) }
-                    )
                 }
             }
         }

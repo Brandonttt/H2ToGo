@@ -30,6 +30,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
 class ClienteViewModel : ViewModel() {
@@ -70,8 +71,8 @@ class ClienteViewModel : ViewModel() {
     var purificadoraSeleccionadaDistancia: String? = null
 
 
-    fun cargarHistorial() {
-        viewModelScope.launch {
+    fun cargarHistorial(): Job {
+        return viewModelScope.launch {
             try {
                 val resp = apiClient.pedidosApi.obtenerHistorialCliente(page = 0, size = 50)
                 if (resp.isSuccessful && resp.body() != null) {
@@ -96,8 +97,8 @@ class ClienteViewModel : ViewModel() {
         }
     }
 
-    fun cargarDirecciones(onComplete: (() -> Unit)? = null) {
-        viewModelScope.launch {
+    fun cargarDirecciones(onComplete: (() -> Unit)? = null): Job {
+        return viewModelScope.launch {
             try {
                 val resp = apiClient.direccionesApi.listarDirecciones()
                 if (resp.isSuccessful && resp.body() != null) {
@@ -570,6 +571,10 @@ class ClienteViewModel : ViewModel() {
         return mensajeDeError(errorJson)
     }
 
+    private val _refrescando = MutableStateFlow(false)
+    /** Deslizar hacia abajo para actualizar: indicador visible mientras se recargan los datos. */
+    val refrescando: StateFlow<Boolean> = _refrescando.asStateFlow()
+
     // Al final de la clase: debe correr después de inicializar todos los StateFlow de arriba.
     // El ViewModel se crea al abrir la app (antes del login), así que no basta con cargar una vez:
     // se recarga cada vez que cambia la sesión y se limpia al cerrarla (evita ver datos de otra cuenta).
@@ -579,12 +584,40 @@ class ClienteViewModel : ViewModel() {
                 if (token.isNullOrBlank()) limpiarDatosDeSesion() else recargarDatosDeSesion()
             }
         }
+        refrescarAlRecibirAvisos()
     }
 
     private fun recargarDatosDeSesion() {
         cargarMarcas()
         cargarDirecciones()
         cargarHistorial()
+    }
+
+    /** Recarga pedidos, direcciones y purificadoras cercanas (y el pedido abierto, si hay). */
+    fun refrescar() {
+        if (_refrescando.value) return
+        viewModelScope.launch {
+            _refrescando.value = true
+            try {
+                val trabajos = mutableListOf(cargarHistorial(), cargarDirecciones())
+                _pedidoActivo.value?.id?.let { id -> trabajos += launch { refrescarDetalle(id) } }
+                trabajos.joinAll()
+            } finally {
+                _refrescando.value = false
+            }
+        }
+    }
+
+    /**
+     * Cualquier aviso de un pedido (asignado, en camino, entregado…) actualiza la lista de pedidos
+     * aunque la pantalla esté abierta, sin tener que deslizar.
+     */
+    private fun refrescarAlRecibirAvisos() {
+        viewModelScope.launch {
+            CanalNotificaciones.avisos.collect { aviso ->
+                if (aviso.datos["tipo"]?.startsWith("pedido_") == true) cargarHistorial()
+            }
+        }
     }
 
     private fun limpiarDatosDeSesion() {
