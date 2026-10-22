@@ -356,8 +356,9 @@ private fun TrackingSheet(
         }
     }
 
-    val sheetMaxHeight = maxScreenHeight * 0.62f
-    val sheetMinHeight = 88.dp
+    val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val sheetMaxHeight = maxScreenHeight * 0.65f + navBarBottom
+    val sheetMinHeight = 88.dp + navBarBottom
     val animatedHeight by animateDpAsState(
         targetValue = if (isMinimized) sheetMinHeight else sheetMaxHeight,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
@@ -375,6 +376,7 @@ private fun TrackingSheet(
         Column(
             Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(bottom = if (isMinimized) 0.dp else 16.dp)
         ) {
             // Cabecera interactiva y arrastrable (Handle + Chip + Resumen + Chevron)

@@ -930,6 +930,7 @@ private fun ToastSnackbar(toast: ToastInfo) {
     Box(
         Modifier
             .fillMaxSize()
+            .navigationBarsPadding()
             .padding(16.dp),
         contentAlignment = Alignment.BottomCenter
     ) {

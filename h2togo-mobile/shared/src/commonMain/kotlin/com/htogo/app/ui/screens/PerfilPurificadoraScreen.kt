@@ -1,6 +1,7 @@
 package com.htogo.app.ui.screens
 
 import com.htogo.app.ui.components.BarraEstadoClara
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -152,6 +153,7 @@ fun PerfilPurificadoraScreen(
                 Modifier
                     .fillMaxWidth()
                     .background(Color.White)
+                    .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 12.dp)
             ) {
                 HToGoButton(

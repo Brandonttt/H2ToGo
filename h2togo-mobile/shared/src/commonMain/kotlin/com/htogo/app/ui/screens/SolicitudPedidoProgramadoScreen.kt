@@ -111,8 +111,9 @@ fun SolicitudPedidoProgramadoScreen(
                 Column(
                     Modifier
                         .fillMaxWidth()
+                        .navigationBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .padding(bottom = 8.dp)
+                        .padding(bottom = 4.dp)
                 ) {
                     Button(
                         onClick = onIniciarRuta,

@@ -155,7 +155,7 @@ fun NuevoPedidoAbiertoScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Box(
-                        Modifier.fillMaxWidth().padding(20.dp),
+                        Modifier.fillMaxWidth().navigationBarsPadding().padding(20.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = HToGoColors.Primary)
@@ -931,8 +931,9 @@ private fun CtaBar(totalMax: Int, enabled: Boolean, onConfirm: () -> Unit) {
         Row(
             Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 14.dp)
-                .padding(bottom = 8.dp),
+                .padding(bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {

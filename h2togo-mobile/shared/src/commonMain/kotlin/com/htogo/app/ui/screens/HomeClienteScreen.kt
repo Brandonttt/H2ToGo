@@ -155,22 +155,6 @@ fun HomeClienteScreen(
                                 )
                             }
                         }
-                        Spacer(Modifier.height(8.dp))
-                        Row(
-                            Modifier
-                                .clip(RoundedCornerShape(99.dp))
-                                .background(Color.White.copy(alpha = 0.15f))
-                                .clickable(onClick = onSwitchRol)
-                                .padding(horizontal = 10.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Filled.SwapHoriz, null,
-                                tint = Color.White, modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Vista Repartidor",
-                                color = Color.White, fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold)
-                        }
                         Spacer(Modifier.height(12.dp))
                         Card(
                             onClick = onElegirPurificadora,

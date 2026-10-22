@@ -401,9 +401,9 @@ private fun AssignSheet(
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         color = HToGoColors.Surface,
         shadowElevation = 8.dp,
-        modifier = modifier.fillMaxWidth().fillMaxHeight(0.62f)
+        modifier = modifier.fillMaxWidth().fillMaxHeight(0.66f)
     ) {
-        Column(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 20.dp)) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(top = 14.dp, bottom = 16.dp)) {
             Box(
                 Modifier.align(Alignment.CenterHorizontally)
                     .width(44.dp).height(4.dp).clip(RoundedCornerShape(2.dp))
