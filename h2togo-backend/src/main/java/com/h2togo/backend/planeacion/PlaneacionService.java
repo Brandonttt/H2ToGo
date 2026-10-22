@@ -92,7 +92,17 @@ public class PlaneacionService {
         OffsetDateTime[] hoy = hoy();
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT p.id_pedido, p.fecha_programada, p.estado_actual::text AS estado, p.id_repartidor,
-                       p.garrafones_totales, p.total_pagar, p.tipo_solicitud::text AS tipo,
+                       p.garrafones_totales,
+                       CASE
+                         WHEN p.tipo_solicitud = 'abierta' THEN COALESCE((
+                             SELECT SUM(dp.cantidad_solicitada * (pn.precio + CASE WHEN dp.tiene_envase THEN 0 ELSE COALESCE(pn.precio_envase, 0) END))
+                             FROM detalles_pedido dp
+                             JOIN productos_negocio pn ON pn.id_negocio = r.id_negocio AND pn.id_marca = dp.id_marca
+                             WHERE dp.id_pedido = p.id_pedido
+                         ), p.total_pagar)
+                         ELSE p.total_pagar
+                       END AS total_pagar,
+                       p.tipo_solicitud::text AS tipo,
                        CONCAT(u.nombre, ' ', u.apellidos) AS nombre_cliente, u.telefono,
                        CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion,
                        d.colonia,

@@ -176,19 +176,47 @@ fun PedidosDisponiblesScreen(
     val liveDisponibles by repartidorViewModel.pedidosDisponibles.collectAsState()
     val liveVehiculo by repartidorViewModel.inventarioVehiculo.collectAsState()
     val liveBase by repartidorViewModel.inventarioBase.collectAsState()
+    val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
     val isLoading by repartidorViewModel.isLoading.collectAsState()
     val errorMsg by repartidorViewModel.errorMessage.collectAsState()
 
     LaunchedEffect(Unit) {
         repartidorViewModel.cargarPedidosDisponibles()
         repartidorViewModel.cargarInventarios()
+        if (liveMiNegocio == null) repartidorViewModel.cargarMiNegocio()
     }
 
-    val pedidos = remember(liveDisponibles) {
+    val pedidos = remember(liveDisponibles, liveMiNegocio) {
+        val catalogo = liveMiNegocio?.productos.orEmpty().associateBy { it.idMarca }
         if (liveDisponibles.isNotEmpty()) {
             liveDisponibles.map { p ->
-                val productosTexto = if (!p.detalles.isNullOrEmpty()) {
-                    p.detalles.orEmpty().joinToString(", ") { d ->
+                val esAbierto = p.tipoSolicitud?.equals("abierta", ignoreCase = true) == true
+                val detallesActualizados = if (esAbierto && !p.detalles.isNullOrEmpty() && catalogo.isNotEmpty()) {
+                    p.detalles.map { d ->
+                        val prod = catalogo[d.idMarca]
+                        if (prod != null) {
+                            d.copy(
+                                precioUnitario = prod.precio,
+                                precioEnvaseUnitario = if (d.tieneEnvase) null else prod.precioEnvase
+                            )
+                        } else d
+                    }
+                } else {
+                    p.detalles ?: emptyList()
+                }
+                val totalCalculado = if (esAbierto && detallesActualizados.isNotEmpty() && catalogo.isNotEmpty()) {
+                    detallesActualizados.sumOf { d ->
+                        val prod = catalogo[d.idMarca]
+                        val pAgua = prod?.precio ?: d.precioUnitario ?: 0.0
+                        val pEnvase = if (d.tieneEnvase) 0.0 else (prod?.precioEnvase ?: d.precioEnvaseUnitario ?: 0.0)
+                        d.cantidad * (pAgua + pEnvase)
+                    }.takeIf { it > 0.0 } ?: p.totalEstimado ?: 45.0
+                } else {
+                    p.totalEstimado ?: 45.0
+                }
+
+                val productosTexto = if (detallesActualizados.isNotEmpty()) {
+                    detallesActualizados.joinToString(", ") { d ->
                         "${d.cantidad} × ${d.nombreMarca ?: "Garrafón 20 L"}"
                     }
                 } else {
@@ -201,17 +229,17 @@ fun PedidosDisponiblesScreen(
                     direccion = p.direccionResumen,
                     colonia = p.colonia ?: "Zona Cobertura",
                     productos = productosTexto,
-                    total = p.totalEstimado ?: 45.0,
+                    total = totalCalculado,
                     distanciaKm = p.distanciaKm,
                     tiempoEstimadoMin = p.tiempoEstimadoMinutos ?: maxOf(5, (p.distanciaKm * 5).toInt()),
-                    tipo = if (p.tipoSolicitud?.equals("abierta", ignoreCase = true) == true) TipoPedido.ABIERTO else TipoPedido.DIRECTO,
-                    detalles = p.detalles ?: emptyList(),
+                    tipo = if (esAbierto) TipoPedido.ABIERTO else TipoPedido.DIRECTO,
+                    detalles = detallesActualizados,
                     garrafonesTotales = p.garrafonesTotales,
                     esPrioritario = false,
                     telefono = p.telefonoCliente,
                     latEntrega = p.latEntrega,
                     lonEntrega = p.lonEntrega,
-                    rawResponse = p
+                    rawResponse = p.copy(totalEstimado = totalCalculado, detalles = detallesActualizados)
                 )
             }
         } else {
@@ -470,25 +498,19 @@ private fun PedidoDisponibleCard(
                         modifier = Modifier.padding(top = 1.dp)
                     )
                 }
-                if (pedido.tipo == TipoPedido.DIRECTO) {
+                Column(horizontalAlignment = Alignment.End) {
                     Text(
                         "$%.0f".format(pedido.total),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = HToGoColors.StatusEntregado
                     )
-                } else {
-                    Column(horizontalAlignment = Alignment.End) {
+                    if (pedido.tipo == TipoPedido.ABIERTO) {
                         Text(
-                            "Abierto",
+                            "Abierto · Tu precio",
                             fontSize = 11.sp,
                             color = HToGoColors.AccentAmber,
                             fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            "Tú propones",
-                            fontSize = 11.sp,
-                            color = HToGoColors.TextSecondary
                         )
                     }
                 }
@@ -594,19 +616,18 @@ private fun AceptarPedidoDialog(
                             fontWeight = FontWeight.SemiBold,
                             color = HToGoColors.TextPrimary
                         )
-                        if (pedido.tipo == TipoPedido.ABIERTO && pedido.precioMaximo != null) {
+                        Text(
+                            "Total a cobrar: $%.0f MXN".format(pedido.total),
+                            fontSize = 12.sp,
+                            color = HToGoColors.StatusEntregado,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (pedido.tipo == TipoPedido.ABIERTO) {
                             Text(
-                                "Pedido abierto · Precio máx $${pedido.precioMaximo.toInt()}",
-                                fontSize = 12.sp,
+                                "Modalidad abierta · Precio de tu purificadora",
+                                fontSize = 11.sp,
                                 color = HToGoColors.AccentAmber,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        } else {
-                            Text(
-                                "Total $%.0f MXN".format(pedido.total),
-                                fontSize = 12.sp,
-                                color = HToGoColors.StatusEntregado,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }

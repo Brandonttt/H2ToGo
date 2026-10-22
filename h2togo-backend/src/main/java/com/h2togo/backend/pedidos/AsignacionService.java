@@ -70,7 +70,16 @@ public class AsignacionService {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT p.id_pedido,
                        ST_Distance(d.ubicacion, r.ubicacion_actual) AS distancia_m,
-                       p.garrafones_totales, d.colonia, p.tipo_solicitud, p.total_pagar,
+                       p.garrafones_totales, d.colonia, p.tipo_solicitud,
+                       CASE
+                         WHEN p.tipo_solicitud = 'abierta' THEN COALESCE((
+                             SELECT SUM(dp.cantidad_solicitada * (pn.precio + CASE WHEN dp.tiene_envase THEN 0 ELSE COALESCE(pn.precio_envase, 0) END))
+                             FROM detalles_pedido dp
+                             JOIN productos_negocio pn ON pn.id_negocio = r.id_negocio AND pn.id_marca = dp.id_marca
+                             WHERE dp.id_pedido = p.id_pedido
+                         ), p.total_pagar)
+                         ELSE p.total_pagar
+                       END AS total_pagar,
                        CONCAT(u.nombre, ' ', u.apellidos) AS nombre_cliente,
                        u.telefono AS telefono_cliente,
                        CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion,
@@ -89,7 +98,7 @@ public class AsignacionService {
             return List.of();
         }
         List<Integer> ids = rows.stream().map(r -> (Integer) r.get("id_pedido")).toList();
-        Map<Integer, List<DetalleResponse>> detalles = detallesPorPedido(ids);
+        Map<Integer, List<DetalleResponse>> detalles = detallesPorPedido(ids, idRepartidor);
 
         List<PedidoDisponibleResponse> salida = new ArrayList<>();
         for (Map<String, Object> row : rows) {
@@ -447,15 +456,23 @@ public class AsignacionService {
                 + "VALUES (:ped, CAST(:estado AS estado_pedido), :notas, " + ubic + ")", p);
     }
 
-    private Map<Integer, List<DetalleResponse>> detallesPorPedido(List<Integer> ids) {
+    private Map<Integer, List<DetalleResponse>> detallesPorPedido(List<Integer> ids, int idRepartidor) {
         return jdbc.query("""
                 SELECT dp.id_detalle, dp.id_pedido, dp.id_marca, m.nombre AS nombre_marca,
-                       dp.cantidad_solicitada, dp.cantidad_entregada,
-                       dp.tiene_envase, dp.precio_unitario, dp.precio_envase_unitario, dp.agregada_en_sitio
+                       dp.cantidad_solicitada, dp.cantidad_entregada, dp.tiene_envase,
+                       CASE WHEN p.tipo_solicitud = 'abierta' AND pn.precio IS NOT NULL
+                            THEN pn.precio ELSE dp.precio_unitario END AS precio_unitario,
+                       CASE WHEN p.tipo_solicitud = 'abierta' AND pn.precio IS NOT NULL
+                            THEN (CASE WHEN dp.tiene_envase THEN NULL ELSE pn.precio_envase END)
+                            ELSE dp.precio_envase_unitario END AS precio_envase_unitario,
+                       dp.agregada_en_sitio
                 FROM detalles_pedido dp
+                JOIN pedidos p ON p.id_pedido = dp.id_pedido
+                LEFT JOIN repartidores r ON r.id_usuario = :rep
+                LEFT JOIN productos_negocio pn ON pn.id_negocio = r.id_negocio AND pn.id_marca = dp.id_marca
                 LEFT JOIN marcas m ON m.id_marca = dp.id_marca
                 WHERE dp.id_pedido IN (:ids)""",
-                new MapSqlParameterSource("ids", ids), rs -> {
+                new MapSqlParameterSource().addValue("ids", ids).addValue("rep", idRepartidor), rs -> {
                     Map<Integer, List<DetalleResponse>> map = new java.util.HashMap<>();
                     while (rs.next()) {
                         Integer idPedido = rs.getInt("id_pedido");
