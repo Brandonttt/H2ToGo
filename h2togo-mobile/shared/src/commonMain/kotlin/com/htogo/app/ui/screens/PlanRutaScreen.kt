@@ -283,7 +283,7 @@ fun PlanRutaScreen(
                         )
                     }
                     item { LeyendaColoresTramos(r, nombrePurificadora) }
-                    item { ResumenRuta(r) }
+                    item { ResumenRuta(r, posicionSimulada) }
                     item {
                         val siguiente = r.paradas.first()
                         val numActual = entregasCompletadasRuta + 1
@@ -519,12 +519,29 @@ private fun LeyendaColoresTramos(r: RutaOptimaDto, nombrePurificadora: String) {
 }
 
 @Composable
-private fun ResumenRuta(r: RutaOptimaDto) {
+private fun ResumenRuta(r: RutaOptimaDto, posicionSimulada: Pair<Double, Double>? = null) {
+    val kmMostrados = remember(r, posicionSimulada) {
+        val sim = posicionSimulada
+        val pts = r.coordenadas.map { it.lat to it.lon }
+        val ult = r.paradas.lastOrNull()
+        if (sim != null && pts.size >= 2 && ult != null) {
+            com.htogo.app.data.location.distanciaRestanteRutaKm(
+                lat = sim.first,
+                lon = sim.second,
+                ruta = pts,
+                destLat = ult.lat,
+                destLon = ult.lon,
+                distanciaTotalOriginalKm = r.distanciaTotalKm
+            )
+        } else {
+            r.distanciaTotalKm
+        }
+    }
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Dato("${conDecimales(r.distanciaTotalKm, 1)} km", "recorrido", Modifier.weight(1f))
+        Dato("${conDecimales(kmMostrados, 1)} km", if (posicionSimulada != null) "restantes" else "recorrido", Modifier.weight(1f))
         Dato("${r.duracionMin} min", "con entregas", Modifier.weight(1f))
         Dato(
             if (r.capacidadVehiculo > 0) "${r.garrafonesEnRuta}/${r.capacidadVehiculo}" else "${r.garrafonesEnRuta}",

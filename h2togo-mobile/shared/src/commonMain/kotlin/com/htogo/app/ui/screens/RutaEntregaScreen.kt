@@ -292,6 +292,8 @@ fun RutaEntregaScreen(
             if (idInt != null) {
                 puntosDesdePurificadora = repartidorViewModel.recalcularRutaDesde(idInt, posIni)
             }
+        } else if (idInt != null && liveRutaCalculada?.coordenadas.isNullOrEmpty()) {
+            puntosDesdePurificadora = repartidorViewModel.recalcularRutaDesde(idInt, actual)
         }
         val puntosBase = puntosDesdePurificadora.takeIf { it.size >= 2 }
             ?: liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) }?.takeIf { it.size >= 2 }
@@ -367,6 +369,23 @@ fun RutaEntregaScreen(
     val rutaNoDisponible by repartidorViewModel.rutaNoDisponible.collectAsState()
     val distanciaDestinoM = posicion?.let {
         UbicacionTracker.distanciaM(it.lat, it.lon, entrega.latDestino, entrega.lonDestino)
+    }
+    val rutaKmRestantes = remember(posicion, routePoints, liveRutaCalculada, entrega.latDestino, entrega.lonDestino) {
+        val pos = posicion
+        val totalRutaBackend = liveRutaCalculada?.takeIf { it.encontrada }?.distanciaTotalKm
+        when {
+            pos != null && routePoints.size >= 2 ->
+                com.htogo.app.data.location.distanciaRestanteRutaKm(
+                    lat = pos.lat,
+                    lon = pos.lon,
+                    ruta = routePoints,
+                    destLat = entrega.latDestino,
+                    destLon = entrega.lonDestino,
+                    distanciaTotalOriginalKm = totalRutaBackend
+                )
+            totalRutaBackend != null -> totalRutaBackend
+            else -> null
+        }
     }
 
     val idPedidoRuta = livePedidoEnRuta?.id
@@ -638,7 +657,7 @@ fun RutaEntregaScreen(
                                     )
                                     val distTexto = when {
                                         estado == EstadoRuta.LLEGADO -> "En domicilio · Espera: %02d:%02d".format(segundosRestantes / 60, segundosRestantes % 60)
-                                        liveRutaCalculada?.takeIf { it.encontrada }?.distanciaTotalKm != null -> "%.2f km restantes".format(liveRutaCalculada?.distanciaTotalKm)
+                                        rutaKmRestantes != null -> "%.2f km restantes".format(rutaKmRestantes)
                                         distanciaDestinoM != null && distanciaDestinoM < 1000 -> "%.0f m al destino".format(distanciaDestinoM)
                                         distanciaDestinoM != null -> "%.2f km al destino".format(distanciaDestinoM / 1000)
                                         else -> entrega.direccion.substringBefore(",")
@@ -732,7 +751,7 @@ fun RutaEntregaScreen(
                             if (estado == EstadoRuta.EN_RUTA) {
                                 EnRutaSheet(
                                     entrega, distanciaDestinoM,
-                                    rutaKm = liveRutaCalculada?.takeIf { it.encontrada }?.distanciaTotalKm,
+                                    rutaKm = rutaKmRestantes,
                                     rutaNoDisponible = rutaNoDisponible
                                 )
                                 Spacer(Modifier.height(14.dp))

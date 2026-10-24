@@ -549,7 +549,17 @@ internal fun htmlMapaRuta(
               var chip = document.getElementById('estado');
               chip.querySelector('span').textContent = texto;
               chip.style.display = texto ? 'flex' : 'none';
-              dibujarLinea();
+              if (cerrado) {
+                if (anim) { cancelAnimationFrame(anim); anim = null; }
+                if (markerRep) { map.removeLayer(markerRep); markerRep = null; }
+                if (markerBase) { map.removeLayer(markerBase); markerBase = null; }
+                repPos = null;
+                rutaActual = [];
+                limpiarLineas();
+                map.setView(centroVisible(destino, 16), 16, { animate: true });
+              } else {
+                dibujarLinea();
+              }
             }
 
             function setBase(lat, lon, nombre) {
@@ -608,6 +618,9 @@ internal fun htmlMapaRuta(
                 markerRep.bindPopup('<b>' + etiqueta + '</b>');
                 moverA([repLat, repLon]);
               } else {
+                if (anim) { cancelAnimationFrame(anim); anim = null; }
+                if (markerRep) { map.removeLayer(markerRep); markerRep = null; }
+                repPos = null;
                 dibujarLinea();
               }
               // Sin seguimiento: encuadra repartidor + destino la primera vez o si cambió la ruta.

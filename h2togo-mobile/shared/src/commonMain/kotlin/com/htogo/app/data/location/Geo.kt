@@ -73,3 +73,81 @@ fun interpolarPasosRuta(
     resultado.add(Pair(destLat + 0.00014, destLon + 0.00008))
     return resultado
 }
+
+/**
+ * Calcula los kilómetros restantes sobre la polilínea de la ruta desde la posición actual
+ * del repartidor (lat, lon) hasta el destino final, proyectando la posición sobre el segmento
+ * más cercano para que disminuya de forma continua conforme avanza (tanto con GPS real como en FakeGPS).
+ */
+fun distanciaRestanteRutaKm(
+    lat: Double,
+    lon: Double,
+    ruta: List<Pair<Double, Double>>,
+    destLat: Double,
+    destLon: Double,
+    distanciaTotalOriginalKm: Double? = null
+): Double {
+    val distDirectaM = distanciaM(lat, lon, destLat, destLon)
+    if (ruta.size < 2) {
+        return (distDirectaM / 1000.0).coerceAtLeast(0.0)
+    }
+
+    val cosLat = cos(lat * kotlin.math.PI / 180.0).coerceAtLeast(0.1)
+    var bestIdx = 0
+    var bestQLat = ruta[0].first
+    var bestQLon = ruta[0].second
+    var minDistM = Double.MAX_VALUE
+
+    var longitudTotalRutaM = 0.0
+    val longitudesSegmento = DoubleArray(ruta.size - 1)
+
+    for (i in 0 until ruta.lastIndex) {
+        val a = ruta[i]
+        val b = ruta[i + 1]
+        val segM = distanciaM(a.first, a.second, b.first, b.second)
+        longitudesSegmento[i] = segM
+        longitudTotalRutaM += segM
+
+        val ax = a.second * cosLat
+        val ay = a.first
+        val bx = b.second * cosLat
+        val by = b.first
+        val px = lon * cosLat
+        val py = lat
+        val dx = bx - ax
+        val dy = by - ay
+        val lenSq = dx * dx + dy * dy
+        val t = if (lenSq > 1e-12) {
+            (((px - ax) * dx + (py - ay) * dy) / lenSq).coerceIn(0.0, 1.0)
+        } else {
+            0.0
+        }
+        val qLat = a.first + (b.first - a.first) * t
+        val qLon = a.second + (b.second - a.second) * t
+        val d = distanciaM(lat, lon, qLat, qLon)
+        if (d < minDistM) {
+            minDistM = d
+            bestIdx = i
+            bestQLat = qLat
+            bestQLon = qLon
+        }
+    }
+
+    var restantePolilineaM = distanciaM(bestQLat, bestQLon, ruta[bestIdx + 1].first, ruta[bestIdx + 1].second)
+    for (k in (bestIdx + 1) until ruta.lastIndex) {
+        restantePolilineaM += longitudesSegmento[k]
+    }
+
+    val restanteKm = if (distanciaTotalOriginalKm != null && distanciaTotalOriginalKm > 0.0 && longitudTotalRutaM > 10.0) {
+        val proporcion = (restantePolilineaM / longitudTotalRutaM).coerceIn(0.0, 1.0)
+        distanciaTotalOriginalKm * proporcion + (if (minDistM > 45.0) minDistM / 1000.0 else 0.0)
+    } else {
+        (restantePolilineaM + (if (minDistM > 45.0) minDistM else 0.0)) / 1000.0
+    }
+
+    return if (distDirectaM < 40.0) {
+        minOf(restanteKm, distDirectaM / 1000.0).coerceAtLeast(0.0)
+    } else {
+        restanteKm.coerceAtLeast(0.0)
+    }
+}

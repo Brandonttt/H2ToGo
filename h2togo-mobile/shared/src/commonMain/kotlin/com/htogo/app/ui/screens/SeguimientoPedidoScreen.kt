@@ -883,9 +883,11 @@ fun SeguimientoPedidoScreen(
 
     BoxWithConstraints(Modifier.fillMaxSize().background(HToGoColors.Background)) {
         val screenHeight = maxHeight
-        val latEfectivaRepartidor = posicionDemo?.first ?: ubicacionRepartidor?.lat ?: rutaSeguimiento.firstOrNull()?.first
-        val lonEfectivaRepartidor = posicionDemo?.second ?: ubicacionRepartidor?.lon ?: rutaSeguimiento.firstOrNull()?.second
+        val pedidoCerrado = order.estado in setOf(EstadoPedido.ENTREGADO, EstadoPedido.NO_ENTREGADO, EstadoPedido.CANCELADO)
+        val latEfectivaRepartidor = if (pedidoCerrado) null else (posicionDemo?.first ?: ubicacionRepartidor?.lat ?: rutaSeguimiento.firstOrNull()?.first)
+        val lonEfectivaRepartidor = if (pedidoCerrado) null else (posicionDemo?.second ?: ubicacionRepartidor?.lon ?: rutaSeguimiento.firstOrNull()?.second)
         val puntosRutaMapa = when {
+            pedidoCerrado -> emptyList()
             posicionDemo != null && rutaBaseDemo.size >= 2 -> rutaBaseDemo
             order.estado == EstadoPedido.EN_CAMINO || order.estado == EstadoPedido.ASIGNADO -> rutaSeguimiento
             else -> emptyList()
@@ -900,10 +902,10 @@ fun SeguimientoPedidoScreen(
                 routePoints = puntosRutaMapa,
                 repartidorLabel = if (posicionDemo != null) "Tu repartidor (FakeGPS)" else "Tu repartidor",
                 avisoSinUbicacion = null, // el aviso del cliente se muestra abajo (CU-006 S1)
-                estadoPedido = if (posicionDemo != null) "en_camino" else livePedido?.estado,
+                estadoPedido = if (posicionDemo != null && !pedidoCerrado) "en_camino" else livePedido?.estado,
                 margenInferior = screenHeight * 0.62f, // encuadra arriba del panel del pedido
-                baseLat = ubicacionPurificadora?.first,
-                baseLon = ubicacionPurificadora?.second,
+                baseLat = if (pedidoCerrado) null else ubicacionPurificadora?.first,
+                baseLon = if (pedidoCerrado) null else ubicacionPurificadora?.second,
                 baseLabel = order.purificadoraName,
                 modifier = Modifier.fillMaxSize()
             )

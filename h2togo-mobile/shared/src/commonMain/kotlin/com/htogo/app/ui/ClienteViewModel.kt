@@ -326,18 +326,61 @@ class ClienteViewModel : ViewModel() {
         }
     }
 
+    private val estadosCerrados = setOf("entregado", "no_entregado", "cancelado")
+    private val cierreConfirmadoPorPedido = mutableMapOf<Int, String>()
+
     fun cargarDetallePedido(id: Int) {
         viewModelScope.launch { refrescarDetalle(id) }
     }
 
     private suspend fun refrescarDetalle(id: Int) {
         try {
+            val estadoPrevio = cierreConfirmadoPorPedido[id]
+                ?: _pedidoActivo.value?.takeIf { it.id == id }?.estado?.lowercase()?.takeIf { it in estadosCerrados }
             val resp = apiClient.pedidosApi.obtenerDetallePedido(id)
             if (resp.isSuccessful && resp.body() != null) {
-                _pedidoActivo.value = resp.body()!!
+                val recibido = resp.body()!!
+                val estadoRecibido = recibido.estado.lowercase()
+                if (estadoRecibido in estadosCerrados) {
+                    cierreConfirmadoPorPedido[id] = estadoRecibido
+                    _pedidoActivo.value = recibido
+                } else if (estadoPrevio != null) {
+                    // Protege contra respuestas en vuelo previas al commit de la BD para que nunca regrese a "en_camino"
+                    _pedidoActivo.value = recibido.copy(estado = estadoPrevio)
+                    delay(450)
+                    val respReintento = apiClient.pedidosApi.obtenerDetallePedido(id)
+                    val bodyReintento = respReintento.body()
+                    if (respReintento.isSuccessful && bodyReintento != null) {
+                        val estReintento = bodyReintento.estado.lowercase()
+                        if (estReintento in estadosCerrados) {
+                            cierreConfirmadoPorPedido[id] = estReintento
+                            _pedidoActivo.value = bodyReintento
+                        } else {
+                            _pedidoActivo.value = bodyReintento.copy(estado = estadoPrevio)
+                        }
+                    }
+                } else {
+                    _pedidoActivo.value = recibido
+                }
             }
         } catch (e: Exception) {
             // Error
+        }
+    }
+
+    private fun aplicarCierrePedidoEnVivo(idPedido: Int, nuevoEstado: String) {
+        val estadoNorm = nuevoEstado.lowercase()
+        cierreConfirmadoPorPedido[idPedido] = estadoNorm
+        _repartidorLlego.value = false
+        _ubicacionRepartidor.value = null
+        _rutaSeguimiento.value = emptyList()
+        origenRutaSeguimiento = null
+        _pedidoActivo.value = _pedidoActivo.value?.takeIf { it.id == idPedido }?.copy(estado = estadoNorm)
+        detenerRastreo()
+        viewModelScope.launch {
+            delay(250)
+            refrescarDetalle(idPedido)
+            cargarHistorial()
         }
     }
 
@@ -373,6 +416,7 @@ class ClienteViewModel : ViewModel() {
         _repartidorLlego.value = false
         _rutaSeguimiento.value = emptyList()
         origenRutaSeguimiento = null
+        if (cierreConfirmadoPorPedido[idPedido] != null) return
         val token = sessionManager.obtenerToken() ?: return
         rastreoJob = viewModelScope.launch {
             var conectado = false
@@ -382,25 +426,18 @@ class ClienteViewModel : ViewModel() {
                 CanalNotificaciones.avisos.collect { a ->
                     if (a.datos["idPedido"] != idPedido.toString()) return@collect
                     when (a.datos["tipo"]) {
-                        "repartidor_llego" -> _repartidorLlego.value = true
-                        "pedido_entregado" -> {
-                            // Cambio optimista inmediato en UI (0 ms) + sincronización con el servidor
-                            _pedidoActivo.value = _pedidoActivo.value?.takeIf { it.id == idPedido }?.copy(estado = "entregado")
-                            _ubicacionRepartidor.value = null
-                            refrescarDetalle(idPedido)
-                            cargarHistorial()
-                            detenerRastreo()
+                        "repartidor_llego" -> {
+                            if (cierreConfirmadoPorPedido[idPedido] == null) {
+                                _repartidorLlego.value = true
+                            }
                         }
-                        "pedido_no_entregado" -> {
-                            _pedidoActivo.value = _pedidoActivo.value?.takeIf { it.id == idPedido }?.copy(estado = "no_entregado")
-                            _ubicacionRepartidor.value = null
-                            refrescarDetalle(idPedido)
-                            cargarHistorial()
-                            detenerRastreo()
-                        }
+                        "pedido_entregado" -> aplicarCierrePedidoEnVivo(idPedido, "entregado")
+                        "pedido_no_entregado" -> aplicarCierrePedidoEnVivo(idPedido, "no_entregado")
                         "pedido_en_camino", "pedido_asignado" -> {
-                            refrescarDetalle(idPedido)
-                            actualizarRutaSeguimiento(idPedido, _ubicacionRepartidor.value)
+                            if (cierreConfirmadoPorPedido[idPedido] == null) {
+                                refrescarDetalle(idPedido)
+                                actualizarRutaSeguimiento(idPedido, _ubicacionRepartidor.value)
+                            }
                         }
                     }
                 }
@@ -438,16 +475,20 @@ class ClienteViewModel : ViewModel() {
                                 is EventoStomp.Conectado -> conectado = true
                                 is EventoStomp.Mensaje -> {
                                     when (extraerEventoTopico(evento.cuerpo)) {
-                                        "llegada" -> _repartidorLlego.value = true
+                                        "llegada" -> {
+                                            if (cierreConfirmadoPorPedido[idPedido] == null) {
+                                                _repartidorLlego.value = true
+                                            }
+                                        }
                                         "entregado", "no_entregado" -> {
                                             val nuevoEstado = extraerEventoTopico(evento.cuerpo)!!
-                                            _pedidoActivo.value = _pedidoActivo.value?.takeIf { it.id == idPedido }?.copy(estado = nuevoEstado)
-                                            _ubicacionRepartidor.value = null
-                                            refrescarDetalle(idPedido)
-                                            cargarHistorial()
-                                            detenerRastreo()
+                                            aplicarCierrePedidoEnVivo(idPedido, nuevoEstado)
                                         }
-                                        else -> parsearUbicacion(evento.cuerpo)?.let { _ubicacionRepartidor.value = it }
+                                        else -> {
+                                            if (cierreConfirmadoPorPedido[idPedido] == null) {
+                                                parsearUbicacion(evento.cuerpo)?.let { _ubicacionRepartidor.value = it }
+                                            }
+                                        }
                                     }
                                 }
                                 else -> Unit
@@ -521,9 +562,11 @@ class ClienteViewModel : ViewModel() {
     }
 
     private suspend fun consultarUbicacion(idPedido: Int) {
+        if (cierreConfirmadoPorPedido[idPedido] != null) return
         try {
             val resp = apiClient.pedidosApi.ubicacionRepartidor(idPedido)
             resp.body()?.let { u ->
+                if (cierreConfirmadoPorPedido[idPedido] != null) return
                 if (u.llegoEn != null) _repartidorLlego.value = true
                 val previa = _ubicacionRepartidor.value
                 // Misma posición que ya teníamos: no la marca como reciente.
@@ -615,13 +658,22 @@ class ClienteViewModel : ViewModel() {
     private fun refrescarAlRecibirAvisos() {
         viewModelScope.launch {
             CanalNotificaciones.avisos.collect { aviso ->
-                if (aviso.datos["tipo"]?.startsWith("pedido_") == true) cargarHistorial()
+                val tipo = aviso.datos["tipo"]
+                val idPed = aviso.datos["idPedido"]?.toIntOrNull()
+                if (idPed != null && _pedidoActivo.value?.id == idPed) {
+                    when (tipo) {
+                        "pedido_entregado" -> aplicarCierrePedidoEnVivo(idPed, "entregado")
+                        "pedido_no_entregado" -> aplicarCierrePedidoEnVivo(idPed, "no_entregado")
+                    }
+                }
+                if (tipo?.startsWith("pedido_") == true) cargarHistorial()
             }
         }
     }
 
     private fun limpiarDatosDeSesion() {
         detenerRastreo()
+        cierreConfirmadoPorPedido.clear()
         _direcciones.value = emptyList()
         _historial.value = emptyList()
         _pedidoActivo.value = null

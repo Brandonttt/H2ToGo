@@ -10,6 +10,8 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Rastreo en vivo de pedidos (CU-006): difusión a {@code /topic/pedidos/{id}/ubicacion}, de modo
@@ -46,13 +48,26 @@ public class RastreoService {
     /** Avisa por el tópico del pedido que el repartidor llegó (la pantalla del cliente lo muestra). */
     public void publicarLlegada(int idPedido, OffsetDateTime llegoEn) {
         Object payload = Map.of("evento", "llegada", "llegoEn", llegoEn.toString());
-        messaging.convertAndSend(topico(idPedido), payload);
+        enviarDespuesDelCommit(topico(idPedido), payload);
     }
 
     /** Avisa por el tópico del pedido que el pedido fue entregado o no entregado en tiempo real. */
     public void publicarCierre(int idPedido, String evento) {
         Object payload = Map.of("evento", evento, "timestamp", OffsetDateTime.now().toString());
-        messaging.convertAndSend(topico(idPedido), payload);
+        enviarDespuesDelCommit(topico(idPedido), payload);
+    }
+
+    private void enviarDespuesDelCommit(String destino, Object payload) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    messaging.convertAndSend(destino, payload);
+                }
+            });
+        } else {
+            messaging.convertAndSend(destino, payload);
+        }
     }
 
     @Transactional
