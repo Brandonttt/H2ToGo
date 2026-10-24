@@ -390,9 +390,41 @@ fun RutaEntregaScreen(
 
     val idPedidoRuta = livePedidoEnRuta?.id
     var estado by remember { mutableStateOf(EstadoRuta.EN_RUTA) }
+    var llegadaPendienteSincronizar by remember(entrega.pedidoId) { mutableStateOf(false) }
     var mostrarModalEntregado by remember { mutableStateOf(false) }
     var avisandoLlegada by remember { mutableStateOf(false) }
     var mostrarModalNoEntregado by remember { mutableStateOf(false) }
+
+    // Respaldo de reconexión: si el repartidor perdió internet mientras avanzaba (con GPS real o FakeGPS)
+    // y recupera la conexión cuando ya llegó al destino y está detenido, reenvía periódicamente su
+    // posición actual, el estado "en_camino" y el aviso de llegada pendiente para que el cliente se actualice.
+    LaunchedEffect(entrega.pedidoId) {
+        val idInt = entrega.pedidoId.toIntOrNull() ?: return@LaunchedEffect
+        while (true) {
+            delay(4_000L)
+            val posActual = posicionSimulada ?: posicionReal ?: continue
+            if (!enCaminoSolicitado && livePedidoEnRuta?.estado.equals("asignado", ignoreCase = true) && errorCargaBase == null) {
+                enCaminoSolicitado = true
+                repartidorViewModel.marcarEnCamino(idInt, posActual.lat, posActual.lon, onError = { err ->
+                    enCaminoSolicitado = false
+                    if (err.contains("apartados en la base", ignoreCase = true) || err.contains("CARGA_PENDIENTE", ignoreCase = true)) {
+                        errorCargaBase = err
+                    }
+                })
+            }
+            repartidorViewModel.reportarUbicacionSimulada(posActual.lat, posActual.lon)
+            if (!simulandoRecorrido) {
+                repartidorViewModel.alMoverse(idInt, posActual)
+            }
+            if (estado == EstadoRuta.LLEGADO && llegadaPendienteSincronizar && idPedidoRuta != null) {
+                repartidorViewModel.avisarLlegada(
+                    idPedidoRuta, posActual.lat, posActual.lon,
+                    onSuccess = { llegadaPendienteSincronizar = false },
+                    onError = { _, _ -> }
+                )
+            }
+        }
+    }
 
     // RN-012: la llegada se guarda en disco; al volver a la pantalla se retoma el conteo.
     LaunchedEffect(idPedidoRuta) {
@@ -769,15 +801,17 @@ fun RutaEntregaScreen(
                                                     idPedidoRuta, pos.lat, pos.lon,
                                                     onSuccess = {
                                                         avisandoLlegada = false
+                                                        llegadaPendienteSincronizar = false
                                                         estado = EstadoRuta.LLEGADO
                                                         mostrarAviso("Le avisamos al cliente que llegaste")
                                                     },
                                                     onError = { msg, codigo ->
                                                         avisandoLlegada = false
-                                                        // Sin red o backend sin el endpoint: la espera de 10 min corre igual.
+                                                        // Sin red o backend sin el endpoint: la espera de 10 min corre igual y se reintenta al reconectar.
                                                         if (codigo == null || codigo == 404) {
+                                                            llegadaPendienteSincronizar = (codigo == null)
                                                             estado = EstadoRuta.LLEGADO
-                                                            mostrarAviso("Llegada registrada, pero no se pudo avisar al cliente. Llámalo si no sale.", largo = true)
+                                                            mostrarAviso("Llegada registrada. Avisaremos al cliente en cuanto vuelva la conexión.", largo = true)
                                                         } else {
                                                             mostrarAviso(msg, largo = true)
                                                         }

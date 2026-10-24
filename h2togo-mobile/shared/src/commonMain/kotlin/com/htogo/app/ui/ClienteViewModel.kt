@@ -449,8 +449,8 @@ class ClienteViewModel : ViewModel() {
                 actualizarRutaSeguimiento(idPedido, _ubicacionRepartidor.value)
             }
 
-            // Ruta por calles: se actualiza cuando el repartidor avanza > 60 m (máx. cada 15 s)
-            // o de inmediato si todavía no tenemos la ruta (_rutaSeguimiento vacía).
+            // Ruta por calles: se actualiza cuando el repartidor avanza > 45 m (máx. cada 5 s),
+            // de inmediato si saltó > 120 m (p. ej. tras reconexión) o si _rutaSeguimiento está vacía.
             launch {
                 combine(_pedidoActivo, _ubicacionRepartidor) { pedido, u -> pedido to u }
                     .collect { (pedido, u) ->
@@ -458,8 +458,12 @@ class ClienteViewModel : ViewModel() {
                         if (est !in setOf("asignado", "en_camino")) return@collect
                         val necesitaRuta = _rutaSeguimiento.value.isEmpty()
                         val previo = origenRutaSeguimiento
-                        val movido = previo == null || (u != null && com.htogo.app.data.location.distanciaM(previo.lat, previo.lon, u.lat, u.lon) > 60)
-                        if (necesitaRuta || (movido && ahoraMs() - rutaSeguimientoMs >= 15_000)) {
+                        val distCambio = if (previo != null && u != null) {
+                            com.htogo.app.data.location.distanciaM(previo.lat, previo.lon, u.lat, u.lon)
+                        } else Double.MAX_VALUE
+                        val movido = previo == null || distCambio > 45
+                        val saltoReconexion = distCambio > 120
+                        if (necesitaRuta || saltoReconexion || (movido && ahoraMs() - rutaSeguimientoMs >= 5_000)) {
                             actualizarRutaSeguimiento(idPedido, u)
                         }
                     }
@@ -499,24 +503,26 @@ class ClienteViewModel : ViewModel() {
                 }
             }
 
-            // Respaldo de ubicación si no hay WebSocket o si aún no tenemos posición
+            // Respaldo continuo de ubicación cada 5 s (recupera al instante tras microcortes de red o del repartidor)
             launch {
                 while (isActive) {
-                    if (!conectado || _ubicacionRepartidor.value == null) {
-                        consultarUbicacion(idPedido)
-                    }
-                    delay(10_000)
+                    consultarUbicacion(idPedido)
+                    delay(5_000)
                 }
             }
 
-            // Refresco periódico de respaldo del detalle del pedido (cada 6 s) y reintento de ruta si falta
+            // Refresco periódico de respaldo del detalle del pedido (cada 6 s) y reintento de ruta si el repartidor se movió
             launch {
                 while (isActive) {
                     delay(6_000)
                     refrescarDetalle(idPedido)
                     val estado = _pedidoActivo.value?.estado?.lowercase()
-                    if (_rutaSeguimiento.value.isEmpty() && estado in setOf("asignado", "en_camino")) {
-                        actualizarRutaSeguimiento(idPedido, _ubicacionRepartidor.value)
+                    val uActual = _ubicacionRepartidor.value
+                    val origRuta = origenRutaSeguimiento
+                    val desfasada = uActual != null && (origRuta == null ||
+                        com.htogo.app.data.location.distanciaM(origRuta.lat, origRuta.lon, uActual.lat, uActual.lon) > 45)
+                    if ((_rutaSeguimiento.value.isEmpty() || desfasada) && estado in setOf("asignado", "en_camino")) {
+                        actualizarRutaSeguimiento(idPedido, uActual)
                     }
                     if (estado in setOf("entregado", "no_entregado", "cancelado")) {
                         _ubicacionRepartidor.value = null

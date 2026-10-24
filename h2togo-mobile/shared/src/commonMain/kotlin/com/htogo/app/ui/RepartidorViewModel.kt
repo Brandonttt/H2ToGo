@@ -678,17 +678,19 @@ class RepartidorViewModel : ViewModel() {
     private var origenRuta: com.htogo.app.data.location.Posicion? = null
     private var ultimaRutaMs = 0L
     private var calculandoRuta = false
+    private var falloUltimaRutaRed = false
 
     /**
      * Cada fix del GPS (lo reporta al backend [EntregaEnCursoService]): recalcula la ruta si el
-     * repartidor se movió más de 60 m desde el último cálculo, como mucho cada 20 s (o si forzar = true).
+     * repartidor se movió más de 50 m desde el último cálculo, o si falló por red previamente.
      */
     fun alMoverse(idPedido: Int, p: com.htogo.app.data.location.Posicion, forzar: Boolean = false) {
         if (calculandoRuta && !forzar) return
         val ahora = ahoraMs()
         val origen = origenRuta
-        val recalcular = forzar || origen == null || (ahora - ultimaRutaMs >= 20_000 &&
-            com.htogo.app.data.location.distanciaM(origen.lat, origen.lon, p.lat, p.lon) > 60)
+        val distMovida = if (origen != null) com.htogo.app.data.location.distanciaM(origen.lat, origen.lon, p.lat, p.lon) else Double.MAX_VALUE
+        val recalcular = forzar || origen == null || falloUltimaRutaRed ||
+            (ahora - ultimaRutaMs >= 8_000 && distMovida > 50)
         if (!recalcular) return
         calculandoRuta = true
         viewModelScope.launch {
@@ -700,17 +702,20 @@ class RepartidorViewModel : ViewModel() {
                 if (resp.isSuccessful && resp.body() != null) {
                     _rutaCalculada.value = resp.body()
                     _rutaNoDisponible.value = false
+                    falloUltimaRutaRed = false
                     origenRuta = p
                     ultimaRutaMs = ahora
                 } else if (resp.code() == 422) {
                     _rutaCalculada.value = null
                     _rutaNoDisponible.value = true
+                    falloUltimaRutaRed = false
                     // Se reintenta cuando se mueva lo suficiente (p. ej. al entrar a la zona).
                     origenRuta = p
                     ultimaRutaMs = ahora
                 }
             } catch (_: Exception) {
-                // Sin red: se reintenta con el siguiente fix del GPS.
+                // Sin red: se marca pendiente para reintentar en cuanto vuelva la conexión.
+                falloUltimaRutaRed = true
             } finally {
                 calculandoRuta = false
             }

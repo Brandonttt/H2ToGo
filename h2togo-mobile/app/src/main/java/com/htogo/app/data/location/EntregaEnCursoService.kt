@@ -90,6 +90,22 @@ class EntregaEnCursoService : Service() {
         seguimiento = scope.launch {
             launch { delay(DURACION_MAX_MS); stopSelf() }
             var ultimoReporte = 0L
+            // Respaldo periódico: si el repartidor perdió red en movimiento y la recupera ya detenido
+            // en el destino (donde el GPS ya no emite nuevos fixes de > 10 m), reenvía su posición actual.
+            launch(Dispatchers.IO) {
+                while (true) {
+                    delay(REPORTE_MS)
+                    val posActual = _posicion.value
+                    if (posActual != null && !EntregaEnCurso.simulacionActiva.value) {
+                        try {
+                            api.reportarUbicacion(mapOf("lat" to posActual.lat, "lon" to posActual.lon))
+                            ultimoReporte = System.currentTimeMillis()
+                        } catch (_: Exception) {
+                            // Sin red: reintenta en el próximo ciclo de 5 s.
+                        }
+                    }
+                }
+            }
             UbicacionAndroid.posiciones(this@EntregaEnCursoService).collect { p ->
                 _posicion.value = p
                 val ahora = System.currentTimeMillis()
@@ -100,7 +116,7 @@ class EntregaEnCursoService : Service() {
                         try {
                             api.reportarUbicacion(mapOf("lat" to p.lat, "lon" to p.lon))
                         } catch (_: Exception) {
-                            // Sin red: el siguiente fix lo reintenta.
+                            // Sin red: el ciclo periódico o el siguiente fix lo reintenta.
                         }
                     }
                 }
