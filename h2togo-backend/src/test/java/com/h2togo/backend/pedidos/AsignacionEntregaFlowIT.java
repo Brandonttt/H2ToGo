@@ -271,6 +271,47 @@ class AsignacionEntregaFlowIT {
         assertThat(exitos).isEqualTo(1);
     }
 
+    @Test
+    void aceptacionConcurrente10RepartidoresSoloUnoGana() throws Exception {
+        Cli c = registrarCliente("f7c10@test.mx", "5557770010");
+        Rep dueno = setupDueno("f7d10@test.mx", "5557770100", "Purif F7-10", "MarcaF710", "25.00", 300, 10);
+        List<Rep> repartidores = new java.util.ArrayList<>();
+        repartidores.add(dueno);
+        for (int i = 1; i <= 9; i++) {
+            repartidores.add(addMiembro(dueno.idNegocio(), dueno.idMarca(),
+                    "f7m10_" + i + "@test.mx", "555777010" + i, 10));
+        }
+        int[] ped = crearPedido(c.token(), dueno.idNegocio(), c.idDireccion(), dueno.idMarca(), 2);
+
+        int totalHilos = 10;
+        CountDownLatch listos = new CountDownLatch(totalHilos);
+        CountDownLatch arranque = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(totalHilos);
+        List<Future<Boolean>> futures = new java.util.ArrayList<>();
+        for (Rep r : repartidores) {
+            futures.add(pool.submit(() -> intentarAceptar(r.idRep(), ped[0], listos, arranque)));
+        }
+        listos.await();
+        arranque.countDown();
+
+        int exitos = 0;
+        int fallos = 0;
+        for (Future<Boolean> f : futures) {
+            try {
+                if (Boolean.TRUE.equals(f.get())) {
+                    exitos++;
+                } else {
+                    fallos++;
+                }
+            } catch (Exception ignored) {
+                fallos++;
+            }
+        }
+        pool.shutdown();
+        assertThat(exitos).isEqualTo(1);
+        assertThat(fallos).isEqualTo(9);
+    }
+
     private boolean intentarAceptar(int idRep, int idPedido, CountDownLatch listos, CountDownLatch arranque)
             throws InterruptedException {
         listos.countDown();
