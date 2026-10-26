@@ -2,7 +2,7 @@
 -- DATOS DEMO H2ToGo — para la consola de pruebas (F13) y demostraciones
 -- ==========================================
 -- Ejecutar en una BD ya inicializada con, en este orden:
---   1) H2ToGo_v6_postgresql.sql          (esquema v6)
+--   1) H2ToGo_v7_postgresql.sql          (esquema v7)
 --   2) h2togo-backend/sql/zona_benito_juarez.sql   (polígono real de cobertura)
 --   3) data-demo.sql                     (este archivo)
 --
@@ -31,22 +31,22 @@ INSERT INTO usuarios (id_usuario, nombre, apellidos, correo, password_hash, tele
 OVERRIDING SYSTEM VALUE
 VALUES (1, 'Adela', 'Admin', 'admin@h2togo.mx',
         '$2a$10$LTorDuTcMQc/Q1fI.e2cmuiIY.VQJ07K4F5zJqp1eltkdpAM9.pku', '5550000001', 'admin', TRUE);
-INSERT INTO administradores (id_usuario) VALUES (1);
+-- (el administrador no tiene subtabla)
 
--- ---- Dueño (repartidor) + su negocio (ciclo diferido resuelto en la tx) --
+-- ---- Dueño (repartidor) + su negocio: el negocio y luego su dueño (es_dueno) --
 INSERT INTO usuarios (id_usuario, nombre, apellidos, correo, password_hash, telefono, rol, telefono_verificado)
 OVERRIDING SYSTEM VALUE
 VALUES (2, 'Rodrigo', 'Repartidor', 'dueno@h2togo.mx',
         '$2a$10$LTorDuTcMQc/Q1fI.e2cmuiIY.VQJ07K4F5zJqp1eltkdpAM9.pku', '5550000002', 'repartidor', TRUE);
 
-INSERT INTO negocios (id_negocio, nombre_comercial, id_dueno,
+INSERT INTO negocios (id_negocio, nombre_comercial,
                       calle, numero_exterior, colonia, codigo_postal, ubicacion_base)
 OVERRIDING SYSTEM VALUE
-VALUES (1, 'Purificadora Demo', 2,
+VALUES (1, 'Purificadora Demo',
         'Av. Insurgentes Sur', '1234', 'Del Valle', '03100',
         ST_GeogFromText('SRID=4326;POINT(-99.165057 19.376692)'));
 
-INSERT INTO repartidores (id_usuario, id_negocio) VALUES (2, 1);
+INSERT INTO repartidores (id_usuario, id_negocio, es_dueno) VALUES (2, 1, TRUE);
 
 -- ---- Cliente ------------------------------------------------------------
 INSERT INTO usuarios (id_usuario, nombre, apellidos, correo, password_hash, telefono, rol, telefono_verificado)

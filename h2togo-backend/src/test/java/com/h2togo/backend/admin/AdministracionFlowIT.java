@@ -46,7 +46,7 @@ class AdministracionFlowIT {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"))
-            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v6_postgresql.sql"),
+            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v7_postgresql.sql"),
                     "/docker-entrypoint-initdb.d/01_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath("sql/zona_benito_juarez.sql"),
                     "/docker-entrypoint-initdb.d/02_zona.sql");
@@ -64,14 +64,13 @@ class AdministracionFlowIT {
         String token = "admin-" + UUID.randomUUID();
         Integer id = jdbc.queryForObject("""
                 INSERT INTO usuarios (nombre, apellidos, correo, password_hash, telefono, rol,
-                    telefono_verificado, cuenta_activa, token_sesion, sesion_fecha_creacion, sesion_fecha_expiracion)
-                VALUES ('Admin','Root',:correo,:hash,:tel,'admin'::rol_usuario, TRUE, TRUE, :token, now(), now() + interval '30 days')
+                    telefono_verificado, cuenta_activa, token_sesion_hash, sesion_fecha_creacion, sesion_fecha_expiracion)
+                VALUES ('Admin','Root',:correo,:hash,:tel,'admin'::rol_usuario, TRUE, TRUE, encode(sha256(convert_to(:token, 'UTF8')), 'hex'), now(), now() + interval '30 days')
                 RETURNING id_usuario""",
                 new MapSqlParameterSource().addValue("correo", "adm-" + token + "@test.mx")
                         .addValue("hash", passwordEncoder.encode("x"))
                         .addValue("tel", "999" + System.nanoTime() % 100000000L).addValue("token", token),
                 Integer.class);
-        jdbc.update("INSERT INTO administradores (id_usuario) VALUES (:id)", new MapSqlParameterSource("id", id));
         return token;
     }
 
@@ -80,10 +79,11 @@ class AdministracionFlowIT {
         mvc.perform(post("/api/v1/auth/verificacion-telefono").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"codigo\":\"%s\"}".formatted(correo, otp)))
                 .andExpect(status().isNoContent());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String cuerpoLogin = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"password\":\"password123\"}".formatted(correo)))
-                .andExpect(status().isOk());
-        return usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesion();
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.read(cuerpoLogin, "$.token");
     }
 
     private String registrarDueno(String correo, String tel, String negocio) throws Exception {

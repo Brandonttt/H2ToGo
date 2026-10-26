@@ -1311,7 +1311,7 @@ function modalSolicitud(s) {
         <div><div class="k">Negocio</div><div class="v">${esc(s.negocio)}</div></div>
         <div><div class="k">Fecha de solicitud</div><div class="v">${fmtDateTime(s.fechaSolicitud)}</div></div>
         <div><div class="k">${pendiente ? 'Referencia' : 'Resuelta'}</div><div class="v">${pendiente
-          ? (s.idVehiculo ? 'Vehículo #' + s.idVehiculo : s.idProductoNegocio ? 'Producto #' + s.idProductoNegocio : '—')
+          ? (s.idVehiculo ? 'Vehículo #' + s.idVehiculo : '—')
           : fmtDateTime(s.fechaResolucion) + (s.revisor ? ' · ' + esc(s.revisor) : '')}</div></div>
       </div>
       <div class="diff">

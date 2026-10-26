@@ -9,7 +9,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
     Optional<Usuario> findByTelefono(String telefono);
 
-    Optional<Usuario> findByTokenSesion(String tokenSesion);
+    Optional<Usuario> findByTokenSesionHash(String tokenSesionHash);
 
     boolean existsByCorreo(String correo);
 

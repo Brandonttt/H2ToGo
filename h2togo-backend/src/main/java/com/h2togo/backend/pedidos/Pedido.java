@@ -17,17 +17,21 @@ import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Raíz del agregado Pedido (v6, tabla {@code pedidos}). Sus hijos —{@link DetallePedido},
- * {@link ApartadoPedido}, {@link HistorialEstadoPedido}— se manejan a través de esta raíz
- * (no tienen repositorio propio). Las FKs a otros agregados (cliente, negocio, repartidor,
- * dirección, vehículo) se mapean como escalares.
+ * Raíz del agregado Pedido (tabla {@code pedidos}). Sus hijos —{@link DetallePedido} e
+ * {@link HistorialEstadoPedido}— se manejan a través de esta raíz (no tienen repositorio propio).
+ * Los apartados de inventario no son parte del agregado: los manejan por SQL la asignación y la
+ * entrega (el cliente no tiene permiso sobre ellos en la BD). Las FKs a otros agregados
+ * (cliente, negocio, repartidor, dirección) se mapean como escalares.
+ * <p>{@code @DynamicUpdate}: al cancelar, el cliente solo puede cambiar {@code estado_actual}.
  */
 @Entity
 @Table(name = "pedidos")
+@DynamicUpdate
 @Getter
 @Setter
 @NoArgsConstructor
@@ -50,9 +54,6 @@ public class Pedido {
     @Column(name = "id_direccion_entrega", nullable = false)
     private Integer idDireccionEntrega;
 
-    @Column(name = "id_vehiculo_utilizado")
-    private Integer idVehiculoUtilizado;
-
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "tipo_solicitud", nullable = false, columnDefinition = "tipo_solicitud_pedido")
     private TipoSolicitudPedido tipoSolicitud = TipoSolicitudPedido.directa;
@@ -73,8 +74,10 @@ public class Pedido {
     @Column(name = "indicaciones_entrega", length = 500)
     private String indicacionesEntrega;
 
-    @Column(name = "es_programado", nullable = false)
-    private boolean esProgramado = false;
+    /** Columna generada en la BD: {@code fecha_programada IS NOT NULL}. */
+    @Column(name = "es_programado", insertable = false, updatable = false)
+    @Setter(lombok.AccessLevel.NONE)
+    private boolean esProgramado;
 
     @Column(name = "fecha_programada")
     private OffsetDateTime fechaProgramada;
@@ -92,20 +95,13 @@ public class Pedido {
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetallePedido> detalles = new ArrayList<>();
 
-    @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ApartadoPedido> apartados = new ArrayList<>();
-
-    @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
+    /** Bitácora (RN-013): se agregan entradas, nunca se borran ni modifican (la BD lo impide). */
+    @OneToMany(mappedBy = "pedido", cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH})
     private List<HistorialEstadoPedido> historial = new ArrayList<>();
 
     public void agregarDetalle(DetallePedido detalle) {
         detalle.setPedido(this);
         this.detalles.add(detalle);
-    }
-
-    public void agregarApartado(ApartadoPedido apartado) {
-        apartado.setPedido(this);
-        this.apartados.add(apartado);
     }
 
     public void agregarHistorial(HistorialEstadoPedido entrada) {

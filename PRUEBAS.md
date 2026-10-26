@@ -4,7 +4,7 @@ Cómo levantar todo, probar el sistema a mano (consola web + REST + WebSocket) y
 batería de pruebas automatizadas. Trabajo Terminal 2026-B176.
 
 - **Backend:** Spring Boot 4.1 / Java 21 (Corretto) / Maven, en `h2togo-backend/`.
-- **Base de datos:** PostgreSQL 16 + PostGIS 3 (esquema v6).
+- **Base de datos:** PostgreSQL 16 + PostGIS 3 (esquema v7).
 - **Motor de ruteo:** A\* sobre el grafo OSM real de la Alcaldía Benito Juárez.
 
 ---
@@ -61,7 +61,7 @@ docker compose down -v         # borrar también el volumen → reinicializa esq
 ## 1B. Opción B — Base de datos en Docker (backend local)
 
 El `docker-compose.yml` levanta PostGIS y, la **primera** vez que se crea el volumen, ejecuta
-en orden: (1) el esquema v6, (2) el polígono de cobertura de Benito Juárez y (3) los **datos
+en orden: (1) el esquema v7, (2) el polígono de cobertura de Benito Juárez y (3) los **datos
 demo** (`data-demo.sql`).
 
 ```bash
@@ -211,14 +211,14 @@ El spec se exporta además a **`docs/openapi.json`** cada vez que corre `mvn ver
 
 ## 7. Pruebas del esquema SQL (independientes del backend)
 
-`pruebas_v6.sql` valida triggers, cálculo de cobertura/proximidad y las restricciones que la
-BD debe rechazar (cada bloque negativo imprime `OK ...`). Contra una BD desechable:
+`pruebas_v7.sql` valida triggers, cálculo de cobertura/proximidad, las restricciones que la
+BD debe rechazar y la seguridad por rol (cada bloque imprime `OK ...`). Contra una BD desechable:
 
 ```bash
 docker run -d --name h2test -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=h2 -p 55432:5432 postgis/postgis:16-3.4
 # esperar a que esté lista, luego:
-docker exec -i h2test psql -U postgres -d h2 -v ON_ERROR_STOP=1 < H2ToGo_v6_postgresql.sql
-docker exec -i h2test psql -U postgres -d h2 < pruebas_v6.sql
+docker exec -i h2test psql -U postgres -d h2 -v ON_ERROR_STOP=1 < H2ToGo_v7_postgresql.sql
+docker exec -i h2test psql -U postgres -d h2 < pruebas_v7.sql
 docker rm -f h2test
 ```
 
@@ -240,8 +240,8 @@ docker rm -f h2test
 ## 9. Estructura relevante
 
 ```
-H2ToGo_v6_postgresql.sql              esquema v6 (PostgreSQL + PostGIS)
-pruebas_v6.sql                        pruebas del esquema
+H2ToGo_v7_postgresql.sql              esquema v7 (PostgreSQL + PostGIS)
+pruebas_v7.sql                        pruebas del esquema
 data-demo.sql                         datos demo para la consola
 docs/openapi.json                     spec OpenAPI exportado (evidencia)
 PLAN_BACKEND.md                       plan de desarrollo y decisiones (§10)

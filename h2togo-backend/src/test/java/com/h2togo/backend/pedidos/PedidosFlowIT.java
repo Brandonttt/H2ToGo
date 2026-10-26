@@ -42,7 +42,7 @@ class PedidosFlowIT {
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"))
             .withCopyFileToContainer(
-                    MountableFile.forHostPath("../H2ToGo_v6_postgresql.sql"),
+                    MountableFile.forHostPath("../H2ToGo_v7_postgresql.sql"),
                     "/docker-entrypoint-initdb.d/01_schema.sql")
             .withCopyFileToContainer(
                     MountableFile.forHostPath("sql/zona_benito_juarez.sql"),
@@ -68,10 +68,11 @@ class PedidosFlowIT {
         mvc.perform(post("/api/v1/auth/verificacion-telefono").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"codigo\":\"%s\"}".formatted(correo, otp)))
                 .andExpect(status().isNoContent());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String cuerpoLogin = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"password\":\"password123\"}".formatted(correo)))
-                .andExpect(status().isOk());
-        return usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesion();
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.read(cuerpoLogin, "$.token");
     }
 
     private Cli registrarCliente(String correo, String tel, double lat, double lon) throws Exception {
@@ -275,9 +276,10 @@ class PedidosFlowIT {
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         int idPedido = JsonPath.read(cuerpo, "$.id");
 
+        // La seguridad por filas de la BD (v7) ni siquiera le deja ver que el pedido existe: 404.
         Cli b = registrarCliente("ped8b@test.mx", "5556660081", LAT, LON);
         mvc.perform(get("/api/v1/pedidos/" + idPedido).header("Authorization", "Bearer " + b.token()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
 
         // El cliente dueño sí lo ve y aparece en su listado.
         mvc.perform(get("/api/v1/clientes/me/pedidos").header("Authorization", "Bearer " + a.token()))

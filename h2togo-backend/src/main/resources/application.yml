@@ -46,6 +46,10 @@ springdoc:
 # Orígenes permitidos por CORS (panel web de administración).
 # Sobrescribir en despliegue con H2TOGO_CORS_ALLOWED_ORIGINS.
 h2togo:
+  bd:
+    # Cada conexión adopta el rol de PostgreSQL del actor (h2togo_cliente, h2togo_repartidor...).
+    # Requiere los roles del esquema v7; false solo para una BD sin ellos.
+    rol-por-actor: ${H2TOGO_BD_ROL_POR_ACTOR:true}
   mensajeria:
     # true: las notificaciones viajan por RabbitMQ (producción). false: entrega directa en el
     # mismo proceso, sin broker (desarrollo local y pruebas).

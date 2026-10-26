@@ -55,7 +55,7 @@ class E2EFlujoFelizIT {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"))
-            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v6_postgresql.sql"),
+            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v7_postgresql.sql"),
                     "/docker-entrypoint-initdb.d/01_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath("sql/zona_benito_juarez.sql"),
                     "/docker-entrypoint-initdb.d/02_zona.sql");
@@ -77,10 +77,11 @@ class E2EFlujoFelizIT {
         mvc.perform(post("/api/v1/auth/verificacion-telefono").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"codigo\":\"%s\"}".formatted(correo, otp)))
                 .andExpect(status().isNoContent());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String cuerpoLogin = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"password\":\"password123\"}".formatted(correo)))
-                .andExpect(status().isOk());
-        return usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesion();
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.read(cuerpoLogin, "$.token");
     }
 
     private record Cliente(String token, int idDireccion) {

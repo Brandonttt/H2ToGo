@@ -28,7 +28,7 @@ public class SesionesExpiradasJob {
     @Transactional
     public void limpiar() {
         int n = jdbc.update("""
-                UPDATE usuarios SET token_sesion = NULL, token_fcm = NULL,
+                UPDATE usuarios SET token_sesion_hash = NULL, token_fcm = NULL,
                     sesion_fecha_creacion = NULL, sesion_fecha_expiracion = NULL
                 WHERE sesion_fecha_expiracion IS NOT NULL AND sesion_fecha_expiracion < :ahora""",
                 new MapSqlParameterSource("ahora", OffsetDateTime.now(clock)));

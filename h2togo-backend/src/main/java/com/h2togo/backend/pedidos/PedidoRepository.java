@@ -7,8 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * Repositorio del agregado Pedido. Los hijos ({@code DetallePedido}, {@code ApartadoPedido},
- * {@code HistorialEstadoPedido}) se gestionan a través de la raíz, no tienen repositorio propio.
+ * Repositorio del agregado Pedido. Los hijos ({@code DetallePedido}, {@code HistorialEstadoPedido})
+ * se gestionan a través de la raíz, no tienen repositorio propio.
  */
 public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
 

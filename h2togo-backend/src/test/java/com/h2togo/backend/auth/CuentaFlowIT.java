@@ -44,7 +44,7 @@ class CuentaFlowIT {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"))
-            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v6_postgresql.sql"),
+            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v7_postgresql.sql"),
                     "/docker-entrypoint-initdb.d/01_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath("sql/zona_benito_juarez.sql"),
                     "/docker-entrypoint-initdb.d/02_zona.sql");
@@ -145,6 +145,35 @@ class CuentaFlowIT {
         login("cu-olv@test.mx", "otraClave22").andExpect(status().isOk());
     }
 
+    @Test
+    void elCodigoSeInvalidaTrasCincoIntentosFallidos() throws Exception {
+        registrar("cu-int@test.mx", "5559990040", "\"rol\":\"cliente\"");
+        mvc.perform(post("/api/v1/auth/recuperacion").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"cu-int@test.mx\"}"))
+                .andExpect(status().isNoContent());
+        String codigo = usuarioRepository.findByCorreo("cu-int@test.mx").orElseThrow().getCodigoVerificacion();
+
+        // Cinco códigos equivocados (distintos del real y del demo 123456).
+        for (int i = 0; i < 5; i++) {
+            String equivocado = String.valueOf(700000 + i);
+            if (equivocado.equals(codigo)) {
+                equivocado = String.valueOf(800000 + i);
+            }
+            mvc.perform(post("/api/v1/auth/recuperacion/confirmacion").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"correo\":\"cu-int@test.mx\",\"codigo\":\"%s\",\"nuevaContrasena\":\"otraClave33\"}"
+                                    .formatted(equivocado)))
+                    .andExpect(status().isUnprocessableEntity());
+        }
+        // Ni el código correcto sirve ya: hay que pedir otro.
+        mvc.perform(post("/api/v1/auth/recuperacion/confirmacion").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"cu-int@test.mx\",\"codigo\":\"%s\",\"nuevaContrasena\":\"otraClave33\"}"
+                                .formatted(codigo)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("OTP_INVALIDO"));
+        assertThat(usuarioRepository.findByCorreo("cu-int@test.mx").orElseThrow().getCodigoVerificacion()).isNull();
+        login("cu-int@test.mx", "password123").andExpect(status().isOk());
+    }
+
     // ---------------------------------------------------------------- Apoyo
 
     /** Registra, verifica el teléfono e inicia sesión; devuelve el token. */
@@ -157,8 +186,9 @@ class CuentaFlowIT {
         mvc.perform(post("/api/v1/auth/verificacion-telefono").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"correo\":\"%s\",\"codigo\":\"%s\"}".formatted(correo, otp)))
                 .andExpect(status().isNoContent());
-        login(correo, "password123").andExpect(status().isOk());
-        return usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesion();
+        String cuerpo = login(correo, "password123").andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.read(cuerpo, "$.token");
     }
 
     private org.springframework.test.web.servlet.ResultActions login(String correo, String password) throws Exception {

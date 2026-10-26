@@ -7,15 +7,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Formula;
 
 /**
- * Purificadora (v6, tabla {@code negocios}). {@code id_dueno} se mapea como escalar:
- * participa en el ciclo diferido con {@code repartidores.id_negocio}. La ubicación de
- * la base ({@code ubicacion_base}, geography) NO se mapea (§1); el alta con dirección
- * completa se hace por query nativa (respeta el CHECK de dirección all-or-nothing).
+ * Purificadora (tabla {@code negocios}). El dueño ya no es una columna (v7 [R1]): es el
+ * repartidor del negocio con {@code es_dueno}; {@link #idDueno} se lee con una subconsulta y no
+ * se escribe. La ubicación de la base ({@code ubicacion_base}, geography) NO se mapea (§1); el
+ * alta con dirección completa se hace por query nativa (respeta el CHECK de dirección all-or-nothing).
  */
 @Entity
 @Table(name = "negocios")
@@ -32,7 +34,9 @@ public class Negocio {
     @Column(name = "nombre_comercial", nullable = false, length = 150)
     private String nombreComercial;
 
-    @Column(name = "id_dueno", nullable = false)
+    /** Solo lectura. Para cambiar de dueño se actualiza {@code repartidores.es_dueno}. */
+    @Formula("(SELECT r.id_usuario FROM repartidores r WHERE r.id_negocio = id_negocio AND r.es_dueno)")
+    @Setter(AccessLevel.NONE)
     private Integer idDueno;
 
     @Column(name = "calle", length = 150)

@@ -41,7 +41,7 @@ class DireccionesFlowIT {
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"))
             .withCopyFileToContainer(
-                    MountableFile.forHostPath("../H2ToGo_v6_postgresql.sql"),
+                    MountableFile.forHostPath("../H2ToGo_v7_postgresql.sql"),
                     "/docker-entrypoint-initdb.d/01_schema.sql")
             .withCopyFileToContainer(
                     MountableFile.forHostPath("sql/zona_benito_juarez.sql"),
@@ -70,10 +70,11 @@ class DireccionesFlowIT {
         mvc.perform(post("/api/v1/auth/verificacion-telefono").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"codigo\":\"%s\"}".formatted(correo, otp)))
                 .andExpect(status().isNoContent());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String cuerpoLogin = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"correo\":\"%s\",\"password\":\"password123\"}".formatted(correo)))
-                .andExpect(status().isOk());
-        return usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesion();
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.read(cuerpoLogin, "$.token");
     }
 
     @Test
@@ -169,10 +170,11 @@ class DireccionesFlowIT {
         mvc.perform(post("/api/v1/auth/verificacion-telefono").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"rep@test.mx\",\"codigo\":\"%s\"}".formatted(otp)))
                 .andExpect(status().isNoContent());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String cuerpoLogin = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"rep@test.mx\",\"password\":\"password123\"}"))
-                .andExpect(status().isOk());
-        String token = usuarioRepository.findByCorreo("rep@test.mx").orElseThrow().getTokenSesion();
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String token = com.jayway.jsonpath.JsonPath.read(cuerpoLogin, "$.token");
 
         // Un repartidor no puede usar las rutas /clientes/** → 403 (RNF-008).
         mvc.perform(get("/api/v1/clientes/me/direcciones").header("Authorization", "Bearer " + token))
@@ -190,10 +192,11 @@ class DireccionesFlowIT {
         mvc.perform(post("/api/v1/auth/verificacion-telefono").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"dueno2@test.mx\",\"codigo\":\"%s\"}".formatted(otp)))
                 .andExpect(status().isNoContent());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String cuerpoLogin = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"dueno2@test.mx\",\"password\":\"password123\"}"))
-                .andExpect(status().isOk());
-        String token = usuarioRepository.findByCorreo("dueno2@test.mx").orElseThrow().getTokenSesion();
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String token = com.jayway.jsonpath.JsonPath.read(cuerpoLogin, "$.token");
 
         mvc.perform(get("/api/v1/usuarios/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())

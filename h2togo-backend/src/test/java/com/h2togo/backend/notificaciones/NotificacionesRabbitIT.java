@@ -61,7 +61,7 @@ class NotificacionesRabbitIT {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"))
-            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v6_postgresql.sql"),
+            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v7_postgresql.sql"),
                     "/docker-entrypoint-initdb.d/01_schema.sql");
 
     @Container
@@ -144,8 +144,8 @@ class NotificacionesRabbitIT {
         String token = "ntf-" + UUID.randomUUID();
         Integer id = jdbc.queryForObject("""
                 INSERT INTO usuarios (nombre, apellidos, correo, password_hash, telefono, rol,
-                    telefono_verificado, cuenta_activa, token_sesion, sesion_fecha_creacion, sesion_fecha_expiracion)
-                VALUES ('N','T',:correo,'x',:tel,'cliente'::rol_usuario, TRUE, TRUE, :token, now(), now() + interval '30 days')
+                    telefono_verificado, cuenta_activa, token_sesion_hash, sesion_fecha_creacion, sesion_fecha_expiracion)
+                VALUES ('N','T',:correo,'x',:tel,'cliente'::rol_usuario, TRUE, TRUE, encode(sha256(convert_to(:token, 'UTF8')), 'hex'), now(), now() + interval '30 days')
                 RETURNING id_usuario""",
                 new MapSqlParameterSource().addValue("correo", token + "@test.mx")
                         .addValue("tel", "77" + (System.nanoTime() % 100000000L)).addValue("token", token),

@@ -10,7 +10,6 @@ public record SolicitudResponse(
         CodigoCambioPerfil codigoCambio,
         Integer idNegocio,
         Integer idVehiculo,
-        Integer idProductoNegocio,
         String valorAnterior,
         String valorNuevo,
         EstadoSolicitud estado,

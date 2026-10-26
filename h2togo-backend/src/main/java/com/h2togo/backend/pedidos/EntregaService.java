@@ -77,7 +77,7 @@ public class EntregaService {
         }
         int idCliente = (Integer) pedido.get("id_cliente");
         int idDireccion = (Integer) pedido.get("id_direccion_entrega");
-        int idVehiculo = (Integer) pedido.get("id_vehiculo_utilizado");
+        Integer idVehiculo = vehiculoDeLaEntrega(idPedido, idRepartidor);
         int idNegocio = repartidorRepository.findById(idRepartidor)
                 .map(Repartidor::getIdNegocio)
                 .orElseThrow(() -> new NotFoundException("REPARTIDOR_NO_ENCONTRADO", "No es repartidor."));
@@ -122,7 +122,7 @@ public class EntregaService {
 
     // ---------------------------------------------------------------- ENTREGADO
 
-    private void entregar(int idPedido, int idRepartidor, int idVehiculo, int idCliente, int idDireccion,
+    private void entregar(int idPedido, int idRepartidor, Integer idVehiculo, int idCliente, int idDireccion,
             int idNegocio, ResultadoEntregaRequest req) {
         validarRadio(idDireccion, req.lat(), req.lon());
 
@@ -221,16 +221,16 @@ public class EntregaService {
     }
 
     /** Consume del vehículo lo entregado (salida_pedido) y libera los apartados sobrantes (RN-023). */
-    private void consumirEntregado(int idPedido, int idVehiculo, int idRepartidor) {
+    private void consumirEntregado(int idPedido, Integer idVehiculo, int idRepartidor) {
         Map<Integer, Integer> entregadoOriginal = sumaEntregadaPorMarca(idPedido, false);
         Map<Integer, Integer> entregadoEnSitio = sumaEntregadaPorMarca(idPedido, true);
 
         List<Map<String, Object>> apartados = jdbc.queryForList("""
-                SELECT a.id_apartado, a.id_inventario_vehiculo AS iv, a.cantidad, l.id_marca
+                SELECT a.id_lote, a.id_vehiculo, a.cantidad, l.id_marca
                 FROM apartados_pedido a
-                JOIN inventario_vehiculo ivt ON ivt.id_inventario_vehiculo = a.id_inventario_vehiculo
-                JOIN lotes_inventario l ON l.id_lote = ivt.id_lote
-                WHERE a.id_pedido = :p AND a.id_inventario_vehiculo IS NOT NULL
+                JOIN inventario_vehiculo ivt ON ivt.id_vehiculo = a.id_vehiculo AND ivt.id_lote = a.id_lote
+                JOIN lotes_inventario l ON l.id_lote = a.id_lote
+                WHERE a.id_pedido = :p AND a.id_vehiculo IS NOT NULL
                 ORDER BY l.fecha_caducidad, l.id_lote
                 FOR UPDATE OF ivt""", new MapSqlParameterSource("p", idPedido));
 
@@ -238,25 +238,24 @@ public class EntregaService {
         for (Map<String, Object> a : apartados) {
             int marca = (Integer) a.get("id_marca");
             int reservado = (Integer) a.get("cantidad");
-            int iv = (Integer) a.get("iv");
+            int lote = (Integer) a.get("id_lote");
+            int vehiculo = (Integer) a.get("id_vehiculo");
             int consume = Math.min(restante.getOrDefault(marca, 0), reservado);
             jdbc.update("""
                     UPDATE inventario_vehiculo
                     SET cantidad_actual = cantidad_actual - :consume, cantidad_apartada = cantidad_apartada - :reservado
-                    WHERE id_inventario_vehiculo = :iv""",
+                    WHERE id_vehiculo = :veh AND id_lote = :lote""",
                     new MapSqlParameterSource().addValue("consume", consume)
-                            .addValue("reservado", reservado).addValue("iv", iv));
+                            .addValue("reservado", reservado).addValue("veh", vehiculo).addValue("lote", lote));
             if (consume > 0) {
-                movimientoSalida(iv, consume, idPedido, idRepartidor);
+                movimientoSalida(lote, vehiculo, consume, idPedido, idRepartidor);
                 restante.put(marca, restante.get(marca) - consume);
             }
         }
-        // Libera apartados restantes en el inventario base si no se consumieron (RN-023)
-        jdbc.update("""
-                UPDATE lotes_inventario l SET cantidad_apartada = l.cantidad_apartada - a.cantidad
-                FROM apartados_pedido a
-                WHERE a.id_pedido = :p AND a.id_lote_base = l.id_lote""", new MapSqlParameterSource("p", idPedido));
-        jdbc.update("DELETE FROM apartados_pedido WHERE id_pedido = :p", new MapSqlParameterSource("p", idPedido));
+        // Los del vehículo ya se descontaron arriba; lo que quedó apartado en la base se libera (RN-023).
+        var params = new MapSqlParameterSource("p", idPedido);
+        jdbc.update("DELETE FROM apartados_pedido WHERE id_pedido = :p AND id_vehiculo IS NOT NULL", params);
+        jdbc.queryForList("SELECT fn_liberar_apartados(:p)", params);
 
         // Líneas agregadas en sitio: consumen del vehículo directamente (no estaban apartadas).
         for (Map.Entry<Integer, Integer> e : entregadoEnSitio.entrySet()) {
@@ -264,12 +263,13 @@ public class EntregaService {
         }
     }
 
-    private void consumirDirecto(int idVehiculo, int idMarca, int cantidad, int idPedido, int idRepartidor) {
+    /** Solo toma lo libre del vehículo: lo apartado es de otros pedidos. */
+    private void consumirDirecto(Integer idVehiculo, int idMarca, int cantidad, int idPedido, int idRepartidor) {
         List<Map<String, Object>> filas = jdbc.queryForList("""
-                SELECT iv.id_inventario_vehiculo AS iv, iv.cantidad_actual AS disp
+                SELECT iv.id_lote, iv.cantidad_actual - iv.cantidad_apartada AS disp
                 FROM inventario_vehiculo iv JOIN lotes_inventario l ON l.id_lote = iv.id_lote
-                WHERE iv.id_vehiculo = :veh AND iv.activo AND l.id_marca = :marca
-                  AND l.fecha_caducidad >= CURRENT_DATE AND iv.cantidad_actual > 0
+                WHERE iv.id_vehiculo = :veh AND l.id_marca = :marca
+                  AND l.fecha_caducidad >= CURRENT_DATE AND iv.cantidad_actual > iv.cantidad_apartada
                 ORDER BY l.fecha_caducidad, l.id_lote FOR UPDATE OF iv""",
                 new MapSqlParameterSource().addValue("veh", idVehiculo).addValue("marca", idMarca));
         int restante = cantidad;
@@ -278,11 +278,12 @@ public class EntregaService {
                 break;
             }
             int disp = (Integer) f.get("disp");
-            int iv = (Integer) f.get("iv");
+            int lote = (Integer) f.get("id_lote");
             int tomar = Math.min(restante, disp);
-            jdbc.update("UPDATE inventario_vehiculo SET cantidad_actual = cantidad_actual - :t WHERE id_inventario_vehiculo = :iv",
-                    new MapSqlParameterSource().addValue("t", tomar).addValue("iv", iv));
-            movimientoSalida(iv, tomar, idPedido, idRepartidor);
+            jdbc.update("UPDATE inventario_vehiculo SET cantidad_actual = cantidad_actual - :t "
+                    + "WHERE id_vehiculo = :veh AND id_lote = :lote",
+                    new MapSqlParameterSource().addValue("t", tomar).addValue("veh", idVehiculo).addValue("lote", lote));
+            movimientoSalida(lote, idVehiculo, tomar, idPedido, idRepartidor);
             restante -= tomar;
         }
         if (restante > 0) {
@@ -316,20 +317,25 @@ public class EntregaService {
         insertarHistorial(idPedido, "no_entregado", req.motivoNoEntrega(), req.lat(), req.lon());
     }
 
+    /** RN-023: la función de la BD libera vehículo y base y borra los apartados. */
     private void liberarApartados(int idPedido) {
-        var params = new MapSqlParameterSource("p", idPedido);
-        jdbc.update("""
-                UPDATE inventario_vehiculo iv SET cantidad_apartada = iv.cantidad_apartada - a.cantidad
-                FROM apartados_pedido a
-                WHERE a.id_pedido = :p AND a.id_inventario_vehiculo = iv.id_inventario_vehiculo""", params);
-        jdbc.update("""
-                UPDATE lotes_inventario l SET cantidad_apartada = l.cantidad_apartada - a.cantidad
-                FROM apartados_pedido a
-                WHERE a.id_pedido = :p AND a.id_lote_base = l.id_lote""", params);
-        jdbc.update("DELETE FROM apartados_pedido WHERE id_pedido = :p", params);
+        jdbc.queryForList("SELECT fn_liberar_apartados(:p)", new MapSqlParameterSource("p", idPedido));
     }
 
     // ---------------------------------------------------------------- Helpers
+
+    /**
+     * Vehículo de la entrega: donde van los garrafones apartados del pedido o, si no hay, el de la
+     * jornada del repartidor. Queda registrado en los movimientos salida_pedido (v7 [R10]).
+     */
+    private Integer vehiculoDeLaEntrega(int idPedido, int idRepartidor) {
+        return jdbc.queryForObject("""
+                SELECT COALESCE(
+                    (SELECT a.id_vehiculo FROM apartados_pedido a
+                     WHERE a.id_pedido = :p AND a.id_vehiculo IS NOT NULL LIMIT 1),
+                    (SELECT r.id_vehiculo_actual FROM repartidores r WHERE r.id_usuario = :rep))""",
+                new MapSqlParameterSource().addValue("p", idPedido).addValue("rep", idRepartidor), Integer.class);
+    }
 
     private Map<Integer, Integer> sumaEntregadaPorMarca(int idPedido, boolean enSitio) {
         List<Map<String, Object>> rows = jdbc.queryForList("""
@@ -345,11 +351,11 @@ public class EntregaService {
         return map;
     }
 
-    private void movimientoSalida(int idInventarioVehiculo, int cantidad, int idPedido, int idRepartidor) {
+    private void movimientoSalida(int idLote, int idVehiculo, int cantidad, int idPedido, int idRepartidor) {
         jdbc.update("""
-                INSERT INTO movimientos_inventario (id_inventario_vehiculo, tipo, cantidad, id_pedido, id_repartidor_responsable)
-                VALUES (:iv, 'salida_pedido'::tipo_movimiento, :cant, :ped, :rep)""",
-                new MapSqlParameterSource().addValue("iv", idInventarioVehiculo).addValue("cant", cantidad)
+                INSERT INTO movimientos_inventario (id_lote, id_vehiculo, tipo, cantidad, id_pedido, id_repartidor_responsable)
+                VALUES (:lote, :veh, 'salida_pedido'::tipo_movimiento, :cant, :ped, :rep)""",
+                new MapSqlParameterSource().addValue("lote", idLote).addValue("veh", idVehiculo).addValue("cant", cantidad)
                         .addValue("ped", idPedido).addValue("rep", idRepartidor));
     }
 
@@ -365,7 +371,7 @@ public class EntregaService {
     private Map<String, Object> cargarPedido(int idPedido) {
         try {
             return jdbc.queryForMap("""
-                    SELECT estado_actual::text, id_repartidor, id_cliente, id_direccion_entrega, id_vehiculo_utilizado
+                    SELECT estado_actual::text, id_repartidor, id_cliente, id_direccion_entrega
                     FROM pedidos WHERE id_pedido = :id""", new MapSqlParameterSource("id", idPedido));
         } catch (EmptyResultDataAccessException e) {
             throw new NotFoundException("PEDIDO_NO_ENCONTRADO", "Pedido no encontrado.");

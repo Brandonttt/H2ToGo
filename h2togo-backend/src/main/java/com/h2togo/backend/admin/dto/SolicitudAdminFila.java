@@ -16,7 +16,6 @@ public record SolicitudAdminFila(
         Integer idSolicitante,
         String solicitante,
         Integer idVehiculo,
-        Integer idProductoNegocio,
         String valorAnterior,
         String valorNuevo,
         EstadoSolicitud estado,

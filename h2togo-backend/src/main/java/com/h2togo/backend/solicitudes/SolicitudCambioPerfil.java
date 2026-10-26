@@ -45,9 +45,6 @@ public class SolicitudCambioPerfil {
     @Column(name = "id_vehiculo")
     private Integer idVehiculo;
 
-    @Column(name = "id_producto_negocio")
-    private Integer idProductoNegocio;
-
     @Column(name = "valor_anterior")
     private String valorAnterior;
 

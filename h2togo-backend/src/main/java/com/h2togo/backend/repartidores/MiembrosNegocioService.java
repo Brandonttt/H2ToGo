@@ -65,7 +65,7 @@ public class MiembrosNegocioService {
         Negocio negocio = negocioComoDueno(idDueno);
         return jdbc.query("""
                 SELECT u.id_usuario, u.nombre, u.apellidos, u.correo, u.telefono, u.telefono_verificado,
-                       u.fecha_registro, r.aprobado, r.estado_operativo
+                       u.fecha_registro, r.es_dueno, r.aprobado, r.estado_operativo
                 FROM repartidores r JOIN usuarios u ON u.id_usuario = r.id_usuario
                 WHERE r.id_negocio = :neg AND u.cuenta_activa
                 ORDER BY r.aprobado, u.fecha_registro DESC""",
@@ -73,17 +73,21 @@ public class MiembrosNegocioService {
                 (rs, i) -> new MiembroNegocioResponse(
                         rs.getInt("id_usuario"), rs.getString("nombre"), rs.getString("apellidos"),
                         rs.getString("correo"), rs.getString("telefono"),
-                        rs.getInt("id_usuario") == negocio.getIdDueno(),
+                        rs.getBoolean("es_dueno"),
                         rs.getBoolean("aprobado"), rs.getBoolean("estado_operativo"),
                         rs.getBoolean("telefono_verificado"),
                         rs.getObject("fecha_registro", OffsetDateTime.class)));
     }
 
+    /**
+     * Aprobar y rechazar cambian filas de otro usuario, algo que el rol del repartidor no puede
+     * hacer en la BD: lo hacen las funciones {@code fn_aprobar_repartidor} y
+     * {@code fn_rechazar_repartidor}, que vuelven a validar que quien llama es el dueño.
+     */
     @Transactional
     public void aprobar(int idDueno, int idRepartidor) {
-        Repartidor r = pendienteDelNegocio(idDueno, idRepartidor);
-        r.setAprobado(true);
-        repartidorRepository.save(r);
+        pendienteDelNegocio(idDueno, idRepartidor);
+        jdbc.queryForList("SELECT fn_aprobar_repartidor(:id)", new MapSqlParameterSource("id", idRepartidor));
         pushService.notificar(idRepartidor, "Solicitud aprobada",
                 "El dueño aprobó tu solicitud. Ya puedes iniciar tu jornada.",
                 Map.of("tipo", "repartidor_aprobado"));
@@ -96,11 +100,7 @@ public class MiembrosNegocioService {
     @Transactional
     public void rechazar(int idDueno, int idRepartidor) {
         pendienteDelNegocio(idDueno, idRepartidor);
-        jdbc.update("""
-                UPDATE usuarios SET cuenta_activa = FALSE, motivo_baja = 'Solicitud rechazada por el dueño',
-                    fecha_baja = now(), token_sesion = NULL, token_fcm = NULL,
-                    sesion_fecha_creacion = NULL, sesion_fecha_expiracion = NULL
-                WHERE id_usuario = :id""", new MapSqlParameterSource("id", idRepartidor));
+        jdbc.queryForList("SELECT fn_rechazar_repartidor(:id)", new MapSqlParameterSource("id", idRepartidor));
     }
 
     private Repartidor pendienteDelNegocio(int idDueno, int idRepartidor) {

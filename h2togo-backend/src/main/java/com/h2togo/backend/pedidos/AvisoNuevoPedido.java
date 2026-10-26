@@ -1,5 +1,6 @@
 package com.h2togo.backend.pedidos;
 
+import com.h2togo.backend.bd.TareaSistema;
 import com.h2togo.backend.notificaciones.PushService;
 import java.util.List;
 import java.util.Map;
@@ -11,19 +12,27 @@ import org.springframework.stereotype.Component;
  * Avisa "nuevo pedido disponible" a los repartidores en línea que pueden tomarlo, con el mismo
  * criterio que la lista de disponibles: los del negocio elegido (directa) o, en modalidad
  * abierta, los de negocios que ofrecen todas las marcas al precio máximo o menos (RN-025).
+ * <p>Se avisa al confirmar el pedido y como tarea del sistema: quien crea o libera el pedido (un
+ * cliente o un repartidor) no puede ver en la BD a los demás repartidores.
  */
 @Component
 public class AvisoNuevoPedido {
 
     private final NamedParameterJdbcTemplate jdbc;
     private final PushService pushService;
+    private final TareaSistema tareaSistema;
 
-    public AvisoNuevoPedido(NamedParameterJdbcTemplate jdbc, PushService pushService) {
+    public AvisoNuevoPedido(NamedParameterJdbcTemplate jdbc, PushService pushService, TareaSistema tareaSistema) {
         this.jdbc = jdbc;
         this.pushService = pushService;
+        this.tareaSistema = tareaSistema;
     }
 
     public void avisar(int idPedido) {
+        tareaSistema.alConfirmar(() -> avisarAhora(idPedido));
+    }
+
+    private void avisarAhora(int idPedido) {
         List<Integer> repartidores = jdbc.queryForList("""
                 SELECT r.id_usuario
                 FROM pedidos p

@@ -9,7 +9,7 @@
 #   docker compose down -v         → borra también el volumen (reinicializa esquema + datos demo)
 #
 # La BD ejecuta, la PRIMERA vez que se crea el volumen, los scripts de
-# docker-entrypoint-initdb.d en orden: esquema v6, polígono de cobertura y datos demo.
+# docker-entrypoint-initdb.d en orden: esquema v7, polígono de cobertura y datos demo.
 services:
   db:
     image: postgis/postgis:16-3.4
@@ -23,7 +23,7 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - h2togo_pgdata:/var/lib/postgresql/data
-      - ../H2ToGo_v6_postgresql.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ../H2ToGo_v7_postgresql.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
       - ./sql/zona_benito_juarez.sql:/docker-entrypoint-initdb.d/02_zona.sql:ro
       - ../data-demo.sql:/docker-entrypoint-initdb.d/03_demo.sql:ro
     healthcheck:

@@ -11,16 +11,20 @@ import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
  * Núcleo de identidad y sesión, común a los tres actores (v6, tabla {@code usuarios}).
- * Los datos exclusivos de cada actor viven en los subtipos {@link Cliente},
- * {@link Repartidor} y {@link Administrador}.
+ * Los datos exclusivos de cada actor viven en los subtipos {@link Cliente} y {@link Repartidor};
+ * el administrador no tiene datos propios ni subtabla (v7 [R9]).
+ * <p>{@code @DynamicUpdate}: el UPDATE lleva solo las columnas que cambiaron, porque cada rol de
+ * la BD solo puede modificar algunas (p. ej. nadie salvo el admin cambia {@code rol}).
  */
 @Entity
 @Table(name = "usuarios")
+@DynamicUpdate
 @Getter
 @Setter
 @NoArgsConstructor
@@ -65,6 +69,10 @@ public class Usuario {
     @Column(name = "codigo_verificacion_expiracion")
     private OffsetDateTime codigoVerificacionExpiracion;
 
+    /** Intentos fallidos con el código actual; al llegar al límite el código se invalida. */
+    @Column(name = "codigo_intentos", nullable = false)
+    private short codigoIntentos = 0;
+
     @Column(name = "motivo_baja", length = 255)
     private String motivoBaja;
 
@@ -75,8 +83,9 @@ public class Usuario {
     @Column(name = "fecha_registro", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime fechaRegistro;
 
-    @Column(name = "token_sesion", unique = true, length = 512)
-    private String tokenSesion;
+    /** SHA-256 del token opaco ({@link com.h2togo.backend.security.TokenSesion}); el token en claro no se guarda. */
+    @Column(name = "token_sesion_hash", unique = true, length = 64)
+    private String tokenSesionHash;
 
     @Column(name = "token_fcm", length = 255)
     private String tokenFcm;

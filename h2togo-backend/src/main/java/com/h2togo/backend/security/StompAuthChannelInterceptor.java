@@ -45,7 +45,8 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
                 token = token.substring(PREFIJO.length()).trim();
             }
             Usuario u = (token == null || token.isBlank()) ? null
-                    : usuarioRepository.findByTokenSesion(token).filter(StompAuthChannelInterceptor::vigente).orElse(null);
+                    : usuarioRepository.findByTokenSesionHash(TokenSesion.hash(token))
+                            .filter(StompAuthChannelInterceptor::vigente).orElse(null);
             if (u == null) {
                 throw new MessagingException("Token de sesión inválido para el WebSocket.");
             }

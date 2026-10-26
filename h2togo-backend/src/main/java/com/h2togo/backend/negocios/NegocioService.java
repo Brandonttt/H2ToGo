@@ -78,8 +78,9 @@ public class NegocioService {
                 .toList();
         List<ProductoResponse> productos = productosDeNegocio(idNegocio, null);
 
-        List<PerfilNegocioResponse.VehiculoResponse> vehiculos = vehiculoRepository.findByIdNegocioAndActivoTrue(idNegocio)
-                .stream()
+        // Los vehículos (con placas) solo los ve la propia purificadora; el perfil público no los lleva.
+        List<PerfilNegocioResponse.VehiculoResponse> vehiculos = soloActivo ? List.of()
+                : vehiculoRepository.findByIdNegocioAndActivoTrue(idNegocio).stream()
                 .map(v -> new PerfilNegocioResponse.VehiculoResponse(
                         v.getId(),
                         v.getTipoVehiculo() != null ? v.getTipoVehiculo().name() : "motocicleta",
@@ -103,7 +104,8 @@ public class NegocioService {
     private static final String COLUMNAS_LISTA = """
             n.id_negocio, n.nombre_comercial,
             CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', n.calle, n.numero_exterior), ''), NULLIF(n.colonia, ''), NULLIF(CONCAT('CP ', n.codigo_postal), 'CP ')) AS direccion,
-            (SELECT COUNT(*) FROM repartidores r WHERE r.id_negocio = n.id_negocio) AS repartidores,
+            COALESCE((SELECT v.repartidores FROM v_repartidores_por_negocio v
+                      WHERE v.id_negocio = n.id_negocio), 0) AS repartidores,
             EXISTS (SELECT 1 FROM horarios_negocio h
                     WHERE h.id_negocio = n.id_negocio AND NOT h.cerrado
                       AND h.dia_semana = EXTRACT(ISODOW FROM now() AT TIME ZONE 'America/Mexico_City')
@@ -211,9 +213,8 @@ public class NegocioService {
         String sql = """
                 SELECT pn.id_producto_negocio, pn.id_marca, m.nombre AS marca, pn.precio, pn.precio_envase,
                        pn.capacidad_maxima, pn.activo,
-                       COALESCE((SELECT SUM(l.cantidad_actual - l.cantidad_apartada)
-                                 FROM lotes_inventario l
-                                 WHERE l.id_negocio = pn.id_negocio AND l.id_marca = pn.id_marca AND l.activo), 0) AS stock
+                       COALESCE((SELECT e.disponibles FROM v_existencias_negocio e
+                                 WHERE e.id_negocio = pn.id_negocio AND e.id_marca = pn.id_marca), 0) AS stock
                 FROM productos_negocio pn
                 JOIN marcas m ON m.id_marca = pn.id_marca
                 WHERE pn.id_negocio = :id AND pn.activo

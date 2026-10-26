@@ -20,7 +20,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Autenticación por token opaco en BD (RN-018). Lee {@code Authorization: Bearer <token>},
- * busca el usuario por {@code token_sesion}, valida expiración y {@code cuenta_activa}, y
+ * busca el usuario por el hash del token ({@link TokenSesion}), valida expiración y {@code cuenta_activa}, y
  * monta {@link UsuarioPrincipal} en el contexto.
  * <p>Expiración por inactividad (RNF-004, §10 #15): si al validar quedan menos de
  * {@code token-refresco-dias} días de vigencia, extiende la expiración a now()+{@code token-dias}
@@ -49,7 +49,7 @@ public class TokenAuthFilter extends OncePerRequestFilter {
 
         String token = extraerToken(request);
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            Optional<Usuario> encontrado = usuarioRepository.findByTokenSesion(token);
+            Optional<Usuario> encontrado = usuarioRepository.findByTokenSesionHash(TokenSesion.hash(token));
             if (encontrado.isPresent() && esVigente(encontrado.get())) {
                 autenticar(encontrado.get());
             }

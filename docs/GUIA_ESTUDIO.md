@@ -400,7 +400,7 @@ Petición HTTP
   - `FOR UPDATE SKIP LOCKED` en el job de programados.
 
 **Configuración importante:**
-- `ddl-auto: validate`: Hibernate **no** crea ni cambia tablas. Solo valida al arrancar que las entidades coincidan con el esquema (`H2ToGo_v6_postgresql.sql`). Un desajuste se detecta al desplegar, no en producción.
+- `ddl-auto: validate`: Hibernate **no** crea ni cambia tablas. Solo valida al arrancar que las entidades coincidan con el esquema (`H2ToGo_v7_postgresql.sql`). Un desajuste se detecta al desplegar, no en producción.
 - `open-in-view: false`: la sesión de Hibernate no se queda abierta durante la vista. Evita consultas ocultas y conexiones retenidas.
 
 **Pregunta probable: ¿por qué mezclar?** Porque JPA es cómodo para objetos, pero las funciones

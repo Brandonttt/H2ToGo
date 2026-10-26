@@ -276,7 +276,7 @@ FROM postgis/postgis:16-3.4
 # Subdirectorio dentro del volumen de Azure Files (initdb exige un directorio propio).
 ENV PGDATA=/var/lib/postgresql/data/pgdata
 
-COPY H2ToGo_v6_postgresql.sql /docker-entrypoint-initdb.d/01_schema.sql
+COPY H2ToGo_v7_postgresql.sql /docker-entrypoint-initdb.d/01_schema.sql
 COPY zona_benito_juarez.sql   /docker-entrypoint-initdb.d/02_zona.sql
 # ⚠️ PENDIENTE D-6 — descomentar solo si se decide cargar los datos demo:
 # COPY data-demo.sql          /docker-entrypoint-initdb.d/03_demo.sql
@@ -286,7 +286,7 @@ Construir en una carpeta temporal para no mandar todo el repo (docx, mockups, .g
 
 ```bash
 BUILD_DB=$(mktemp -d)
-cp infra/db/Dockerfile H2ToGo_v6_postgresql.sql h2togo-backend/sql/zona_benito_juarez.sql "$BUILD_DB"/
+cp infra/db/Dockerfile H2ToGo_v7_postgresql.sql h2togo-backend/sql/zona_benito_juarez.sql "$BUILD_DB"/
 # ⚠️ D-6: cp data-demo.sql "$BUILD_DB"/
 docker buildx build --platform linux/amd64 -t $ACR.azurecr.io/h2togo-db:v1 --push "$BUILD_DB"
 ```

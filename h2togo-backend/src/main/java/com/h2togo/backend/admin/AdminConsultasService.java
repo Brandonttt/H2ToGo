@@ -60,7 +60,7 @@ public class AdminConsultasService {
         List<UsuarioAdminFila> contenido = jdbc.query("""
                 SELECT u.id_usuario, u.nombre, u.apellidos, u.correo, u.telefono, u.rol::text AS rol,
                        u.cuenta_activa, u.telefono_verificado, u.fecha_registro, u.motivo_baja, u.fecha_baja,
-                       r.id_negocio, n.nombre_comercial, (n.id_dueno = u.id_usuario) AS es_dueno,
+                       r.id_negocio, n.nombre_comercial, COALESCE(r.es_dueno, FALSE) AS es_dueno,
                        r.estado_operativo, r.aprobado, c.suspendido_hasta,
                        CASE u.rol
                            WHEN 'cliente'    THEN (SELECT COUNT(*) FROM pedidos p WHERE p.id_cliente = u.id_usuario)
@@ -103,10 +103,12 @@ public class AdminConsultasService {
     @Transactional(readOnly = true)
     public List<NegocioAdminFila> negocios() {
         return jdbc.query("""
-                SELECT n.id_negocio, n.nombre_comercial, n.activo, n.id_dueno, n.colonia,
+                SELECT n.id_negocio, n.nombre_comercial, n.activo, d.id_usuario AS id_dueno, n.colonia,
                        u.nombre || ' ' || u.apellidos AS dueno,
                        (SELECT COUNT(*) FROM repartidores r WHERE r.id_negocio = n.id_negocio) AS repartidores
-                FROM negocios n LEFT JOIN usuarios u ON u.id_usuario = n.id_dueno
+                FROM negocios n
+                LEFT JOIN repartidores d ON d.id_negocio = n.id_negocio AND d.es_dueno
+                LEFT JOIN usuarios u     ON u.id_usuario = d.id_usuario
                 ORDER BY n.activo DESC, n.nombre_comercial""",
                 (rs, i) -> new NegocioAdminFila(rs.getInt("id_negocio"), rs.getString("nombre_comercial"),
                         rs.getBoolean("activo"), (Integer) rs.getObject("id_dueno"), rs.getString("dueno"),
@@ -124,21 +126,22 @@ public class AdminConsultasService {
         }
         return jdbc.query("""
                 SELECT s.id_solicitud, s.codigo_cambio::text AS codigo, s.id_negocio, n.nombre_comercial,
-                       n.id_dueno, ud.nombre || ' ' || ud.apellidos AS solicitante,
-                       s.id_vehiculo, s.id_producto_negocio, s.valor_anterior, s.valor_nuevo,
+                       d.id_usuario AS id_dueno, ud.nombre || ' ' || ud.apellidos AS solicitante,
+                       s.id_vehiculo, s.valor_anterior, s.valor_nuevo,
                        s.estado::text AS estado, s.comentario_admin,
                        ua.nombre || ' ' || ua.apellidos AS revisor,
                        s.fecha_solicitud, s.fecha_resolucion
                 FROM solicitudes_cambio_perfil s
-                JOIN negocios n       ON n.id_negocio = s.id_negocio
-                LEFT JOIN usuarios ud ON ud.id_usuario = n.id_dueno
+                JOIN negocios n           ON n.id_negocio = s.id_negocio
+                LEFT JOIN repartidores d  ON d.id_negocio = n.id_negocio AND d.es_dueno
+                LEFT JOIN usuarios ud     ON ud.id_usuario = d.id_usuario
                 LEFT JOIN usuarios ua ON ua.id_usuario = s.id_admin_revisor""" + where
                 + " ORDER BY s.fecha_solicitud DESC LIMIT 500",
                 params, (rs, i) -> new SolicitudAdminFila(
                         rs.getInt("id_solicitud"), CodigoCambioPerfil.valueOf(rs.getString("codigo")),
                         rs.getInt("id_negocio"), rs.getString("nombre_comercial"),
                         (Integer) rs.getObject("id_dueno"), rs.getString("solicitante"),
-                        (Integer) rs.getObject("id_vehiculo"), (Integer) rs.getObject("id_producto_negocio"),
+                        (Integer) rs.getObject("id_vehiculo"),
                         rs.getString("valor_anterior"), rs.getString("valor_nuevo"),
                         EstadoSolicitud.valueOf(rs.getString("estado")), rs.getString("comentario_admin"),
                         rs.getString("revisor"),

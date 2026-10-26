@@ -7,7 +7,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,9 +15,9 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Bitácora de movimientos de inventario (v6, tabla {@code movimientos_inventario}).
- * Solo-INSERT (RN-013). {@code cantidad} siempre positiva; el {@code tipo} determina la
- * dirección y qué columnas de origen (lote base / inventario de vehículo) aplican (CHECK).
+ * Bitácora de movimientos de inventario (tabla {@code movimientos_inventario}). Solo INSERT
+ * (RN-013; un trigger rechaza UPDATE y DELETE). {@code cantidad} siempre positiva; el {@code tipo}
+ * determina la dirección y si interviene un vehículo (CHECK). Proveedor y costo se leen del lote.
  */
 @Entity
 @Table(name = "movimientos_inventario")
@@ -32,11 +31,13 @@ public class MovimientoInventario {
     @Column(name = "id_movimiento")
     private Integer id;
 
-    @Column(name = "id_lote_base")
-    private Integer idLoteBase;
+    /** v7 [R2]: siempre se conoce el lote. */
+    @Column(name = "id_lote", nullable = false)
+    private Integer idLote;
 
-    @Column(name = "id_inventario_vehiculo")
-    private Integer idInventarioVehiculo;
+    /** NULL si el movimiento solo toca la base. */
+    @Column(name = "id_vehiculo")
+    private Integer idVehiculo;
 
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "tipo", nullable = false, columnDefinition = "tipo_movimiento")
@@ -50,12 +51,6 @@ public class MovimientoInventario {
 
     @Column(name = "id_repartidor_responsable")
     private Integer idRepartidorResponsable;
-
-    @Column(name = "costo_unitario", precision = 10, scale = 2)
-    private BigDecimal costoUnitario;
-
-    @Column(name = "proveedor", length = 150)
-    private String proveedor;
 
     @Column(name = "notas", length = 255)
     private String notas;

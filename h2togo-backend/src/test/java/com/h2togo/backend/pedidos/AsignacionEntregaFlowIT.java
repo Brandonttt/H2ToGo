@@ -59,7 +59,7 @@ class AsignacionEntregaFlowIT {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"))
-            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v6_postgresql.sql"),
+            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v7_postgresql.sql"),
                     "/docker-entrypoint-initdb.d/01_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath("sql/zona_benito_juarez.sql"),
                     "/docker-entrypoint-initdb.d/02_zona.sql");
@@ -87,10 +87,11 @@ class AsignacionEntregaFlowIT {
         mvc.perform(post("/api/v1/auth/verificacion-telefono").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"codigo\":\"%s\"}".formatted(correo, otp)))
                 .andExpect(status().isNoContent());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String cuerpoLogin = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"password\":\"password123\"}".formatted(correo)))
-                .andExpect(status().isOk());
-        return usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesion();
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.read(cuerpoLogin, "$.token");
     }
 
     private Cli registrarCliente(String correo, String tel) throws Exception {
@@ -459,13 +460,11 @@ class AsignacionEntregaFlowIT {
         String admin = "admin-" + java.util.UUID.randomUUID();
         Integer idAdmin = jdbc.queryForObject("""
                 INSERT INTO usuarios (nombre, apellidos, correo, password_hash, telefono, rol,
-                    telefono_verificado, cuenta_activa, token_sesion, sesion_fecha_creacion, sesion_fecha_expiracion)
-                VALUES ('Admin','Root',:correo,'x','5557770112','admin'::rol_usuario, TRUE, TRUE, :token, now(), now() + interval '30 days')
+                    telefono_verificado, cuenta_activa, token_sesion_hash, sesion_fecha_creacion, sesion_fecha_expiracion)
+                VALUES ('Admin','Root',:correo,'x','5557770112','admin'::rol_usuario, TRUE, TRUE, encode(sha256(convert_to(:token, 'UTF8')), 'hex'), now(), now() + interval '30 days')
                 RETURNING id_usuario""",
                 new org.springframework.jdbc.core.namedparam.MapSqlParameterSource()
                         .addValue("correo", admin + "@test.mx").addValue("token", admin), Integer.class);
-        jdbc.update("INSERT INTO administradores (id_usuario) VALUES (:id)",
-                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource("id", idAdmin));
 
         // Sin forzar: 409 (CU-015 S1).
         mvc.perform(post("/api/v1/admin/usuarios/" + r.idRep() + "/baja").header("Authorization", "Bearer " + admin)

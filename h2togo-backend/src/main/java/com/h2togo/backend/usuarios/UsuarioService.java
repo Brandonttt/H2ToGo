@@ -5,7 +5,6 @@ import com.h2togo.backend.common.BusinessRuleException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.h2togo.backend.common.NotFoundException;
 import com.h2togo.backend.common.enums.RolUsuario;
-import com.h2togo.backend.negocios.NegocioRepository;
 import com.h2togo.backend.usuarios.dto.PerfilMeResponse;
 import com.h2togo.backend.usuarios.dto.PerfilMeResponse.ClienteInfo;
 import com.h2togo.backend.usuarios.dto.PerfilMeResponse.RepartidorInfo;
@@ -21,16 +20,13 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final ClienteRepository clienteRepository;
     private final RepartidorRepository repartidorRepository;
-    private final NegocioRepository negocioRepository;
 
     public UsuarioService(UsuarioRepository usuarioRepository, ClienteRepository clienteRepository,
-            RepartidorRepository repartidorRepository, NegocioRepository negocioRepository,
-            PasswordEncoder passwordEncoder) {
+            RepartidorRepository repartidorRepository, PasswordEncoder passwordEncoder) {
         this.passwordEncoder = passwordEncoder;
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
         this.repartidorRepository = repartidorRepository;
-        this.negocioRepository = negocioRepository;
     }
 
     @Transactional(readOnly = true)
@@ -82,12 +78,7 @@ public class UsuarioService {
     }
 
     private boolean esDueno(Repartidor r) {
-        if (r.getIdNegocio() == null) {
-            return false;
-        }
-        return negocioRepository.findById(r.getIdNegocio())
-                .map(n -> r.getId().equals(n.getIdDueno()))
-                .orElse(false);
+        return r.isEsDueno();
     }
 
     private Usuario cargar(int idUsuario) {

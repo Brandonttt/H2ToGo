@@ -11,8 +11,6 @@ import com.h2togo.backend.common.enums.RolUsuario;
 import com.h2togo.backend.negocios.Negocio;
 import com.h2togo.backend.negocios.NegocioRepository;
 import com.h2togo.backend.notificaciones.PushService;
-import com.h2togo.backend.usuarios.Administrador;
-import com.h2togo.backend.usuarios.AdministradorRepository;
 import com.h2togo.backend.usuarios.Cliente;
 import com.h2togo.backend.usuarios.ClienteRepository;
 import com.h2togo.backend.usuarios.Repartidor;
@@ -35,20 +33,17 @@ public class AdminUsuariosService {
     private final UsuarioRepository usuarioRepository;
     private final ClienteRepository clienteRepository;
     private final RepartidorRepository repartidorRepository;
-    private final AdministradorRepository administradorRepository;
     private final NegocioRepository negocioRepository;
     private final PasswordEncoder passwordEncoder;
     private final NamedParameterJdbcTemplate jdbc;
     private final PushService pushService;
 
     public AdminUsuariosService(UsuarioRepository usuarioRepository, ClienteRepository clienteRepository,
-            RepartidorRepository repartidorRepository, AdministradorRepository administradorRepository,
-            NegocioRepository negocioRepository, PasswordEncoder passwordEncoder,
+            RepartidorRepository repartidorRepository, NegocioRepository negocioRepository, PasswordEncoder passwordEncoder,
             NamedParameterJdbcTemplate jdbc, PushService pushService) {
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
         this.repartidorRepository = repartidorRepository;
-        this.administradorRepository = administradorRepository;
         this.negocioRepository = negocioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jdbc = jdbc;
@@ -81,9 +76,7 @@ public class AdminUsuariosService {
                 clienteRepository.save(c);
             }
             case admin -> {
-                Administrador a = new Administrador();
-                a.setUsuario(u);
-                administradorRepository.save(a);
+                // Sin subtabla: el administrador no tiene datos propios (v7 [R9]).
             }
             case repartidor -> crearRepartidor(req, u);
         }
@@ -108,9 +101,9 @@ public class AdminUsuariosService {
         } else {
             Negocio negocio = new Negocio();
             negocio.setNombreComercial(n.nombreComercial());
-            negocio.setIdDueno(u.getId()); // RN-024: queda como dueño
             negocioRepository.save(negocio);
             r.setIdNegocio(negocio.getId());
+            r.setEsDueno(true); // RN-024: queda como dueño
             repartidorRepository.save(r);
         }
     }
@@ -144,7 +137,7 @@ public class AdminUsuariosService {
         u.setCuentaActiva(false);
         u.setMotivoBaja(req.motivo());
         u.setFechaBaja(OffsetDateTime.now());
-        u.setTokenSesion(null);
+        u.setTokenSesionHash(null);
         u.setTokenFcm(null);
         u.setSesionFechaCreacion(null);
         u.setSesionFechaExpiracion(null);
@@ -157,16 +150,9 @@ public class AdminUsuariosService {
      */
     private void devolverAPendiente(int idPedido, int idCliente) {
         var p = new MapSqlParameterSource("p", idPedido);
+        jdbc.queryForList("SELECT fn_liberar_apartados(:p)", p);
         jdbc.update("""
-                UPDATE inventario_vehiculo iv SET cantidad_apartada = iv.cantidad_apartada - a.cantidad
-                FROM apartados_pedido a WHERE a.id_pedido = :p AND a.id_inventario_vehiculo = iv.id_inventario_vehiculo""", p);
-        jdbc.update("""
-                UPDATE lotes_inventario l SET cantidad_apartada = l.cantidad_apartada - a.cantidad
-                FROM apartados_pedido a WHERE a.id_pedido = :p AND a.id_lote_base = l.id_lote""", p);
-        jdbc.update("DELETE FROM apartados_pedido WHERE id_pedido = :p", p);
-        jdbc.update("""
-                UPDATE pedidos SET estado_actual = 'pendiente'::estado_pedido, id_repartidor = NULL,
-                    id_vehiculo_utilizado = NULL
+                UPDATE pedidos SET estado_actual = 'pendiente'::estado_pedido, id_repartidor = NULL
                 WHERE id_pedido = :p""", p);
         jdbc.update("""
                 INSERT INTO historial_estados_pedido (id_pedido, estado, notas_adicionales)
@@ -176,23 +162,26 @@ public class AdminUsuariosService {
                 Map.of("tipo", "pedido_reasignado", "idPedido", String.valueOf(idPedido)));
     }
 
-    /** RN-024: cada negocio del que es dueño se transfiere o queda inactivo. */
+    /** RN-024: si es el dueño de su negocio, el negocio se transfiere o queda inactivo. */
     private void resolverNegociosEnPropiedad(int idUsuario, Integer idNuevoDueno) {
-        List<Negocio> propios = negocioRepository.findAll().stream()
-                .filter(n -> Integer.valueOf(idUsuario).equals(n.getIdDueno()))
-                .toList();
-        for (Negocio negocio : propios) {
-            if (idNuevoDueno != null) {
-                Repartidor nuevo = repartidorRepository.findById(idNuevoDueno)
-                        .filter(r -> negocio.getId().equals(r.getIdNegocio()) && !r.getId().equals(idUsuario))
-                        .orElseThrow(() -> new BusinessRuleException("NUEVO_DUENO_INVALIDO",
-                                "El nuevo dueño debe ser otro repartidor del mismo negocio."));
-                negocio.setIdDueno(nuevo.getId());
-                nuevo.setAprobado(true); // el nuevo dueño no puede quedar pendiente de aprobación
-                repartidorRepository.save(nuevo);
-            } else {
-                negocio.setActivo(false); // RN-024: sin transferencia, el negocio queda inactivo
-            }
+        Repartidor saliente = repartidorRepository.findById(idUsuario).filter(Repartidor::isEsDueno).orElse(null);
+        if (saliente == null) {
+            return;
+        }
+        if (idNuevoDueno != null) {
+            Repartidor nuevo = repartidorRepository.findById(idNuevoDueno)
+                    .filter(r -> saliente.getIdNegocio().equals(r.getIdNegocio()) && !r.getId().equals(idUsuario))
+                    .orElseThrow(() -> new BusinessRuleException("NUEVO_DUENO_INVALIDO",
+                            "El nuevo dueño debe ser otro repartidor del mismo negocio."));
+            // Primero se quita al saliente: el índice único admite un solo dueño por negocio a la vez.
+            saliente.setEsDueno(false);
+            repartidorRepository.saveAndFlush(saliente);
+            nuevo.setEsDueno(true);
+            nuevo.setAprobado(true); // el nuevo dueño no puede quedar pendiente de aprobación
+            repartidorRepository.save(nuevo);
+        } else {
+            Negocio negocio = negocioRepository.findById(saliente.getIdNegocio()).orElseThrow();
+            negocio.setActivo(false); // RN-024: sin transferencia, el negocio queda inactivo
             negocioRepository.save(negocio);
         }
     }

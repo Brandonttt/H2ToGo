@@ -19,6 +19,7 @@ import com.h2togo.backend.common.UnauthorizedException;
 import com.h2togo.backend.common.enums.RolUsuario;
 import com.h2togo.backend.negocios.NegocioRepository;
 import com.h2togo.backend.notificaciones.SmsService;
+import com.h2togo.backend.security.TokenSesion;
 import com.h2togo.backend.usuarios.ClienteRepository;
 import com.h2togo.backend.usuarios.RepartidorRepository;
 import com.h2togo.backend.usuarios.Usuario;
@@ -130,7 +131,7 @@ class AuthServiceTest {
     @Test
     void loginConSesionActivaSinForzarDevuelveConflicto() {
         Usuario u = usuarioVerificado("$2a$hash");
-        u.setTokenSesion("token-vigente");
+        u.setTokenSesionHash(TokenSesion.hash("token-vigente"));
         u.setSesionFechaExpiracion(OffsetDateTime.now().plusDays(10));
         when(usuarioRepo.findByCorreo("ana@test.mx")).thenReturn(Optional.of(u));
         when(passwordEncoder.matches("password123", "$2a$hash")).thenReturn(true);
@@ -144,7 +145,7 @@ class AuthServiceTest {
     @Test
     void loginConForzarInvalidaSesionAnteriorYGeneraToken() {
         Usuario u = usuarioVerificado("$2a$hash");
-        u.setTokenSesion("token-viejo");
+        u.setTokenSesionHash(TokenSesion.hash("token-viejo"));
         u.setSesionFechaExpiracion(OffsetDateTime.now().plusDays(10));
         when(usuarioRepo.findByCorreo("ana@test.mx")).thenReturn(Optional.of(u));
         when(passwordEncoder.matches("password123", "$2a$hash")).thenReturn(true);
@@ -154,7 +155,7 @@ class AuthServiceTest {
 
         assertThat(sesion.token()).isNotBlank().isNotEqualTo("token-viejo");
         assertThat(sesion.rol()).isEqualTo(RolUsuario.cliente);
-        assertThat(u.getTokenSesion()).isEqualTo(sesion.token());
+        assertThat(u.getTokenSesionHash()).isEqualTo(TokenSesion.hash(sesion.token())); // se guarda el hash, no el token
     }
 
     @Test

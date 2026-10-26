@@ -72,7 +72,6 @@ public class SolicitudService {
         s.setCodigoCambio(req.codigoCambio());
         s.setIdNegocio(negocio.getId());
         s.setIdVehiculo(req.idVehiculo());
-        s.setIdProductoNegocio(req.idProductoNegocio());
         s.setValorAnterior(valorAnterior(req, negocio));
         s.setValorNuevo(toJson(req.valorNuevo()));
         s.setEstado(EstadoSolicitud.pendiente);
@@ -142,7 +141,7 @@ public class SolicitudService {
                     new MapSqlParameterSource().addValue("val", str(v, "nombreComercial")).addValue("neg", idNegocio));
             case FOTO_PERFIL -> jdbc.update("""
                     UPDATE usuarios SET url_foto_perfil = :url
-                    WHERE id_usuario = (SELECT id_dueno FROM negocios WHERE id_negocio = :neg)""",
+                    WHERE id_usuario = (SELECT id_usuario FROM repartidores WHERE id_negocio = :neg AND es_dueno)""",
                     new MapSqlParameterSource().addValue("url", str(v, "urlFotoPerfil")).addValue("neg", idNegocio));
             case DIRECCION_BASE -> jdbc.update("""
                     UPDATE negocios SET calle = :calle, numero_exterior = :ne, numero_interior = :ni,
@@ -462,7 +461,7 @@ public class SolicitudService {
 
     private static SolicitudResponse toResponse(SolicitudCambioPerfil s) {
         return new SolicitudResponse(s.getId(), s.getCodigoCambio(), s.getIdNegocio(), s.getIdVehiculo(),
-                s.getIdProductoNegocio(), s.getValorAnterior(), s.getValorNuevo(), s.getEstado(),
+                s.getValorAnterior(), s.getValorNuevo(), s.getEstado(),
                 s.getComentarioAdmin(), s.getFechaSolicitud(), s.getFechaResolucion());
     }
 }

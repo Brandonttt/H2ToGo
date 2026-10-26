@@ -1,5 +1,6 @@
 package com.h2togo.backend.notificaciones;
 
+import com.h2togo.backend.bd.TareaSistema;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.GoogleCredentials;
 import java.io.ByteArrayInputStream;
@@ -33,13 +34,15 @@ public class FcmClient {
     private static final String SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 
     private final NamedParameterJdbcTemplate jdbc;
+    private final TareaSistema tareaSistema;
     private final RestClient http = RestClient.create();
     private final GoogleCredentials credenciales;
     private final String urlEnvio;
 
-    public FcmClient(NamedParameterJdbcTemplate jdbc,
+    public FcmClient(NamedParameterJdbcTemplate jdbc, TareaSistema tareaSistema,
             @Value("${h2togo.fcm.credenciales-json:}") String credencialesJson) {
         this.jdbc = jdbc;
+        this.tareaSistema = tareaSistema;
         if (credencialesJson == null || credencialesJson.isBlank()) {
             this.credenciales = null;
             this.urlEnvio = null;
@@ -68,9 +71,10 @@ public class FcmClient {
         if (!habilitado()) {
             return;
         }
-        String token = jdbc.query(
+        // Tarea del sistema: quien dispara el aviso (p. ej. un cliente) no puede leer el token de otro.
+        String token = tareaSistema.consultar(() -> jdbc.query(
                 "SELECT token_fcm FROM usuarios WHERE id_usuario = :id AND cuenta_activa",
-                new MapSqlParameterSource("id", n.idUsuario()), rs -> rs.next() ? rs.getString(1) : null);
+                new MapSqlParameterSource("id", n.idUsuario()), rs -> rs.next() ? rs.getString(1) : null));
         if (token == null || token.isBlank()) {
             return; // sin dispositivo registrado (o sesión cerrada): solo WebSocket
         }
@@ -92,8 +96,9 @@ public class FcmClient {
         } catch (RestClientResponseException e) {
             if (tokenInvalido(e.getStatusCode(), e.getResponseBodyAsString())) {
                 log.info("Token FCM inválido del usuario {}; se elimina.", n.idUsuario());
-                jdbc.update("UPDATE usuarios SET token_fcm = NULL WHERE id_usuario = :id AND token_fcm = :t",
-                        new MapSqlParameterSource().addValue("id", n.idUsuario()).addValue("t", token));
+                tareaSistema.ejecutar(() -> jdbc.update(
+                        "UPDATE usuarios SET token_fcm = NULL WHERE id_usuario = :id AND token_fcm = :t",
+                        new MapSqlParameterSource().addValue("id", n.idUsuario()).addValue("t", token)));
                 return;
             }
             throw e; // 429 / 5xx: que RabbitMQ reintente

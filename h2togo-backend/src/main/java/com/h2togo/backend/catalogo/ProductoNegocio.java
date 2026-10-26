@@ -10,12 +10,14 @@ import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * Producto (marca) que ofrece un negocio, con su precio (v6, tabla {@code productos_negocio}).
  * {@code precio} es el agua con envase propio del cliente (RN-025); {@code precio_envase}
  * es el adicional del envase cuando no lo trae (RN-031).
  */
+@DynamicUpdate // el dueño solo puede cambiar precio y precio_envase (permisos por columna en la BD)
 @Entity
 @Table(name = "productos_negocio")
 @Getter

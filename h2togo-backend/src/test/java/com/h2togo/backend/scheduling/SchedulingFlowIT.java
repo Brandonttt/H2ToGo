@@ -52,7 +52,7 @@ class SchedulingFlowIT {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"))
-            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v6_postgresql.sql"),
+            .withCopyFileToContainer(MountableFile.forHostPath("../H2ToGo_v7_postgresql.sql"),
                     "/docker-entrypoint-initdb.d/01_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath("sql/zona_benito_juarez.sql"),
                     "/docker-entrypoint-initdb.d/02_zona.sql");
@@ -74,10 +74,11 @@ class SchedulingFlowIT {
         mvc.perform(post("/api/v1/auth/verificacion-telefono").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"codigo\":\"%s\"}".formatted(correo, otp)))
                 .andExpect(status().isNoContent());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        String cuerpoLogin = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"correo\":\"%s\",\"password\":\"password123\"}".formatted(correo)))
-                .andExpect(status().isOk());
-        return usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesion();
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.read(cuerpoLogin, "$.token");
     }
 
     @Test
@@ -145,13 +146,15 @@ class SchedulingFlowIT {
                         {"nombre":"S","apellidos":"E","correo":"%s","password":"password123",
                          "telefono":"5552220103","rol":"cliente"}""".formatted(correo))).andExpect(status().isCreated());
         verificarYLoguear(correo);
-        assertThat(usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesion()).isNotNull();
+        assertThat(usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesionHash()).isNotNull();
 
-        jdbc.update("UPDATE usuarios SET sesion_fecha_expiracion = now() - interval '1 day' WHERE correo = :c",
+        jdbc.update("""
+                UPDATE usuarios SET sesion_fecha_creacion = now() - interval '31 days',
+                    sesion_fecha_expiracion = now() - interval '1 day' WHERE correo = :c""",
                 new MapSqlParameterSource("c", correo));
         sesionesExpiradasJob.limpiar();
 
-        assertThat(usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesion()).isNull();
+        assertThat(usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesionHash()).isNull();
     }
 
     @Test
@@ -194,7 +197,7 @@ class SchedulingFlowIT {
                 new MapSqlParameterSource("id", lote1.idLote()), Boolean.class);
         assertThat(baja).isTrue();
         Integer mermas = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM movimientos_inventario WHERE id_lote_base = :id AND tipo = 'salida_manual'",
+                "SELECT COUNT(*) FROM movimientos_inventario WHERE id_lote = :id AND tipo = 'salida_manual'",
                 new MapSqlParameterSource("id", lote1.idLote()), Integer.class);
         assertThat(mermas).isEqualTo(1);
         // El dueño recibe aviso por el lote próximo a caducar.

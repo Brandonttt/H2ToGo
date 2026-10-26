@@ -23,8 +23,8 @@ public class PedidoEnriquecedor {
 
     public PedidoResponse enriquecer(PedidoResponse base, int idPedido) {
         try {
-            // Vehículo: el usado en la entrega (snapshot) o, mientras va en ruta, el de su jornada.
-            // El teléfono del repartidor solo se comparte mientras el pedido está en curso (RN-016).
+            // El teléfono y el vehículo del repartidor solo se comparten mientras el pedido está en
+            // curso (RN-016); el vehículo es el de su jornada.
             Map<String, Object> x = jdbc.queryForMap("""
                     SELECT CONCAT(u.nombre, ' ', u.apellidos) AS nombre_cliente,
                            u.telefono AS telefono_cliente,
@@ -42,7 +42,8 @@ public class PedidoEnriquecedor {
                     LEFT JOIN usuarios ur ON ur.id_usuario = p.id_repartidor
                     LEFT JOIN repartidores r ON r.id_usuario = p.id_repartidor
                     LEFT JOIN negocios n ON n.id_negocio = COALESCE(p.id_negocio_solicitado, r.id_negocio)
-                    LEFT JOIN vehiculos_negocio v ON v.id_vehiculo = COALESCE(p.id_vehiculo_utilizado, r.id_vehiculo_actual)
+                    LEFT JOIN vehiculos_negocio v ON v.id_vehiculo = r.id_vehiculo_actual
+                                                 AND p.estado_actual IN ('asignado', 'en_camino')
                     WHERE p.id_pedido = :id""",
                     new MapSqlParameterSource("id", idPedido));
             Number lat = (Number) x.get("lat");

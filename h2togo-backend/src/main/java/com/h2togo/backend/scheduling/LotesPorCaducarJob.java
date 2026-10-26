@@ -37,22 +37,24 @@ public class LotesPorCaducarJob {
     public void procesar() {
         LocalDate hoy = LocalDate.now(clock);
 
-        // Vencidos: merma + baja lógica.
+        // Vencidos: merma de lo libre + baja lógica. Lo apartado para un pedido en curso se queda
+        // hasta que ese pedido lo cargue o lo libere (el apartado no puede superar la existencia).
         List<Map<String, Object>> vencidos = jdbc.queryForList("""
-                SELECT id_lote, cantidad_actual FROM lotes_inventario
+                SELECT id_lote, cantidad_actual - cantidad_apartada AS libre, cantidad_apartada FROM lotes_inventario
                 WHERE activo AND fecha_caducidad < :hoy
                 FOR UPDATE""", new MapSqlParameterSource("hoy", hoy));
         for (Map<String, Object> l : vencidos) {
             Integer idLote = (Integer) l.get("id_lote");
-            int qty = (Integer) l.get("cantidad_actual");
-            if (qty > 0) {
+            int libre = ((Number) l.get("libre")).intValue();
+            if (libre > 0) {
                 jdbc.update("""
-                        INSERT INTO movimientos_inventario (id_lote_base, tipo, cantidad, notas)
+                        INSERT INTO movimientos_inventario (id_lote, tipo, cantidad, notas)
                         VALUES (:lote, 'salida_manual'::tipo_movimiento, :qty, 'Merma por caducidad')""",
-                        new MapSqlParameterSource().addValue("lote", idLote).addValue("qty", qty));
+                        new MapSqlParameterSource().addValue("lote", idLote).addValue("qty", libre));
             }
-            jdbc.update("UPDATE lotes_inventario SET activo = FALSE, cantidad_actual = 0 WHERE id_lote = :lote",
-                    new MapSqlParameterSource("lote", idLote));
+            jdbc.update("""
+                    UPDATE lotes_inventario SET cantidad_actual = cantidad_apartada, activo = (cantidad_apartada > 0)
+                    WHERE id_lote = :lote""", new MapSqlParameterSource("lote", idLote));
         }
         if (!vencidos.isEmpty()) {
             log.info("Lotes vencidos dados de baja: {}", vencidos.size());
@@ -60,7 +62,8 @@ public class LotesPorCaducarJob {
 
         // Por caducar (≤7 días): avisar al dueño.
         List<Map<String, Object>> porCaducar = jdbc.queryForList("""
-                SELECT DISTINCT n.id_dueno FROM lotes_inventario l JOIN negocios n ON n.id_negocio = l.id_negocio
+                SELECT DISTINCT r.id_usuario AS id_dueno
+                FROM lotes_inventario l JOIN repartidores r ON r.id_negocio = l.id_negocio AND r.es_dueno
                 WHERE l.activo AND l.fecha_caducidad BETWEEN :hoy AND :hoy7""",
                 new MapSqlParameterSource().addValue("hoy", hoy).addValue("hoy7", hoy.plusDays(7)));
         for (Map<String, Object> row : porCaducar) {

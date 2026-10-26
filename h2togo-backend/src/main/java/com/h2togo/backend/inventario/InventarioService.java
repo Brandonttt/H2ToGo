@@ -32,8 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Inventario por lotes y jornada del repartidor (CU-018/019/008). Todo lo que mueve
  * existencias es SQL nativo y transaccional: la carga usa {@code FOR UPDATE} + FIFO por
- * caducidad (RF-022/RNF-014, §10 #24). Cada traspaso/devolución es UNA fila de movimiento
- * con ambas ubicaciones (CHECK de v6).
+ * caducidad (RF-022/RNF-014, §10 #24). Cada movimiento guarda el lote y, si interviene, el
+ * vehículo (v7 [R2]); la BD solo deja ver y mover el inventario del negocio del repartidor.
  */
 @Service
 public class InventarioService {
@@ -99,9 +99,8 @@ public class InventarioService {
 
         params.addValue("idLote", idLote);
         jdbc.update("""
-                INSERT INTO movimientos_inventario
-                    (id_lote_base, tipo, cantidad, id_repartidor_responsable, costo_unitario, proveedor, notas)
-                VALUES (:idLote, 'entrada_proveedor'::tipo_movimiento, :cant, :rep, :costo, :prov, :notas)""",
+                INSERT INTO movimientos_inventario (id_lote, tipo, cantidad, id_repartidor_responsable, notas)
+                VALUES (:idLote, 'entrada_proveedor'::tipo_movimiento, :cant, :rep, :notas)""",
                 params);
 
         return new LoteResponse(idLote, req.idMarca(), marcaNombre(req.idMarca()),
@@ -154,8 +153,7 @@ public class InventarioService {
                     WHERE id_lote = :lote""", p);
 
             jdbc.update("""
-                    INSERT INTO movimientos_inventario
-                        (id_lote_base, tipo, cantidad, id_repartidor_responsable, notas)
+                    INSERT INTO movimientos_inventario (id_lote, tipo, cantidad, id_repartidor_responsable, notas)
                     VALUES (:lote, 'salida_manual'::tipo_movimiento, :tomar, :rep, :motivo)""", p);
 
             restante -= tomar;
@@ -190,7 +188,7 @@ public class InventarioService {
                 FROM inventario_vehiculo iv
                 JOIN lotes_inventario l ON l.id_lote = iv.id_lote
                 JOIN marcas m ON m.id_marca = l.id_marca
-                WHERE iv.id_vehiculo = :veh AND iv.activo AND iv.cantidad_actual > 0
+                WHERE iv.id_vehiculo = :veh AND iv.cantidad_actual > 0
                 ORDER BY l.fecha_caducidad, l.id_lote""",
                 new MapSqlParameterSource("veh", idVehiculo), InventarioService::mapItem);
         int ocupado = lotes.stream().mapToInt(InventarioItem::cantidadActual).sum();
@@ -218,12 +216,12 @@ public class InventarioService {
     public JornadaResponse iniciarJornada(int idRepartidor, IniciarJornadaRequest req) {
         miembrosService.exigirAprobado(idRepartidor); // quien pidió unirse espera al dueño
         Repartidor r = repartidor(idRepartidor);
-        VehiculoNegocio veh = vehiculo(req.idVehiculo());
-        // RN-014: el vehículo debe ser del propio negocio y estar activo.
-        if (!veh.getIdNegocio().equals(r.getIdNegocio()) || !veh.isActivo()) {
-            throw new BusinessRuleException("VEHICULO_INVALIDO",
-                    "El vehículo no pertenece a tu negocio o está inactivo.");
-        }
+        // RN-014: el vehículo debe ser del propio negocio y estar activo (los de otro negocio ni
+        // siquiera los ve: la BD solo le muestra los suyos).
+        vehiculoRepository.findById(req.idVehiculo())
+                .filter(v -> v.getIdNegocio().equals(r.getIdNegocio()) && v.isActivo())
+                .orElseThrow(() -> new BusinessRuleException("VEHICULO_INVALIDO",
+                        "El vehículo no pertenece a tu negocio o está inactivo."));
         r.setIdVehiculoActual(req.idVehiculo());
         repartidorRepository.saveAndFlush(r); // que las queries nativas vean el vehículo actual
 
@@ -241,6 +239,11 @@ public class InventarioService {
 
     // ---------------------------------------------------------------- Devolución / fin de jornada
 
+    /**
+     * Fin de jornada: regresa a la base lo que no está apartado. Lo apartado para pedidos que
+     * siguen asignados se queda en el vehículo para poder entregarlos (antes se regresaba todo y
+     * el apartado quedaba mayor que la existencia; v7 lo impide con un CHECK).
+     */
     @Transactional
     public void devolucion(int idRepartidor) {
         Repartidor r = repartidor(idRepartidor);
@@ -249,21 +252,22 @@ public class InventarioService {
             throw new BusinessRuleException("SIN_JORNADA", "No hay jornada activa que cerrar.");
         }
         List<Map<String, Object>> filas = jdbc.queryForList("""
-                SELECT id_inventario_vehiculo, id_lote, cantidad_actual
-                FROM inventario_vehiculo WHERE id_vehiculo = :veh AND cantidad_actual > 0
+                SELECT id_lote, cantidad_actual - cantidad_apartada AS libre
+                FROM inventario_vehiculo WHERE id_vehiculo = :veh AND cantidad_actual > cantidad_apartada
                 FOR UPDATE""", new MapSqlParameterSource("veh", idVehiculo));
         for (Map<String, Object> f : filas) {
             var p = new MapSqlParameterSource()
-                    .addValue("iv", f.get("id_inventario_vehiculo"))
+                    .addValue("veh", idVehiculo)
                     .addValue("lote", f.get("id_lote"))
-                    .addValue("cant", f.get("cantidad_actual"))
+                    .addValue("cant", f.get("libre"))
                     .addValue("rep", idRepartidor);
             jdbc.update("UPDATE lotes_inventario SET cantidad_actual = cantidad_actual + :cant WHERE id_lote = :lote", p);
-            jdbc.update("UPDATE inventario_vehiculo SET cantidad_actual = 0 WHERE id_inventario_vehiculo = :iv", p);
             jdbc.update("""
-                    INSERT INTO movimientos_inventario
-                        (id_lote_base, id_inventario_vehiculo, tipo, cantidad, id_repartidor_responsable)
-                    VALUES (:lote, :iv, 'devolucion_a_base'::tipo_movimiento, :cant, :rep)""", p);
+                    UPDATE inventario_vehiculo SET cantidad_actual = cantidad_actual - :cant
+                    WHERE id_vehiculo = :veh AND id_lote = :lote""", p);
+            jdbc.update("""
+                    INSERT INTO movimientos_inventario (id_lote, id_vehiculo, tipo, cantidad, id_repartidor_responsable)
+                    VALUES (:lote, :veh, 'devolucion_a_base'::tipo_movimiento, :cant, :rep)""", p);
         }
         r.setEstadoOperativo(false);
         r.setIdVehiculoActual(null);
@@ -278,7 +282,7 @@ public class InventarioService {
         int capacidad = vehiculo(idVehiculo).getCapacidadGarrafones();
 
         int ocupado = jdbc.queryForObject(
-                "SELECT COALESCE(SUM(cantidad_actual), 0) FROM inventario_vehiculo WHERE id_vehiculo = :veh AND activo",
+                "SELECT COALESCE(SUM(cantidad_actual), 0) FROM inventario_vehiculo WHERE id_vehiculo = :veh",
                 new MapSqlParameterSource("veh", idVehiculo), Integer.class);
         int totalCargar = cargas.stream().mapToInt(CargaItem::cantidad).sum();
         if (ocupado + totalCargar > capacidad) { // RN-008
@@ -315,21 +319,18 @@ public class InventarioService {
             int disponible = ((Number) lote.get("disponible")).intValue();
             int tomar = Math.min(restante, disponible);
             var p = new MapSqlParameterSource()
-                    .addValue("lote", lote.get("id_lote")).addValue("veh", idVehiculo)
+                    .addValue("lote", lote.get("id_lote")).addValue("veh", idVehiculo).addValue("neg", idNegocio)
                     .addValue("tomar", tomar).addValue("rep", idRepartidor);
 
             jdbc.update("UPDATE lotes_inventario SET cantidad_actual = cantidad_actual - :tomar WHERE id_lote = :lote", p);
-            Integer idIv = jdbc.queryForObject("""
-                    INSERT INTO inventario_vehiculo (id_vehiculo, id_lote, cantidad_actual, cantidad_apartada, activo)
-                    VALUES (:veh, :lote, :tomar, 0, TRUE)
-                    ON CONFLICT (id_vehiculo, id_lote)
-                    DO UPDATE SET cantidad_actual = inventario_vehiculo.cantidad_actual + :tomar, activo = TRUE
-                    RETURNING id_inventario_vehiculo""", p, Integer.class);
-            p.addValue("iv", idIv);
             jdbc.update("""
-                    INSERT INTO movimientos_inventario
-                        (id_lote_base, id_inventario_vehiculo, tipo, cantidad, id_repartidor_responsable)
-                    VALUES (:lote, :iv, 'traspaso_a_vehiculo'::tipo_movimiento, :tomar, :rep)""", p);
+                    INSERT INTO inventario_vehiculo (id_vehiculo, id_lote, id_negocio, cantidad_actual, cantidad_apartada)
+                    VALUES (:veh, :lote, :neg, :tomar, 0)
+                    ON CONFLICT (id_vehiculo, id_lote)
+                    DO UPDATE SET cantidad_actual = inventario_vehiculo.cantidad_actual + :tomar""", p);
+            jdbc.update("""
+                    INSERT INTO movimientos_inventario (id_lote, id_vehiculo, tipo, cantidad, id_repartidor_responsable)
+                    VALUES (:lote, :veh, 'traspaso_a_vehiculo'::tipo_movimiento, :tomar, :rep)""", p);
             restante -= tomar;
         }
     }

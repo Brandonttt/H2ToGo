@@ -40,7 +40,7 @@ class AuthFlowIT {
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"))
             .withCopyFileToContainer(
-                    MountableFile.forHostPath("../H2ToGo_v6_postgresql.sql"),
+                    MountableFile.forHostPath("../H2ToGo_v7_postgresql.sql"),
                     "/docker-entrypoint-initdb.d/01_schema.sql");
 
     @Autowired
@@ -76,10 +76,10 @@ class AuthFlowIT {
                         .content("{\"correo\":\"%s\",\"codigo\":\"%s\"}".formatted(correo, otp)))
                 .andExpect(status().isNoContent());
 
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-                .content(login(correo, false))).andExpect(status().isOk());
-
-        return usuarioRepository.findByCorreo(correo).orElseThrow().getTokenSesion();
+        String cuerpoLogin = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content(login(correo, false))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.read(cuerpoLogin, "$.token");
     }
 
     @Test
@@ -94,7 +94,7 @@ class AuthFlowIT {
         // Logout invalida la sesión.
         mvc.perform(post("/api/v1/auth/logout").header("Authorization", "Bearer " + token))
                 .andExpect(status().isNoContent());
-        assertThat(usuarioRepository.findByCorreo("flujo@test.mx").orElseThrow().getTokenSesion())
+        assertThat(usuarioRepository.findByCorreo("flujo@test.mx").orElseThrow().getTokenSesionHash())
                 .isNull();
 
         // Reusar el token ya invalidado → 401.

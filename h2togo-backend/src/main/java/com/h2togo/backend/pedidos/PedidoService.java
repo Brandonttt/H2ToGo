@@ -202,8 +202,7 @@ public class PedidoService {
         EstadoPedido estado = programado ? EstadoPedido.pendiente_programado : EstadoPedido.pendiente;
         p.setEstadoActual(estado);
         if (programado) {
-            p.setEsProgramado(true);
-            p.setFechaProgramada(req.programado().fechaProgramada());
+            p.setFechaProgramada(req.programado().fechaProgramada()); // es_programado lo deriva la BD
         }
         HistorialEstadoPedido h = new HistorialEstadoPedido();
         h.setEstado(estado);
@@ -252,18 +251,13 @@ public class PedidoService {
         return PedidoMapper.toResponse(p);
     }
 
-    /** Libera los apartados del pedido restaurando la cantidad reservada (RN-023). */
+    /**
+     * Libera los apartados del pedido restaurando la cantidad reservada (RN-023). El cliente no
+     * tiene permiso sobre el inventario: lo hace {@code fn_liberar_apartados}, que valida que el
+     * pedido sea suyo.
+     */
     private void liberarApartados(int idPedido) {
-        var params = new MapSqlParameterSource("pedido", idPedido);
-        jdbc.update("""
-                UPDATE lotes_inventario l SET cantidad_apartada = l.cantidad_apartada - a.cantidad
-                FROM apartados_pedido a
-                WHERE a.id_pedido = :pedido AND a.id_lote_base = l.id_lote""", params);
-        jdbc.update("""
-                UPDATE inventario_vehiculo iv SET cantidad_apartada = iv.cantidad_apartada - a.cantidad
-                FROM apartados_pedido a
-                WHERE a.id_pedido = :pedido AND a.id_inventario_vehiculo = iv.id_inventario_vehiculo""", params);
-        jdbc.update("DELETE FROM apartados_pedido WHERE id_pedido = :pedido", params);
+        jdbc.queryForList("SELECT fn_liberar_apartados(:p)", new MapSqlParameterSource("p", idPedido));
     }
 
     // ---------------------------------------------------------------- Consultas

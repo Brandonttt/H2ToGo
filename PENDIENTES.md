@@ -5,14 +5,14 @@
 ### Importante para la entrega
 - [ ] **Error en el registro:** si falla la carga de purificadoras, la app muestra "Purificadora Demo" y puede asociar al repartidor al negocio 1 (`RegistroScreen.kt`, respaldo `?: 1`).
 - [ ] **RN-030:** no permitir cargar ni entregar garrafones con menos de 7 días de vigencia. Hoy solo se valida al registrar el lote; carga, apartado y entrega solo excluyen los vencidos.
-- [ ] **RN-013:** historial de estados inmutable. Falta un trigger o REVOKE de UPDATE/DELETE en `historial_estados_pedido` y quitar el `ON DELETE CASCADE`.
 - [ ] **CU-002 S2.2:** si el login responde `TELEFONO_NO_VERIFICADO`, llevar a la pantalla del código OTP con la opción de reenviar.
 - [ ] **RF-026:** permitir solicitar el cambio de foto de perfil desde la app (el backend ya acepta `FOTO_PERFIL`).
 
 ### Antes de la entrega final
 - [ ] Quitar el OTP fijo `123456` (`H2TOGO_OTP_DEMO` vacío) y conectar el SMS real (Twilio). **Urgente:** con el código fijo, cualquiera que sepa un correo puede cambiar esa contraseña desde "¿Olvidaste tu contraseña?". Twilio de prueba solo permite 5 números.
 - [ ] Cambiar la contraseña `Demo1234` del admin en producción.
-- [ ] **Antes de desplegar**, correr en la base de Azure `h2togo-backend/sql/migraciones/2026-10-25_aprobacion_repartidores.sql` (columna `repartidores.aprobado`). Sin ella el backend no arranca.
+- [ ] **Antes de desplegar**, correr en la base de Azure, en este orden: `h2togo-backend/sql/migraciones/2026-10-25_aprobacion_repartidores.sql` y `2026-10-26_v7.sql` (esquema v7 y roles de seguridad). Sin ellas el backend no arranca. Ver `docs/BASE_DE_DATOS_v7.md`.
+- [ ] Recomendado: crear el usuario `h2togo_app` (al final de la migración v7) y cambiar `DB_USER`/`DB_PASSWORD` del backend, para que el backend no entre con el dueño del esquema.
 - [ ] Desplegar en Azure el backend más reciente (aprobación de repartidores por el dueño, cambiar y recuperar contraseña, ruta por calles del seguimiento, baja forzada de repartidor, aviso "Llegué" al cliente, heart-beats del WebSocket y ruta del día con OR-Tools, etc.). La imagen crece unos 60 MB por los binarios nativos de OR-Tools.
 - [ ] Decidir los mapas: hoy OSM es la capa principal. La capa de Google (`mt1.google.com`) no es oficial; usar la oficial (Map Tiles API / SDK con clave) o quitarla.
 
@@ -31,6 +31,8 @@
 - [ ] Capturas para `docs/Validacion_Casos_de_Uso.docx`.
 
 ## Tesis (cambios de texto)
+- [ ] Capítulo de base de datos: reemplazar el diagrama E/R y el diccionario de datos por los de v7 (`docs/BASE_DE_DATOS_v7.md`): sin `negocios.id_dueno` (ahora `repartidores.es_dueno`), apartados y movimientos con lote + vehículo, `inventario_vehiculo` con llave (vehículo, lote), sin `solicitudes.id_producto_negocio`, sin tabla `administradores`, lotes ligados al producto del negocio, `movimientos_inventario` como bitácora sin FKs, sin `pedidos.id_vehiculo_utilizado`, token de sesión guardado como hash (18 tablas, 24 relaciones). Agregar la sección de seguridad en la BD (roles por actor, permisos por columna y RLS) como respuesta a RNF-008.
+- [ ] RN-013: ya se cumple en la BD (el historial y los movimientos rechazan UPDATE y DELETE).
 - [ ] RF-018, CU-017, introducción, 2.2.5, 3.1.1 y tabla de tecnologías: Google Maps → OpenStreetMap con Leaflet (sí se puede abrir la ruta en Google Maps o Waze).
 - [ ] RF-013 y RN-005: cancelar solo en "Pendiente" o "Programado" (no en "Asignado"); quitar "se libera al repartidor" y "se liberan los apartados".
 - [ ] RN-009: ya implementada. Si el cliente cancela un pedido reservado, se avisa al repartidor y su ruta se recalcula sin él.

@@ -17,6 +17,7 @@ import com.h2togo.backend.common.enums.RolUsuario;
 import com.h2togo.backend.negocios.Negocio;
 import com.h2togo.backend.negocios.NegocioRepository;
 import com.h2togo.backend.security.SecurityUtils;
+import com.h2togo.backend.security.TokenSesion;
 import com.h2togo.backend.usuarios.Cliente;
 import com.h2togo.backend.usuarios.ClienteRepository;
 import com.h2togo.backend.usuarios.Repartidor;
@@ -95,7 +96,10 @@ public class AuthService {
                 passwordEncoder, smsService, null, otpLongitud, otpVigenciaMinutos, tokenDias, "123456", null);
     }
 
-    /** CU-001: alta de cuenta + OTP. Todo en una transacción (incluye el ciclo diferido dueño+negocio). */
+    /** Al quinto intento fallido el código SMS deja de servir y hay que pedir otro (v7 [C5]). */
+    private static final int MAX_INTENTOS_CODIGO = 5;
+
+    /** CU-001: alta de cuenta + OTP, en una transacción (la BD revisa al COMMIT que el negocio nuevo tenga dueño). */
     @Transactional
     public RegistroResponse registrar(RegistroRequest req) {
         if (req.rol() == RolUsuario.admin) {
@@ -120,8 +124,7 @@ public class AuthService {
         u.setRol(req.rol());
         u.setTelefonoVerificado(false);
         u.setCuentaActiva(true);
-        u.setCodigoVerificacion(codigo);
-        u.setCodigoVerificacionExpiracion(OffsetDateTime.now().plusMinutes(otpVigenciaMinutos));
+        asignarCodigo(u, codigo);
         usuarioRepository.save(u);
 
         Integer idNegocio = crearSubtipo(req, u);
@@ -160,46 +163,43 @@ public class AuthService {
             repartidorRepository.save(r);
             return existente.getId();
         }
-        // Negocio nuevo: el solicitante queda como dueño (RN-024). Ciclo diferido:
-        // usuario → negocio (id_dueno) → repartidor (id_negocio), verificado en el COMMIT.
-        Negocio negocio = new Negocio();
-        negocio.setNombreComercial(n.nombreComercial());
-        negocio.setIdDueno(u.getId());
-        negocioRepository.save(negocio);
-        r.setIdNegocio(negocio.getId());
+        // Negocio nuevo: el solicitante queda como dueño aprobado (RN-024).
+        int idNegocio = insertarNegocio(n);
+        r.setIdNegocio(idNegocio);
+        r.setEsDueno(true);
         repartidorRepository.save(r);
-
-        if (jdbc != null) {
-            guardarDireccionBase(negocio.getId(), n);
-            guardarHorario(negocio.getId(), n);
-        }
+        guardarHorario(idNegocio, n);
         // Productos y vehículos NO se siembran: el dueño los solicita después
         // (AGREGAR_PRODUCTO / AGREGAR_VEHICULO) y el admin los aprueba (RN-020).
 
-        return negocio.getId();
+        return idNegocio;
     }
 
     /**
-     * Guarda la dirección base solo si viene completa (el CHECK del esquema exige todo o nada).
-     * La app no captura número exterior, así que se registra "S/N" en ese caso.
+     * Inserta el negocio de una vez, con la dirección base solo si viene completa (el CHECK del
+     * esquema exige todo o nada): sin sesión no se puede modificar un negocio, solo crearlo. La
+     * app no captura número exterior, así que se registra "S/N" en ese caso.
      */
-    private void guardarDireccionBase(int idNegocio, RegistroRequest.NegocioRegistroRequest n) {
-        if (vacio(n.calle()) || vacio(n.colonia()) || vacio(n.codigoPostal()) || n.lat() == null || n.lon() == null) {
-            return;
-        }
-        jdbc.update("""
-                UPDATE negocios SET calle = :calle, numero_exterior = :numExt, colonia = :colonia,
-                    codigo_postal = :cp, referencias = :refs,
-                    ubicacion_base = ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
-                WHERE id_negocio = :negId""", new MapSqlParameterSource()
-                .addValue("negId", idNegocio)
-                .addValue("calle", n.calle().trim())
-                .addValue("numExt", vacio(n.numeroExterior()) ? "S/N" : n.numeroExterior().trim())
-                .addValue("colonia", n.colonia().trim())
-                .addValue("cp", n.codigoPostal().trim())
-                .addValue("refs", vacio(n.referencias()) ? null : n.referencias().trim())
-                .addValue("lat", n.lat())
-                .addValue("lon", n.lon()));
+    private int insertarNegocio(RegistroRequest.NegocioRegistroRequest n) {
+        boolean conDireccion = !(vacio(n.calle()) || vacio(n.colonia()) || vacio(n.codigoPostal())
+                || n.lat() == null || n.lon() == null);
+        var params = new MapSqlParameterSource()
+                .addValue("nombre", n.nombreComercial().trim())
+                .addValue("calle", conDireccion ? n.calle().trim() : null)
+                .addValue("numExt", !conDireccion ? null : vacio(n.numeroExterior()) ? "S/N" : n.numeroExterior().trim())
+                .addValue("colonia", conDireccion ? n.colonia().trim() : null)
+                .addValue("cp", conDireccion ? n.codigoPostal().trim() : null)
+                .addValue("refs", conDireccion && !vacio(n.referencias()) ? n.referencias().trim() : null)
+                .addValue("lat", conDireccion ? n.lat() : null)
+                .addValue("lon", conDireccion ? n.lon() : null);
+        return jdbc.queryForObject("""
+                INSERT INTO negocios (nombre_comercial, calle, numero_exterior, colonia, codigo_postal,
+                                      referencias, ubicacion_base)
+                VALUES (:nombre, :calle, :numExt, :colonia, :cp, :refs,
+                        CASE WHEN CAST(:lat AS double precision) IS NULL THEN NULL
+                             ELSE ST_SetSRID(ST_MakePoint(CAST(:lon AS double precision),
+                                                          CAST(:lat AS double precision)), 4326)::geography END)
+                RETURNING id_negocio""", params, Integer.class);
     }
 
     /** Si se indicó horario, lo aplica de lunes a sábado; el domingo queda cerrado. */
@@ -241,7 +241,7 @@ public class AuthService {
     }
 
     /** CU-001: valida el OTP y su vigencia → telefono_verificado = true (RN-002). */
-    @Transactional
+    @Transactional(noRollbackFor = BusinessRuleException.class) // se guarda el intento fallido
     public void verificarTelefono(OtpRequest req) {
         Usuario u = usuarioRepository.findByCorreo(req.correo())
                 .orElseThrow(() -> new BusinessRuleException("OTP_INVALIDO",
@@ -253,8 +253,7 @@ public class AuthService {
             throw new BusinessRuleException("OTP_INVALIDO", "El código es inválido o expiró.");
         }
         u.setTelefonoVerificado(true);
-        u.setCodigoVerificacion(null);
-        u.setCodigoVerificacionExpiracion(null);
+        asignarCodigo(u, null);
         usuarioRepository.save(u);
         // Quien pidió unirse a una purificadora ya es una persona verificada: se avisa al dueño.
         if (u.getRol() == RolUsuario.repartidor && miembrosService != null) {
@@ -273,14 +272,13 @@ public class AuthService {
             return;
         }
         String codigo = generarOtp();
-        u.setCodigoVerificacion(codigo);
-        u.setCodigoVerificacionExpiracion(OffsetDateTime.now().plusMinutes(otpVigenciaMinutos));
+        asignarCodigo(u, codigo);
         usuarioRepository.save(u);
         smsService.enviarCodigoVerificacion(u.getTelefono(), codigo);
     }
 
     /** Valida el código y guarda la nueva contraseña. Cierra la sesión abierta en cualquier dispositivo. */
-    @Transactional
+    @Transactional(noRollbackFor = BusinessRuleException.class) // se guarda el intento fallido
     public void confirmarRecuperacion(RecuperacionConfirmacionRequest req) {
         Usuario u = usuarioRepository.findByCorreo(req.correo())
                 .filter(x -> x.isTelefonoVerificado() && x.isCuentaActiva())
@@ -289,23 +287,43 @@ public class AuthService {
             throw new BusinessRuleException("OTP_INVALIDO", "El código es inválido o expiró.");
         }
         u.setPasswordHash(passwordEncoder.encode(req.nuevaContrasena()));
-        u.setCodigoVerificacion(null);
-        u.setCodigoVerificacionExpiracion(null);
-        u.setTokenSesion(null);
+        asignarCodigo(u, null);
+        u.setTokenSesionHash(null);
         u.setTokenFcm(null);
         u.setSesionFechaCreacion(null);
         u.setSesionFechaExpiracion(null);
         usuarioRepository.save(u);
     }
 
-    /** OTP válido: el de la base sin vencer, el de Twilio Verify o el código demo (si está activo). */
+    /**
+     * OTP válido: el de la base sin vencer, el de Twilio Verify o el código demo (si está activo).
+     * Cada fallo cuenta; al llegar a {@link #MAX_INTENTOS_CODIGO} el código se borra para que no
+     * se pueda adivinar probando (son solo 10^6 combinaciones).
+     */
     private boolean codigoValido(Usuario u, String codigo) {
         boolean esDemo = otpDemo != null && !otpDemo.isBlank() && otpDemo.equals(codigo);
         boolean validoDb = u.getCodigoVerificacion() != null
                 && u.getCodigoVerificacion().equals(codigo)
                 && u.getCodigoVerificacionExpiracion() != null
                 && u.getCodigoVerificacionExpiracion().isAfter(OffsetDateTime.now());
-        return esDemo || validoDb || smsService.verificarCodigo(u.getTelefono(), codigo);
+        if (esDemo || validoDb || smsService.verificarCodigo(u.getTelefono(), codigo)) {
+            return true;
+        }
+        if (u.getCodigoVerificacion() != null) {
+            u.setCodigoIntentos((short) (u.getCodigoIntentos() + 1));
+            if (u.getCodigoIntentos() >= MAX_INTENTOS_CODIGO) {
+                asignarCodigo(u, null);
+            }
+            usuarioRepository.save(u);
+        }
+        return false;
+    }
+
+    /** Fija (o borra, con null) el código SMS vigente y reinicia sus intentos. */
+    private void asignarCodigo(Usuario u, String codigo) {
+        u.setCodigoVerificacion(codigo);
+        u.setCodigoVerificacionExpiracion(codigo == null ? null : OffsetDateTime.now().plusMinutes(otpVigenciaMinutos));
+        u.setCodigoIntentos((short) 0);
     }
 
     /** CU-001: reenvía un OTP nuevo. No revela si el correo existe (RN-016). */
@@ -316,8 +334,7 @@ public class AuthService {
             return;
         }
         String codigo = generarOtp();
-        u.setCodigoVerificacion(codigo);
-        u.setCodigoVerificacionExpiracion(OffsetDateTime.now().plusMinutes(otpVigenciaMinutos));
+        asignarCodigo(u, codigo);
         usuarioRepository.save(u);
         smsService.enviarCodigoVerificacion(u.getTelefono(), codigo);
     }
@@ -340,7 +357,7 @@ public class AuthService {
 
         OffsetDateTime ahora = OffsetDateTime.now();
         // RN-018: sesión única. Si hay una vigente y no se fuerza → 409.
-        boolean sesionVigente = u.getTokenSesion() != null
+        boolean sesionVigente = u.getTokenSesionHash() != null
                 && u.getSesionFechaExpiracion() != null
                 && u.getSesionFechaExpiracion().isAfter(ahora);
         if (sesionVigente && !req.forzarSesion()) {
@@ -350,7 +367,7 @@ public class AuthService {
 
         String token = generarToken();
         OffsetDateTime expira = ahora.plusDays(tokenDias);
-        u.setTokenSesion(token);
+        u.setTokenSesionHash(TokenSesion.hash(token)); // el token en claro solo va en la respuesta
         u.setTokenFcm(req.tokenFcm());
         u.setSesionFechaCreacion(ahora);
         u.setSesionFechaExpiracion(expira);
@@ -373,7 +390,7 @@ public class AuthService {
         Integer id = SecurityUtils.idActual();
         Usuario u = usuarioRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("USUARIO_NO_ENCONTRADO", "Usuario no encontrado."));
-        u.setTokenSesion(null);
+        u.setTokenSesionHash(null);
         u.setTokenFcm(null);
         u.setSesionFechaCreacion(null);
         u.setSesionFechaExpiracion(null);
