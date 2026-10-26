@@ -1,5 +1,6 @@
 package com.h2togo.backend.inventario;
 
+import com.h2togo.backend.repartidores.MiembrosNegocioService;
 import com.h2togo.backend.catalogo.ProductoNegocio;
 import com.h2togo.backend.catalogo.ProductoNegocioRepository;
 import com.h2togo.backend.common.BusinessRuleException;
@@ -43,9 +44,13 @@ public class InventarioService {
     private final ProductoNegocioRepository productoRepository;
     private final VehiculoNegocioRepository vehiculoRepository;
 
+    private final MiembrosNegocioService miembrosService;
+
     public InventarioService(NamedParameterJdbcTemplate jdbc, RepartidorRepository repartidorRepository,
             NegocioRepository negocioRepository, ProductoNegocioRepository productoRepository,
-            VehiculoNegocioRepository vehiculoRepository) {
+            VehiculoNegocioRepository vehiculoRepository,
+            MiembrosNegocioService miembrosService) {
+        this.miembrosService = miembrosService;
         this.jdbc = jdbc;
         this.repartidorRepository = repartidorRepository;
         this.negocioRepository = negocioRepository;
@@ -211,6 +216,7 @@ public class InventarioService {
 
     @Transactional
     public JornadaResponse iniciarJornada(int idRepartidor, IniciarJornadaRequest req) {
+        miembrosService.exigirAprobado(idRepartidor); // quien pidió unirse espera al dueño
         Repartidor r = repartidor(idRepartidor);
         VehiculoNegocio veh = vehiculo(req.idVehiculo());
         // RN-014: el vehículo debe ser del propio negocio y estar activo.

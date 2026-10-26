@@ -7,6 +7,7 @@ import com.h2togo.backend.notificaciones.PushService;
 import com.h2togo.backend.pedidos.AsignacionService;
 import com.h2togo.backend.pedidos.AvisoNuevoPedido;
 import com.h2togo.backend.planeacion.OptimizadorRuta.Problema;
+import com.h2togo.backend.repartidores.MiembrosNegocioService;
 import com.h2togo.backend.planeacion.OptimizadorRuta.Solucion;
 import com.h2togo.backend.planeacion.OptimizadorRuta.Visita;
 import com.h2togo.backend.planeacion.dto.AgendaPedidoResponse;
@@ -65,13 +66,16 @@ public class PlaneacionService {
     private final double velocidadKmh;
     private final int servicioMin;
     private final int ventanaMin;
+    private final MiembrosNegocioService miembrosService;
 
     public PlaneacionService(NamedParameterJdbcTemplate jdbc, OptimizadorRuta optimizador,
             MatrizDistancias matriz, CalculoRutaService calculoRuta, OsmGraphLoader grafos,
             PushService pushService, AvisoNuevoPedido avisoNuevoPedido, Clock clock,
             @Value("${h2togo.planeacion.velocidad-kmh:20}") double velocidadKmh,
             @Value("${h2togo.planeacion.servicio-min:5}") int servicioMin,
-            @Value("${h2togo.planeacion.ventana-min:30}") int ventanaMin) {
+            @Value("${h2togo.planeacion.ventana-min:30}") int ventanaMin,
+            MiembrosNegocioService miembrosService) {
+        this.miembrosService = miembrosService;
         this.jdbc = jdbc;
         this.optimizador = optimizador;
         this.matriz = matriz;
@@ -89,6 +93,7 @@ public class PlaneacionService {
 
     @Transactional(readOnly = true)
     public List<AgendaPedidoResponse> agenda(int idRepartidor) {
+        miembrosService.exigirAprobado(idRepartidor);
         OffsetDateTime[] hoy = hoy();
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT p.id_pedido, p.fecha_programada, p.estado_actual::text AS estado, p.id_repartidor,
@@ -141,6 +146,7 @@ public class PlaneacionService {
     /** Reserva un programado de hoy para la ruta del repartidor. Solo uno gana (UPDATE condicional). */
     @Transactional
     public void reservar(int idRepartidor, int idPedido) {
+        miembrosService.exigirAprobado(idRepartidor);
         OffsetDateTime[] hoy = hoy();
         Map<String, Object> p = cargar(idPedido);
         if (Integer.valueOf(idRepartidor).equals(p.get("id_repartidor"))) {

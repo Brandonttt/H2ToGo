@@ -906,6 +906,7 @@ function filaUsuario(x) {
   let estado;
   if (!x.cuentaActiva) estado = `<span class="badge t-err" title="${esc(x.motivoBaja || '')}">Inactivo</span>`;
   else if (x.suspendidoHasta && new Date(x.suspendidoHasta) > new Date()) estado = `<span class="badge t-warn" title="Hasta ${fmtDateTime(x.suspendidoHasta)}">Suspendido</span>`;
+  else if (x.rol === 'repartidor' && x.aprobado === false) estado = '<span class="badge t-warn" title="Pidió unirse a la purificadora; el dueño debe aprobarlo desde la app">Por aprobar</span>';
   else if (x.rol === 'repartidor') estado = x.enLinea ? '<span class="badge t-ok">En línea</span>' : '<span class="badge t-slate">Desconectado</span>';
   else estado = '<span class="badge t-ok">Activo</span>';
   const negocio = x.negocio ? `${esc(x.negocio)}${x.esDueno ? ' <span class="role t-warn" style="font-size:10.5px">Dueño</span>' : ''}` : '<span class="sub">—</span>';

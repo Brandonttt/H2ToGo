@@ -1,5 +1,8 @@
 package com.h2togo.backend.auth;
 
+import com.h2togo.backend.repartidores.MiembrosNegocioService;
+import com.h2togo.backend.auth.dto.RecuperacionRequest;
+import com.h2togo.backend.auth.dto.RecuperacionConfirmacionRequest;
 import com.h2togo.backend.auth.dto.LoginRequest;
 import com.h2togo.backend.auth.dto.OtpRequest;
 import com.h2togo.backend.auth.dto.ReenviarOtpRequest;
@@ -52,6 +55,9 @@ public class AuthService {
     private final int otpLongitud;
     private final int otpVigenciaMinutos;
     private final int tokenDias;
+    /** Código que siempre se acepta, solo para pruebas y demos. Vacío = desactivado. */
+    private final String otpDemo;
+    private final MiembrosNegocioService miembrosService;
 
     @org.springframework.beans.factory.annotation.Autowired
     public AuthService(UsuarioRepository usuarioRepository, ClienteRepository clienteRepository,
@@ -61,7 +67,9 @@ public class AuthService {
             NamedParameterJdbcTemplate jdbc,
             @Value("${h2togo.auth.otp-longitud}") int otpLongitud,
             @Value("${h2togo.auth.otp-vigencia-minutos}") int otpVigenciaMinutos,
-            @Value("${h2togo.auth.token-dias}") int tokenDias) {
+            @Value("${h2togo.auth.token-dias}") int tokenDias,
+            @Value("${h2togo.auth.otp-demo:123456}") String otpDemo,
+            MiembrosNegocioService miembrosService) {
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
         this.repartidorRepository = repartidorRepository;
@@ -72,6 +80,8 @@ public class AuthService {
         this.otpLongitud = otpLongitud;
         this.otpVigenciaMinutos = otpVigenciaMinutos;
         this.tokenDias = tokenDias;
+        this.otpDemo = otpDemo;
+        this.miembrosService = miembrosService;
     }
 
     public AuthService(UsuarioRepository usuarioRepository, ClienteRepository clienteRepository,
@@ -82,7 +92,7 @@ public class AuthService {
             int otpVigenciaMinutos,
             int tokenDias) {
         this(usuarioRepository, clienteRepository, repartidorRepository, negocioRepository,
-                passwordEncoder, smsService, null, otpLongitud, otpVigenciaMinutos, tokenDias);
+                passwordEncoder, smsService, null, otpLongitud, otpVigenciaMinutos, tokenDias, "123456", null);
     }
 
     /** CU-001: alta de cuenta + OTP. Todo en una transacción (incluye el ciclo diferido dueño+negocio). */
@@ -146,6 +156,7 @@ public class AuthService {
                     .orElseThrow(() -> new NotFoundException("NEGOCIO_NO_ENCONTRADO",
                             "El negocio indicado no existe."));
             r.setIdNegocio(existente.getId());
+            r.setAprobado(false); // el dueño debe aprobarlo antes de que tome pedidos
             repartidorRepository.save(r);
             return existente.getId();
         }
@@ -238,21 +249,63 @@ public class AuthService {
         if (u.isTelefonoVerificado()) {
             return; // idempotente
         }
-        boolean esDemo = "123456".equals(req.codigo());
-        boolean validoTwilio = smsService.verificarCodigo(u.getTelefono(), req.codigo());
-        boolean validoDb = (u.getCodigoVerificacion() != null
-                && u.getCodigoVerificacion().equals(req.codigo())
-                && u.getCodigoVerificacionExpiracion() != null
-                && u.getCodigoVerificacionExpiracion().isAfter(OffsetDateTime.now()));
-
-        boolean valido = esDemo || validoTwilio || validoDb;
-        if (!valido) {
+        if (!codigoValido(u, req.codigo())) {
             throw new BusinessRuleException("OTP_INVALIDO", "El código es inválido o expiró.");
         }
         u.setTelefonoVerificado(true);
         u.setCodigoVerificacion(null);
         u.setCodigoVerificacionExpiracion(null);
         usuarioRepository.save(u);
+        // Quien pidió unirse a una purificadora ya es una persona verificada: se avisa al dueño.
+        if (u.getRol() == RolUsuario.repartidor && miembrosService != null) {
+            miembrosService.avisarSolicitud(u.getId(), u.getNombre() + " " + u.getApellidos());
+        }
+    }
+
+    /**
+     * "¿Olvidaste tu contraseña?": manda un código por SMS al teléfono de la cuenta. No revela si
+     * el correo existe (RN-016): siempre responde igual.
+     */
+    @Transactional
+    public void solicitarRecuperacion(RecuperacionRequest req) {
+        Usuario u = usuarioRepository.findByCorreo(req.correo()).orElse(null);
+        if (u == null || !u.isTelefonoVerificado() || !u.isCuentaActiva()) {
+            return;
+        }
+        String codigo = generarOtp();
+        u.setCodigoVerificacion(codigo);
+        u.setCodigoVerificacionExpiracion(OffsetDateTime.now().plusMinutes(otpVigenciaMinutos));
+        usuarioRepository.save(u);
+        smsService.enviarCodigoVerificacion(u.getTelefono(), codigo);
+    }
+
+    /** Valida el código y guarda la nueva contraseña. Cierra la sesión abierta en cualquier dispositivo. */
+    @Transactional
+    public void confirmarRecuperacion(RecuperacionConfirmacionRequest req) {
+        Usuario u = usuarioRepository.findByCorreo(req.correo())
+                .filter(x -> x.isTelefonoVerificado() && x.isCuentaActiva())
+                .orElseThrow(() -> new BusinessRuleException("OTP_INVALIDO", "El código es inválido o expiró."));
+        if (!codigoValido(u, req.codigo())) {
+            throw new BusinessRuleException("OTP_INVALIDO", "El código es inválido o expiró.");
+        }
+        u.setPasswordHash(passwordEncoder.encode(req.nuevaContrasena()));
+        u.setCodigoVerificacion(null);
+        u.setCodigoVerificacionExpiracion(null);
+        u.setTokenSesion(null);
+        u.setTokenFcm(null);
+        u.setSesionFechaCreacion(null);
+        u.setSesionFechaExpiracion(null);
+        usuarioRepository.save(u);
+    }
+
+    /** OTP válido: el de la base sin vencer, el de Twilio Verify o el código demo (si está activo). */
+    private boolean codigoValido(Usuario u, String codigo) {
+        boolean esDemo = otpDemo != null && !otpDemo.isBlank() && otpDemo.equals(codigo);
+        boolean validoDb = u.getCodigoVerificacion() != null
+                && u.getCodigoVerificacion().equals(codigo)
+                && u.getCodigoVerificacionExpiracion() != null
+                && u.getCodigoVerificacionExpiracion().isAfter(OffsetDateTime.now());
+        return esDemo || validoDb || smsService.verificarCodigo(u.getTelefono(), codigo);
     }
 
     /** CU-001: reenvía un OTP nuevo. No revela si el correo existe (RN-016). */

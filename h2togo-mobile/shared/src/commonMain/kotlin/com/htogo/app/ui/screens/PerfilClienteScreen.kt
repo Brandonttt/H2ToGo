@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,6 +36,7 @@ import com.htogo.app.data.dto.DireccionResponse
 import com.htogo.app.data.local.SessionManager
 import com.htogo.app.ui.ClienteViewModel
 import com.htogo.app.ui.components.AgregarDireccionDialog
+import com.htogo.app.ui.components.CambiarContrasenaDialog
 import com.htogo.app.ui.components.ClienteBottomBar
 import com.htogo.app.ui.components.ClienteTab
 import com.htogo.app.ui.theme.HToGoColors
@@ -70,9 +72,11 @@ fun PerfilClienteScreen(
     onPedidos: () -> Unit = {},
     onLogout: () -> Unit = {},
     onAvisoPrivacidad: () -> Unit = {},
+    onCambiarContrasena: (actual: String, nueva: String, onResult: (String?) -> Unit) -> Unit = { _, _, r -> r(null) },
     clienteViewModel: ClienteViewModel = viewModel { ClienteViewModel() }
 ) {
     val sessionManager = remember { SessionManager.getInstance() }
+    var mostrarCambioContrasena by remember { mutableStateOf(false) }
     val savedName = remember { sessionManager.obtenerNombre()?.ifBlank { "Cliente" } ?: "Cliente" }
     val savedEmail = remember { sessionManager.obtenerCorreo() ?: "" }
     val savedPhone = remember { sessionManager.obtenerTelefono() ?: "No registrado" }
@@ -225,6 +229,7 @@ fun PerfilClienteScreen(
             item { SectionTitle("Sesión") }
             item {
                 SettingsList {
+                    SettingRow(Icons.Outlined.Lock, "Cambiar contraseña", onClick = { mostrarCambioContrasena = true })
                     SettingRow(Icons.Filled.Logout, "Cerrar sesión",
                         danger = true, onClick = { mostrarDialogLogout = true }, showChevron = false)
                     SettingRow(Icons.Filled.DeleteForever, "Eliminar cuenta",
@@ -320,6 +325,10 @@ fun PerfilClienteScreen(
                 shape = RoundedCornerShape(16.dp),
                 containerColor = Color.White
             )
+        }
+
+        if (mostrarCambioContrasena) {
+            CambiarContrasenaDialog(onDismiss = { mostrarCambioContrasena = false }, onGuardar = onCambiarContrasena)
         }
 
         if (mostrarDialogLogout) {

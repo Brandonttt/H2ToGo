@@ -1,5 +1,6 @@
 package com.h2togo.backend.pedidos;
 
+import com.h2togo.backend.repartidores.MiembrosNegocioService;
 import com.h2togo.backend.common.BusinessRuleException;
 import com.h2togo.backend.common.ConflictException;
 import com.h2togo.backend.common.NotFoundException;
@@ -35,10 +36,14 @@ public class AsignacionService {
     private final PushService pushService;
     private final VehiculoNegocioRepository vehiculoRepository;
 
+    private final MiembrosNegocioService miembrosService;
+
     public AsignacionService(NamedParameterJdbcTemplate jdbc, PedidoRepository pedidoRepository,
             RepartidorRepository repartidorRepository, PushService pushService,
             VehiculoNegocioRepository vehiculoRepository,
-            PedidoEnriquecedor enriquecedor) {
+            PedidoEnriquecedor enriquecedor,
+            MiembrosNegocioService miembrosService) {
+        this.miembrosService = miembrosService;
         this.jdbc = jdbc;
         this.enriquecedor = enriquecedor;
         this.pedidoRepository = pedidoRepository;
@@ -65,6 +70,7 @@ public class AsignacionService {
 
     @Transactional(readOnly = true)
     public List<PedidoDisponibleResponse> disponibles(int idRepartidor) {
+        miembrosService.exigirAprobado(idRepartidor); // los pedidos traen datos de los clientes
         // Q3 (§7): pendientes compatibles (directa a su negocio, o abierta cuyo catálogo cumpla),
         // con dirección en zona, ordenados por distancia a la ubicación actual del repartidor.
         List<Map<String, Object>> rows = jdbc.queryForList("""
@@ -125,6 +131,7 @@ public class AsignacionService {
 
     @Transactional
     public PedidoResponse aceptar(int idRepartidor, int idPedido) {
+        miembrosService.exigirAprobado(idRepartidor);
         Repartidor r = repartidorRepository.findById(idRepartidor)
                 .orElseThrow(() -> new NotFoundException("REPARTIDOR_NO_ENCONTRADO", "No es repartidor."));
         // RN-007 / RN-014 / RF-030: solo acepta quien inició jornada con vehículo y lo cargó.

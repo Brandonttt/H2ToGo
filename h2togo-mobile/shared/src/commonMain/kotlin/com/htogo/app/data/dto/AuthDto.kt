@@ -96,5 +96,41 @@ data class RepartidorInfoDto(
     @SerialName("idNegocio") val idNegocio: Int? = null,
     @SerialName("estadoOperativo") val estadoOperativo: Boolean = false,
     @SerialName("idVehiculoActual") val idVehiculoActual: Int? = null,
-    @SerialName("esDueno") val esDueno: Boolean = false
+    @SerialName("esDueno") val esDueno: Boolean = false,
+    // false: se unió a una purificadora existente y espera la aprobación del dueño.
+    @SerialName("aprobado") val aprobado: Boolean = true
+)
+
+/** Recuperar contraseña (paso 1): se manda un código por SMS al teléfono de la cuenta. */
+@Serializable
+data class RecuperacionRequest(
+    @SerialName("correo") val correo: String
+)
+
+/** Recuperar contraseña (paso 2): código del SMS y contraseña nueva. */
+@Serializable
+data class RecuperacionConfirmacionRequest(
+    @SerialName("correo") val correo: String,
+    @SerialName("codigo") val codigo: String,
+    @SerialName("nuevaContrasena") val nuevaContrasena: String
+)
+
+/** Cambiar contraseña con la sesión iniciada. */
+@Serializable
+data class CambioContrasenaRequest(
+    @SerialName("actual") val actual: String,
+    @SerialName("nueva") val nueva: String
+)
+
+/** Repartidor de la purificadora visto por su dueño (GET negocios/me/repartidores). */
+@Serializable
+data class MiembroNegocioDto(
+    @SerialName("idUsuario") val idUsuario: Int = 0,
+    @SerialName("nombre") val nombre: String = "",
+    @SerialName("apellidos") val apellidos: String = "",
+    @SerialName("correo") val correo: String = "",
+    @SerialName("telefono") val telefono: String = "",
+    @SerialName("esDueno") val esDueno: Boolean = false,
+    @SerialName("aprobado") val aprobado: Boolean = true,
+    @SerialName("enLinea") val enLinea: Boolean = false
 )

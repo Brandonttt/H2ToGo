@@ -23,7 +23,8 @@ public record PerfilMeResponse(
     public record ClienteInfo(int ausenciasConsecutivas, OffsetDateTime suspendidoHasta) {
     }
 
+    /** {@code aprobado = false}: pidió unirse a la purificadora y espera la aprobación del dueño. */
     public record RepartidorInfo(Integer idNegocio, boolean estadoOperativo,
-            Integer idVehiculoActual, boolean esDueno) {
+            Integer idVehiculoActual, boolean esDueno, boolean aprobado) {
     }
 }

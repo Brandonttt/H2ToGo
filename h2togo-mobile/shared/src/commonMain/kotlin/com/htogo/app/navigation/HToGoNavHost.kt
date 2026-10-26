@@ -7,6 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.htogo.app.ui.screens.AsignandoRepartidorScreen
+import com.htogo.app.ui.screens.RecuperarContrasenaScreen
 import com.htogo.app.ui.screens.AvisoPrivacidadScreen
 import com.htogo.app.ui.screens.BuscarPurificadorasScreen
 import com.htogo.app.ui.screens.HistorialEntregasRepartidorScreen
@@ -104,6 +105,12 @@ fun HToGoNavHost(
             destino.tipo == "solicitud_resuelta" -> HToGoRoutes.PRODUCTOS_PRECIOS
             destino.tipo == "lotes_por_caducar" -> HToGoRoutes.INVENTARIO
             destino.tipo == "ruta_recalculada" -> HToGoRoutes.PLAN_RUTA
+            // Al dueño: alguien pidió unirse; la aprueba en su perfil.
+            destino.tipo == "solicitud_repartidor" -> HToGoRoutes.PERFIL_REPARTIDOR
+            destino.tipo == "repartidor_aprobado" -> {
+                repartidorViewModel.refrescar()
+                HToGoRoutes.HOME_REPARTIDOR
+            }
             destino.tipo == DestinoNotificacion.TIPO_ENTREGA_EN_CURSO -> {
                 // Si el proceso se reinició, recupera el pedido para que la pantalla de ruta tenga datos.
                 destino.idPedido?.let { repartidorViewModel.cargarPedidoEnRuta(it) }
@@ -148,11 +155,18 @@ fun HToGoNavHost(
                     }
                 },
                 onRegister = { navController.navigate(HToGoRoutes.REGISTRO) },
-                onForgot   = { /* TODO recovery flow */ },
+                onForgot   = { navController.navigate(HToGoRoutes.RECUPERAR_CONTRASENA) },
                 // Desde el onboarding se puede regresar; tras cerrar sesión el login es la raíz.
                 onBack = if (navController.previousBackStackEntry != null) {
                     { navController.popBackStack() }
                 } else null
+            )
+        }
+        composable(HToGoRoutes.RECUPERAR_CONTRASENA) {
+            RecuperarContrasenaScreen(
+                authViewModel = authViewModel,
+                onBack  = { navController.popBackStack() },
+                onListo = { navController.popBackStack() }
             )
         }
         composable(HToGoRoutes.REGISTRO) {
@@ -324,7 +338,8 @@ fun HToGoNavHost(
                 },
                 onAvisoPrivacidad = {
                     navController.navigate(HToGoRoutes.AVISO_PRIVACIDAD)
-                }
+                },
+                onCambiarContrasena = authViewModel::cambiarContrasena
             )
         }
 
@@ -437,6 +452,7 @@ fun HToGoNavHost(
                 onNegocio   = { navController.navigate(HToGoRoutes.INVENTARIO) },
                 onIngresos  = { navController.navigate(HToGoRoutes.INGRESOS) },
                 onHistorial = { navController.navigate(HToGoRoutes.HISTORIAL_REPARTIDOR) },
+                onCambiarContrasena = authViewModel::cambiarContrasena,
                 repartidorViewModel = repartidorViewModel
             )
         }

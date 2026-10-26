@@ -188,6 +188,8 @@ public class AdminUsuariosService {
                         .orElseThrow(() -> new BusinessRuleException("NUEVO_DUENO_INVALIDO",
                                 "El nuevo dueño debe ser otro repartidor del mismo negocio."));
                 negocio.setIdDueno(nuevo.getId());
+                nuevo.setAprobado(true); // el nuevo dueño no puede quedar pendiente de aprobación
+                repartidorRepository.save(nuevo);
             } else {
                 negocio.setActivo(false); // RN-024: sin transferencia, el negocio queda inactivo
             }

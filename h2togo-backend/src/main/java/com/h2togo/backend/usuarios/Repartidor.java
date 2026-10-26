@@ -39,6 +39,10 @@ public class Repartidor {
     @Column(name = "id_negocio", nullable = false)
     private Integer idNegocio;
 
+    /** FALSE mientras el dueño no aprueba a quien se unió a una purificadora existente. */
+    @Column(name = "aprobado", nullable = false)
+    private boolean aprobado = true;
+
     @Column(name = "estado_operativo", nullable = false)
     private boolean estadoOperativo = false;
 

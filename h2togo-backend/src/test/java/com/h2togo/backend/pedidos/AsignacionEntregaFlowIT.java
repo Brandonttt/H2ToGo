@@ -163,6 +163,9 @@ class AsignacionEntregaFlowIT {
                 .andExpect(status().isCreated());
         String token = verificarYLoguear(correo);
         int idRep = usuarioRepository.findByCorreo(correo).orElseThrow().getId();
+        // Se unió a una purificadora existente: el dueño lo aprueba antes de su jornada.
+        jdbc.update("UPDATE repartidores SET aprobado = TRUE WHERE id_usuario = :id",
+                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource("id", idRep));
         int idVehiculo = seedVehiculo(idNegocio, 50);
         inventarioService.iniciarJornada(idRep,
                 new IniciarJornadaRequest(idVehiculo, List.of(new CargaItem(idMarca, cargaQty))));
@@ -273,7 +276,7 @@ class AsignacionEntregaFlowIT {
 
     @Test
     void aceptacionConcurrente10RepartidoresSoloUnoGana() throws Exception {
-        Cli c = registrarCliente("f7c10@test.mx", "5557770010");
+        Cli c = registrarCliente("f7c10@test.mx", "5557770011");
         Rep dueno = setupDueno("f7d10@test.mx", "5557770100", "Purif F7-10", "MarcaF710", "25.00", 300, 10);
         List<Rep> repartidores = new java.util.ArrayList<>();
         repartidores.add(dueno);
@@ -447,8 +450,8 @@ class AsignacionEntregaFlowIT {
 
     @Test
     void bajaForzadaDevuelvePedidosAPendienteYLiberaApartados() throws Exception {
-        Cli c = registrarCliente("f7c10@test.mx", "5557770110");
-        Rep r = setupDueno("f7d10@test.mx", "5557770111", "Purif F7-10", "MarcaF710", "25.00", 100, 10);
+        Cli c = registrarCliente("f7c11@test.mx", "5557770110");
+        Rep r = setupDueno("f7d11@test.mx", "5557770111", "Purif F7-11", "MarcaF711", "25.00", 100, 10);
         int[] ped = crearPedido(c.token(), r.idNegocio(), c.idDireccion(), r.idMarca(), 3);
         mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/aceptacion").header("Authorization", "Bearer " + r.token()))
                 .andExpect(status().isOk());

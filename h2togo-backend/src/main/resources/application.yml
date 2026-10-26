@@ -63,6 +63,10 @@ h2togo:
     # OTP de verificación de teléfono (RN-002, §10 #17).
     otp-longitud: 6
     otp-vigencia-minutos: 10
+    # Código que siempre se acepta al verificar el teléfono y al recuperar la contraseña, para
+    # pruebas y demos. QUITAR ANTES DE LA ENTREGA (H2TOGO_OTP_DEMO vacío): con él, cualquiera que
+    # sepa un correo podría cambiar esa contraseña.
+    otp-demo: ${H2TOGO_OTP_DEMO:123456}
   pedidos:
     # Suspensión por ausencias (RN-006, §10 #1): umbral y duración.
     ausencias-umbral: 2

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
@@ -77,6 +78,7 @@ fun HomeRepartidorScreen(
     val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
     val totalEntregas by repartidorViewModel.totalEntregas.collectAsState()
     val liveMisEntregas by repartidorViewModel.misEntregas.collectAsState()
+    val pendienteAprobacion by repartidorViewModel.pendienteAprobacion.collectAsState()
 
     val pedidosApartados = remember(liveMisEntregas) {
         liveMisEntregas.filter {
@@ -200,6 +202,7 @@ fun HomeRepartidorScreen(
                                 )
                             }
                         }
+                        if (!pendienteAprobacion) {
                         Spacer(Modifier.height(20.dp))
                         Card(
                             Modifier.fillMaxWidth(),
@@ -235,9 +238,15 @@ fun HomeRepartidorScreen(
                                 )
                             }
                         }
+                        }
                     }
                 }
 
+                // Se unió a una purificadora existente: sin aprobación del dueño no ve pedidos (traen
+                // datos de los clientes) ni puede iniciar jornada.
+                if (pendienteAprobacion) {
+                    PendienteAprobacionCard(nombreNegocio)
+                } else {
                 Spacer(Modifier.height(20.dp))
                 Text(
                     "Tu jornada de hoy",
@@ -487,7 +496,48 @@ fun HomeRepartidorScreen(
                         )
                     }
                 }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun PendienteAprobacionCard(nombreNegocio: String) {
+    Card(
+        Modifier.fillMaxWidth().padding(20.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                Modifier.size(56.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Filled.HourglassTop, null, tint = HToGoColors.Primary, modifier = Modifier.size(28.dp))
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Esperando aprobación",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = HToGoColors.TextPrimary
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "El dueño de $nombreNegocio ya recibió tu solicitud. Cuando la apruebe te llegará una notificación y podrás iniciar tu jornada y tomar pedidos.",
+                fontSize = 14.sp,
+                color = HToGoColors.TextSecondary,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Desliza hacia abajo para revisar si ya te aprobó.",
+                fontSize = 12.sp,
+                color = HToGoColors.TextSecondary.copy(alpha = .8f),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

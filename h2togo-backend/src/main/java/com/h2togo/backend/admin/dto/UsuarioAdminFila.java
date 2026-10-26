@@ -20,6 +20,8 @@ public record UsuarioAdminFila(
         String negocio,
         boolean esDueno,
         Boolean enLinea,
+        /** Repartidor que pidió unirse a una purificadora y espera al dueño; null si no es repartidor. */
+        Boolean aprobado,
         OffsetDateTime suspendidoHasta,
         long pedidos
 ) {

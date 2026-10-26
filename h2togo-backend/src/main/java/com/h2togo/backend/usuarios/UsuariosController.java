@@ -1,5 +1,6 @@
 package com.h2togo.backend.usuarios;
 
+import com.h2togo.backend.usuarios.dto.CambioContrasenaRequest;
 import com.h2togo.backend.security.SecurityUtils;
 import com.h2togo.backend.usuarios.dto.DispositivoRequest;
 import com.h2togo.backend.usuarios.dto.PerfilMeResponse;
@@ -33,6 +34,13 @@ public class UsuariosController {
     @PatchMapping
     public PerfilMeResponse actualizar(@Valid @RequestBody PerfilUpdateRequest request) {
         return usuarioService.actualizar(SecurityUtils.idActual(), request);
+    }
+
+    /** Cambio de contraseña con sesión iniciada. 422 CONTRASENA_ACTUAL_INCORRECTA si la actual no coincide. */
+    @PutMapping("/contrasena")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cambiarContrasena(@Valid @RequestBody CambioContrasenaRequest request) {
+        usuarioService.cambiarContrasena(SecurityUtils.idActual(), request);
     }
 
     /** Registra el token FCM del dispositivo para recibir notificaciones con la app cerrada. */

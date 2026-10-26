@@ -285,6 +285,9 @@ class PlaneacionFlowIT {
                 .andExpect(status().isCreated());
         String token = verificarYLoguear(correo);
         int idRep = usuarioRepository.findByCorreo(correo).orElseThrow().getId();
+        // Se unió a una purificadora existente: el dueño lo aprueba antes de su jornada.
+        jdbc.update("UPDATE repartidores SET aprobado = TRUE WHERE id_usuario = :id",
+                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource("id", idRep));
         int idVehiculo = seedVehiculo(idNegocio);
         inventarioService.iniciarJornada(idRep,
                 new IniciarJornadaRequest(idVehiculo, List.of(new CargaItem(idMarca, 20))));

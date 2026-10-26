@@ -27,6 +27,13 @@ class AuthApi(private val http: HttpClient) {
     /** Token FCM/APNs del dispositivo para recibir notificaciones con la app cerrada. */
     suspend fun registrarDispositivo(body: Map<String, String>): Respuesta<Unit> =
         http.put("usuarios/me/dispositivo") { setBody(body) }.aRespuesta()
+    suspend fun cambiarContrasena(request: CambioContrasenaRequest): Respuesta<Unit> =
+        http.put("usuarios/me/contrasena") { setBody(request) }.aRespuesta()
+    /** Siempre responde 204, exista o no el correo (no se revela qué cuentas existen). */
+    suspend fun solicitarRecuperacion(request: RecuperacionRequest): Respuesta<Unit> =
+        http.post("auth/recuperacion") { setBody(request) }.aRespuesta()
+    suspend fun confirmarRecuperacion(request: RecuperacionConfirmacionRequest): Respuesta<Unit> =
+        http.post("auth/recuperacion/confirmacion") { setBody(request) }.aRespuesta()
 }
 
 class PedidosApi(private val http: HttpClient) {
@@ -65,6 +72,10 @@ class NegociosApi(private val http: HttpClient) {
     /** RF-031: horario semanal (7 días); solo el dueño, se aplica al instante. */
     suspend fun actualizarHorarios(dias: List<HorarioNegocioDto>): Respuesta<List<HorarioNegocioDto>> =
         http.put("negocios/me/horarios") { setBody(dias) }.aRespuesta()
+    /** Repartidores del negocio, pendientes de aprobación primero (solo el dueño). */
+    suspend fun miembros(): Respuesta<List<MiembroNegocioDto>> = http.get("negocios/me/repartidores").aRespuesta()
+    suspend fun aprobarMiembro(id: Int): Respuesta<Unit> = http.post("negocios/me/repartidores/$id/aprobacion").aRespuesta()
+    suspend fun rechazarMiembro(id: Int): Respuesta<Unit> = http.delete("negocios/me/repartidores/$id").aRespuesta()
 }
 
 class RepartidorApi(private val http: HttpClient) {

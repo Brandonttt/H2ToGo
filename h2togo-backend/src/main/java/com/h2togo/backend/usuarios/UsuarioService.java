@@ -1,5 +1,8 @@
 package com.h2togo.backend.usuarios;
 
+import com.h2togo.backend.usuarios.dto.CambioContrasenaRequest;
+import com.h2togo.backend.common.BusinessRuleException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.h2togo.backend.common.NotFoundException;
 import com.h2togo.backend.common.enums.RolUsuario;
 import com.h2togo.backend.negocios.NegocioRepository;
@@ -15,12 +18,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
     private final ClienteRepository clienteRepository;
     private final RepartidorRepository repartidorRepository;
     private final NegocioRepository negocioRepository;
 
     public UsuarioService(UsuarioRepository usuarioRepository, ClienteRepository clienteRepository,
-            RepartidorRepository repartidorRepository, NegocioRepository negocioRepository) {
+            RepartidorRepository repartidorRepository, NegocioRepository negocioRepository,
+            PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
         this.repartidorRepository = repartidorRepository;
@@ -39,7 +45,7 @@ public class UsuarioService {
         } else if (u.getRol() == RolUsuario.repartidor) {
             repartidor = repartidorRepository.findById(idUsuario)
                     .map(r -> new RepartidorInfo(r.getIdNegocio(), r.isEstadoOperativo(),
-                            r.getIdVehiculoActual(), esDueno(r)))
+                            r.getIdVehiculoActual(), esDueno(r), r.isAprobado()))
                     .orElse(null);
         }
         return toPerfil(u, cliente, repartidor);
@@ -59,6 +65,20 @@ public class UsuarioService {
         }
         usuarioRepository.save(u);
         return perfil(idUsuario);
+    }
+
+    /** Cambio de contraseña con sesión iniciada; exige la actual. La sesión actual sigue abierta. */
+    @Transactional
+    public void cambiarContrasena(int idUsuario, CambioContrasenaRequest req) {
+        Usuario u = cargar(idUsuario);
+        if (!passwordEncoder.matches(req.actual(), u.getPasswordHash())) {
+            throw new BusinessRuleException("CONTRASENA_ACTUAL_INCORRECTA", "La contraseña actual no es correcta.");
+        }
+        if (req.actual().equals(req.nueva())) {
+            throw new BusinessRuleException("CONTRASENA_IGUAL", "La nueva contraseña debe ser distinta de la actual.");
+        }
+        u.setPasswordHash(passwordEncoder.encode(req.nueva()));
+        usuarioRepository.save(u);
     }
 
     private boolean esDueno(Repartidor r) {

@@ -61,7 +61,7 @@ public class AdminConsultasService {
                 SELECT u.id_usuario, u.nombre, u.apellidos, u.correo, u.telefono, u.rol::text AS rol,
                        u.cuenta_activa, u.telefono_verificado, u.fecha_registro, u.motivo_baja, u.fecha_baja,
                        r.id_negocio, n.nombre_comercial, (n.id_dueno = u.id_usuario) AS es_dueno,
-                       r.estado_operativo, c.suspendido_hasta,
+                       r.estado_operativo, r.aprobado, c.suspendido_hasta,
                        CASE u.rol
                            WHEN 'cliente'    THEN (SELECT COUNT(*) FROM pedidos p WHERE p.id_cliente = u.id_usuario)
                            WHEN 'repartidor' THEN (SELECT COUNT(*) FROM pedidos p WHERE p.id_repartidor = u.id_usuario)
@@ -79,6 +79,7 @@ public class AdminConsultasService {
                         rs.getObject("fecha_baja", OffsetDateTime.class),
                         (Integer) rs.getObject("id_negocio"), rs.getString("nombre_comercial"),
                         rs.getBoolean("es_dueno"), (Boolean) rs.getObject("estado_operativo"),
+                        (Boolean) rs.getObject("aprobado"),
                         rs.getObject("suspendido_hasta", OffsetDateTime.class), rs.getLong("pedidos")));
 
         int totalPaginas = size == 0 ? 0 : (int) Math.ceil((double) total / size);

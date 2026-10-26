@@ -6,7 +6,10 @@ import com.htogo.shared.data.mensajeDeError
 import com.htogo.app.plataforma.ahoraMs
 import com.htogo.app.plataforma.Plataforma
 import com.htogo.app.data.api.ApiClient
+import com.htogo.app.data.dto.CambioContrasenaRequest
 import com.htogo.app.data.dto.LoginRequest
+import com.htogo.app.data.dto.RecuperacionConfirmacionRequest
+import com.htogo.app.data.dto.RecuperacionRequest
 import com.htogo.app.data.dto.OtpRequest
 import com.htogo.app.data.dto.ReenviarOtpRequest
 import com.htogo.app.data.dto.RegistroNegocioRequest
@@ -264,6 +267,50 @@ class AuthViewModel : ViewModel() {
                 _registroState.value = RegistroUiState.Idle
                 _otpState.value = OtpUiState.Idle
                 onComplete()
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- Contraseña
+    // onResult(null) = éxito; onResult(mensaje) = error para mostrar en la pantalla.
+
+    /** Con la sesión iniciada: pide la contraseña actual para confirmar que es el dueño de la cuenta. */
+    fun cambiarContrasena(actual: String, nueva: String, onResult: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.authApi.cambiarContrasena(CambioContrasenaRequest(actual, nueva))
+                onResult(if (resp.isSuccessful) null
+                else parseError(resp.errorBody()?.string()) ?: "No se pudo cambiar la contraseña (${resp.code()})")
+            } catch (e: Exception) {
+                onResult(e.message ?: "Error de red al cambiar la contraseña")
+            }
+        }
+    }
+
+    /** "¿Olvidaste tu contraseña?" paso 1: el backend manda un código por SMS al teléfono de la cuenta. */
+    fun solicitarRecuperacion(correo: String, onResult: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.authApi.solicitarRecuperacion(RecuperacionRequest(correo.trim()))
+                onResult(if (resp.isSuccessful) null
+                else parseError(resp.errorBody()?.string()) ?: "No se pudo enviar el código (${resp.code()})")
+            } catch (e: Exception) {
+                onResult(e.message ?: "Error de red al enviar el código")
+            }
+        }
+    }
+
+    /** Paso 2: código del SMS y contraseña nueva; el backend cierra las sesiones abiertas. */
+    fun confirmarRecuperacion(correo: String, codigo: String, nueva: String, onResult: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.authApi.confirmarRecuperacion(
+                    RecuperacionConfirmacionRequest(correo.trim(), codigo.trim(), nueva)
+                )
+                onResult(if (resp.isSuccessful) null
+                else parseError(resp.errorBody()?.string()) ?: "Código inválido o expirado")
+            } catch (e: Exception) {
+                onResult(e.message ?: "Error de red al cambiar la contraseña")
             }
         }
     }

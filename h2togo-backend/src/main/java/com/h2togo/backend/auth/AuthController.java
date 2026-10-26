@@ -1,5 +1,7 @@
 package com.h2togo.backend.auth;
 
+import com.h2togo.backend.auth.dto.RecuperacionRequest;
+import com.h2togo.backend.auth.dto.RecuperacionConfirmacionRequest;
 import com.h2togo.backend.auth.dto.LoginRequest;
 import com.h2togo.backend.auth.dto.OtpRequest;
 import com.h2togo.backend.auth.dto.ReenviarOtpRequest;
@@ -45,6 +47,20 @@ public class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void reenviarOtp(@Valid @RequestBody ReenviarOtpRequest request) {
         authService.reenviarOtp(request);
+    }
+
+    /** "¿Olvidaste tu contraseña?": siempre 204, exista o no el correo. */
+    @PostMapping("/recuperacion")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void solicitarRecuperacion(@Valid @RequestBody RecuperacionRequest request) {
+        authService.solicitarRecuperacion(request);
+    }
+
+    /** Código del SMS + nueva contraseña. 422 OTP_INVALIDO si el código no sirve. */
+    @PostMapping("/recuperacion/confirmacion")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void confirmarRecuperacion(@Valid @RequestBody RecuperacionConfirmacionRequest request) {
+        authService.confirmarRecuperacion(request);
     }
 
     @PostMapping("/login")

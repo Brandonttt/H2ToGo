@@ -248,6 +248,9 @@ class InventarioFlowIT {
                 .andExpect(status().isCreated());
         verificarYLoguear("invb@test.mx");
         int idB = usuarioRepository.findByCorreo("invb@test.mx").orElseThrow().getId();
+        // Se unió a una purificadora existente: el dueño lo aprueba antes de su jornada.
+        jdbc.update("UPDATE repartidores SET aprobado = TRUE WHERE id_usuario = :id",
+                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource("id", idB));
         int vehiculoB = seedVehiculo(a.idNegocio(), 50);
 
         // Ambos inician jornada (seleccionan su vehículo).

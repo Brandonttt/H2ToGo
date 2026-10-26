@@ -11,6 +11,7 @@ object HToGoRoutes {
     const val AVISO_PRIVACIDAD = "aviso_privacidad" // 02b
     const val OTP       = "otp"        // 03 — verificación teléfono
     const val LOGIN     = "login"      // 04
+    const val RECUPERAR_CONTRASENA = "recuperar" // 04b — "¿Olvidaste tu contraseña?"
 
     // Cliente
     const val HOME_CLIENTE       = "home_c"        // 05

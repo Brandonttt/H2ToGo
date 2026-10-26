@@ -1,6 +1,7 @@
 package com.htogo.app.ui.screens
 
 import com.htogo.app.ui.components.BarraEstadoClara
+import com.htogo.app.ui.components.CambiarContrasenaDialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import com.htogo.app.plataforma.mostrarAviso
@@ -17,7 +18,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Schedule
@@ -82,6 +83,7 @@ fun PerfilRepartidorScreen(
     onNegocio: () -> Unit = {},
     onIngresos: () -> Unit = {},
     onHistorial: () -> Unit = {},
+    onCambiarContrasena: (actual: String, nueva: String, onResult: (String?) -> Unit) -> Unit = { _, _, r -> r(null) },
     repartidorViewModel: com.htogo.app.ui.RepartidorViewModel = viewModel { com.htogo.app.ui.RepartidorViewModel() }
 ) {
     val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance() }
@@ -90,6 +92,12 @@ fun PerfilRepartidorScreen(
     val totalEntregas by repartidorViewModel.totalEntregas.collectAsState()
     val solicitudes by repartidorViewModel.solicitudes.collectAsState()
     val esDueno by repartidorViewModel.esDueno.collectAsState()
+    // Sin el propio dueño: la sección es para aprobar o ver a los demás repartidores.
+    val miembros by repartidorViewModel.miembros.collectAsState()
+    val otrosMiembros = remember(miembros) { miembros.filterNot { it.esDueno } }
+    var miembroARechazar by remember { mutableStateOf<com.htogo.app.data.dto.MiembroNegocioDto?>(null) }
+    var resolviendoMiembro by remember { mutableStateOf<Int?>(null) }
+    var mostrarCambioContrasena by remember { mutableStateOf(false) }
 
     var mostrarDialogLogout by remember { mutableStateOf(false) }
     var showHorario by remember { mutableStateOf(false) }
@@ -168,7 +176,6 @@ fun PerfilRepartidorScreen(
     var enLinea by remember { mutableStateOf(true) }
     var notifPush by remember { mutableStateOf(sessionManager.estanNotificacionesActivas()) }
     var notifEmail by remember { mutableStateOf(false) }
-    var notifNovedades by remember { mutableStateOf(true) }
 
     BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
@@ -292,6 +299,38 @@ fun PerfilRepartidorScreen(
                 }
             }
 
+            // Solo el dueño: quienes pidieron unirse a su purificadora esperan su aprobación.
+            if (esDueno && otrosMiembros.isNotEmpty()) {
+                item {
+                    val pendientes = otrosMiembros.count { !it.aprobado }
+                    SectionHeader(if (pendientes > 0) "Repartidores · $pendientes por aprobar" else "Repartidores")
+                    Card(
+                        modifier = Modifier.padding(horizontal = 18.dp).fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(1.dp, HToGoColors.OutlineSoft),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Column {
+                            otrosMiembros.forEachIndexed { i, m ->
+                                MiembroRow(
+                                    miembro = m,
+                                    ocupado = resolviendoMiembro == m.idUsuario,
+                                    isLast = i == otrosMiembros.lastIndex,
+                                    onAprobar = {
+                                        resolviendoMiembro = m.idUsuario
+                                        repartidorViewModel.resolverMiembro(m.idUsuario, aprobar = true) { err ->
+                                            resolviendoMiembro = null
+                                            mostrarAviso(err ?: "${m.nombre} ya puede iniciar su jornada")
+                                        }
+                                    },
+                                    onRechazar = { miembroARechazar = m }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             item {
                 SectionHeader("Notificaciones")
                 Card(
@@ -308,9 +347,7 @@ fun PerfilRepartidorScreen(
                             mostrarAviso(if (it) "Notificaciones activadas" else "Notificaciones desactivadas")
                         }
                         SwitchRow(Icons.Filled.MailOutline, "Notificaciones por correo",
-                            "Resúmenes y novedades", notifEmail) { notifEmail = it }
-                        SwitchRow(Icons.Filled.Campaign, "Novedades",
-                            "Tips para hacer crecer tu negocio", notifNovedades, isLast = true) { notifNovedades = it }
+                            "Resúmenes y novedades", notifEmail, isLast = true) { notifEmail = it }
                     }
                 }
             }
@@ -325,7 +362,7 @@ fun PerfilRepartidorScreen(
                 ) {
                     Column {
                         ActionRow(Icons.Filled.History, "Mi historial de entregas", redText = false, onClick = onHistorial)
-                        ActionRow(Icons.Outlined.Lock, "Cambiar contraseña", redText = false, onClick = {})
+                        ActionRow(Icons.Outlined.Lock, "Cambiar contraseña", redText = false, onClick = { mostrarCambioContrasena = true })
                         ActionRow(Icons.Filled.Logout, "Cerrar sesión", redText = true, isLast = true, onClick = { mostrarDialogLogout = true })
                     }
                 }
@@ -339,6 +376,46 @@ fun PerfilRepartidorScreen(
                     textAlign = TextAlign.Center
                 )
             }
+        }
+
+        if (mostrarCambioContrasena) {
+            CambiarContrasenaDialog(onDismiss = { mostrarCambioContrasena = false }, onGuardar = onCambiarContrasena)
+        }
+
+        miembroARechazar?.let { m ->
+            AlertDialog(
+                onDismissRequest = { miembroARechazar = null },
+                icon = { Icon(Icons.Filled.PersonRemove, null, tint = MaterialTheme.colorScheme.error) },
+                title = { Text("¿Rechazar solicitud?", fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary) },
+                text = {
+                    Text(
+                        "${m.nombre} ${m.apellidos} no podrá entrar a la app con esta cuenta. Si fue un error, tendrá que registrarse de nuevo.",
+                        color = HToGoColors.TextSecondary,
+                        fontSize = 14.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            miembroARechazar = null
+                            resolviendoMiembro = m.idUsuario
+                            repartidorViewModel.resolverMiembro(m.idUsuario, aprobar = false) { err ->
+                                resolviendoMiembro = null
+                                mostrarAviso(err ?: "Solicitud rechazada")
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Rechazar", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { miembroARechazar = null }) {
+                        Text("Cancelar", color = HToGoColors.TextSecondary)
+                    }
+                }
+            )
         }
 
         // Dialog Logout
@@ -1211,6 +1288,75 @@ private fun SwitchRow(
                 checkedTrackColor = HToGoColors.Primary
             )
         )
+    }
+    if (!isLast) HorizontalDivider(color = HToGoColors.OutlineSoft)
+}
+
+/** Repartidor del negocio; si espera aprobación muestra Aprobar / Rechazar. */
+@Composable
+private fun MiembroRow(
+    miembro: com.htogo.app.data.dto.MiembroNegocioDto,
+    ocupado: Boolean,
+    isLast: Boolean,
+    onAprobar: () -> Unit,
+    onRechazar: () -> Unit
+) {
+    Column(Modifier.fillMaxWidth().padding(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(36.dp).clip(CircleShape)
+                    .background(if (miembro.aprobado) HToGoColors.Background else HToGoColors.PrimarySoft),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    miembro.nombre.firstOrNull()?.uppercase() ?: "R",
+                    fontWeight = FontWeight.Bold,
+                    color = if (miembro.aprobado) HToGoColors.TextSecondary else HToGoColors.Primary
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("${miembro.nombre} ${miembro.apellidos}".trim(), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(miembro.telefono.ifBlank { miembro.correo }, fontSize = 11.sp, color = HToGoColors.TextSecondary)
+            }
+            Text(
+                when {
+                    !miembro.aprobado -> "Por aprobar"
+                    miembro.enLinea -> "En jornada"
+                    else -> "Fuera de jornada"
+                },
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = when {
+                    !miembro.aprobado -> HToGoColors.StatusAsignado
+                    miembro.enLinea -> HToGoColors.StatusEntregado
+                    else -> HToGoColors.TextTertiary
+                }
+            )
+        }
+        if (!miembro.aprobado) {
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(
+                    onClick = onRechazar,
+                    enabled = !ocupado,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, HToGoColors.AccentRose)
+                ) {
+                    Text("Rechazar", color = HToGoColors.AccentRose, fontWeight = FontWeight.SemiBold)
+                }
+                Button(
+                    onClick = onAprobar,
+                    enabled = !ocupado,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    if (ocupado) CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                    else Text("Aprobar", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
     }
     if (!isLast) HorizontalDivider(color = HToGoColors.OutlineSoft)
 }

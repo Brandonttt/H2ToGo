@@ -313,6 +313,8 @@ CREATE TABLE repartidores (
     rol                      rol_usuario NOT NULL DEFAULT 'repartidor'
                                CONSTRAINT chk_repartidores_rol CHECK (rol = 'repartidor'),
     id_negocio               INT NOT NULL,
+    -- Quien se une a una purificadora existente queda pendiente hasta que el dueño lo aprueba.
+    aprobado                 BOOLEAN NOT NULL DEFAULT TRUE,
     estado_operativo         BOOLEAN NOT NULL DEFAULT FALSE,
     id_vehiculo_actual       INT,
     ubicacion_actual         geography(Point, 4326),
@@ -329,6 +331,7 @@ CREATE TABLE repartidores (
 );
 
 COMMENT ON COLUMN repartidores.estado_operativo       IS 'FALSE = desconectado, TRUE = conectado y disponible';
+COMMENT ON COLUMN repartidores.aprobado               IS 'FALSE mientras el dueño no aprueba a un repartidor que se unió a su purificadora existente.';
 COMMENT ON COLUMN repartidores.id_vehiculo_actual     IS 'Vehículo en uso en la jornada actual. NULL si está desconectado.';
 COMMENT ON COLUMN repartidores.ubicacion_actual       IS '[G3] Última posición reportada por la app del repartidor. Alimenta el aviso de proximidad a 500 m (RF-005, ST_DWithin) y el filtrado de pedidos cercanos (RF-008).';
 COMMENT ON COLUMN repartidores.ubicacion_reportada_en IS 'Cuándo se reportó ubicacion_actual. Permite descartar posiciones viejas.';

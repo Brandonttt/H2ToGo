@@ -74,13 +74,25 @@ class RepartidorViewModel : ViewModel() {
     /** RN-021: solo el dueño ve las acciones que cambian el negocio (inventario base, catálogo, solicitudes). */
     val esDueno: StateFlow<Boolean> = _esDueno.asStateFlow()
 
+    private val _pendienteAprobacion = MutableStateFlow(false)
+    /** Se unió a una purificadora existente y el dueño aún no lo aprueba: no puede tomar pedidos. */
+    val pendienteAprobacion: StateFlow<Boolean> = _pendienteAprobacion.asStateFlow()
+
+    private val _miembros = MutableStateFlow<List<com.htogo.app.data.dto.MiembroNegocioDto>>(emptyList())
+    /** Solo el dueño: repartidores de su purificadora, pendientes de aprobación primero. */
+    val miembros: StateFlow<List<com.htogo.app.data.dto.MiembroNegocioDto>> = _miembros.asStateFlow()
+
     fun cargarMiNegocio(): Job {
         return viewModelScope.launch {
             try {
-                apiClient.authApi.perfil().body()?.let { _esDueno.value = it.repartidor?.esDueno == true }
+                apiClient.authApi.perfil().body()?.repartidor?.let {
+                    _esDueno.value = it.esDueno
+                    _pendienteAprobacion.value = !it.aprobado
+                }
             } catch (e: Exception) {
                 // Silencioso: sin dato se ocultan las acciones de dueño
             }
+            if (_esDueno.value) cargarMiembros()
             try {
                 val resp = apiClient.negociosApi.obtenerMiNegocio()
                 if (resp.isSuccessful && resp.body() != null) {
@@ -89,6 +101,35 @@ class RepartidorViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 // Silencioso
+            }
+        }
+    }
+
+    fun cargarMiembros(): Job {
+        return viewModelScope.launch {
+            try {
+                val resp = apiClient.negociosApi.miembros()
+                if (resp.isSuccessful) _miembros.value = resp.body().orEmpty()
+            } catch (e: Exception) {
+                // Silencioso: la sección queda con la última lista
+            }
+        }
+    }
+
+    /** El dueño acepta (aprobar = true) o rechaza la solicitud de un repartidor para unirse. */
+    fun resolverMiembro(idUsuario: Int, aprobar: Boolean, onResult: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resp = if (aprobar) apiClient.negociosApi.aprobarMiembro(idUsuario)
+                else apiClient.negociosApi.rechazarMiembro(idUsuario)
+                if (resp.isSuccessful) {
+                    cargarMiembros()
+                    onResult(null)
+                } else {
+                    onResult(parseError(resp.errorBody()?.string()) ?: "No se pudo guardar (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onResult(e.message ?: "Error de red")
             }
         }
     }
@@ -1121,6 +1162,11 @@ class RepartidorViewModel : ViewModel() {
                         cargarSolicitudes()
                         cargarMiNegocio()
                     }
+                    "solicitud_repartidor" -> cargarMiembros()
+                    "repartidor_aprobado" -> {
+                        cargarMiNegocio()
+                        cargarPedidosDisponibles()
+                    }
                 }
             }
         }
@@ -1141,6 +1187,8 @@ class RepartidorViewModel : ViewModel() {
         _rutaCalculada.value = null
         _miNegocio.value = null
         _esDueno.value = false
+        _pendienteAprobacion.value = false
+        _miembros.value = emptyList()
         _misEntregas.value = emptyList()
         _totalEntregas.value = 0
         _inventarioBase.value = null
