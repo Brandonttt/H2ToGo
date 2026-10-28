@@ -173,9 +173,9 @@ fun PerfilRepartidorScreen(
         antiguedadMeses = 1
     )
 
-    var enLinea by remember { mutableStateOf(true) }
+    val enLinea by repartidorViewModel.enLinea.collectAsState()
+    var showDesconectarDialog by remember { mutableStateOf(false) }
     var notifPush by remember { mutableStateOf(sessionManager.estanNotificacionesActivas()) }
-    var notifEmail by remember { mutableStateOf(false) }
 
     BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
@@ -243,7 +243,14 @@ fun PerfilRepartidorScreen(
                 ProfileCard(
                     u = usuario,
                     enLinea = enLinea,
-                    onToggleLinea = { enLinea = !enLinea },
+                    onToggleLinea = {
+                        if (enLinea) {
+                            showDesconectarDialog = true
+                        } else {
+                            mostrarAviso("Inicia tu jornada y carga tu vehículo en Mi negocio para recibir pedidos")
+                            onNegocio()
+                        }
+                    },
                     onHistorial = onHistorial,
                     modifier = Modifier
                         .padding(horizontal = 18.dp)
@@ -341,13 +348,11 @@ fun PerfilRepartidorScreen(
                 ) {
                     Column {
                         SwitchRow(Icons.Filled.NotificationsActive, "Notificaciones push",
-                            "Nuevos pedidos y mensajes", notifPush) {
+                            "Nuevos pedidos y mensajes", notifPush, isLast = true) {
                             notifPush = it
                             sessionManager.guardarNotificacionesActivas(it)
                             mostrarAviso(if (it) "Notificaciones activadas" else "Notificaciones desactivadas")
                         }
-                        SwitchRow(Icons.Filled.MailOutline, "Notificaciones por correo",
-                            "Resúmenes y novedades", notifEmail, isLast = true) { notifEmail = it }
                     }
                 }
             }
@@ -527,6 +532,39 @@ fun PerfilRepartidorScreen(
                         }
                     )
                 }
+            )
+        }
+
+        if (showDesconectarDialog) {
+            AlertDialog(
+                onDismissRequest = { showDesconectarDialog = false },
+                title = { Text("¿Finalizar jornada y desconectarte?", fontWeight = FontWeight.Bold) },
+                text = {
+                    Text(
+                        "Pasarás a Fuera de línea (Desconectado) y los garrafones no apartados de tu vehículo se devolverán al almacén base."
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDesconectarDialog = false
+                            repartidorViewModel.devolverABase(
+                                onSuccess = { mostrarAviso("Jornada finalizada. Ahora estás fuera de línea.") },
+                                onError = { mostrarAviso(it) }
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                    ) {
+                        Text("Desconectarme", color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDesconectarDialog = false }) {
+                        Text("Cancelar", color = HToGoColors.TextSecondary)
+                    }
+                },
+                containerColor = Color.White,
+                shape = RoundedCornerShape(16.dp)
             )
         }
     }

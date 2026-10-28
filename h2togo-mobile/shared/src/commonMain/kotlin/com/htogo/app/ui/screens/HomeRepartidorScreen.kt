@@ -68,7 +68,8 @@ fun HomeRepartidorScreen(
 ) {
     val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance() }
     val nombre = remember { sessionManager.obtenerNombre()?.substringBefore(" ")?.ifBlank { "Repartidor" } ?: "Repartidor" }
-    var enLinea by remember { mutableStateOf(true) }
+    val enLinea by repartidorViewModel.enLinea.collectAsState()
+    var showDesconectarDialog by remember { mutableStateOf(false) }
     var notificacionesActivas by remember { mutableStateOf(sessionManager.estanNotificacionesActivas()) }
 
     val livePedidosDisponibles by repartidorViewModel.pedidosDisponibles.collectAsState()
@@ -205,7 +206,14 @@ fun HomeRepartidorScreen(
                         if (!pendienteAprobacion) {
                         Spacer(Modifier.height(20.dp))
                         Card(
-                            Modifier.fillMaxWidth(),
+                            Modifier.fillMaxWidth().clickable {
+                                if (enLinea) {
+                                    showDesconectarDialog = true
+                                } else {
+                                    mostrarAviso("Inicia tu jornada y carga tu vehículo en Mi negocio para recibir pedidos")
+                                    onInventario()
+                                }
+                            },
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
@@ -223,14 +231,21 @@ fun HomeRepartidorScreen(
                                         color = HToGoColors.TextPrimary
                                     )
                                     Text(
-                                        if (enLinea) "Recibiendo pedidos" else "Activa para recibir pedidos",
+                                        if (enLinea) "Recibiendo pedidos" else "Inicia jornada en Mi negocio para recibir pedidos",
                                         fontSize = 12.sp,
                                         color = HToGoColors.TextSecondary
                                     )
                                 }
                                 Switch(
                                     checked = enLinea,
-                                    onCheckedChange = { enLinea = it },
+                                    onCheckedChange = { activar ->
+                                        if (activar) {
+                                            mostrarAviso("Inicia tu jornada y carga tu vehículo en Mi negocio para recibir pedidos")
+                                            onInventario()
+                                        } else {
+                                            showDesconectarDialog = true
+                                        }
+                                    },
                                     colors = SwitchDefaults.colors(
                                         checkedThumbColor = Color.White,
                                         checkedTrackColor = HToGoColors.Primary
@@ -499,6 +514,39 @@ fun HomeRepartidorScreen(
                 }
             }
         }
+    }
+
+    if (showDesconectarDialog) {
+        AlertDialog(
+            onDismissRequest = { showDesconectarDialog = false },
+            title = { Text("¿Finalizar jornada y desconectarte?", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Pasarás a Fuera de línea (Desconectado) y los garrafones no apartados de tu vehículo se devolverán al almacén base."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDesconectarDialog = false
+                        repartidorViewModel.devolverABase(
+                            onSuccess = { mostrarAviso("Jornada finalizada. Ahora estás fuera de línea.") },
+                            onError = { mostrarAviso(it) }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                ) {
+                    Text("Desconectarme", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDesconectarDialog = false }) {
+                    Text("Cancelar", color = HToGoColors.TextSecondary)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 }
 

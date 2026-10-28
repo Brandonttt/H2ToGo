@@ -78,6 +78,10 @@ class RepartidorViewModel : ViewModel() {
     /** Se unió a una purificadora existente y el dueño aún no lo aprueba: no puede tomar pedidos. */
     val pendienteAprobacion: StateFlow<Boolean> = _pendienteAprobacion.asStateFlow()
 
+    private val _enLinea = MutableStateFlow(false)
+    /** RN-007 / RF-030: estado_operativo real del repartidor en el servidor. */
+    val enLinea: StateFlow<Boolean> = _enLinea.asStateFlow()
+
     private val _miembros = MutableStateFlow<List<com.htogo.app.data.dto.MiembroNegocioDto>>(emptyList())
     /** Solo el dueño: repartidores de su purificadora, pendientes de aprobación primero. */
     val miembros: StateFlow<List<com.htogo.app.data.dto.MiembroNegocioDto>> = _miembros.asStateFlow()
@@ -88,6 +92,7 @@ class RepartidorViewModel : ViewModel() {
                 apiClient.authApi.perfil().body()?.repartidor?.let {
                     _esDueno.value = it.esDueno
                     _pendienteAprobacion.value = !it.aprobado
+                    _enLinea.value = it.estadoOperativo
                 }
             } catch (e: Exception) {
                 // Silencioso: sin dato se ocultan las acciones de dueño
@@ -526,6 +531,7 @@ class RepartidorViewModel : ViewModel() {
                 )
                 if (resp.isSuccessful && resp.body() != null) {
                     val body = resp.body()!!
+                    _enLinea.value = body.disponible
                     if (body.inventario != null) {
                         _inventarioVehiculo.value = body.inventario
                     } else {
@@ -557,6 +563,7 @@ class RepartidorViewModel : ViewModel() {
                 val resp = apiClient.inventarioApi.cargarVehiculo(com.htogo.app.data.dto.CargaVehiculoRequest(cargas))
                 if (resp.isSuccessful && resp.body() != null) {
                     _inventarioVehiculo.value = resp.body()!!
+                    _enLinea.value = resp.body()!!.ocupado > 0
                     cargarInventarioBase()
                     onSuccess(resp.body()!!)
                 } else {
@@ -606,6 +613,7 @@ class RepartidorViewModel : ViewModel() {
             try {
                 val resp = apiClient.inventarioApi.devolverABase()
                 if (resp.isSuccessful) {
+                    _enLinea.value = false
                     cargarInventarios()
                     onSuccess()
                 } else {
