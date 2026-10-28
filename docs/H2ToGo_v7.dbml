@@ -1,0 +1,346 @@
+// =========================================================================
+// H2ToGo v7 — Modelo Entidad-Relación en DBML (para https://dbdiagram.io)
+// Motor: PostgreSQL + PostGIS | 18 Tablas | 24 FKs | 7 ENUMs
+// =========================================================================
+
+Enum rol_usuario {
+  cliente
+  repartidor
+  admin
+}
+
+Enum tipo_vehiculo {
+  Camioneta
+  Moto
+  Triciclo
+  Otro
+}
+
+Enum tipo_solicitud_pedido {
+  directa
+  abierta
+}
+
+Enum estado_pedido {
+  pendiente
+  confirmado
+  en_camino
+  entregado
+  cancelado
+  no_entregado
+}
+
+Enum tipo_movimiento {
+  entrada_lote
+  carga_vehiculo
+  descarga_vehiculo
+  entrega_pedido
+  ajuste_manual
+  merma_caducidad
+}
+
+Enum codigo_cambio_perfil {
+  "01_direccion_negocio"
+  "02_nombre_negocio"
+  "03_datos_vehiculo"
+  "04_placas_vehiculo"
+  "05_baja_negocio"
+}
+
+Enum estado_solicitud {
+  pendiente
+  aprobado
+  rechazado
+}
+
+// -------------------------------------------------------------------------
+// 1. IDENTIDAD, CLIENTES Y GEOGRAFÍA
+// -------------------------------------------------------------------------
+
+Table usuarios {
+  id_usuario int [pk, increment]
+  nombre varchar(100) [not null]
+  apellidos varchar(100) [not null]
+  correo varchar(150) [not null, unique]
+  password_hash varchar(255) [not null]
+  telefono varchar(20) [not null, unique]
+  rol rol_usuario [not null]
+  url_foto_perfil varchar(500)
+  telefono_verificado boolean [not null, default: false]
+  codigo_verificacion varchar(10)
+  codigo_verificacion_expiracion timestamptz
+  codigo_intentos smallint [not null, default: 0]
+  cuenta_activa boolean [not null, default: true]
+  motivo_baja varchar(255)
+  fecha_baja timestamptz
+  fecha_registro timestamptz [not null, default: `now()`]
+  token_sesion_hash varchar(64) [unique]
+  token_fcm varchar(255)
+  sesion_fecha_creacion timestamptz
+  sesion_fecha_expiracion timestamptz
+
+  Indexes {
+    (id_usuario, rol) [unique, name: "uk_usuarios_id_rol"]
+  }
+}
+
+Table clientes {
+  id_usuario int [pk]
+  rol rol_usuario [not null, default: 'cliente']
+  ausencias_consecutivas int [not null, default: 0]
+  suspendido_hasta timestamptz
+}
+
+Table zonas_cobertura {
+  id_zona int [pk, increment]
+  nombre varchar(100) [not null, unique]
+  geom geography_MultiPolygon_4326 [not null]
+  activo boolean [not null, default: true]
+}
+
+Table direcciones_clientes {
+  id_direccion int [pk, increment]
+  id_cliente int [not null]
+  alias varchar(50) [not null]
+  calle varchar(150) [not null]
+  numero_exterior varchar(20) [not null]
+  numero_interior varchar(20)
+  colonia varchar(100) [not null]
+  codigo_postal varchar(10) [not null]
+  referencias text
+  ubicacion geography_Point_4326 [not null]
+  en_zona_cobertura boolean [not null, default: false]
+  activo boolean [not null, default: true]
+
+  Indexes {
+    (id_direccion, id_cliente) [unique, name: "uk_direcciones_id_cliente"]
+  }
+}
+
+// -------------------------------------------------------------------------
+// 2. NEGOCIOS, FLOTA Y REPARTIDORES
+// -------------------------------------------------------------------------
+
+Table negocios {
+  id_negocio int [pk, increment]
+  nombre_comercial varchar(150) [not null]
+  calle varchar(150)
+  numero_exterior varchar(20)
+  numero_interior varchar(20)
+  colonia varchar(100)
+  codigo_postal varchar(10)
+  referencias text
+  ubicacion_base geography_Point_4326
+  activo boolean [not null, default: true]
+  fecha_creacion timestamptz [not null, default: `now()`]
+}
+
+Table horarios_negocio {
+  id_horario int [pk, increment]
+  id_negocio int [not null]
+  dia_semana smallint [not null, note: '0 = Domingo .. 6 = Sábado']
+  hora_apertura time
+  hora_cierre time
+  cerrado boolean [not null, default: false]
+
+  Indexes {
+    (id_negocio, dia_semana) [unique, name: "uk_horario_negocio_dia"]
+  }
+}
+
+Table vehiculos_negocio {
+  id_vehiculo int [pk, increment]
+  id_negocio int [not null]
+  tipo_vehiculo tipo_vehiculo [not null]
+  marca varchar(50) [not null]
+  modelo varchar(50)
+  color varchar(30) [not null]
+  placas varchar(20)
+  capacidad_garrafones int [not null]
+  activo boolean [not null, default: true]
+
+  Indexes {
+    (id_vehiculo, id_negocio) [unique, name: "uk_vehiculos_id_negocio"]
+  }
+}
+
+Table repartidores {
+  id_usuario int [pk]
+  rol rol_usuario [not null, default: 'repartidor']
+  id_negocio int [not null]
+  es_dueno boolean [not null, default: false, note: 'Exactamente 1 dueño por negocio (uk_repartidores_un_dueno)']
+  aprobado boolean [not null, default: true]
+  estado_operativo boolean [not null, default: false]
+  id_vehiculo_actual int
+  ubicacion_actual geography_Point_4326
+  ubicacion_reportada_en timestamptz
+}
+
+Table solicitudes_cambio_perfil {
+  id_solicitud int [pk, increment]
+  codigo_cambio codigo_cambio_perfil [not null]
+  id_negocio int [not null]
+  id_vehiculo int
+  valor_anterior text
+  valor_nuevo text [not null]
+  estado estado_solicitud [not null, default: 'pendiente']
+  id_admin_revisor int
+  comentario_admin varchar(500)
+  fecha_solicitud timestamptz [not null, default: `now()`]
+  fecha_resolucion timestamptz
+}
+
+// -------------------------------------------------------------------------
+// 3. CATÁLOGO E INVENTARIO
+// -------------------------------------------------------------------------
+
+Table marcas {
+  id_marca int [pk, increment]
+  nombre varchar(100) [not null, unique]
+  activo boolean [not null, default: true]
+}
+
+Table productos_negocio {
+  id_producto_negocio int [pk, increment]
+  id_negocio int [not null]
+  id_marca int [not null]
+  precio numeric(10,2) [not null]
+  precio_envase numeric(10,2) [not null]
+  capacidad_maxima int [not null]
+  activo boolean [not null, default: true]
+
+  Indexes {
+    (id_negocio, id_marca) [unique, name: "uk_producto_negocio_marca"]
+  }
+}
+
+Table lotes_inventario {
+  id_lote int [pk, increment]
+  id_negocio int [not null]
+  id_marca int [not null]
+  fecha_caducidad date [not null]
+  fecha_entrada timestamptz [not null, default: `now()`]
+  cantidad_inicial int [not null]
+  cantidad_actual int [not null, default: 0]
+  cantidad_apartada int [not null, default: 0]
+  proveedor varchar(150)
+  costo_unitario numeric(10,2)
+  activo boolean [not null, default: true]
+  fecha_actualizacion timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (id_lote, id_negocio) [unique, name: "uk_lotes_id_negocio"]
+  }
+}
+
+Table inventario_vehiculo {
+  id_vehiculo int [pk]
+  id_lote int [pk]
+  id_negocio int [not null]
+  cantidad_actual int [not null, default: 0]
+  cantidad_apartada int [not null, default: 0]
+  fecha_actualizacion timestamptz [not null, default: `now()`]
+}
+
+Table movimientos_inventario {
+  id_movimiento int [pk, increment]
+  tipo tipo_movimiento [not null]
+  id_lote int [not null, note: 'Bitácora inmutable sin FK']
+  id_vehiculo int
+  cantidad int [not null]
+  id_pedido int
+  id_repartidor_responsable int
+  notas varchar(255)
+  fecha timestamptz [not null, default: `now()`]
+}
+
+// -------------------------------------------------------------------------
+// 4. PEDIDOS, APARTADOS E HISTORIAL
+// -------------------------------------------------------------------------
+
+Table pedidos {
+  id_pedido int [pk, increment]
+  id_cliente int [not null]
+  id_direccion_entrega int [not null]
+  id_negocio_solicitado int
+  id_repartidor int
+  tipo_solicitud tipo_solicitud_pedido [not null, default: 'directa']
+  precio_maximo_garrafon numeric(10,2)
+  estado_actual estado_pedido [not null, default: 'pendiente']
+  total_pagar numeric(10,2) [not null]
+  garrafones_totales int [not null]
+  indicaciones_entrega varchar(500)
+  fecha_programada timestamptz
+  es_programado boolean [not null]
+  notificado_programado boolean [not null, default: false]
+  fecha_creacion timestamptz [not null, default: `now()`]
+  fecha_entrega timestamptz
+}
+
+Table detalles_pedido {
+  id_detalle int [pk, increment]
+  id_pedido int [not null]
+  id_marca int [not null]
+  cantidad_solicitada int [not null]
+  cantidad_entregada int
+  tiene_envase boolean [not null]
+  precio_unitario numeric(10,2) [not null]
+  precio_envase_unitario numeric(10,2)
+  agregada_en_sitio boolean [not null, default: false]
+}
+
+Table apartados_pedido {
+  id_apartado int [pk, increment]
+  id_pedido int [not null]
+  id_lote int [not null]
+  id_vehiculo int
+  cantidad int [not null]
+  fecha_apartado timestamptz [not null, default: `now()`]
+}
+
+Table historial_estados_pedido {
+  id_historial int [pk, increment]
+  id_pedido int [not null]
+  estado estado_pedido [not null]
+  notas_adicionales varchar(500)
+  ubicacion geography_Point_4326
+  fecha_cambio timestamptz [not null, default: `now()`]
+}
+
+// -------------------------------------------------------------------------
+// RELACIONES (24 Llaves Foráneas de H2ToGo v7)
+// -------------------------------------------------------------------------
+
+Ref fk_clientes_usuario: clientes.(id_usuario, rol) - usuarios.(id_usuario, rol) [delete: cascade]
+Ref fk_repartidores_usuario: repartidores.(id_usuario, rol) - usuarios.(id_usuario, rol) [delete: cascade]
+Ref fk_direcciones_cliente: direcciones_clientes.id_cliente > clientes.id_usuario [delete: cascade]
+
+Ref fk_horarios_negocio: horarios_negocio.id_negocio > negocios.id_negocio [delete: cascade]
+Ref fk_vehiculos_negocio: vehiculos_negocio.id_negocio > negocios.id_negocio [delete: restrict]
+Ref fk_repartidores_negocio: repartidores.id_negocio > negocios.id_negocio
+Ref fk_repartidores_vehiculo_negocio: repartidores.(id_vehiculo_actual, id_negocio) > vehiculos_negocio.(id_vehiculo, id_negocio)
+
+Ref fk_solicitudes_negocio: solicitudes_cambio_perfil.id_negocio > negocios.id_negocio [delete: restrict]
+Ref fk_solicitudes_vehiculo_negocio: solicitudes_cambio_perfil.(id_vehiculo, id_negocio) > vehiculos_negocio.(id_vehiculo, id_negocio) [delete: restrict]
+Ref fk_solicitudes_admin: solicitudes_cambio_perfil.id_admin_revisor > usuarios.id_usuario [delete: restrict]
+
+Ref fk_productos_negocio: productos_negocio.id_negocio > negocios.id_negocio [delete: restrict]
+Ref fk_productos_marca: productos_negocio.id_marca > marcas.id_marca [delete: restrict]
+
+Ref fk_lotes_producto_negocio: lotes_inventario.(id_negocio, id_marca) > productos_negocio.(id_negocio, id_marca) [delete: restrict]
+
+Ref fk_inv_veh_vehiculo_negocio: inventario_vehiculo.(id_vehiculo, id_negocio) > vehiculos_negocio.(id_vehiculo, id_negocio) [delete: restrict]
+Ref fk_inv_veh_lote_negocio: inventario_vehiculo.(id_lote, id_negocio) > lotes_inventario.(id_lote, id_negocio) [delete: restrict]
+
+Ref fk_pedidos_direccion_cliente: pedidos.(id_direccion_entrega, id_cliente) > direcciones_clientes.(id_direccion, id_cliente) [delete: restrict]
+Ref fk_pedidos_negocio: pedidos.id_negocio_solicitado > negocios.id_negocio [delete: restrict]
+Ref fk_pedidos_repartidor: pedidos.id_repartidor > repartidores.id_usuario [delete: restrict]
+
+Ref fk_detalles_pedido: detalles_pedido.id_pedido > pedidos.id_pedido [delete: cascade]
+Ref fk_detalles_marca: detalles_pedido.id_marca > marcas.id_marca [delete: restrict]
+
+Ref fk_apartados_pedido: apartados_pedido.id_pedido > pedidos.id_pedido [delete: cascade]
+Ref fk_apartados_lote: apartados_pedido.id_lote > lotes_inventario.id_lote [delete: restrict]
+Ref fk_apartados_inv_vehiculo: apartados_pedido.(id_vehiculo, id_lote) > inventario_vehiculo.(id_vehiculo, id_lote) [delete: restrict]
+
+Ref fk_historial_pedido: historial_estados_pedido.id_pedido > pedidos.id_pedido [delete: restrict]

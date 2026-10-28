@@ -1,0 +1,913 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3560" height="2580" viewBox="0 0 3560 2580">
+
+    <defs>
+      <style>
+        .bg { fill: #f1f5f9; }
+        .title { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 28px; font-weight: 800; fill: #0f172a; }
+        .subtitle { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 15px; font-weight: 600; fill: #334155; }
+        .tbl-header { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 15.5px; font-weight: 700; fill: #ffffff; }
+        .col-name { font-family: 'Consolas', 'Courier New', monospace; font-size: 12.5px; fill: #0f172a; }
+        .col-name-pk { font-family: 'Consolas', 'Courier New', monospace; font-size: 12.5px; font-weight: 700; fill: #0f172a; }
+        .col-type { font-family: 'Consolas', 'Courier New', monospace; font-size: 11.5px; fill: #475569; }
+        .badge-pk { font-family: 'Segoe UI', sans-serif; font-size: 10.5px; font-weight: 800; fill: #b45309; }
+        .badge-fk { font-family: 'Segoe UI', sans-serif; font-size: 10.5px; font-weight: 800; fill: #1d4ed8; }
+        .badge-nn { font-family: 'Segoe UI', sans-serif; font-size: 10.5px; font-weight: 600; fill: #64748b; }
+        .rel-badge { font-family: 'Segoe UI', sans-serif; font-size: 11px; font-weight: 800; fill: #ffffff; }
+        .enum-title { font-family: 'Segoe UI', sans-serif; font-size: 13px; font-weight: 700; fill: #1e293b; }
+        .enum-val { font-family: 'Consolas', monospace; font-size: 12px; fill: #334155; }
+        .shadow { filter: drop-shadow(0px 4px 8px rgba(15, 23, 42, 0.10)); }
+      </style>
+    </defs>
+    
+<rect width="3560" height="2580" class="bg"/>
+<rect x="60" y="20" width="3440" height="82" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="shadow"/>
+<text x="90" y="54" class="title">H2ToGo v7 — Modelo Entidad-Relación (PostgreSQL + PostGIS)</text>
+<text x="90" y="82" class="subtitle">18 Tablas  •  24 Llaves Foráneas (con notación pata de gallo &gt;| y carriles de 70 px)  •  7 Tipos ENUM  •  2 Vistas  •  Row-Level Security</text>
+<rect x="2340" y="36" width="18" height="18" rx="4" fill="#1d4ed8"/><text x="2366" y="50" class="subtitle">Identidad y Clientes</text>
+<rect x="2560" y="36" width="18" height="18" rx="4" fill="#047857"/><text x="2586" y="50" class="subtitle">Negocios y Flota</text>
+<rect x="2760" y="36" width="18" height="18" rx="4" fill="#c2410c"/><text x="2786" y="50" class="subtitle">Catálogo e Inventario</text>
+<rect x="3000" y="36" width="18" height="18" rx="4" fill="#6d28d9"/><text x="3026" y="50" class="subtitle">Pedidos y Apartados</text>
+<text x="2340" y="82" class="subtitle">Notación:   &gt;| = Muchos (Hija FK)     •     || = Uno obligatorio (Padre PK/UK)     •     o| = Uno opcional (FK NULLABLE)</text>
+<g class="shadow">
+<rect x="200" y="180" width="420" height="528" rx="9" fill="#ffffff" stroke="#1d4ed8" stroke-width="2.4"/>
+<path d="M 200,189 Q 200,180 209,180 L 611,180 Q 620,180 620,189 L 620,218 L 200,218 Z" fill="#1d4ed8"/>
+<text x="216" y="205" class="tbl-header">usuarios</text>
+<text x="216" y="234" class="col-name-pk">id_usuario</text>
+<text x="402" y="234" class="col-type">INT</text>
+<text x="608" y="234" text-anchor="end" class="badge-pk">PK</text>
+<rect x="201.5" y="242" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="258" class="col-name">nombre</text>
+<text x="402" y="258" class="col-type">VARCHAR(100)</text>
+<text x="608" y="258" text-anchor="end" class="badge-nn">NN</text>
+<text x="216" y="282" class="col-name">apellidos</text>
+<text x="402" y="282" class="col-type">VARCHAR(100)</text>
+<text x="608" y="282" text-anchor="end" class="badge-nn">NN</text>
+<rect x="201.5" y="290" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="306" class="col-name">correo</text>
+<text x="402" y="306" class="col-type">VARCHAR(150)</text>
+<text x="608" y="306" text-anchor="end" class="badge-nn">UK, NN</text>
+<text x="216" y="330" class="col-name">password_hash</text>
+<text x="402" y="330" class="col-type">VARCHAR(255)</text>
+<text x="608" y="330" text-anchor="end" class="badge-nn">NN</text>
+<rect x="201.5" y="338" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="354" class="col-name">telefono</text>
+<text x="402" y="354" class="col-type">VARCHAR(20)</text>
+<text x="608" y="354" text-anchor="end" class="badge-nn">UK, NN</text>
+<text x="216" y="378" class="col-name">rol</text>
+<text x="402" y="378" class="col-type">rol_usuario</text>
+<text x="608" y="378" text-anchor="end" class="badge-nn">UK*, NN</text>
+<rect x="201.5" y="386" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="402" class="col-name">url_foto_perfil</text>
+<text x="402" y="402" class="col-type">VARCHAR(500)</text>
+<text x="216" y="426" class="col-name">telefono_verificado</text>
+<text x="402" y="426" class="col-type">BOOLEAN</text>
+<text x="608" y="426" text-anchor="end" class="badge-nn">NN</text>
+<rect x="201.5" y="434" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="450" class="col-name">codigo_verificacion</text>
+<text x="402" y="450" class="col-type">VARCHAR(10)</text>
+<text x="216" y="474" class="col-name">codigo_verificacion_expiracion</text>
+<text x="402" y="474" class="col-type">TIMESTAMPTZ</text>
+<rect x="201.5" y="482" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="498" class="col-name">codigo_intentos</text>
+<text x="402" y="498" class="col-type">SMALLINT</text>
+<text x="608" y="498" text-anchor="end" class="badge-nn">NN</text>
+<text x="216" y="522" class="col-name">cuenta_activa</text>
+<text x="402" y="522" class="col-type">BOOLEAN</text>
+<text x="608" y="522" text-anchor="end" class="badge-nn">NN</text>
+<rect x="201.5" y="530" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="546" class="col-name">motivo_baja</text>
+<text x="402" y="546" class="col-type">VARCHAR(255)</text>
+<text x="216" y="570" class="col-name">fecha_baja</text>
+<text x="402" y="570" class="col-type">TIMESTAMPTZ</text>
+<rect x="201.5" y="578" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="594" class="col-name">fecha_registro</text>
+<text x="402" y="594" class="col-type">TIMESTAMPTZ</text>
+<text x="608" y="594" text-anchor="end" class="badge-nn">NN</text>
+<text x="216" y="618" class="col-name">token_sesion_hash</text>
+<text x="402" y="618" class="col-type">VARCHAR(64)</text>
+<text x="608" y="618" text-anchor="end" class="badge-nn">UK</text>
+<rect x="201.5" y="626" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="642" class="col-name">token_fcm</text>
+<text x="402" y="642" class="col-type">VARCHAR(255)</text>
+<text x="216" y="666" class="col-name">sesion_fecha_creacion</text>
+<text x="402" y="666" class="col-type">TIMESTAMPTZ</text>
+<rect x="201.5" y="674" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="690" class="col-name">sesion_fecha_expiracion</text>
+<text x="402" y="690" class="col-type">TIMESTAMPTZ</text>
+</g>
+<g class="shadow">
+<rect x="200" y="870" width="420" height="144" rx="9" fill="#ffffff" stroke="#1d4ed8" stroke-width="2.4"/>
+<path d="M 200,879 Q 200,870 209,870 L 611,870 Q 620,870 620,879 L 620,908 L 200,908 Z" fill="#1d4ed8"/>
+<text x="216" y="895" class="tbl-header">clientes</text>
+<text x="216" y="924" class="col-name-pk">id_usuario</text>
+<text x="402" y="924" class="col-type">INT</text>
+<text x="608" y="924" text-anchor="end" class="badge-pk">PK, FK</text>
+<rect x="201.5" y="932" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="948" class="col-name">rol</text>
+<text x="402" y="948" class="col-type">rol_usuario (&#x27;cliente&#x27;)</text>
+<text x="608" y="948" text-anchor="end" class="badge-fk">FK, NN</text>
+<text x="216" y="972" class="col-name">ausencias_consecutivas</text>
+<text x="402" y="972" class="col-type">INT</text>
+<text x="608" y="972" text-anchor="end" class="badge-nn">NN</text>
+<rect x="201.5" y="980" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="996" class="col-name">suspendido_hasta</text>
+<text x="402" y="996" class="col-type">TIMESTAMPTZ</text>
+</g>
+<g class="shadow">
+<rect x="200" y="1440" width="420" height="336" rx="9" fill="#ffffff" stroke="#1d4ed8" stroke-width="2.4"/>
+<path d="M 200,1449 Q 200,1440 209,1440 L 611,1440 Q 620,1440 620,1449 L 620,1478 L 200,1478 Z" fill="#1d4ed8"/>
+<text x="216" y="1465" class="tbl-header">direcciones_clientes</text>
+<text x="216" y="1494" class="col-name-pk">id_direccion</text>
+<text x="402" y="1494" class="col-type">INT</text>
+<text x="608" y="1494" text-anchor="end" class="badge-pk">PK, UK*</text>
+<rect x="201.5" y="1502" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="1518" class="col-name">id_cliente</text>
+<text x="402" y="1518" class="col-type">INT</text>
+<text x="608" y="1518" text-anchor="end" class="badge-fk">FK, UK*, NN</text>
+<text x="216" y="1542" class="col-name">alias</text>
+<text x="402" y="1542" class="col-type">VARCHAR(50)</text>
+<text x="608" y="1542" text-anchor="end" class="badge-nn">NN</text>
+<rect x="201.5" y="1550" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="1566" class="col-name">calle</text>
+<text x="402" y="1566" class="col-type">VARCHAR(150)</text>
+<text x="608" y="1566" text-anchor="end" class="badge-nn">NN</text>
+<text x="216" y="1590" class="col-name">numero_exterior</text>
+<text x="402" y="1590" class="col-type">VARCHAR(20)</text>
+<text x="608" y="1590" text-anchor="end" class="badge-nn">NN</text>
+<rect x="201.5" y="1598" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="1614" class="col-name">numero_interior</text>
+<text x="402" y="1614" class="col-type">VARCHAR(20)</text>
+<text x="216" y="1638" class="col-name">colonia</text>
+<text x="402" y="1638" class="col-type">VARCHAR(100)</text>
+<text x="608" y="1638" text-anchor="end" class="badge-nn">NN</text>
+<rect x="201.5" y="1646" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="1662" class="col-name">codigo_postal</text>
+<text x="402" y="1662" class="col-type">VARCHAR(10)</text>
+<text x="608" y="1662" text-anchor="end" class="badge-nn">NN</text>
+<text x="216" y="1686" class="col-name">referencias</text>
+<text x="402" y="1686" class="col-type">TEXT</text>
+<rect x="201.5" y="1694" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="1710" class="col-name">ubicacion</text>
+<text x="402" y="1710" class="col-type">geography(Point,4326)</text>
+<text x="608" y="1710" text-anchor="end" class="badge-nn">NN</text>
+<text x="216" y="1734" class="col-name">en_zona_cobertura</text>
+<text x="402" y="1734" class="col-type">BOOLEAN</text>
+<text x="608" y="1734" text-anchor="end" class="badge-nn">NN</text>
+<rect x="201.5" y="1742" width="417" height="24" fill="#eff6ff" opacity="0.65"/>
+<text x="216" y="1758" class="col-name">activo</text>
+<text x="402" y="1758" class="col-type">BOOLEAN</text>
+<text x="608" y="1758" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="200" y="1910" width="420" height="144" rx="9" fill="#ffffff" stroke="#0369a1" stroke-width="2.4"/>
+<path d="M 200,1919 Q 200,1910 209,1910 L 611,1910 Q 620,1910 620,1919 L 620,1948 L 200,1948 Z" fill="#0369a1"/>
+<text x="216" y="1935" class="tbl-header">zonas_cobertura</text>
+<text x="216" y="1964" class="col-name-pk">id_zona</text>
+<text x="402" y="1964" class="col-type">INT</text>
+<text x="608" y="1964" text-anchor="end" class="badge-pk">PK</text>
+<rect x="201.5" y="1972" width="417" height="24" fill="#f0f9ff" opacity="0.65"/>
+<text x="216" y="1988" class="col-name">nombre</text>
+<text x="402" y="1988" class="col-type">VARCHAR(100)</text>
+<text x="608" y="1988" text-anchor="end" class="badge-nn">UK, NN</text>
+<text x="216" y="2012" class="col-name">geom</text>
+<text x="402" y="2012" class="col-type">geography(MultiPolygon,4326)</text>
+<text x="608" y="2012" text-anchor="end" class="badge-nn">NN</text>
+<rect x="201.5" y="2020" width="417" height="24" fill="#f0f9ff" opacity="0.65"/>
+<text x="216" y="2036" class="col-name">activo</text>
+<text x="402" y="2036" class="col-type">BOOLEAN</text>
+<text x="608" y="2036" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="1080" y="180" width="420" height="312" rx="9" fill="#ffffff" stroke="#047857" stroke-width="2.4"/>
+<path d="M 1080,189 Q 1080,180 1089,180 L 1491,180 Q 1500,180 1500,189 L 1500,218 L 1080,218 Z" fill="#047857"/>
+<text x="1096" y="205" class="tbl-header">negocios</text>
+<text x="1096" y="234" class="col-name-pk">id_negocio</text>
+<text x="1282" y="234" class="col-type">INT</text>
+<text x="1488" y="234" text-anchor="end" class="badge-pk">PK</text>
+<rect x="1081.5" y="242" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="258" class="col-name">nombre_comercial</text>
+<text x="1282" y="258" class="col-type">VARCHAR(150)</text>
+<text x="1488" y="258" text-anchor="end" class="badge-nn">NN</text>
+<text x="1096" y="282" class="col-name">calle</text>
+<text x="1282" y="282" class="col-type">VARCHAR(150)</text>
+<rect x="1081.5" y="290" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="306" class="col-name">numero_exterior</text>
+<text x="1282" y="306" class="col-type">VARCHAR(20)</text>
+<text x="1096" y="330" class="col-name">numero_interior</text>
+<text x="1282" y="330" class="col-type">VARCHAR(20)</text>
+<rect x="1081.5" y="338" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="354" class="col-name">colonia</text>
+<text x="1282" y="354" class="col-type">VARCHAR(100)</text>
+<text x="1096" y="378" class="col-name">codigo_postal</text>
+<text x="1282" y="378" class="col-type">VARCHAR(10)</text>
+<rect x="1081.5" y="386" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="402" class="col-name">referencias</text>
+<text x="1282" y="402" class="col-type">TEXT</text>
+<text x="1096" y="426" class="col-name">ubicacion_base</text>
+<text x="1282" y="426" class="col-type">geography(Point,4326)</text>
+<rect x="1081.5" y="434" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="450" class="col-name">activo</text>
+<text x="1282" y="450" class="col-type">BOOLEAN</text>
+<text x="1488" y="450" text-anchor="end" class="badge-nn">NN</text>
+<text x="1096" y="474" class="col-name">fecha_creacion</text>
+<text x="1282" y="474" class="col-type">TIMESTAMPTZ</text>
+<text x="1488" y="474" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="1080" y="630" width="420" height="192" rx="9" fill="#ffffff" stroke="#047857" stroke-width="2.4"/>
+<path d="M 1080,639 Q 1080,630 1089,630 L 1491,630 Q 1500,630 1500,639 L 1500,668 L 1080,668 Z" fill="#047857"/>
+<text x="1096" y="655" class="tbl-header">horarios_negocio</text>
+<text x="1096" y="684" class="col-name-pk">id_horario</text>
+<text x="1282" y="684" class="col-type">INT</text>
+<text x="1488" y="684" text-anchor="end" class="badge-pk">PK</text>
+<rect x="1081.5" y="692" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="708" class="col-name">id_negocio</text>
+<text x="1282" y="708" class="col-type">INT</text>
+<text x="1488" y="708" text-anchor="end" class="badge-fk">FK, UK*, NN</text>
+<text x="1096" y="732" class="col-name">dia_semana</text>
+<text x="1282" y="732" class="col-type">SMALLINT (0..6)</text>
+<text x="1488" y="732" text-anchor="end" class="badge-nn">UK*, NN</text>
+<rect x="1081.5" y="740" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="756" class="col-name">hora_apertura</text>
+<text x="1282" y="756" class="col-type">TIME</text>
+<text x="1096" y="780" class="col-name">hora_cierre</text>
+<text x="1282" y="780" class="col-type">TIME</text>
+<rect x="1081.5" y="788" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="804" class="col-name">cerrado</text>
+<text x="1282" y="804" class="col-type">BOOLEAN</text>
+<text x="1488" y="804" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="1080" y="960" width="420" height="264" rx="9" fill="#ffffff" stroke="#047857" stroke-width="2.4"/>
+<path d="M 1080,969 Q 1080,960 1089,960 L 1491,960 Q 1500,960 1500,969 L 1500,998 L 1080,998 Z" fill="#047857"/>
+<text x="1096" y="985" class="tbl-header">vehiculos_negocio</text>
+<text x="1096" y="1014" class="col-name-pk">id_vehiculo</text>
+<text x="1282" y="1014" class="col-type">INT</text>
+<text x="1488" y="1014" text-anchor="end" class="badge-pk">PK, UK*</text>
+<rect x="1081.5" y="1022" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="1038" class="col-name">id_negocio</text>
+<text x="1282" y="1038" class="col-type">INT</text>
+<text x="1488" y="1038" text-anchor="end" class="badge-fk">FK, UK*, NN</text>
+<text x="1096" y="1062" class="col-name">tipo_vehiculo</text>
+<text x="1282" y="1062" class="col-type">tipo_vehiculo</text>
+<text x="1488" y="1062" text-anchor="end" class="badge-nn">NN</text>
+<rect x="1081.5" y="1070" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="1086" class="col-name">marca</text>
+<text x="1282" y="1086" class="col-type">VARCHAR(50)</text>
+<text x="1488" y="1086" text-anchor="end" class="badge-nn">NN</text>
+<text x="1096" y="1110" class="col-name">modelo</text>
+<text x="1282" y="1110" class="col-type">VARCHAR(50)</text>
+<rect x="1081.5" y="1118" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="1134" class="col-name">color</text>
+<text x="1282" y="1134" class="col-type">VARCHAR(30)</text>
+<text x="1488" y="1134" text-anchor="end" class="badge-nn">NN</text>
+<text x="1096" y="1158" class="col-name">placas</text>
+<text x="1282" y="1158" class="col-type">VARCHAR(20)</text>
+<text x="1488" y="1158" text-anchor="end" class="badge-nn">UK parcial</text>
+<rect x="1081.5" y="1166" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="1182" class="col-name">capacidad_garrafones</text>
+<text x="1282" y="1182" class="col-type">INT</text>
+<text x="1488" y="1182" text-anchor="end" class="badge-nn">NN</text>
+<text x="1096" y="1206" class="col-name">activo</text>
+<text x="1282" y="1206" class="col-type">BOOLEAN</text>
+<text x="1488" y="1206" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="1080" y="1440" width="420" height="264" rx="9" fill="#ffffff" stroke="#047857" stroke-width="2.4"/>
+<path d="M 1080,1449 Q 1080,1440 1089,1440 L 1491,1440 Q 1500,1440 1500,1449 L 1500,1478 L 1080,1478 Z" fill="#047857"/>
+<text x="1096" y="1465" class="tbl-header">repartidores</text>
+<text x="1096" y="1494" class="col-name-pk">id_usuario</text>
+<text x="1282" y="1494" class="col-type">INT</text>
+<text x="1488" y="1494" text-anchor="end" class="badge-pk">PK, FK</text>
+<rect x="1081.5" y="1502" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="1518" class="col-name">rol</text>
+<text x="1282" y="1518" class="col-type">rol_usuario (&#x27;repartidor&#x27;)</text>
+<text x="1488" y="1518" text-anchor="end" class="badge-fk">FK, NN</text>
+<text x="1096" y="1542" class="col-name">id_negocio</text>
+<text x="1282" y="1542" class="col-type">INT</text>
+<text x="1488" y="1542" text-anchor="end" class="badge-fk">FK, NN</text>
+<rect x="1081.5" y="1550" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="1566" class="col-name">es_dueno</text>
+<text x="1282" y="1566" class="col-type">BOOLEAN</text>
+<text x="1488" y="1566" text-anchor="end" class="badge-nn">UK parcial, NN</text>
+<text x="1096" y="1590" class="col-name">aprobado</text>
+<text x="1282" y="1590" class="col-type">BOOLEAN</text>
+<text x="1488" y="1590" text-anchor="end" class="badge-nn">NN</text>
+<rect x="1081.5" y="1598" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="1614" class="col-name">estado_operativo</text>
+<text x="1282" y="1614" class="col-type">BOOLEAN</text>
+<text x="1488" y="1614" text-anchor="end" class="badge-nn">NN</text>
+<text x="1096" y="1638" class="col-name">id_vehiculo_actual</text>
+<text x="1282" y="1638" class="col-type">INT</text>
+<text x="1488" y="1638" text-anchor="end" class="badge-fk">FK, UK parcial</text>
+<rect x="1081.5" y="1646" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="1662" class="col-name">ubicacion_actual</text>
+<text x="1282" y="1662" class="col-type">geography(Point,4326)</text>
+<text x="1096" y="1686" class="col-name">ubicacion_reportada_en</text>
+<text x="1282" y="1686" class="col-type">TIMESTAMPTZ</text>
+</g>
+<g class="shadow">
+<rect x="1080" y="1840" width="420" height="312" rx="9" fill="#ffffff" stroke="#047857" stroke-width="2.4"/>
+<path d="M 1080,1849 Q 1080,1840 1089,1840 L 1491,1840 Q 1500,1840 1500,1849 L 1500,1878 L 1080,1878 Z" fill="#047857"/>
+<text x="1096" y="1865" class="tbl-header">solicitudes_cambio_perfil</text>
+<text x="1096" y="1894" class="col-name-pk">id_solicitud</text>
+<text x="1282" y="1894" class="col-type">INT</text>
+<text x="1488" y="1894" text-anchor="end" class="badge-pk">PK</text>
+<rect x="1081.5" y="1902" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="1918" class="col-name">codigo_cambio</text>
+<text x="1282" y="1918" class="col-type">codigo_cambio_perfil</text>
+<text x="1488" y="1918" text-anchor="end" class="badge-nn">NN</text>
+<text x="1096" y="1942" class="col-name">id_negocio</text>
+<text x="1282" y="1942" class="col-type">INT</text>
+<text x="1488" y="1942" text-anchor="end" class="badge-fk">FK, NN</text>
+<rect x="1081.5" y="1950" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="1966" class="col-name">id_vehiculo</text>
+<text x="1282" y="1966" class="col-type">INT</text>
+<text x="1488" y="1966" text-anchor="end" class="badge-fk">FK</text>
+<text x="1096" y="1990" class="col-name">valor_anterior</text>
+<text x="1282" y="1990" class="col-type">TEXT</text>
+<rect x="1081.5" y="1998" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="2014" class="col-name">valor_nuevo</text>
+<text x="1282" y="2014" class="col-type">TEXT</text>
+<text x="1488" y="2014" text-anchor="end" class="badge-nn">NN</text>
+<text x="1096" y="2038" class="col-name">estado</text>
+<text x="1282" y="2038" class="col-type">estado_solicitud</text>
+<text x="1488" y="2038" text-anchor="end" class="badge-nn">NN</text>
+<rect x="1081.5" y="2046" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="2062" class="col-name">id_admin_revisor</text>
+<text x="1282" y="2062" class="col-type">INT</text>
+<text x="1488" y="2062" text-anchor="end" class="badge-fk">FK</text>
+<text x="1096" y="2086" class="col-name">comentario_admin</text>
+<text x="1282" y="2086" class="col-type">VARCHAR(500)</text>
+<rect x="1081.5" y="2094" width="417" height="24" fill="#ecfdf5" opacity="0.65"/>
+<text x="1096" y="2110" class="col-name">fecha_solicitud</text>
+<text x="1282" y="2110" class="col-type">TIMESTAMPTZ</text>
+<text x="1488" y="2110" text-anchor="end" class="badge-nn">NN</text>
+<text x="1096" y="2134" class="col-name">fecha_resolucion</text>
+<text x="1282" y="2134" class="col-type">TIMESTAMPTZ</text>
+</g>
+<g class="shadow">
+<rect x="1960" y="180" width="420" height="120" rx="9" fill="#ffffff" stroke="#c2410c" stroke-width="2.4"/>
+<path d="M 1960,189 Q 1960,180 1969,180 L 2371,180 Q 2380,180 2380,189 L 2380,218 L 1960,218 Z" fill="#c2410c"/>
+<text x="1976" y="205" class="tbl-header">marcas</text>
+<text x="1976" y="234" class="col-name-pk">id_marca</text>
+<text x="2162" y="234" class="col-type">INT</text>
+<text x="2368" y="234" text-anchor="end" class="badge-pk">PK</text>
+<rect x="1961.5" y="242" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="258" class="col-name">nombre</text>
+<text x="2162" y="258" class="col-type">VARCHAR(100)</text>
+<text x="2368" y="258" text-anchor="end" class="badge-nn">UK, NN</text>
+<text x="1976" y="282" class="col-name">activo</text>
+<text x="2162" y="282" class="col-type">BOOLEAN</text>
+<text x="2368" y="282" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="1960" y="440" width="420" height="216" rx="9" fill="#ffffff" stroke="#c2410c" stroke-width="2.4"/>
+<path d="M 1960,449 Q 1960,440 1969,440 L 2371,440 Q 2380,440 2380,449 L 2380,478 L 1960,478 Z" fill="#c2410c"/>
+<text x="1976" y="465" class="tbl-header">productos_negocio</text>
+<text x="1976" y="494" class="col-name-pk">id_producto_negocio</text>
+<text x="2162" y="494" class="col-type">INT</text>
+<text x="2368" y="494" text-anchor="end" class="badge-pk">PK</text>
+<rect x="1961.5" y="502" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="518" class="col-name">id_negocio</text>
+<text x="2162" y="518" class="col-type">INT</text>
+<text x="2368" y="518" text-anchor="end" class="badge-fk">FK, UK*, NN</text>
+<text x="1976" y="542" class="col-name">id_marca</text>
+<text x="2162" y="542" class="col-type">INT</text>
+<text x="2368" y="542" text-anchor="end" class="badge-fk">FK, UK*, NN</text>
+<rect x="1961.5" y="550" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="566" class="col-name">precio</text>
+<text x="2162" y="566" class="col-type">NUMERIC(10,2)</text>
+<text x="2368" y="566" text-anchor="end" class="badge-nn">NN</text>
+<text x="1976" y="590" class="col-name">precio_envase</text>
+<text x="2162" y="590" class="col-type">NUMERIC(10,2)</text>
+<text x="2368" y="590" text-anchor="end" class="badge-nn">NN</text>
+<rect x="1961.5" y="598" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="614" class="col-name">capacidad_maxima</text>
+<text x="2162" y="614" class="col-type">INT</text>
+<text x="2368" y="614" text-anchor="end" class="badge-nn">NN</text>
+<text x="1976" y="638" class="col-name">activo</text>
+<text x="2162" y="638" class="col-type">BOOLEAN</text>
+<text x="2368" y="638" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="1960" y="800" width="420" height="336" rx="9" fill="#ffffff" stroke="#c2410c" stroke-width="2.4"/>
+<path d="M 1960,809 Q 1960,800 1969,800 L 2371,800 Q 2380,800 2380,809 L 2380,838 L 1960,838 Z" fill="#c2410c"/>
+<text x="1976" y="825" class="tbl-header">lotes_inventario</text>
+<text x="1976" y="854" class="col-name-pk">id_lote</text>
+<text x="2162" y="854" class="col-type">INT</text>
+<text x="2368" y="854" text-anchor="end" class="badge-pk">PK, UK*</text>
+<rect x="1961.5" y="862" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="878" class="col-name">id_negocio</text>
+<text x="2162" y="878" class="col-type">INT</text>
+<text x="2368" y="878" text-anchor="end" class="badge-fk">FK, UK*, NN</text>
+<text x="1976" y="902" class="col-name">id_marca</text>
+<text x="2162" y="902" class="col-type">INT</text>
+<text x="2368" y="902" text-anchor="end" class="badge-fk">FK, NN</text>
+<rect x="1961.5" y="910" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="926" class="col-name">fecha_caducidad</text>
+<text x="2162" y="926" class="col-type">DATE</text>
+<text x="2368" y="926" text-anchor="end" class="badge-nn">NN</text>
+<text x="1976" y="950" class="col-name">fecha_entrada</text>
+<text x="2162" y="950" class="col-type">TIMESTAMPTZ</text>
+<text x="2368" y="950" text-anchor="end" class="badge-nn">NN</text>
+<rect x="1961.5" y="958" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="974" class="col-name">cantidad_inicial</text>
+<text x="2162" y="974" class="col-type">INT</text>
+<text x="2368" y="974" text-anchor="end" class="badge-nn">NN</text>
+<text x="1976" y="998" class="col-name">cantidad_actual</text>
+<text x="2162" y="998" class="col-type">INT</text>
+<text x="2368" y="998" text-anchor="end" class="badge-nn">NN</text>
+<rect x="1961.5" y="1006" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="1022" class="col-name">cantidad_apartada</text>
+<text x="2162" y="1022" class="col-type">INT</text>
+<text x="2368" y="1022" text-anchor="end" class="badge-nn">NN</text>
+<text x="1976" y="1046" class="col-name">proveedor</text>
+<text x="2162" y="1046" class="col-type">VARCHAR(150)</text>
+<rect x="1961.5" y="1054" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="1070" class="col-name">costo_unitario</text>
+<text x="2162" y="1070" class="col-type">NUMERIC(10,2)</text>
+<text x="1976" y="1094" class="col-name">activo</text>
+<text x="2162" y="1094" class="col-type">BOOLEAN</text>
+<text x="2368" y="1094" text-anchor="end" class="badge-nn">NN</text>
+<rect x="1961.5" y="1102" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="1118" class="col-name">fecha_actualizacion</text>
+<text x="2162" y="1118" class="col-type">TIMESTAMPTZ</text>
+<text x="2368" y="1118" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="1960" y="1440" width="420" height="192" rx="9" fill="#ffffff" stroke="#c2410c" stroke-width="2.4"/>
+<path d="M 1960,1449 Q 1960,1440 1969,1440 L 2371,1440 Q 2380,1440 2380,1449 L 2380,1478 L 1960,1478 Z" fill="#c2410c"/>
+<text x="1976" y="1465" class="tbl-header">inventario_vehiculo</text>
+<text x="1976" y="1494" class="col-name-pk">id_vehiculo</text>
+<text x="2162" y="1494" class="col-type">INT</text>
+<text x="2368" y="1494" text-anchor="end" class="badge-pk">PK, FK</text>
+<rect x="1961.5" y="1502" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="1518" class="col-name-pk">id_lote</text>
+<text x="2162" y="1518" class="col-type">INT</text>
+<text x="2368" y="1518" text-anchor="end" class="badge-pk">PK, FK</text>
+<text x="1976" y="1542" class="col-name">id_negocio</text>
+<text x="2162" y="1542" class="col-type">INT</text>
+<text x="2368" y="1542" text-anchor="end" class="badge-fk">FK, NN</text>
+<rect x="1961.5" y="1550" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="1566" class="col-name">cantidad_actual</text>
+<text x="2162" y="1566" class="col-type">INT</text>
+<text x="2368" y="1566" text-anchor="end" class="badge-nn">NN</text>
+<text x="1976" y="1590" class="col-name">cantidad_apartada</text>
+<text x="2162" y="1590" class="col-type">INT</text>
+<text x="2368" y="1590" text-anchor="end" class="badge-nn">NN</text>
+<rect x="1961.5" y="1598" width="417" height="24" fill="#fff7ed" opacity="0.65"/>
+<text x="1976" y="1614" class="col-name">fecha_actualizacion</text>
+<text x="2162" y="1614" class="col-type">TIMESTAMPTZ</text>
+<text x="2368" y="1614" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="1960" y="1780" width="420" height="264" rx="9" fill="#ffffff" stroke="#475569" stroke-width="2.4"/>
+<path d="M 1960,1789 Q 1960,1780 1969,1780 L 2371,1780 Q 2380,1780 2380,1789 L 2380,1818 L 1960,1818 Z" fill="#475569"/>
+<text x="1976" y="1805" class="tbl-header">movimientos_inventario</text>
+<text x="1976" y="1834" class="col-name-pk">id_movimiento</text>
+<text x="2162" y="1834" class="col-type">INT</text>
+<text x="2368" y="1834" text-anchor="end" class="badge-pk">PK</text>
+<rect x="1961.5" y="1842" width="417" height="24" fill="#f8fafc" opacity="0.65"/>
+<text x="1976" y="1858" class="col-name">tipo</text>
+<text x="2162" y="1858" class="col-type">tipo_movimiento</text>
+<text x="2368" y="1858" text-anchor="end" class="badge-nn">NN</text>
+<text x="1976" y="1882" class="col-name">id_lote</text>
+<text x="2162" y="1882" class="col-type">INT</text>
+<text x="2368" y="1882" text-anchor="end" class="badge-nn">NN (Audit)</text>
+<rect x="1961.5" y="1890" width="417" height="24" fill="#f8fafc" opacity="0.65"/>
+<text x="1976" y="1906" class="col-name">id_vehiculo</text>
+<text x="2162" y="1906" class="col-type">INT</text>
+<text x="2368" y="1906" text-anchor="end" class="badge-nn">(Audit)</text>
+<text x="1976" y="1930" class="col-name">cantidad</text>
+<text x="2162" y="1930" class="col-type">INT</text>
+<text x="2368" y="1930" text-anchor="end" class="badge-nn">NN</text>
+<rect x="1961.5" y="1938" width="417" height="24" fill="#f8fafc" opacity="0.65"/>
+<text x="1976" y="1954" class="col-name">id_pedido</text>
+<text x="2162" y="1954" class="col-type">INT</text>
+<text x="2368" y="1954" text-anchor="end" class="badge-nn">(Audit)</text>
+<text x="1976" y="1978" class="col-name">id_repartidor_responsable</text>
+<text x="2162" y="1978" class="col-type">INT</text>
+<text x="2368" y="1978" text-anchor="end" class="badge-nn">(Audit)</text>
+<rect x="1961.5" y="1986" width="417" height="24" fill="#f8fafc" opacity="0.65"/>
+<text x="1976" y="2002" class="col-name">notas</text>
+<text x="2162" y="2002" class="col-type">VARCHAR(255)</text>
+<text x="1976" y="2026" class="col-name">fecha</text>
+<text x="2162" y="2026" class="col-type">TIMESTAMPTZ</text>
+<text x="2368" y="2026" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="2840" y="180" width="420" height="432" rx="9" fill="#ffffff" stroke="#6d28d9" stroke-width="2.4"/>
+<path d="M 2840,189 Q 2840,180 2849,180 L 3251,180 Q 3260,180 3260,189 L 3260,218 L 2840,218 Z" fill="#6d28d9"/>
+<text x="2856" y="205" class="tbl-header">pedidos</text>
+<text x="2856" y="234" class="col-name-pk">id_pedido</text>
+<text x="3042" y="234" class="col-type">INT</text>
+<text x="3248" y="234" text-anchor="end" class="badge-pk">PK</text>
+<rect x="2841.5" y="242" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="258" class="col-name">id_cliente</text>
+<text x="3042" y="258" class="col-type">INT</text>
+<text x="3248" y="258" text-anchor="end" class="badge-fk">FK, NN</text>
+<text x="2856" y="282" class="col-name">id_direccion_entrega</text>
+<text x="3042" y="282" class="col-type">INT</text>
+<text x="3248" y="282" text-anchor="end" class="badge-fk">FK, NN</text>
+<rect x="2841.5" y="290" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="306" class="col-name">id_negocio_solicitado</text>
+<text x="3042" y="306" class="col-type">INT</text>
+<text x="3248" y="306" text-anchor="end" class="badge-fk">FK</text>
+<text x="2856" y="330" class="col-name">id_repartidor</text>
+<text x="3042" y="330" class="col-type">INT</text>
+<text x="3248" y="330" text-anchor="end" class="badge-fk">FK</text>
+<rect x="2841.5" y="338" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="354" class="col-name">tipo_solicitud</text>
+<text x="3042" y="354" class="col-type">tipo_solicitud_pedido</text>
+<text x="3248" y="354" text-anchor="end" class="badge-nn">NN</text>
+<text x="2856" y="378" class="col-name">precio_maximo_garrafon</text>
+<text x="3042" y="378" class="col-type">NUMERIC(10,2)</text>
+<rect x="2841.5" y="386" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="402" class="col-name">estado_actual</text>
+<text x="3042" y="402" class="col-type">estado_pedido</text>
+<text x="3248" y="402" text-anchor="end" class="badge-nn">NN</text>
+<text x="2856" y="426" class="col-name">total_pagar</text>
+<text x="3042" y="426" class="col-type">NUMERIC(10,2)</text>
+<text x="3248" y="426" text-anchor="end" class="badge-nn">NN</text>
+<rect x="2841.5" y="434" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="450" class="col-name">garrafones_totales</text>
+<text x="3042" y="450" class="col-type">INT</text>
+<text x="3248" y="450" text-anchor="end" class="badge-nn">NN</text>
+<text x="2856" y="474" class="col-name">indicaciones_entrega</text>
+<text x="3042" y="474" class="col-type">VARCHAR(500)</text>
+<rect x="2841.5" y="482" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="498" class="col-name">fecha_programada</text>
+<text x="3042" y="498" class="col-type">TIMESTAMPTZ</text>
+<text x="2856" y="522" class="col-name">es_programado</text>
+<text x="3042" y="522" class="col-type">BOOLEAN (GENERATED)</text>
+<text x="3248" y="522" text-anchor="end" class="badge-nn">NN</text>
+<rect x="2841.5" y="530" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="546" class="col-name">notificado_programado</text>
+<text x="3042" y="546" class="col-type">BOOLEAN</text>
+<text x="3248" y="546" text-anchor="end" class="badge-nn">NN</text>
+<text x="2856" y="570" class="col-name">fecha_creacion</text>
+<text x="3042" y="570" class="col-type">TIMESTAMPTZ</text>
+<text x="3248" y="570" text-anchor="end" class="badge-nn">NN</text>
+<rect x="2841.5" y="578" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="594" class="col-name">fecha_entrega</text>
+<text x="3042" y="594" class="col-type">TIMESTAMPTZ</text>
+</g>
+<g class="shadow">
+<rect x="2840" y="800" width="420" height="264" rx="9" fill="#ffffff" stroke="#6d28d9" stroke-width="2.4"/>
+<path d="M 2840,809 Q 2840,800 2849,800 L 3251,800 Q 3260,800 3260,809 L 3260,838 L 2840,838 Z" fill="#6d28d9"/>
+<text x="2856" y="825" class="tbl-header">detalles_pedido</text>
+<text x="2856" y="854" class="col-name-pk">id_detalle</text>
+<text x="3042" y="854" class="col-type">INT</text>
+<text x="3248" y="854" text-anchor="end" class="badge-pk">PK</text>
+<rect x="2841.5" y="862" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="878" class="col-name">id_pedido</text>
+<text x="3042" y="878" class="col-type">INT</text>
+<text x="3248" y="878" text-anchor="end" class="badge-fk">FK, NN</text>
+<text x="2856" y="902" class="col-name">id_marca</text>
+<text x="3042" y="902" class="col-type">INT</text>
+<text x="3248" y="902" text-anchor="end" class="badge-fk">FK, NN</text>
+<rect x="2841.5" y="910" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="926" class="col-name">cantidad_solicitada</text>
+<text x="3042" y="926" class="col-type">INT</text>
+<text x="3248" y="926" text-anchor="end" class="badge-nn">NN</text>
+<text x="2856" y="950" class="col-name">cantidad_entregada</text>
+<text x="3042" y="950" class="col-type">INT</text>
+<rect x="2841.5" y="958" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="974" class="col-name">tiene_envase</text>
+<text x="3042" y="974" class="col-type">BOOLEAN</text>
+<text x="3248" y="974" text-anchor="end" class="badge-nn">NN</text>
+<text x="2856" y="998" class="col-name">precio_unitario</text>
+<text x="3042" y="998" class="col-type">NUMERIC(10,2)</text>
+<text x="3248" y="998" text-anchor="end" class="badge-nn">NN</text>
+<rect x="2841.5" y="1006" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="1022" class="col-name">precio_envase_unitario</text>
+<text x="3042" y="1022" class="col-type">NUMERIC(10,2)</text>
+<text x="2856" y="1046" class="col-name">agregada_en_sitio</text>
+<text x="3042" y="1046" class="col-type">BOOLEAN</text>
+<text x="3248" y="1046" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="2840" y="1440" width="420" height="192" rx="9" fill="#ffffff" stroke="#6d28d9" stroke-width="2.4"/>
+<path d="M 2840,1449 Q 2840,1440 2849,1440 L 3251,1440 Q 3260,1440 3260,1449 L 3260,1478 L 2840,1478 Z" fill="#6d28d9"/>
+<text x="2856" y="1465" class="tbl-header">apartados_pedido</text>
+<text x="2856" y="1494" class="col-name-pk">id_apartado</text>
+<text x="3042" y="1494" class="col-type">INT</text>
+<text x="3248" y="1494" text-anchor="end" class="badge-pk">PK</text>
+<rect x="2841.5" y="1502" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="1518" class="col-name">id_pedido</text>
+<text x="3042" y="1518" class="col-type">INT</text>
+<text x="3248" y="1518" text-anchor="end" class="badge-fk">FK, NN</text>
+<text x="2856" y="1542" class="col-name">id_lote</text>
+<text x="3042" y="1542" class="col-type">INT</text>
+<text x="3248" y="1542" text-anchor="end" class="badge-fk">FK, NN</text>
+<rect x="2841.5" y="1550" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="1566" class="col-name">id_vehiculo</text>
+<text x="3042" y="1566" class="col-type">INT</text>
+<text x="3248" y="1566" text-anchor="end" class="badge-fk">FK</text>
+<text x="2856" y="1590" class="col-name">cantidad</text>
+<text x="3042" y="1590" class="col-type">INT</text>
+<text x="3248" y="1590" text-anchor="end" class="badge-nn">NN</text>
+<rect x="2841.5" y="1598" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="1614" class="col-name">fecha_apartado</text>
+<text x="3042" y="1614" class="col-type">TIMESTAMPTZ</text>
+<text x="3248" y="1614" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<g class="shadow">
+<rect x="2840" y="1780" width="420" height="192" rx="9" fill="#ffffff" stroke="#6d28d9" stroke-width="2.4"/>
+<path d="M 2840,1789 Q 2840,1780 2849,1780 L 3251,1780 Q 3260,1780 3260,1789 L 3260,1818 L 2840,1818 Z" fill="#6d28d9"/>
+<text x="2856" y="1805" class="tbl-header">historial_estados_pedido</text>
+<text x="2856" y="1834" class="col-name-pk">id_historial</text>
+<text x="3042" y="1834" class="col-type">INT</text>
+<text x="3248" y="1834" text-anchor="end" class="badge-pk">PK</text>
+<rect x="2841.5" y="1842" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="1858" class="col-name">id_pedido</text>
+<text x="3042" y="1858" class="col-type">INT</text>
+<text x="3248" y="1858" text-anchor="end" class="badge-fk">FK, NN</text>
+<text x="2856" y="1882" class="col-name">estado</text>
+<text x="3042" y="1882" class="col-type">estado_pedido</text>
+<text x="3248" y="1882" text-anchor="end" class="badge-nn">NN</text>
+<rect x="2841.5" y="1890" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="1906" class="col-name">notas_adicionales</text>
+<text x="3042" y="1906" class="col-type">VARCHAR(500)</text>
+<text x="2856" y="1930" class="col-name">ubicacion</text>
+<text x="3042" y="1930" class="col-type">geography(Point,4326)</text>
+<rect x="2841.5" y="1938" width="417" height="24" fill="#f5f3ff" opacity="0.65"/>
+<text x="2856" y="1954" class="col-name">fecha_cambio</text>
+<text x="3042" y="1954" class="col-type">TIMESTAMPTZ</text>
+<text x="3248" y="1954" text-anchor="end" class="badge-nn">NN</text>
+</g>
+<path d="M 200,920.0 L 144.0,920.0 Q 130,920.0 130.0,906.0 L 130.0,244.0 Q 130,230.0 144.0,230.0 L 200,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 200,920.0 L 144.0,920.0 Q 130,920.0 130.0,906.0 L 130.0,244.0 Q 130,230.0 144.0,230.0 L 200,230.0" fill="none" stroke="#1d4ed8" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="190" y1="912.0" x2="190" y2="928.0" stroke="#1d4ed8" stroke-width="3.0"/>
+<line x1="184" y1="912.0" x2="184" y2="928.0" stroke="#1d4ed8" stroke-width="3.0"/>
+<circle cx="200" cy="920.0" r="4.5" fill="#1d4ed8" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="191" y1="222.0" x2="191" y2="238.0" stroke="#1d4ed8" stroke-width="3.0"/>
+<line x1="185" y1="222.0" x2="185" y2="238.0" stroke="#1d4ed8" stroke-width="3.0"/>
+<circle cx="200" cy="230.0" r="4.5" fill="#ffffff" stroke="#1d4ed8" stroke-width="2.5"/>
+<path d="M 200,1514.0 L 74.0,1514.0 Q 60,1514.0 60.0,1500.0 L 60.0,934.0 Q 60,920.0 74.0,920.0 L 200,920.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 200,1514.0 L 74.0,1514.0 Q 60,1514.0 60.0,1500.0 L 60.0,934.0 Q 60,920.0 74.0,920.0 L 200,920.0" fill="none" stroke="#2563eb" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 200,1506.0 L 184,1514.0 L 200,1522.0" fill="none" stroke="#2563eb" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="181" y1="1506.0" x2="181" y2="1522.0" stroke="#2563eb" stroke-width="2.8"/>
+<circle cx="200" cy="1514.0" r="4.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="191" y1="912.0" x2="191" y2="928.0" stroke="#2563eb" stroke-width="3.0"/>
+<line x1="185" y1="912.0" x2="185" y2="928.0" stroke="#2563eb" stroke-width="3.0"/>
+<circle cx="200" cy="920.0" r="4.5" fill="#ffffff" stroke="#2563eb" stroke-width="2.5"/>
+<path d="M 1080,2058.0 L 694.0,2058.0 Q 680,2058.0 680.0,2044.0 L 680.0,244.0 Q 680,230.0 666.0,230.0 L 620,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1080,2058.0 L 694.0,2058.0 Q 680,2058.0 680.0,2044.0 L 680.0,244.0 Q 680,230.0 666.0,230.0 L 620,230.0" fill="none" stroke="#475569" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1080,2050.0 L 1064,2058.0 L 1080,2066.0" fill="none" stroke="#475569" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="1061" y1="2050.0" x2="1061" y2="2066.0" stroke="#475569" stroke-width="2.8"/>
+<circle cx="1080" cy="2058.0" r="4.5" fill="#475569" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="629" y1="222.0" x2="629" y2="238.0" stroke="#475569" stroke-width="3.0"/>
+<circle cx="639" cy="230.0" r="5.0" fill="#ffffff" stroke="#475569" stroke-width="2.6"/>
+<circle cx="620" cy="230.0" r="4.5" fill="#ffffff" stroke="#475569" stroke-width="2.5"/>
+<path d="M 1080,1490.0 L 764.0,1490.0 Q 750,1490.0 750.0,1476.0 L 750.0,244.0 Q 750,230.0 736.0,230.0 L 620,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1080,1490.0 L 764.0,1490.0 Q 750,1490.0 750.0,1476.0 L 750.0,244.0 Q 750,230.0 736.0,230.0 L 620,230.0" fill="none" stroke="#1d4ed8" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="1070" y1="1482.0" x2="1070" y2="1498.0" stroke="#1d4ed8" stroke-width="3.0"/>
+<line x1="1064" y1="1482.0" x2="1064" y2="1498.0" stroke="#1d4ed8" stroke-width="3.0"/>
+<circle cx="1080" cy="1490.0" r="4.5" fill="#1d4ed8" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="629" y1="222.0" x2="629" y2="238.0" stroke="#1d4ed8" stroke-width="3.0"/>
+<line x1="635" y1="222.0" x2="635" y2="238.0" stroke="#1d4ed8" stroke-width="3.0"/>
+<circle cx="620" cy="230.0" r="4.5" fill="#ffffff" stroke="#1d4ed8" stroke-width="2.5"/>
+<path d="M 1080,1938.0 L 904.0,1938.0 Q 890,1938.0 890.0,1924.0 L 890.0,244.0 Q 890,230.0 904.0,230.0 L 1080,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1080,1938.0 L 904.0,1938.0 Q 890,1938.0 890.0,1924.0 L 890.0,244.0 Q 890,230.0 904.0,230.0 L 1080,230.0" fill="none" stroke="#047857" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1080,1930.0 L 1064,1938.0 L 1080,1946.0" fill="none" stroke="#047857" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="1061" y1="1930.0" x2="1061" y2="1946.0" stroke="#047857" stroke-width="2.8"/>
+<circle cx="1080" cy="1938.0" r="4.5" fill="#047857" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1071" y1="222.0" x2="1071" y2="238.0" stroke="#047857" stroke-width="3.0"/>
+<line x1="1065" y1="222.0" x2="1065" y2="238.0" stroke="#047857" stroke-width="3.0"/>
+<circle cx="1080" cy="230.0" r="4.5" fill="#ffffff" stroke="#047857" stroke-width="2.5"/>
+<path d="M 1080,1538.0 L 974.0,1538.0 Q 960,1538.0 960.0,1524.0 L 960.0,244.0 Q 960,230.0 974.0,230.0 L 1080,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1080,1538.0 L 974.0,1538.0 Q 960,1538.0 960.0,1524.0 L 960.0,244.0 Q 960,230.0 974.0,230.0 L 1080,230.0" fill="none" stroke="#059669" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1080,1530.0 L 1064,1538.0 L 1080,1546.0" fill="none" stroke="#059669" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="1061" y1="1530.0" x2="1061" y2="1546.0" stroke="#059669" stroke-width="2.8"/>
+<circle cx="1080" cy="1538.0" r="4.5" fill="#059669" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1071" y1="222.0" x2="1071" y2="238.0" stroke="#059669" stroke-width="3.0"/>
+<line x1="1065" y1="222.0" x2="1065" y2="238.0" stroke="#059669" stroke-width="3.0"/>
+<circle cx="1080" cy="230.0" r="4.5" fill="#ffffff" stroke="#059669" stroke-width="2.5"/>
+<path d="M 1080,704.0 L 1039.0,704.0 Q 1025,704.0 1025.0,690.0 L 1025.0,244.0 Q 1025,230.0 1039.0,230.0 L 1080,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1080,704.0 L 1039.0,704.0 Q 1025,704.0 1025.0,690.0 L 1025.0,244.0 Q 1025,230.0 1039.0,230.0 L 1080,230.0" fill="none" stroke="#047857" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1080,696.0 L 1064,704.0 L 1080,712.0" fill="none" stroke="#047857" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="1061" y1="696.0" x2="1061" y2="712.0" stroke="#047857" stroke-width="2.8"/>
+<circle cx="1080" cy="704.0" r="4.5" fill="#047857" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1071" y1="222.0" x2="1071" y2="238.0" stroke="#047857" stroke-width="3.0"/>
+<line x1="1065" y1="222.0" x2="1065" y2="238.0" stroke="#047857" stroke-width="3.0"/>
+<circle cx="1080" cy="230.0" r="4.5" fill="#ffffff" stroke="#047857" stroke-width="2.5"/>
+<path d="M 1500,1034.0 L 1546.0,1034.0 Q 1560,1034.0 1560.0,1020.0 L 1560.0,244.0 Q 1560,230.0 1546.0,230.0 L 1500,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1500,1034.0 L 1546.0,1034.0 Q 1560,1034.0 1560.0,1020.0 L 1560.0,244.0 Q 1560,230.0 1546.0,230.0 L 1500,230.0" fill="none" stroke="#047857" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1500,1026.0 L 1516,1034.0 L 1500,1042.0" fill="none" stroke="#047857" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="1519" y1="1026.0" x2="1519" y2="1042.0" stroke="#047857" stroke-width="2.8"/>
+<circle cx="1500" cy="1034.0" r="4.5" fill="#047857" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1509" y1="222.0" x2="1509" y2="238.0" stroke="#047857" stroke-width="3.0"/>
+<line x1="1515" y1="222.0" x2="1515" y2="238.0" stroke="#047857" stroke-width="3.0"/>
+<circle cx="1500" cy="230.0" r="4.5" fill="#ffffff" stroke="#047857" stroke-width="2.5"/>
+<path d="M 1500,1962.0 L 1546.0,1962.0 Q 1560,1962.0 1560.0,1948.0 L 1560.0,1024.0 Q 1560,1010.0 1546.0,1010.0 L 1500,1010.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1500,1962.0 L 1546.0,1962.0 Q 1560,1962.0 1560.0,1948.0 L 1560.0,1024.0 Q 1560,1010.0 1546.0,1010.0 L 1500,1010.0" fill="none" stroke="#0d9488" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1500,1954.0 L 1516,1962.0 L 1500,1970.0" fill="none" stroke="#0d9488" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="1519" y1="1954.0" x2="1519" y2="1970.0" stroke="#0d9488" stroke-width="2.8"/>
+<circle cx="1500" cy="1962.0" r="4.5" fill="#0d9488" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1509" y1="1002.0" x2="1509" y2="1018.0" stroke="#0d9488" stroke-width="3.0"/>
+<circle cx="1519" cy="1010.0" r="5.0" fill="#ffffff" stroke="#0d9488" stroke-width="2.6"/>
+<circle cx="1500" cy="1010.0" r="4.5" fill="#ffffff" stroke="#0d9488" stroke-width="2.5"/>
+<path d="M 1500,1634.0 L 1616.0,1634.0 Q 1630,1634.0 1630.0,1620.0 L 1630.0,1024.0 Q 1630,1010.0 1616.0,1010.0 L 1500,1010.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1500,1634.0 L 1616.0,1634.0 Q 1630,1634.0 1630.0,1620.0 L 1630.0,1024.0 Q 1630,1010.0 1616.0,1010.0 L 1500,1010.0" fill="none" stroke="#0d9488" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="1510" y1="1626.0" x2="1510" y2="1642.0" stroke="#0d9488" stroke-width="3.0"/>
+<line x1="1516" y1="1626.0" x2="1516" y2="1642.0" stroke="#0d9488" stroke-width="3.0"/>
+<circle cx="1500" cy="1634.0" r="4.5" fill="#0d9488" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1509" y1="1002.0" x2="1509" y2="1018.0" stroke="#0d9488" stroke-width="3.0"/>
+<circle cx="1519" cy="1010.0" r="5.0" fill="#ffffff" stroke="#0d9488" stroke-width="2.6"/>
+<circle cx="1500" cy="1010.0" r="4.5" fill="#ffffff" stroke="#0d9488" stroke-width="2.5"/>
+<path d="M 1960,514.0 L 1714.0,514.0 Q 1700,514.0 1700.0,500.0 L 1700.0,244.0 Q 1700,230.0 1686.0,230.0 L 1500,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1960,514.0 L 1714.0,514.0 Q 1700,514.0 1700.0,500.0 L 1700.0,244.0 Q 1700,230.0 1686.0,230.0 L 1500,230.0" fill="none" stroke="#c2410c" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1960,506.0 L 1944,514.0 L 1960,522.0" fill="none" stroke="#c2410c" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="1941" y1="506.0" x2="1941" y2="522.0" stroke="#c2410c" stroke-width="2.8"/>
+<circle cx="1960" cy="514.0" r="4.5" fill="#c2410c" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1509" y1="222.0" x2="1509" y2="238.0" stroke="#c2410c" stroke-width="3.0"/>
+<line x1="1515" y1="222.0" x2="1515" y2="238.0" stroke="#c2410c" stroke-width="3.0"/>
+<circle cx="1500" cy="230.0" r="4.5" fill="#ffffff" stroke="#c2410c" stroke-width="2.5"/>
+<path d="M 1960,1490.0 L 1784.0,1490.0 Q 1770,1490.0 1770.0,1476.0 L 1770.0,1024.0 Q 1770,1010.0 1756.0,1010.0 L 1500,1010.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1960,1490.0 L 1784.0,1490.0 Q 1770,1490.0 1770.0,1476.0 L 1770.0,1024.0 Q 1770,1010.0 1756.0,1010.0 L 1500,1010.0" fill="none" stroke="#ea580c" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1960,1482.0 L 1944,1490.0 L 1960,1498.0" fill="none" stroke="#ea580c" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="1941" y1="1482.0" x2="1941" y2="1498.0" stroke="#ea580c" stroke-width="2.8"/>
+<circle cx="1960" cy="1490.0" r="4.5" fill="#ea580c" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1509" y1="1002.0" x2="1509" y2="1018.0" stroke="#ea580c" stroke-width="3.0"/>
+<line x1="1515" y1="1002.0" x2="1515" y2="1018.0" stroke="#ea580c" stroke-width="3.0"/>
+<circle cx="1500" cy="1010.0" r="4.5" fill="#ffffff" stroke="#ea580c" stroke-width="2.5"/>
+<path d="M 1960,874.0 L 1854.0,874.0 Q 1840,874.0 1840.0,860.0 L 1840.0,528.0 Q 1840,514.0 1854.0,514.0 L 1960,514.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1960,874.0 L 1854.0,874.0 Q 1840,874.0 1840.0,860.0 L 1840.0,528.0 Q 1840,514.0 1854.0,514.0 L 1960,514.0" fill="none" stroke="#c2410c" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1960,866.0 L 1944,874.0 L 1960,882.0" fill="none" stroke="#c2410c" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="1941" y1="866.0" x2="1941" y2="882.0" stroke="#c2410c" stroke-width="2.8"/>
+<circle cx="1960" cy="874.0" r="4.5" fill="#c2410c" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1951" y1="506.0" x2="1951" y2="522.0" stroke="#c2410c" stroke-width="3.0"/>
+<line x1="1945" y1="506.0" x2="1945" y2="522.0" stroke="#c2410c" stroke-width="3.0"/>
+<circle cx="1960" cy="514.0" r="4.5" fill="#ffffff" stroke="#c2410c" stroke-width="2.5"/>
+<path d="M 1960,538.0 L 1919.0,538.0 Q 1905,538.0 1905.0,524.0 L 1905.0,244.0 Q 1905,230.0 1919.0,230.0 L 1960,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1960,538.0 L 1919.0,538.0 Q 1905,538.0 1905.0,524.0 L 1905.0,244.0 Q 1905,230.0 1919.0,230.0 L 1960,230.0" fill="none" stroke="#c2410c" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1960,530.0 L 1944,538.0 L 1960,546.0" fill="none" stroke="#c2410c" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="1941" y1="530.0" x2="1941" y2="546.0" stroke="#c2410c" stroke-width="2.8"/>
+<circle cx="1960" cy="538.0" r="4.5" fill="#c2410c" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1951" y1="222.0" x2="1951" y2="238.0" stroke="#c2410c" stroke-width="3.0"/>
+<line x1="1945" y1="222.0" x2="1945" y2="238.0" stroke="#c2410c" stroke-width="3.0"/>
+<circle cx="1960" cy="230.0" r="4.5" fill="#ffffff" stroke="#c2410c" stroke-width="2.5"/>
+<path d="M 1960,1514.0 L 1919.0,1514.0 Q 1905,1514.0 1905.0,1500.0 L 1905.0,864.0 Q 1905,850.0 1919.0,850.0 L 1960,850.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1960,1514.0 L 1919.0,1514.0 Q 1905,1514.0 1905.0,1500.0 L 1905.0,864.0 Q 1905,850.0 1919.0,850.0 L 1960,850.0" fill="none" stroke="#c2410c" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 1960,1506.0 L 1944,1514.0 L 1960,1522.0" fill="none" stroke="#c2410c" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="1941" y1="1506.0" x2="1941" y2="1522.0" stroke="#c2410c" stroke-width="2.8"/>
+<circle cx="1960" cy="1514.0" r="4.5" fill="#c2410c" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1951" y1="842.0" x2="1951" y2="858.0" stroke="#c2410c" stroke-width="3.0"/>
+<line x1="1945" y1="842.0" x2="1945" y2="858.0" stroke="#c2410c" stroke-width="3.0"/>
+<circle cx="1960" cy="850.0" r="4.5" fill="#ffffff" stroke="#c2410c" stroke-width="2.5"/>
+<path d="M 2840,1562.0 L 2454.0,1562.0 Q 2440,1562.0 2440.0,1548.0 L 2440.0,1504.0 Q 2440,1490.0 2426.0,1490.0 L 2380,1490.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,1562.0 L 2454.0,1562.0 Q 2440,1562.0 2440.0,1548.0 L 2440.0,1504.0 Q 2440,1490.0 2426.0,1490.0 L 2380,1490.0" fill="none" stroke="#0d9488" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,1554.0 L 2824,1562.0 L 2840,1570.0" fill="none" stroke="#0d9488" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="2821" y1="1554.0" x2="2821" y2="1570.0" stroke="#0d9488" stroke-width="2.8"/>
+<circle cx="2840" cy="1562.0" r="4.5" fill="#0d9488" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="2389" y1="1482.0" x2="2389" y2="1498.0" stroke="#0d9488" stroke-width="3.0"/>
+<circle cx="2399" cy="1490.0" r="5.0" fill="#ffffff" stroke="#0d9488" stroke-width="2.6"/>
+<circle cx="2380" cy="1490.0" r="4.5" fill="#ffffff" stroke="#0d9488" stroke-width="2.5"/>
+<path d="M 2840,1538.0 L 2524.0,1538.0 Q 2510,1538.0 2510.0,1524.0 L 2510.0,864.0 Q 2510,850.0 2496.0,850.0 L 2380,850.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,1538.0 L 2524.0,1538.0 Q 2510,1538.0 2510.0,1524.0 L 2510.0,864.0 Q 2510,850.0 2496.0,850.0 L 2380,850.0" fill="none" stroke="#c2410c" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,1530.0 L 2824,1538.0 L 2840,1546.0" fill="none" stroke="#c2410c" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="2821" y1="1530.0" x2="2821" y2="1546.0" stroke="#c2410c" stroke-width="2.8"/>
+<circle cx="2840" cy="1538.0" r="4.5" fill="#c2410c" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="2389" y1="842.0" x2="2389" y2="858.0" stroke="#c2410c" stroke-width="3.0"/>
+<line x1="2395" y1="842.0" x2="2395" y2="858.0" stroke="#c2410c" stroke-width="3.0"/>
+<circle cx="2380" cy="850.0" r="4.5" fill="#ffffff" stroke="#c2410c" stroke-width="2.5"/>
+<path d="M 2840,898.0 L 2594.0,898.0 Q 2580,898.0 2580.0,884.0 L 2580.0,244.0 Q 2580,230.0 2566.0,230.0 L 2380,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,898.0 L 2594.0,898.0 Q 2580,898.0 2580.0,884.0 L 2580.0,244.0 Q 2580,230.0 2566.0,230.0 L 2380,230.0" fill="none" stroke="#ea580c" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,890.0 L 2824,898.0 L 2840,906.0" fill="none" stroke="#ea580c" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="2821" y1="890.0" x2="2821" y2="906.0" stroke="#ea580c" stroke-width="2.8"/>
+<circle cx="2840" cy="898.0" r="4.5" fill="#ea580c" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="2389" y1="222.0" x2="2389" y2="238.0" stroke="#ea580c" stroke-width="3.0"/>
+<line x1="2395" y1="222.0" x2="2395" y2="238.0" stroke="#ea580c" stroke-width="3.0"/>
+<circle cx="2380" cy="230.0" r="4.5" fill="#ffffff" stroke="#ea580c" stroke-width="2.5"/>
+<path d="M 2840,326.0 L 2664.0,326.0 Q 2650,326.0 2650.0,340.0 L 2650.0,1351.0 Q 2650,1365 2636.0,1365.0 L 1714.0,1365.0 Q 1700,1365 1700.0,1379.0 L 1700.0,1476.0 Q 1700,1490.0 1686.0,1490.0 L 1500,1490.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,326.0 L 2664.0,326.0 Q 2650,326.0 2650.0,340.0 L 2650.0,1351.0 Q 2650,1365 2636.0,1365.0 L 1714.0,1365.0 Q 1700,1365 1700.0,1379.0 L 1700.0,1476.0 Q 1700,1490.0 1686.0,1490.0 L 1500,1490.0" fill="none" stroke="#7c3aed" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,318.0 L 2824,326.0 L 2840,334.0" fill="none" stroke="#7c3aed" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="2821" y1="318.0" x2="2821" y2="334.0" stroke="#7c3aed" stroke-width="2.8"/>
+<circle cx="2840" cy="326.0" r="4.5" fill="#7c3aed" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1509" y1="1482.0" x2="1509" y2="1498.0" stroke="#7c3aed" stroke-width="3.0"/>
+<circle cx="1519" cy="1490.0" r="5.0" fill="#ffffff" stroke="#7c3aed" stroke-width="2.6"/>
+<circle cx="1500" cy="1490.0" r="4.5" fill="#ffffff" stroke="#7c3aed" stroke-width="2.5"/>
+<path d="M 2840,278.0 L 2734.0,278.0 Q 2720,278.0 2720.0,292.0 L 2720.0,1281.0 Q 2720,1295 2706.0,1295.0 L 834.0,1295.0 Q 820,1295 820.0,1309.0 L 820.0,1476.0 Q 820,1490.0 806.0,1490.0 L 620,1490.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,278.0 L 2734.0,278.0 Q 2720,278.0 2720.0,292.0 L 2720.0,1281.0 Q 2720,1295 2706.0,1295.0 L 834.0,1295.0 Q 820,1295 820.0,1309.0 L 820.0,1476.0 Q 820,1490.0 806.0,1490.0 L 620,1490.0" fill="none" stroke="#6d28d9" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,270.0 L 2824,278.0 L 2840,286.0" fill="none" stroke="#6d28d9" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="2821" y1="270.0" x2="2821" y2="286.0" stroke="#6d28d9" stroke-width="2.8"/>
+<circle cx="2840" cy="278.0" r="4.5" fill="#6d28d9" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="629" y1="1482.0" x2="629" y2="1498.0" stroke="#6d28d9" stroke-width="3.0"/>
+<line x1="635" y1="1482.0" x2="635" y2="1498.0" stroke="#6d28d9" stroke-width="3.0"/>
+<circle cx="620" cy="1490.0" r="4.5" fill="#ffffff" stroke="#6d28d9" stroke-width="2.5"/>
+<path d="M 2840,302.0 L 2799.0,302.0 Q 2785,302.0 2785.0,288.0 L 2785.0,144.0 Q 2785,130 2771.0,130.0 L 1644.0,130.0 Q 1630,130 1630.0,144.0 L 1630.0,216.0 Q 1630,230.0 1616.0,230.0 L 1500,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,302.0 L 2799.0,302.0 Q 2785,302.0 2785.0,288.0 L 2785.0,144.0 Q 2785,130 2771.0,130.0 L 1644.0,130.0 Q 1630,130 1630.0,144.0 L 1630.0,216.0 Q 1630,230.0 1616.0,230.0 L 1500,230.0" fill="none" stroke="#6d28d9" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 2840,294.0 L 2824,302.0 L 2840,310.0" fill="none" stroke="#6d28d9" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="2821" y1="294.0" x2="2821" y2="310.0" stroke="#6d28d9" stroke-width="2.8"/>
+<circle cx="2840" cy="302.0" r="4.5" fill="#6d28d9" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="1509" y1="222.0" x2="1509" y2="238.0" stroke="#6d28d9" stroke-width="3.0"/>
+<circle cx="1519" cy="230.0" r="5.0" fill="#ffffff" stroke="#6d28d9" stroke-width="2.6"/>
+<circle cx="1500" cy="230.0" r="4.5" fill="#ffffff" stroke="#6d28d9" stroke-width="2.5"/>
+<path d="M 3260,874.0 L 3316.0,874.0 Q 3330,874.0 3330.0,860.0 L 3330.0,244.0 Q 3330,230.0 3316.0,230.0 L 3260,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 3260,874.0 L 3316.0,874.0 Q 3330,874.0 3330.0,860.0 L 3330.0,244.0 Q 3330,230.0 3316.0,230.0 L 3260,230.0" fill="none" stroke="#6d28d9" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 3260,866.0 L 3276,874.0 L 3260,882.0" fill="none" stroke="#6d28d9" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="3279" y1="866.0" x2="3279" y2="882.0" stroke="#6d28d9" stroke-width="2.8"/>
+<circle cx="3260" cy="874.0" r="4.5" fill="#6d28d9" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="3269" y1="222.0" x2="3269" y2="238.0" stroke="#6d28d9" stroke-width="3.0"/>
+<line x1="3275" y1="222.0" x2="3275" y2="238.0" stroke="#6d28d9" stroke-width="3.0"/>
+<circle cx="3260" cy="230.0" r="4.5" fill="#ffffff" stroke="#6d28d9" stroke-width="2.5"/>
+<path d="M 3260,1514.0 L 3396.0,1514.0 Q 3410,1514.0 3410.0,1500.0 L 3410.0,244.0 Q 3410,230.0 3396.0,230.0 L 3260,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 3260,1514.0 L 3396.0,1514.0 Q 3410,1514.0 3410.0,1500.0 L 3410.0,244.0 Q 3410,230.0 3396.0,230.0 L 3260,230.0" fill="none" stroke="#7c3aed" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 3260,1506.0 L 3276,1514.0 L 3260,1522.0" fill="none" stroke="#7c3aed" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="3279" y1="1506.0" x2="3279" y2="1522.0" stroke="#7c3aed" stroke-width="2.8"/>
+<circle cx="3260" cy="1514.0" r="4.5" fill="#7c3aed" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="3269" y1="222.0" x2="3269" y2="238.0" stroke="#7c3aed" stroke-width="3.0"/>
+<line x1="3275" y1="222.0" x2="3275" y2="238.0" stroke="#7c3aed" stroke-width="3.0"/>
+<circle cx="3260" cy="230.0" r="4.5" fill="#ffffff" stroke="#7c3aed" stroke-width="2.5"/>
+<path d="M 3260,1854.0 L 3476.0,1854.0 Q 3490,1854.0 3490.0,1840.0 L 3490.0,244.0 Q 3490,230.0 3476.0,230.0 L 3260,230.0" fill="none" stroke="#f1f5f9" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 3260,1854.0 L 3476.0,1854.0 Q 3490,1854.0 3490.0,1840.0 L 3490.0,244.0 Q 3490,230.0 3476.0,230.0 L 3260,230.0" fill="none" stroke="#5b21b6" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 3260,1846.0 L 3276,1854.0 L 3260,1862.0" fill="none" stroke="#5b21b6" stroke-width="2.8" stroke-linejoin="round"/>
+<line x1="3279" y1="1846.0" x2="3279" y2="1862.0" stroke="#5b21b6" stroke-width="2.8"/>
+<circle cx="3260" cy="1854.0" r="4.5" fill="#5b21b6" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="3269" y1="222.0" x2="3269" y2="238.0" stroke="#5b21b6" stroke-width="3.0"/>
+<line x1="3275" y1="222.0" x2="3275" y2="238.0" stroke="#5b21b6" stroke-width="3.0"/>
+<circle cx="3260" cy="230.0" r="4.5" fill="#ffffff" stroke="#5b21b6" stroke-width="2.5"/>
+<rect x="110.0" y="540.0" width="40.0" height="20" rx="10" fill="#1d4ed8" stroke="#ffffff" stroke-width="1.6"/>
+<text x="130.0" y="554.0" text-anchor="middle" class="rel-badge">1:1</text>
+<rect x="40.0" y="1190.0" width="40.0" height="20" rx="10" fill="#2563eb" stroke="#ffffff" stroke-width="1.6"/>
+<text x="60.0" y="1204.0" text-anchor="middle" class="rel-badge">N:1</text>
+<rect x="653.5" y="1090.0" width="53.0" height="20" rx="10" fill="#475569" stroke="#ffffff" stroke-width="1.6"/>
+<text x="680.0" y="1104.0" text-anchor="middle" class="rel-badge">N:0..1</text>
+<rect x="730.0" y="810.0" width="40.0" height="20" rx="10" fill="#1d4ed8" stroke="#ffffff" stroke-width="1.6"/>
+<text x="750.0" y="824.0" text-anchor="middle" class="rel-badge">1:1</text>
+<rect x="870.0" y="1610.0" width="40.0" height="20" rx="10" fill="#047857" stroke="#ffffff" stroke-width="1.6"/>
+<text x="890.0" y="1624.0" text-anchor="middle" class="rel-badge">N:1</text>
+<rect x="910.8" y="870.0" width="98.5" height="20" rx="10" fill="#059669" stroke="#ffffff" stroke-width="1.6"/>
+<text x="960.0" y="884.0" text-anchor="middle" class="rel-badge">N:1 (1 dueño)</text>
+<rect x="1005.0" y="500.0" width="40.0" height="20" rx="10" fill="#047857" stroke="#ffffff" stroke-width="1.6"/>
+<text x="1025.0" y="514.0" text-anchor="middle" class="rel-badge">N:1</text>
+<rect x="1540.0" y="610.0" width="40.0" height="20" rx="10" fill="#047857" stroke="#ffffff" stroke-width="1.6"/>
+<text x="1560.0" y="624.0" text-anchor="middle" class="rel-badge">N:1</text>
+<rect x="1501.0" y="1730.0" width="118.0" height="20" rx="10" fill="#0d9488" stroke="#ffffff" stroke-width="1.6"/>
+<text x="1560.0" y="1744.0" text-anchor="middle" class="rel-badge">N:0..1 (FK comp)</text>
+<rect x="1571.0" y="1250.0" width="118.0" height="20" rx="10" fill="#0d9488" stroke="#ffffff" stroke-width="1.6"/>
+<text x="1630.0" y="1264.0" text-anchor="middle" class="rel-badge">0..1:1 (FK comp)</text>
+<rect x="1680.0" y="350.0" width="40.0" height="20" rx="10" fill="#c2410c" stroke="#ffffff" stroke-width="1.6"/>
+<text x="1700.0" y="364.0" text-anchor="middle" class="rel-badge">N:1</text>
+<rect x="1720.8" y="1210.0" width="98.5" height="20" rx="10" fill="#ea580c" stroke="#ffffff" stroke-width="1.6"/>
+<text x="1770.0" y="1224.0" text-anchor="middle" class="rel-badge">N:1 (FK comp)</text>
+<rect x="1790.8" y="680.0" width="98.5" height="20" rx="10" fill="#c2410c" stroke="#ffffff" stroke-width="1.6"/>
+<text x="1840.0" y="694.0" text-anchor="middle" class="rel-badge">N:1 (FK comp)</text>
+<rect x="1885.0" y="360.0" width="40.0" height="20" rx="10" fill="#c2410c" stroke="#ffffff" stroke-width="1.6"/>
+<text x="1905.0" y="374.0" text-anchor="middle" class="rel-badge">N:1</text>
+<rect x="1855.8" y="1170.0" width="98.5" height="20" rx="10" fill="#c2410c" stroke="#ffffff" stroke-width="1.6"/>
+<text x="1905.0" y="1184.0" text-anchor="middle" class="rel-badge">N:1 (FK comp)</text>
+<rect x="2381.0" y="1515.0" width="118.0" height="20" rx="10" fill="#0d9488" stroke="#ffffff" stroke-width="1.6"/>
+<text x="2440.0" y="1529.0" text-anchor="middle" class="rel-badge">N:0..1 (FK comp)</text>
+<rect x="2490.0" y="1170.0" width="40.0" height="20" rx="10" fill="#c2410c" stroke="#ffffff" stroke-width="1.6"/>
+<text x="2510.0" y="1184.0" text-anchor="middle" class="rel-badge">N:1</text>
+<rect x="2560.0" y="550.0" width="40.0" height="20" rx="10" fill="#ea580c" stroke="#ffffff" stroke-width="1.6"/>
+<text x="2580.0" y="564.0" text-anchor="middle" class="rel-badge">N:1</text>
+<rect x="2081.2" y="1355.0" width="137.5" height="20" rx="10" fill="#7c3aed" stroke="#ffffff" stroke-width="1.6"/>
+<text x="2150.0" y="1369.0" text-anchor="middle" class="rel-badge">N:0..1 (repartidor)</text>
+<rect x="1187.8" y="1285.0" width="124.5" height="20" rx="10" fill="#6d28d9" stroke="#ffffff" stroke-width="1.6"/>
+<text x="1250.0" y="1299.0" text-anchor="middle" class="rel-badge">N:1 (dir+cliente)</text>
+<rect x="2091.0" y="120.0" width="118.0" height="20" rx="10" fill="#6d28d9" stroke="#ffffff" stroke-width="1.6"/>
+<text x="2150.0" y="134.0" text-anchor="middle" class="rel-badge">N:0..1 (negocio)</text>
+<rect x="3310.0" y="510.0" width="40.0" height="20" rx="10" fill="#6d28d9" stroke="#ffffff" stroke-width="1.6"/>
+<text x="3330.0" y="524.0" text-anchor="middle" class="rel-badge">N:1</text>
+<rect x="3390.0" y="950.0" width="40.0" height="20" rx="10" fill="#7c3aed" stroke="#ffffff" stroke-width="1.6"/>
+<text x="3410.0" y="964.0" text-anchor="middle" class="rel-badge">N:1</text>
+<rect x="3470.0" y="1390.0" width="40.0" height="20" rx="10" fill="#5b21b6" stroke="#ffffff" stroke-width="1.6"/>
+<text x="3490.0" y="1404.0" text-anchor="middle" class="rel-badge">N:1</text>
+<g class="shadow">
+<rect x="200" y="2230" width="1150" height="290" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+<rect x="200" y="2230" width="1150" height="36" rx="10" fill="#334155"/>
+<text x="220" y="2254" class="tbl-header">Tipos ENUM y Vistas Operativas en H2ToGo v7</text>
+<text x="220" y="2292" class="enum-title">rol_usuario:</text>
+<text x="415" y="2292" class="enum-val">cliente  |  repartidor  |  admin</text>
+<text x="220" y="2319" class="enum-title">tipo_vehiculo:</text>
+<text x="415" y="2319" class="enum-val">Camioneta  |  Moto  |  Triciclo  |  Otro</text>
+<text x="220" y="2346" class="enum-title">tipo_solicitud_pedido:</text>
+<text x="415" y="2346" class="enum-val">directa  |  abierta</text>
+<text x="220" y="2373" class="enum-title">estado_pedido:</text>
+<text x="415" y="2373" class="enum-val">pendiente  |  confirmado  |  en_camino  |  entregado  |  cancelado  |  no_entregado</text>
+<text x="220" y="2400" class="enum-title">tipo_movimiento:</text>
+<text x="415" y="2400" class="enum-val">entrada_lote  |  carga_vehiculo  |  descarga_vehiculo  |  entrega_pedido  |  ajuste_manual  |  merma_caducidad</text>
+<text x="220" y="2427" class="enum-title">codigo_cambio_perfil:</text>
+<text x="415" y="2427" class="enum-val">01_direccion_negocio  |  02_nombre_negocio  |  03_datos_vehiculo  |  04_placas_vehiculo  |  05_baja_negocio</text>
+<text x="220" y="2454" class="enum-title">estado_solicitud:</text>
+<text x="415" y="2454" class="enum-val">pendiente  |  aprobado  |  rechazado</text>
+<text x="220" y="2481" class="enum-title">Vistas Operativas:</text>
+<text x="415" y="2481" class="enum-val">vista_stock_negocio (disponible en base)   •   vista_stock_vehiculo (disponible en ruta)</text>
+</g>
+<g class="shadow">
+<rect x="1960" y="2230" width="1300" height="290" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+<rect x="1960" y="2230" width="1300" height="36" rx="10" fill="#334155"/>
+<text x="1980" y="2254" class="tbl-header">Reglas de Integridad Estructural v7 (Llaves Foráneas Compuestas y Triggers)</text>
+<text x="1980" y="2292" class="enum-val">1. Subtipos disjuntos (1:1): clientes(id_usuario, rol=&#x27;cliente&#x27;) y repartidores(id_usuario, rol=&#x27;repartidor&#x27;) -&gt; usuarios(id_usuario, rol).</text>
+<text x="1980" y="2321" class="enum-val">2. Sin ciclo dueño-negocio: repartidores.es_dueno = TRUE con índice único parcial uk_repartidores_un_dueno y trigger diferido fn_valida_dueno_unico.</text>
+<text x="1980" y="2350" class="enum-val">3. Mismo negocio en vehículo asignado: repartidores(id_vehiculo_actual, id_negocio) -&gt; vehiculos_negocio(id_vehiculo, id_negocio).</text>
+<text x="1980" y="2379" class="enum-val">4. Cadena Catálogo -&gt; Lote -&gt; Vehículo -&gt; Apartado: lotes_inventario(id_negocio, id_marca) -&gt; productos_negocio; inventario_vehiculo valida negocio.</text>
+<text x="1980" y="2408" class="enum-val">5. Dirección del mismo cliente: pedidos(id_direccion_entrega, id_cliente) -&gt; direcciones_clientes(id_direccion, id_cliente).</text>
+<text x="1980" y="2437" class="enum-val">6. Geocerca automática PostGIS: trigger fn_calcula_zona_cobertura evalúa ST_Covers(zonas_cobertura.geom, direcciones_clientes.ubicacion).</text>
+<text x="1980" y="2466" class="enum-val">7. Bitácoras inmutables: movimientos_inventario e historial_estados_pedido bloquean UPDATE/DELETE mediante trigger fn_bitacora_inmutable.</text>
+</g>
+</svg>
