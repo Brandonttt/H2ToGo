@@ -21,6 +21,7 @@ import com.h2togo.backend.routing.dto.RouteResponse.Coordenada;
 import com.h2togo.backend.routing.service.CalculoRutaService;
 import com.h2togo.backend.routing.service.MatrizDistancias;
 import com.h2togo.backend.routing.service.OsmGraphLoader;
+import com.h2togo.backend.tracking.UbicacionService;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
@@ -67,6 +68,7 @@ public class PlaneacionService {
     private final int servicioMin;
     private final int ventanaMin;
     private final MiembrosNegocioService miembrosService;
+    private final UbicacionService ubicacionService;
 
     public PlaneacionService(NamedParameterJdbcTemplate jdbc, OptimizadorRuta optimizador,
             MatrizDistancias matriz, CalculoRutaService calculoRuta, OsmGraphLoader grafos,
@@ -74,8 +76,10 @@ public class PlaneacionService {
             @Value("${h2togo.planeacion.velocidad-kmh:20}") double velocidadKmh,
             @Value("${h2togo.planeacion.servicio-min:5}") int servicioMin,
             @Value("${h2togo.planeacion.ventana-min:30}") int ventanaMin,
-            MiembrosNegocioService miembrosService) {
+            MiembrosNegocioService miembrosService,
+            UbicacionService ubicacionService) {
         this.miembrosService = miembrosService;
+        this.ubicacionService = ubicacionService;
         this.jdbc = jdbc;
         this.optimizador = optimizador;
         this.matriz = matriz;
@@ -198,9 +202,22 @@ public class PlaneacionService {
 
     // ---------------------------------------------------------------- Ruta óptima
 
-    @Transactional(readOnly = true)
+    @Transactional
     public RutaOptimaResponse rutaOptima(int idRepartidor) {
+        return rutaOptima(idRepartidor, null, null);
+    }
+
+    @Transactional
+    public RutaOptimaResponse rutaOptima(int idRepartidor, Double origenLatParam, Double origenLonParam) {
         OffsetDateTime ahora = OffsetDateTime.now(clock);
+        boolean tieneOrigenExplicito = origenLatParam != null && origenLonParam != null
+                && Double.isFinite(origenLatParam) && Double.isFinite(origenLonParam)
+                && origenLatParam >= -90.0 && origenLatParam <= 90.0
+                && origenLonParam >= -180.0 && origenLonParam <= 180.0
+                && (origenLatParam != 0.0 || origenLonParam != 0.0);
+        if (tieneOrigenExplicito) {
+            ubicacionService.fijar(idRepartidor, origenLatParam, origenLonParam);
+        }
         Map<String, Object> rep = jdbc.queryForMap("""
                 SELECT ST_Y(COALESCE(r.ubicacion_actual, n.ubicacion_base)::geometry) AS lat,
                        ST_X(COALESCE(r.ubicacion_actual, n.ubicacion_base)::geometry) AS lon,
@@ -211,11 +228,11 @@ public class PlaneacionService {
                 LEFT JOIN negocios n ON n.id_negocio = r.id_negocio
                 LEFT JOIN vehiculos_negocio v ON v.id_vehiculo = r.id_vehiculo_actual
                 WHERE r.id_usuario = :rep""", new MapSqlParameterSource("rep", idRepartidor));
-        if (rep.get("lat") == null) {
+        if (!tieneOrigenExplicito && rep.get("lat") == null) {
             throw new BusinessRuleException("SIN_UBICACION", "Activa el GPS para calcular tu ruta.");
         }
-        double origenLat = numero(rep.get("lat"));
-        double origenLon = numero(rep.get("lon"));
+        double origenLat = tieneOrigenExplicito ? origenLatParam : numero(rep.get("lat"));
+        double origenLon = tieneOrigenExplicito ? origenLonParam : numero(rep.get("lon"));
         int capacidad = rep.get("capacidad") == null ? Integer.MAX_VALUE : ((Number) rep.get("capacidad")).intValue();
 
         List<Map<String, Object>> paradas = jdbc.queryForList("""

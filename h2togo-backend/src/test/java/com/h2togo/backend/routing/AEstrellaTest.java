@@ -42,6 +42,20 @@ class AEstrellaTest {
     }
 
     @Test
+    void mismoNodoOsmDevuelveAlMenosDosCoordenadasPasandoPorCalle() {
+        RouteRequest req = new RouteRequest();
+        req.setOrigenLat(19.3698);
+        req.setOrigenLon(-99.1802);
+        req.setDestinoLat(19.3702);
+        req.setDestinoLon(-99.1798);
+
+        RouteResponse ruta = new AEstrella().calcularRuta(grafoLineal(), req);
+
+        assertThat(ruta.isEncontrada()).isTrue();
+        assertThat(ruta.getCoordenadas().size()).isGreaterThanOrEqualTo(2);
+    }
+
+    @Test
     void sinAristasNoHayRuta() {
         Grafo g = new Grafo();
         g.agregarNodo(new Nodo(1, 19.3700, -99.1800));

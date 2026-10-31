@@ -91,7 +91,7 @@ public class AEstrella implements CalculoRutaService {
             // ¿Llegamos al destino?
             if (actual.getOsmId() == destino.getOsmId()) {
                 log.info("A* encontró ruta. g(destino)={} km", gScore.get(destino.getOsmId()));
-                return construirRespuesta(cameFrom, destino, gScore.get(destino.getOsmId()));
+                return construirRespuesta(cameFrom, destino, gScore.get(destino.getOsmId()), request);
             }
 
             // Si ya fue expandido con un costo menor, ignorar esta entrada de la cola
@@ -136,7 +136,8 @@ public class AEstrella implements CalculoRutaService {
      */
     private RouteResponse construirRespuesta(Map<Long, Nodo> cameFrom,
                                              Nodo destino,
-                                             double distanciaTotal) {
+                                             double distanciaTotal,
+                                             RouteRequest request) {
         LinkedList<RouteResponse.Coordenada> path = new LinkedList<>();
         Nodo actual = destino;
 
@@ -145,7 +146,20 @@ public class AEstrella implements CalculoRutaService {
             actual = cameFrom.get(actual.getOsmId());
         }
 
-        return new RouteResponse(true, Math.round(distanciaTotal * 1000.0) / 1000.0, path);
+        // Cuando origen y destino caen en el mismo nodo OSM (misma cuadra), garantiza al menos
+        // 2 puntos pasando por el nodo vial para que el cliente móvil no lo descarte por tener 1 punto.
+        double totalKm = distanciaTotal;
+        if (path.size() == 1 && request != null) {
+            RouteResponse.Coordenada n = path.getFirst();
+            RouteResponse.Coordenada ini = new RouteResponse.Coordenada(request.getOrigenLat(), request.getOrigenLon());
+            RouteResponse.Coordenada fin = new RouteResponse.Coordenada(request.getDestinoLat(), request.getDestinoLon());
+            path.addFirst(ini);
+            path.addLast(fin);
+            totalKm = haversineKm(ini.getLat(), ini.getLon(), n.getLat(), n.getLon())
+                    + haversineKm(n.getLat(), n.getLon(), fin.getLat(), fin.getLon());
+        }
+
+        return new RouteResponse(true, Math.round(totalKm * 1000.0) / 1000.0, path);
     }
 
     // -------------------------------------------------------------------------

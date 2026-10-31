@@ -842,25 +842,58 @@ fun SeguimientoPedidoScreen(
             } else null
         }
     }
-    val rutaBaseDemo = remember(rutaSeguimiento, latDestino, lonDestino, ubicacionRepartidor, ubicacionPurificadora) {
-        if (rutaSeguimiento.size >= 2) {
-            rutaSeguimiento
-        } else if (latDestino != null && lonDestino != null) {
-            com.htogo.app.data.location.generarRutaDemoCalles(
-                destLat = latDestino,
-                destLon = lonDestino,
-                origenLat = ubicacionPurificadora?.first ?: ubicacionRepartidor?.lat,
-                origenLon = ubicacionPurificadora?.second ?: ubicacionRepartidor?.lon
-            )
-        } else {
-            emptyList()
+    var rutaDemoAEstrella by remember(order.id) { mutableStateOf<List<Pair<Double, Double>>>(emptyList()) }
+    LaunchedEffect(posicionDemo != null, simulandoDemo, ubicacionPurificadora, order.id) {
+        if (!simulandoDemo && posicionDemo == null) return@LaunchedEffect
+        val idInt = order.id.toIntOrNull() ?: return@LaunchedEffect
+        val origen = ubicacionPurificadora ?: posicionDemo ?: return@LaunchedEffect
+        if (rutaDemoAEstrella.size >= 2) {
+            val ini = rutaDemoAEstrella.first()
+            if (com.htogo.app.data.location.distanciaM(origen.first, origen.second, ini.first, ini.second) <= 240.0) {
+                return@LaunchedEffect
+            }
+        }
+        val calculada = clienteViewModel.obtenerRutaSeguimientoDesde(idInt, origen.first, origen.second)
+        if (calculada.size >= 2) {
+            rutaDemoAEstrella = calculada
+        }
+    }
+
+    val rutaBaseDemo = remember(rutaDemoAEstrella, rutaSeguimiento, latDestino, lonDestino, ubicacionRepartidor, ubicacionPurificadora) {
+        val origenRef = ubicacionPurificadora ?: ubicacionRepartidor?.let { it.lat to it.lon }
+        val seguimientoDesdeOrigen = rutaSeguimiento.size >= 2 && (origenRef == null ||
+            com.htogo.app.data.location.distanciaM(
+                origenRef.first, origenRef.second,
+                rutaSeguimiento.first().first, rutaSeguimiento.first().second
+            ) <= 240.0)
+        when {
+            rutaDemoAEstrella.size >= 2 -> rutaDemoAEstrella
+            seguimientoDesdeOrigen -> rutaSeguimiento
+            latDestino != null && lonDestino != null ->
+                com.htogo.app.data.location.generarRutaDemoCalles(
+                    destLat = latDestino,
+                    destLon = lonDestino,
+                    origenLat = origenRef?.first,
+                    origenLon = origenRef?.second
+                )
+            else -> emptyList()
         }
     }
 
     LaunchedEffect(simulandoDemo, latDestino, lonDestino) {
         if (!simulandoDemo || latDestino == null || lonDestino == null) return@LaunchedEffect
+        var baseParaPasos = rutaBaseDemo
+        val idInt = order.id.toIntOrNull()
+        val origenPurif = ubicacionPurificadora
+        if (idInt != null && origenPurif != null && rutaDemoAEstrella.size < 2) {
+            val recienCalculada = clienteViewModel.obtenerRutaSeguimientoDesde(idInt, origenPurif.first, origenPurif.second)
+            if (recienCalculada.size >= 2) {
+                rutaDemoAEstrella = recienCalculada
+                baseParaPasos = recienCalculada
+            }
+        }
         val pasosRuta = com.htogo.app.data.location.interpolarPasosRuta(
-            ruta = rutaBaseDemo,
+            ruta = baseParaPasos,
             destLat = latDestino,
             destLon = lonDestino,
             pasoMetros = 45.0
@@ -889,7 +922,26 @@ fun SeguimientoPedidoScreen(
         val puntosRutaMapa = when {
             pedidoCerrado -> emptyList()
             posicionDemo != null && rutaBaseDemo.size >= 2 -> rutaBaseDemo
-            order.estado == EstadoPedido.EN_CAMINO || order.estado == EstadoPedido.ASIGNADO -> rutaSeguimiento
+            order.estado == EstadoPedido.EN_CAMINO || order.estado == EstadoPedido.ASIGNADO -> {
+                val seguimientoCercano = rutaSeguimiento.size >= 2 && (
+                    latEfectivaRepartidor == null || lonEfectivaRepartidor == null ||
+                        rutaSeguimiento.any {
+                            com.htogo.app.data.location.distanciaM(latEfectivaRepartidor, lonEfectivaRepartidor, it.first, it.second) <= 450.0
+                        }
+                    )
+                if (seguimientoCercano) {
+                    rutaSeguimiento
+                } else if (latDestino != null && lonDestino != null && latEfectivaRepartidor != null && lonEfectivaRepartidor != null) {
+                    com.htogo.app.data.location.generarRutaDemoCalles(
+                        destLat = latDestino,
+                        destLon = lonDestino,
+                        origenLat = latEfectivaRepartidor,
+                        origenLon = lonEfectivaRepartidor
+                    )
+                } else {
+                    rutaSeguimiento
+                }
+            }
             else -> emptyList()
         }
         if (latDestino != null && lonDestino != null) {

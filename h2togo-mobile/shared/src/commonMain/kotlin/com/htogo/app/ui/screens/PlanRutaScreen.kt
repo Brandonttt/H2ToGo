@@ -95,12 +95,16 @@ fun PlanRutaScreen(
         val dir = liveMiNegocio?.direccionObj
         when {
             dir?.lat != null && dir.lon != null && (dir.lat != 0.0 || dir.lon != 0.0) -> dir.lat to dir.lon
-            ruta != null && (ruta!!.origenLat != 0.0 || ruta!!.origenLon != 0.0) -> ruta!!.origenLat to ruta!!.origenLon
+            ruta != null && com.htogo.app.data.location.enZonaGrafoOsm(ruta!!.origenLat, ruta!!.origenLon) ->
+                ruta!!.origenLat to ruta!!.origenLon
             else -> 19.376692 to -99.165057
         }
     }
     val nombrePurificadora = liveMiNegocio?.nombreComercial?.ifBlank { null } ?: "Purificadora"
 
+    SideEffect {
+        EntregaEnCurso.simulacionActiva.value = posicionSimulada != null
+    }
     LaunchedEffect(posicionSimulada != null) {
         EntregaEnCurso.simulacionActiva.value = posicionSimulada != null
     }
@@ -110,12 +114,24 @@ fun PlanRutaScreen(
 
     LaunchedEffect(Unit) {
         if (liveMiNegocio == null) repartidorViewModel.cargarMiNegocio()
-        repartidorViewModel.cargarPlan()
+        val sim = posicionSimulada
+        if (sim != null) {
+            repartidorViewModel.cargarPlanDesdeUbicacion(sim.first, sim.second)
+        } else {
+            repartidorViewModel.cargarPlan()
+        }
     }
     // RN-009: si un cliente cancela un pedido de la ruta (o se activa un programado), se recalcula.
     LaunchedEffect(Unit) {
         CanalNotificaciones.avisos.collect { aviso ->
-            if (aviso.datos["tipo"] == "ruta_recalculada") repartidorViewModel.cargarPlan()
+            if (aviso.datos["tipo"] == "ruta_recalculada") {
+                val sim = posicionSimulada
+                if (sim != null) {
+                    repartidorViewModel.cargarPlanDesdeUbicacion(sim.first, sim.second)
+                } else {
+                    repartidorViewModel.cargarPlan()
+                }
+            }
         }
     }
 
@@ -124,13 +140,14 @@ fun PlanRutaScreen(
         if (!simulandoRecorrido) return@LaunchedEffect
         // Desde donde vaya la simulación (la última entrega); solo la primera vez, desde la purificadora.
         val base = posicionSimulada ?: ubicacionPurificadora
+        EntregaEnCurso.simulacionActiva.value = true
         posicionSimulada = base
         var recalculoListo = false
         repartidorViewModel.cargarPlanDesdeUbicacion(base.first, base.second) {
             recalculoListo = true
         }
         var espera = 0
-        while (!recalculoListo && espera < 12) {
+        while (!recalculoListo && espera < 35) {
             delay(200)
             espera++
         }

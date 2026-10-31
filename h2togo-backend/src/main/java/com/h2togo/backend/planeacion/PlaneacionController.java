@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,8 +34,10 @@ public class PlaneacionController {
 
     /** Orden óptimo de todas sus paradas (OR-Tools). 422 SIN_UBICACION si no hay GPS ni base. */
     @GetMapping("/repartidores/me/ruta-optima")
-    public RutaOptimaResponse rutaOptima() {
-        return planeacionService.rutaOptima(SecurityUtils.idActual());
+    public RutaOptimaResponse rutaOptima(
+            @RequestParam(required = false) Double origenLat,
+            @RequestParam(required = false) Double origenLon) {
+        return planeacionService.rutaOptima(SecurityUtils.idActual(), origenLat, origenLon);
     }
 
     /** Reserva un programado de hoy. 409 si otro repartidor lo reservó primero. */

@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -24,15 +25,23 @@ public class RutaController {
     }
 
     @GetMapping("/{id}/ruta")
-    public ResponseEntity<RouteResponse> ruta(@PathVariable int id) {
-        RouteResponse ruta = rutaService.ruta(SecurityUtils.exigirRol(RolUsuario.repartidor), id);
+    public ResponseEntity<RouteResponse> ruta(
+            @PathVariable int id,
+            @RequestParam(required = false) Double origenLat,
+            @RequestParam(required = false) Double origenLon) {
+        RouteResponse ruta = rutaService.ruta(
+                SecurityUtils.exigirRol(RolUsuario.repartidor), id, origenLat, origenLon);
         return ruta.isEncontrada() ? ResponseEntity.ok(ruta) : ResponseEntity.unprocessableEntity().body(ruta);
     }
 
     /** Seguimiento del cliente (CU-006): la misma ruta por calles, del repartidor a su domicilio. */
     @GetMapping("/{id}/ruta-seguimiento")
-    public ResponseEntity<RouteResponse> rutaSeguimiento(@PathVariable int id) {
-        RouteResponse ruta = rutaService.rutaSeguimiento(SecurityUtils.exigirRol(RolUsuario.cliente), id);
+    public ResponseEntity<RouteResponse> rutaSeguimiento(
+            @PathVariable int id,
+            @RequestParam(required = false) Double origenLat,
+            @RequestParam(required = false) Double origenLon) {
+        RouteResponse ruta = rutaService.rutaSeguimiento(
+                SecurityUtils.exigirRol(RolUsuario.cliente), id, origenLat, origenLon);
         return ruta.isEncontrada() ? ResponseEntity.ok(ruta) : ResponseEntity.unprocessableEntity().body(ruta);
     }
 }

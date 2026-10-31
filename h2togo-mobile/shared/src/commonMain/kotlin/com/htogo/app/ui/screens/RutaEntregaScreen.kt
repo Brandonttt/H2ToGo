@@ -100,6 +100,7 @@ fun RutaEntregaScreen(
     val livePedidoEnRuta by repartidorViewModel.pedidoEnRuta.collectAsState()
     val livePedidoDisponible by repartidorViewModel.pedidoDisponibleSeleccionado.collectAsState()
     val liveRutaCalculada by repartidorViewModel.rutaCalculada.collectAsState()
+    val idPedidoRutaActiva by repartidorViewModel.idPedidoRutaCalculada.collectAsState()
     val liveMiNegocio by repartidorViewModel.miNegocio.collectAsState()
     val liveRutaOptima by repartidorViewModel.rutaOptima.collectAsState()
     val liveMisEntregas by repartidorViewModel.misEntregas.collectAsState()
@@ -226,6 +227,7 @@ fun RutaEntregaScreen(
     val posicionReal by EntregaEnCurso.posicion.collectAsState()
     val posicion = posicionSimulada ?: posicionReal
     // Con FakeGPS activo el servicio de ubicación no reporta el GPS real (ver EntregaEnCurso).
+    SideEffect { EntregaEnCurso.simulacionActiva.value = posicionSimulada != null }
     LaunchedEffect(posicionSimulada != null) { EntregaEnCurso.simulacionActiva.value = posicionSimulada != null }
     DisposableEffect(Unit) { onDispose { EntregaEnCurso.simulacionActiva.value = false } }
 
@@ -234,26 +236,41 @@ fun RutaEntregaScreen(
         val dir = liveMiNegocio?.direccionObj
         when {
             dir?.lat != null && dir.lon != null && (dir.lat != 0.0 || dir.lon != 0.0) -> dir.lat to dir.lon
-            liveRutaOptima != null && (liveRutaOptima!!.origenLat != 0.0 || liveRutaOptima!!.origenLon != 0.0) ->
+            liveRutaOptima != null && com.htogo.app.data.location.enZonaGrafoOsm(liveRutaOptima!!.origenLat, liveRutaOptima!!.origenLon) ->
                 liveRutaOptima!!.origenLat to liveRutaOptima!!.origenLon
             else -> (entrega.latDestino + 0.0075).coerceIn(19.355, 19.402) to (entrega.lonDestino - 0.0055).coerceIn(-99.190, -99.140)
         }
     }
     val nombrePurificadora = liveMiNegocio?.nombreComercial?.ifBlank { null } ?: "Purificadora"
 
-    val routePoints = remember(liveRutaCalculada, posicionSimulada, entrega.latDestino, entrega.lonDestino, ubicacionBasePurificadora) {
-        val reales = liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) }.orEmpty()
-        if (reales.size >= 2) {
+    val routePoints = remember(
+        liveRutaCalculada,
+        idPedidoRutaActiva,
+        entrega.pedidoId,
+        posicion,
+        entrega.latDestino,
+        entrega.lonDestino,
+        ubicacionBasePurificadora
+    ) {
+        val idPed = entrega.pedidoId.toIntOrNull()
+        val reales = if (idPed != null && idPedidoRutaActiva == idPed) {
+            liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) }.orEmpty()
+        } else {
+            emptyList()
+        }
+        val pos = posicion
+        val realesCercanas = reales.size >= 2 && (pos == null || reales.any {
+            UbicacionTracker.distanciaM(pos.lat, pos.lon, it.first, it.second) <= 450.0
+        })
+        if (realesCercanas) {
             reales
-        } else if (posicionSimulada != null) {
+        } else {
             com.htogo.app.data.location.generarRutaDemoCalles(
                 destLat = entrega.latDestino,
                 destLon = entrega.lonDestino,
-                origenLat = posicionSimulada?.lat ?: ubicacionBasePurificadora.first,
-                origenLon = posicionSimulada?.lon ?: ubicacionBasePurificadora.second
+                origenLat = pos?.lat ?: ubicacionBasePurificadora.first,
+                origenLon = pos?.lon ?: ubicacionBasePurificadora.second
             )
-        } else {
-            emptyList()
         }
     }
 
@@ -288,15 +305,31 @@ fun RutaEntregaScreen(
         if (actual == null || UbicacionTracker.distanciaM(actual.lat, actual.lon, entrega.latDestino, entrega.lonDestino) < 80.0) {
             val (latIni, lonIni) = ubicacionBasePurificadora
             val posIni = com.htogo.app.data.location.Posicion(latIni, lonIni, 5f)
+            EntregaEnCurso.simulacionActiva.value = true
             posicionSimulada = posIni
             if (idInt != null) {
                 puntosDesdePurificadora = repartidorViewModel.recalcularRutaDesde(idInt, posIni)
             }
-        } else if (idInt != null && liveRutaCalculada?.coordenadas.isNullOrEmpty()) {
-            puntosDesdePurificadora = repartidorViewModel.recalcularRutaDesde(idInt, actual)
+        } else if (idInt != null) {
+            val inicioRutaActual = liveRutaCalculada
+                ?.takeIf { idPedidoRutaActiva == idInt }
+                ?.coordenadas
+                ?.firstOrNull()
+            val desfasada = inicioRutaActual == null ||
+                UbicacionTracker.distanciaM(actual.lat, actual.lon, inicioRutaActual.lat, inicioRutaActual.lon) > 180.0
+            if (desfasada) {
+                puntosDesdePurificadora = repartidorViewModel.recalcularRutaDesde(idInt, actual)
+            }
         }
         val puntosBase = puntosDesdePurificadora.takeIf { it.size >= 2 }
-            ?: liveRutaCalculada?.coordenadas?.map { Pair(it.lat, it.lon) }?.takeIf { it.size >= 2 }
+            ?: liveRutaCalculada
+                ?.takeIf { idPedidoRutaActiva == idInt }
+                ?.coordenadas
+                ?.map { Pair(it.lat, it.lon) }
+                ?.takeIf { pts ->
+                    val ref = posicionSimulada
+                    pts.size >= 2 && (ref == null || pts.any { UbicacionTracker.distanciaM(ref.lat, ref.lon, it.first, it.second) <= 450.0 })
+                }
             ?: com.htogo.app.data.location.generarRutaDemoCalles(
                 destLat = entrega.latDestino,
                 destLon = entrega.lonDestino,
@@ -346,6 +379,7 @@ fun RutaEntregaScreen(
         val idInt = entrega.pedidoId.toIntOrNull() ?: return@LaunchedEffect
         if (!tienePermiso) return@LaunchedEffect
         EntregaEnCurso.iniciar(idInt)
+        var primerFixReal = true
         EntregaEnCurso.posicion.filterNotNull().collect { p ->
             if (posicionSimulada == null) {
                 // Con el primer fix el pedido pasa a "en camino": el cliente empieza a ver el rastreo.
@@ -360,7 +394,8 @@ fun RutaEntregaScreen(
                         }
                     })
                 }
-                repartidorViewModel.alMoverse(idInt, p)
+                repartidorViewModel.alMoverse(idInt, p, forzar = primerFixReal)
+                primerFixReal = false
             }
         }
     }
@@ -412,7 +447,9 @@ fun RutaEntregaScreen(
                     }
                 })
             }
-            repartidorViewModel.reportarUbicacionSimulada(posActual.lat, posActual.lon)
+            if (posicionSimulada != null && !simulandoRecorrido) {
+                repartidorViewModel.reportarUbicacionSimulada(posActual.lat, posActual.lon)
+            }
             if (!simulandoRecorrido) {
                 repartidorViewModel.alMoverse(idInt, posActual)
             }

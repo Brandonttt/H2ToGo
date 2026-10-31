@@ -537,14 +537,43 @@ class ClienteViewModel : ViewModel() {
     private suspend fun actualizarRutaSeguimiento(idPedido: Int, desde: UbicacionEnVivo?) {
         rutaSeguimientoMs = ahoraMs()
         try {
-            val resp = apiClient.pedidosApi.rutaSeguimiento(idPedido)
+            val resp = apiClient.pedidosApi.rutaSeguimiento(idPedido, desde?.lat, desde?.lon)
             val ruta = resp.body()
-            if (resp.isSuccessful && ruta != null && ruta.encontrada && ruta.coordenadas.isNotEmpty()) {
-                _rutaSeguimiento.value = ruta.coordenadas.map { it.lat to it.lon }
-                origenRutaSeguimiento = desde ?: UbicacionEnVivo(ruta.coordenadas.first().lat, ruta.coordenadas.first().lon)
+            if (resp.isSuccessful && ruta != null && ruta.encontrada && ruta.coordenadas.size >= 2) {
+                val primero = ruta.coordenadas.first()
+                // Si el servidor aún no tenía el nuevo punto del repartidor en BD, evita sobrescribir con una ruta lejana.
+                val origenDesfasado = desde != null &&
+                    com.htogo.app.data.location.enZonaGrafoOsm(desde.lat, desde.lon) &&
+                    com.htogo.app.data.location.distanciaM(desde.lat, desde.lon, primero.lat, primero.lon) > 450.0
+                if (!origenDesfasado) {
+                    _rutaSeguimiento.value = ruta.coordenadas.map { it.lat to it.lon }
+                    origenRutaSeguimiento = desde ?: UbicacionEnVivo(primero.lat, primero.lon)
+                }
             }
         } catch (_: Exception) {
             // Sin red: se reintenta en el próximo ciclo sin borrar la ruta previa
+        }
+    }
+
+    /** Calcula la ruta A* por calles desde un punto explícito (p. ej. la purificadora en modo FakeGPS del cliente). */
+    suspend fun obtenerRutaSeguimientoDesde(
+        idPedido: Int,
+        origenLat: Double,
+        origenLon: Double
+    ): List<Pair<Double, Double>> {
+        return try {
+            val resp = apiClient.pedidosApi.rutaSeguimiento(idPedido, origenLat, origenLon)
+            val ruta = resp.body()
+            if (resp.isSuccessful && ruta != null && ruta.encontrada && ruta.coordenadas.size >= 2) {
+                val primero = ruta.coordenadas.first()
+                if (!com.htogo.app.data.location.enZonaGrafoOsm(origenLat, origenLon) ||
+                    com.htogo.app.data.location.distanciaM(origenLat, origenLon, primero.lat, primero.lon) <= 450.0
+                ) {
+                    ruta.coordenadas.map { it.lat to it.lon }
+                } else emptyList()
+            } else emptyList()
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 

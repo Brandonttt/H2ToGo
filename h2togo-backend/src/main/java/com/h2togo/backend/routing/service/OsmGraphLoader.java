@@ -74,7 +74,9 @@ public class OsmGraphLoader {
                 if (!esCalleTransitable(tags)) {
                     continue;
                 }
-                boolean unaDireccion = "yes".equalsIgnoreCase(tags.path("oneway").asText("no"));
+                String oneway = tags.path("oneway").asText("no").trim().toLowerCase();
+                boolean soloAdelante = "yes".equals(oneway) || "true".equals(oneway) || "1".equals(oneway);
+                boolean soloReversa = "-1".equals(oneway) || "reverse".equals(oneway);
                 List<Nodo> nodosDeVia = new ArrayList<>();
                 for (JsonNode ref : element.path("nodes")) {
                     Nodo n = g.obtenerNodo(ref.asLong());
@@ -87,9 +89,11 @@ public class OsmGraphLoader {
                     Nodo hasta = nodosDeVia.get(i + 1);
                     double peso = AEstrella.haversineKm(desde.getLatitud(), desde.getLongitud(),
                             hasta.getLatitud(), hasta.getLongitud());
-                    g.agregarArista(new Arista(desde, hasta, peso));
-                    aristas++;
-                    if (!unaDireccion) {
+                    if (!soloReversa) {
+                        g.agregarArista(new Arista(desde, hasta, peso));
+                        aristas++;
+                    }
+                    if (!soloAdelante) {
                         g.agregarArista(new Arista(hasta, desde, peso));
                         aristas++;
                     }
@@ -110,7 +114,7 @@ public class OsmGraphLoader {
         }
         return switch (tags.path("highway").asText("")) {
             case "motorway", "trunk", "primary", "secondary", "tertiary",
-                 "residential", "service", "unclassified",
+                 "residential", "living_street", "service", "unclassified",
                  "motorway_link", "trunk_link", "primary_link",
                  "secondary_link", "tertiary_link" -> true;
             default -> false;

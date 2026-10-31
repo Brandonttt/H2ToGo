@@ -8,6 +8,10 @@ import kotlin.math.sqrt
 /** Posición GPS (lat/lon en grados, precisión en metros). */
 data class Posicion(val lat: Double, val lon: Double, val precisionM: Float)
 
+/** Indica si una coordenada cae dentro del área cubierta por el grafo OSM de Benito Juárez. */
+fun enZonaGrafoOsm(lat: Double, lon: Double): Boolean =
+    lat in 19.3360..19.4235 && lon in -99.2065..-99.1135
+
 /** Distancia en metros entre dos puntos (haversine). */
 fun distanciaM(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val r = 6_371_000.0
@@ -30,14 +34,21 @@ fun generarRutaDemoCalles(
 ): List<Pair<Double, Double>> {
     val oLat = origenLat ?: (destLat + 0.0075).coerceIn(19.355, 19.402)
     val oLon = origenLon ?: (destLon - 0.0055).coerceIn(-99.190, -99.140)
+    val dist = distanciaM(oLat, oLon, destLat, destLon)
+    if (dist < 45.0) {
+        return listOf(Pair(oLat, oLon), Pair(destLat, destLon))
+    }
     val dLat = destLat - oLat
     val dLon = destLon - oLon
+    // Cuando el trayecto es casi puramente N-S o E-O, introduce un ligero desvío perpendicular de cuadra
+    val perpLat = if (kotlin.math.abs(dLat) < 0.0008) 0.00065 else 0.0
+    val perpLon = if (kotlin.math.abs(dLon) < 0.0008) 0.00065 else 0.0
     return listOf(
         Pair(oLat, oLon),
-        Pair(oLat + dLat * 0.35, oLon + dLon * 0.05),
-        Pair(oLat + dLat * 0.38, oLon + dLon * 0.55),
-        Pair(oLat + dLat * 0.78, oLon + dLon * 0.58),
-        Pair(oLat + dLat * 0.82, oLon + dLon * 0.92),
+        Pair(oLat + dLat * 0.35 + perpLat, oLon + dLon * 0.04),
+        Pair(oLat + dLat * 0.38 + perpLat, oLon + dLon * 0.55 + perpLon),
+        Pair(oLat + dLat * 0.78, oLon + dLon * 0.58 + perpLon),
+        Pair(oLat + dLat * 0.82, oLon + dLon * 0.94),
         Pair(destLat, destLon)
     )
 }

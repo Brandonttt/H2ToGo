@@ -15,7 +15,9 @@ import com.htogo.app.data.dto.PedidoResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
@@ -35,6 +37,9 @@ class RepartidorViewModel : ViewModel() {
 
     private val _rutaCalculada = MutableStateFlow<com.htogo.app.data.dto.RouteResponse?>(null)
     val rutaCalculada: StateFlow<com.htogo.app.data.dto.RouteResponse?> = _rutaCalculada.asStateFlow()
+
+    private val _idPedidoRutaCalculada = MutableStateFlow<Int?>(null)
+    val idPedidoRutaCalculada: StateFlow<Int?> = _idPedidoRutaCalculada.asStateFlow()
 
     fun setPedidoDisponibleSeleccionado(pedido: PedidoDisponibleResponse?) {
         _pedidoDisponibleSeleccionado.value = pedido
@@ -695,6 +700,12 @@ class RepartidorViewModel : ViewModel() {
                 val resp = apiClient.repartidorApi.aceptarPedido(id)
                 if (resp.isSuccessful && resp.body() != null) {
                     val pedido = resp.body()!!
+                    if (_idPedidoRutaCalculada.value != pedido.id) {
+                        _rutaCalculada.value = null
+                        _idPedidoRutaCalculada.value = null
+                        origenRuta = null
+                        ultimaRutaMs = 0L
+                    }
                     _pedidoEnRuta.value = pedido
                     cargarPedidosDisponibles()
                     cargarMisEntregas()
@@ -726,47 +737,75 @@ class RepartidorViewModel : ViewModel() {
 
     private var origenRuta: com.htogo.app.data.location.Posicion? = null
     private var ultimaRutaMs = 0L
-    private var calculandoRuta = false
+    private var rutaJob: Job? = null
+    private var rutaSeq = 0L
     private var falloUltimaRutaRed = false
+
+    private suspend fun consultarRutaBackendDesde(
+        idPedido: Int,
+        p: com.htogo.app.data.location.Posicion
+    ): com.htogo.app.data.api.Respuesta<com.htogo.app.data.dto.RouteResponse> {
+        apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to p.lat, "lon" to p.lon))
+        var resp = apiClient.repartidorApi.obtenerRuta(idPedido, p.lat, p.lon)
+        val primerPunto = resp.body()?.coordenadas?.firstOrNull()
+        // Si un servidor previo ignoró el PUT por el throttle de 5 s y devolvió una ruta desde un
+        // origen viejo (> 450 m de p estando dentro del mapa de Benito Juárez), reintenta tras 5.1 s.
+        if (resp.isSuccessful && primerPunto != null &&
+            com.htogo.app.data.location.enZonaGrafoOsm(p.lat, p.lon) &&
+            com.htogo.app.data.location.distanciaM(p.lat, p.lon, primerPunto.lat, primerPunto.lon) > 450.0
+        ) {
+            delay(5_100L)
+            apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to p.lat, "lon" to p.lon))
+            resp = apiClient.repartidorApi.obtenerRuta(idPedido, p.lat, p.lon)
+        }
+        return resp
+    }
 
     /**
      * Cada fix del GPS (lo reporta al backend [EntregaEnCursoService]): recalcula la ruta si el
      * repartidor se movió más de 50 m desde el último cálculo, o si falló por red previamente.
      */
     fun alMoverse(idPedido: Int, p: com.htogo.app.data.location.Posicion, forzar: Boolean = false) {
-        if (calculandoRuta && !forzar) return
+        val cambioPedido = _idPedidoRutaCalculada.value != null && _idPedidoRutaCalculada.value != idPedido
+        if (cambioPedido) {
+            _rutaCalculada.value = null
+            _idPedidoRutaCalculada.value = null
+            origenRuta = null
+            ultimaRutaMs = 0L
+        }
         val ahora = ahoraMs()
         val origen = origenRuta
         val distMovida = if (origen != null) com.htogo.app.data.location.distanciaM(origen.lat, origen.lon, p.lat, p.lon) else Double.MAX_VALUE
-        val recalcular = forzar || origen == null || falloUltimaRutaRed ||
+        val urgente = forzar || cambioPedido || distMovida >= 120.0
+        if (rutaJob?.isActive == true && !urgente) return
+        val recalcular = urgente || origen == null || falloUltimaRutaRed || _rutaCalculada.value == null ||
             (ahora - ultimaRutaMs >= 8_000 && distMovida > 50)
         if (!recalcular) return
-        calculandoRuta = true
-        viewModelScope.launch {
+
+        rutaJob?.cancel()
+        val miSeq = ++rutaSeq
+        rutaJob = viewModelScope.launch {
             try {
-                // La ruta parte de la ubicación guardada en el backend: se reporta justo antes para
-                // no depender de que el servicio ya haya enviado este mismo fix.
-                apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to p.lat, "lon" to p.lon))
-                val resp = apiClient.repartidorApi.obtenerRuta(idPedido)
-                if (resp.isSuccessful && resp.body() != null) {
+                val resp = consultarRutaBackendDesde(idPedido, p)
+                if (miSeq != rutaSeq) return@launch
+                if (resp.isSuccessful && resp.body() != null && resp.body()!!.coordenadas.size >= 2) {
                     _rutaCalculada.value = resp.body()
+                    _idPedidoRutaCalculada.value = idPedido
                     _rutaNoDisponible.value = false
                     falloUltimaRutaRed = false
                     origenRuta = p
-                    ultimaRutaMs = ahora
+                    ultimaRutaMs = ahoraMs()
                 } else if (resp.code() == 422) {
-                    _rutaCalculada.value = null
                     _rutaNoDisponible.value = true
                     falloUltimaRutaRed = false
-                    // Se reintenta cuando se mueva lo suficiente (p. ej. al entrar a la zona).
                     origenRuta = p
-                    ultimaRutaMs = ahora
+                    ultimaRutaMs = ahoraMs()
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 // Sin red: se marca pendiente para reintentar en cuanto vuelva la conexión.
-                falloUltimaRutaRed = true
-            } finally {
-                calculandoRuta = false
+                if (miSeq == rutaSeq) falloUltimaRutaRed = true
             }
         }
     }
@@ -779,23 +818,32 @@ class RepartidorViewModel : ViewModel() {
         idPedido: Int,
         p: com.htogo.app.data.location.Posicion
     ): List<Pair<Double, Double>> {
-        calculandoRuta = true
+        rutaJob?.cancel()
+        val miSeq = ++rutaSeq
         try {
-            apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to p.lat, "lon" to p.lon))
-            val resp = apiClient.repartidorApi.obtenerRuta(idPedido)
-            if (resp.isSuccessful && resp.body() != null) {
+            val resp = consultarRutaBackendDesde(idPedido, p)
+            if (resp.isSuccessful && resp.body() != null && resp.body()!!.coordenadas.size >= 2) {
                 val body = resp.body()!!
-                _rutaCalculada.value = body
-                _rutaNoDisponible.value = false
-                origenRuta = p
-                ultimaRutaMs = ahoraMs()
+                if (miSeq == rutaSeq) {
+                    _rutaCalculada.value = body
+                    _idPedidoRutaCalculada.value = idPedido
+                    _rutaNoDisponible.value = false
+                    falloUltimaRutaRed = false
+                    origenRuta = p
+                    ultimaRutaMs = ahoraMs()
+                }
                 return body.coordenadas.map { it.lat to it.lon }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
-        } finally {
-            calculandoRuta = false
+            if (miSeq == rutaSeq) falloUltimaRutaRed = true
         }
-        return _rutaCalculada.value?.coordenadas?.map { it.lat to it.lon }.orEmpty()
+        return _rutaCalculada.value
+            ?.takeIf { _idPedidoRutaCalculada.value == idPedido }
+            ?.coordenadas
+            ?.map { it.lat to it.lon }
+            .orEmpty()
     }
 
     /** Envía al backend la posición simulada de FakeGPS para que el cliente la reciba en vivo por WebSocket. */
@@ -811,6 +859,12 @@ class RepartidorViewModel : ViewModel() {
 
     /** Carga el detalle real de un pedido del repartidor (pedido apartado, o tras reiniciarse la app). */
     fun cargarPedidoEnRuta(idPedido: Int) {
+        if (_idPedidoRutaCalculada.value != null && _idPedidoRutaCalculada.value != idPedido) {
+            _rutaCalculada.value = null
+            _idPedidoRutaCalculada.value = null
+            origenRuta = null
+            ultimaRutaMs = 0L
+        }
         viewModelScope.launch {
             try {
                 val resp = apiClient.pedidosApi.obtenerDetallePedido(idPedido)
@@ -823,7 +877,12 @@ class RepartidorViewModel : ViewModel() {
 
     /** Al salir de la pantalla de ruta: el próximo pedido empieza con ruta nueva. */
     fun detenerNavegacion() {
+        rutaJob?.cancel()
+        rutaJob = null
+        _rutaCalculada.value = null
+        _idPedidoRutaCalculada.value = null
         _rutaNoDisponible.value = false
+        falloUltimaRutaRed = false
         origenRuta = null
         ultimaRutaMs = 0L
     }
@@ -993,7 +1052,7 @@ class RepartidorViewModel : ViewModel() {
             return dir.lat to dir.lon
         }
         val opt = _rutaOptima.value
-        if (opt != null && (opt.origenLat != 0.0 || opt.origenLon != 0.0)) {
+        if (opt != null && com.htogo.app.data.location.enZonaGrafoOsm(opt.origenLat, opt.origenLon)) {
             return opt.origenLat to opt.origenLon
         }
         return null
@@ -1001,6 +1060,11 @@ class RepartidorViewModel : ViewModel() {
 
     /** Recarga la agenda y recalcula la ruta óptima (también tras un aviso de RN-009). */
     fun cargarPlan() {
+        val sim = ultimaPosicionSimulada
+        if (sim != null) {
+            cargarPlanDesdeUbicacion(sim.lat, sim.lon)
+            return
+        }
         viewModelScope.launch {
             _calculandoPlan.value = true
             try {
@@ -1034,7 +1098,16 @@ class RepartidorViewModel : ViewModel() {
                 apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to lat, "lon" to lon))
                 val agenda = apiClient.repartidorApi.agenda()
                 if (agenda.isSuccessful) _agenda.value = agenda.body().orEmpty()
-                val ruta = apiClient.repartidorApi.rutaOptima()
+                var ruta = apiClient.repartidorApi.rutaOptima(lat, lon)
+                val bodyInicial = ruta.body()
+                if (ruta.isSuccessful && bodyInicial != null &&
+                    com.htogo.app.data.location.enZonaGrafoOsm(lat, lon) &&
+                    com.htogo.app.data.location.distanciaM(lat, lon, bodyInicial.origenLat, bodyInicial.origenLon) > 300.0
+                ) {
+                    delay(5_100L)
+                    apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to lat, "lon" to lon))
+                    ruta = apiClient.repartidorApi.rutaOptima(lat, lon)
+                }
                 if (ruta.isSuccessful && ruta.body() != null) {
                     val body = ruta.body()!!
                     _rutaOptima.value = body
@@ -1095,6 +1168,10 @@ class RepartidorViewModel : ViewModel() {
     fun iniciarParada(parada: ParadaDto, onListo: () -> Unit, onError: (String) -> Unit) {
         enRutaDelDia = true
         _pedidoDisponibleSeleccionado.value = null
+        _rutaCalculada.value = null
+        _idPedidoRutaCalculada.value = null
+        origenRuta = null
+        ultimaRutaMs = 0L
         if (parada.estado == "pendiente" || parada.estado == "pendiente_programado") {
             aceptarPedido(parada.idPedido, onSuccess = { onListo() }, onError = onError)
             return

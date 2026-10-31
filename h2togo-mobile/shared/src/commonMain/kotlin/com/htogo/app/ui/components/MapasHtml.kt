@@ -405,25 +405,69 @@ internal fun htmlMapaRuta(
               return tramos;
             }
 
+            // Proyecta un punto [lat, lon] sobre el segmento más cercano de una polilínea vial.
+            function proyectarEnRuta(pos, pts) {
+              if (!pts || pts.length < 2) return null;
+              var cosLat = Math.max(0.1, Math.cos(pos[0] * Math.PI / 180));
+              var mejorIdx = 0, mejorQ = pts[0], minDist = Infinity;
+              for (var i = 0; i < pts.length - 1; i++) {
+                var a = pts[i], b = pts[i + 1];
+                var ax = a[1] * cosLat, ay = a[0];
+                var bx = b[1] * cosLat, by = b[0];
+                var px = pos[1] * cosLat, py = pos[0];
+                var dx = bx - ax, dy = by - ay;
+                var lenSq = dx * dx + dy * dy;
+                var t = lenSq > 1e-12 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq)) : 0;
+                var q = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+                var d = distM(pos, q);
+                if (d < minDist) { minDist = d; mejorIdx = i; mejorQ = q; }
+              }
+              return { segIdx: mejorIdx, punto: mejorQ, distM: minDist };
+            }
+
+            // Respaldo tipo cuadrícula vial cuando aún se está recalculando A*, evitando líneas rectas diagonales.
+            function rutaUrbanaRespaldo(desde, hasta) {
+              var d = distM(desde, hasta);
+              if (d <= 60) return [desde, hasta];
+              var dLat = hasta[0] - desde[0], dLon = hasta[1] - desde[1];
+              var perpLat = Math.abs(dLat) < 0.0008 ? 0.00065 : 0;
+              var perpLon = Math.abs(dLon) < 0.0008 ? 0.00065 : 0;
+              return [
+                desde,
+                [desde[0] + dLat * 0.35 + perpLat, desde[1] + dLon * 0.04],
+                [desde[0] + dLat * 0.38 + perpLat, desde[1] + dLon * 0.55 + perpLon],
+                [desde[0] + dLat * 0.78, desde[1] + dLon * 0.58 + perpLon],
+                [desde[0] + dLat * 0.82, desde[1] + dLon * 0.94],
+                hasta
+              ];
+            }
+
             // Línea: en ruta multi-parada (OR-Tools) pinta cada tramo de distinto color; en ruta individual usa color de alto contraste.
             function dibujarLinea() {
               limpiarLineas();
               if (paradasActuales.length > 0 && rutaActual.length >= 2) {
                 var tramos = dividirPorParadas(rutaActual, paradasActuales);
                 if (repPos && tramos.length > 0) {
-                  var mejorT = 0, mejorIdx = 0, dMin = Infinity;
+                  var mejorT = 0, mejorProy = null, dMin = Infinity;
                   for (var t = 0; t < tramos.length; t++) {
-                    var ptsT = tramos[t].puntos;
-                    for (var p = 0; p < ptsT.length; p++) {
-                      var d = distM(repPos, ptsT[p]);
-                      if (d < dMin) { dMin = d; mejorT = t; mejorIdx = p; }
-                    }
+                    var pr = proyectarEnRuta(repPos, tramos[t].puntos);
+                    if (pr && pr.distM < dMin) { dMin = pr.distM; mejorT = t; mejorProy = pr; }
                   }
-                  for (var t2 = mejorT; t2 < tramos.length; t2++) {
-                    var seg = (t2 === mejorT)
-                      ? [repPos].concat(tramos[t2].puntos.slice(mejorIdx + 1))
-                      : tramos[t2].puntos;
-                    agregarSegmentoColor(seg, tramos[t2].color, true);
+                  if (mejorProy && mejorProy.distM <= 240) {
+                    for (var t2 = mejorT; t2 < tramos.length; t2++) {
+                      var seg;
+                      if (t2 === mejorT) {
+                        var colaT = tramos[t2].puntos.slice(mejorProy.segIdx + 1);
+                        seg = (distM(repPos, mejorProy.punto) > 8 ? [repPos, mejorProy.punto] : [repPos]).concat(colaT);
+                      } else {
+                        seg = tramos[t2].puntos;
+                      }
+                      agregarSegmentoColor(seg, tramos[t2].color, true);
+                    }
+                  } else {
+                    for (var tSin = 0; tSin < tramos.length; tSin++) {
+                      agregarSegmentoColor(tramos[tSin].puntos, tramos[tSin].color, true);
+                    }
                   }
                 } else {
                   for (var t3 = 0; t3 < tramos.length; t3++) {
@@ -434,22 +478,31 @@ internal fun htmlMapaRuta(
               }
 
               var puntos = [];
+              var esReal = false;
               if (rutaActual.length >= 2) {
-                puntos = rutaActual;
                 if (repPos) {
-                  var mejor = 0, dMinRuta = Infinity;
-                  for (var i = 0; i < rutaActual.length; i++) {
-                    var dr = distM(repPos, rutaActual[i]);
-                    if (dr < dMinRuta) { dMinRuta = dr; mejor = i; }
+                  var proy = proyectarEnRuta(repPos, rutaActual);
+                  if (proy && proy.distM <= 240) {
+                    var resto = rutaActual.slice(proy.segIdx + 1);
+                    puntos = (distM(repPos, proy.punto) > 8 ? [repPos, proy.punto] : [repPos]).concat(resto);
+                    if (puntos.length < 2) {
+                      puntos = distM(repPos, destino) <= 85 ? [repPos, destino] : rutaUrbanaRespaldo(repPos, destino);
+                    }
+                    esReal = true;
+                  } else {
+                    puntos = rutaUrbanaRespaldo(repPos, destino);
+                    esReal = false;
                   }
-                  puntos = [repPos].concat(rutaActual.slice(mejor + 1));
-                  if (puntos.length < 2) puntos = [repPos, destino];
+                } else {
+                  puntos = rutaActual;
+                  esReal = true;
                 }
               } else if (repPos) {
-                puntos = [repPos, destino];
+                puntos = rutaUrbanaRespaldo(repPos, destino);
+                esReal = false;
               }
               if (puntos.length < 2) return;
-              agregarSegmentoColor(puntos, '#7C3AED', rutaActual.length >= 2);
+              agregarSegmentoColor(puntos, '#7C3AED', esReal);
             }
 
             // Gira el mapa (rumbo arriba) solo mientras sigue al repartidor; si no, norte arriba.

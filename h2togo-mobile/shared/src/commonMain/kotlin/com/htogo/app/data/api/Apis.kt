@@ -44,8 +44,14 @@ class PedidosApi(private val http: HttpClient) {
     suspend fun ubicacionRepartidor(id: Int): Respuesta<UbicacionRepartidorDto> =
         http.get("pedidos/$id/ubicacion-repartidor").aRespuesta()
     /** Ruta por calles del repartidor al domicilio (CU-006); 422 si va fuera de Benito Juárez. */
-    suspend fun rutaSeguimiento(id: Int): Respuesta<RouteResponse> =
-        http.get("pedidos/$id/ruta-seguimiento").aRespuesta()
+    suspend fun rutaSeguimiento(
+        id: Int,
+        origenLat: Double? = null,
+        origenLon: Double? = null
+    ): Respuesta<RouteResponse> = http.get("pedidos/$id/ruta-seguimiento") {
+        origenLat?.let { parameter("origenLat", it) }
+        origenLon?.let { parameter("origenLon", it) }
+    }.aRespuesta()
     suspend fun cancelarPedido(id: Int, request: CancelacionRequest? = null): Respuesta<PedidoResponse> =
         http.post("pedidos/$id/cancelacion") { request?.let { setBody(it) } }.aRespuesta()
     suspend fun obtenerHistorialCliente(page: Int = 0, size: Int = 20): Respuesta<PagedResponseDto<PedidoResumenDto>> =
@@ -93,13 +99,26 @@ class RepartidorApi(private val http: HttpClient) {
         http.post("pedidos/$id/resultado") { setBody(resultado) }.aRespuesta()
     suspend fun reportarUbicacion(ubicacion: Map<String, Double>): Respuesta<Unit> =
         http.put("repartidores/me/ubicacion") { setBody(ubicacion) }.aRespuesta()
-    suspend fun obtenerRuta(id: Int): Respuesta<RouteResponse> = http.get("pedidos/$id/ruta").aRespuesta()
+    suspend fun obtenerRuta(
+        id: Int,
+        origenLat: Double? = null,
+        origenLon: Double? = null
+    ): Respuesta<RouteResponse> = http.get("pedidos/$id/ruta") {
+        origenLat?.let { parameter("origenLat", it) }
+        origenLon?.let { parameter("origenLon", it) }
+    }.aRespuesta()
     /** Programados de hoy que su purificadora puede surtir (libres o reservados por él). */
     suspend fun agenda(): Respuesta<List<AgendaPedidoDto>> = http.get("repartidores/me/agenda").aRespuesta()
     suspend fun reservar(id: Int): Respuesta<Unit> = http.post("pedidos/$id/reserva").aRespuesta()
     suspend fun liberar(id: Int): Respuesta<Unit> = http.delete("pedidos/$id/reserva").aRespuesta()
     /** Orden óptimo de todas sus paradas (OR-Tools); 422 SIN_UBICACION sin GPS ni base. */
-    suspend fun rutaOptima(): Respuesta<RutaOptimaDto> = http.get("repartidores/me/ruta-optima").aRespuesta()
+    suspend fun rutaOptima(
+        origenLat: Double? = null,
+        origenLon: Double? = null
+    ): Respuesta<RutaOptimaDto> = http.get("repartidores/me/ruta-optima") {
+        origenLat?.let { parameter("origenLat", it) }
+        origenLon?.let { parameter("origenLon", it) }
+    }.aRespuesta()
     suspend fun obtenerMisEntregas(page: Int = 0, size: Int = 20): Respuesta<PagedResponseDto<PedidoResumenDto>> =
         http.get("repartidores/me/entregas") { parameter("page", page); parameter("size", size) }.aRespuesta()
     suspend fun iniciarJornada(request: IniciarJornadaRequest): Respuesta<JornadaResponse> =
