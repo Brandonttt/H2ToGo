@@ -910,7 +910,7 @@ class RepartidorViewModel : ViewModel() {
     }
 
     /**
-     * CU-012: avisa al backend que el repartidor llegó (≤ 50 m) para que notifique al cliente.
+     * CU-012: avisa al backend que el repartidor llegó (≤ 30 m) para que notifique al cliente.
      * [onError] recibe el código HTTP, o null si no hubo red.
      */
     fun avisarLlegada(
@@ -959,7 +959,7 @@ class RepartidorViewModel : ViewModel() {
     }
 
     /**
-     * CU-012. El backend exige la posición actual: para ENTREGADO valida que esté a ≤ 50 m del
+     * CU-012. El backend exige la posición actual: para ENTREGADO valida que esté a ≤ 30 m del
      * domicilio (RF-014); para NO_ENTREGADO exige el motivo. Las líneas permiten ajustes en sitio
      * y cobro de envases nuevos (RN-032 / RN-033).
      */

@@ -55,7 +55,7 @@ fun generarRutaDemoCalles(
 
 /**
  * Subdivide una polilínea de ruta en pasos uniformes (~45 m) para animar el recorrido
- * de FakeGPS calle por calle hasta quedar a ~18 m del domicilio de entrega.
+ * de FakeGPS calle por calle hasta quedar a ~14 m del domicilio de entrega.
  */
 fun interpolarPasosRuta(
     ruta: List<Pair<Double, Double>>,
@@ -80,8 +80,8 @@ fun interpolarPasosRuta(
             )
         }
     }
-    // Último punto a ~18 m del destino (dentro de la geocerca de 50 m)
-    resultado.add(Pair(destLat + 0.00014, destLon + 0.00008))
+    // Último punto a ~14 m del destino (dentro de la geocerca de 30 m)
+    resultado.add(Pair(destLat + 0.00010, destLon + 0.00007))
     return resultado
 }
 
@@ -156,9 +156,29 @@ fun distanciaRestanteRutaKm(
         (restantePolilineaM + (if (minDistM > 45.0) minDistM else 0.0)) / 1000.0
     }
 
-    return if (distDirectaM < 40.0) {
+    return if (distDirectaM < 30.0) {
         minOf(restanteKm, distDirectaM / 1000.0).coerceAtLeast(0.0)
     } else {
         restanteKm.coerceAtLeast(0.0)
+    }
+}
+
+/**
+ * Estima los minutos restantes de traslado urbano a [velocidadKmh] (20 km/h en Benito Juárez).
+ * Devuelve 0 cuando ya está a ≤ 80 m ("llegando / < 1 min").
+ */
+fun estimarMinutosRuta(kmRestantes: Double, velocidadKmh: Double = 20.0): Int {
+    if (kmRestantes <= 0.08) return 0
+    return kotlin.math.ceil((kmRestantes / velocidadKmh) * 60.0).toInt().coerceAtLeast(1)
+}
+
+/** Formato compacto de distancia restante para tarjetas y línea de tiempo ("280 m" o "1.2 km"). */
+fun formatearDistanciaCorta(km: Double): String {
+    val limpio = km.coerceAtLeast(0.0)
+    return if (limpio < 1.0) {
+        "${(limpio * 1000.0).toInt().coerceAtLeast(10)} m"
+    } else {
+        val decimos = kotlin.math.round(limpio * 10.0).toInt()
+        "${decimos / 10}.${decimos % 10} km"
     }
 }

@@ -198,7 +198,7 @@ class E2EFlujoFelizIT {
                 .andExpect(jsonPath("$.encontrada").value(true))
                 .andExpect(jsonPath("$.coordenadas.length()").value(Matchers.greaterThan(0)));
 
-        // Entrega (a ≤50 m de la dirección) → entregado.
+        // Entrega (a ≤30 m de la dirección) → entregado.
         mvc.perform(post("/api/v1/pedidos/" + idPedido + "/resultado").header("Authorization", "Bearer " + tokenRep)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

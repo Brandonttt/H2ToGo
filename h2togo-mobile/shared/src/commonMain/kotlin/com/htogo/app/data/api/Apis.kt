@@ -92,7 +92,7 @@ class RepartidorApi(private val http: HttpClient) {
         http.post("pedidos/$id/en-camino") { setBody(ubicacion) }.aRespuesta()
     suspend fun cargarApartadosBase(id: Int): Respuesta<PedidoResponse> =
         http.post("pedidos/$id/cargar-apartados-base").aRespuesta()
-    /** CU-012: "Llegué al destino" (≤ 50 m); el backend avisa al cliente. */
+    /** CU-012: "Llegué al destino" (≤ 30 m); el backend avisa al cliente. */
     suspend fun avisarLlegada(id: Int, ubicacion: Map<String, Double>): Respuesta<Map<String, String>> =
         http.post("pedidos/$id/llegada") { setBody(ubicacion) }.aRespuesta()
     suspend fun finalizarEntrega(id: Int, resultado: ResultadoEntregaRequestDto): Respuesta<PedidoResponse> =

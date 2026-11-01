@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.htogo.app.data.dto.PedidoResponse
 import com.htogo.app.ui.ClienteViewModel
 import com.htogo.app.ui.components.EstadoPedido
 import com.htogo.app.ui.components.EstadoPedidoChip
@@ -338,6 +339,7 @@ private fun FloatingTopBar(
 private fun TrackingSheet(
     order: TrackedOrder,
     steps: List<TrackingStep>,
+    etaResumen: String? = null,
     maxScreenHeight: androidx.compose.ui.unit.Dp = 800.dp,
     onPedidoEntregado: () -> Unit,
     onAbrirPurificadora: () -> Unit,
@@ -423,7 +425,11 @@ private fun TrackingSheet(
                                 maxLines = 1
                             )
                             Text(
-                                (if (order.total % 1.0 == 0.0) "$%.0f MXN" else "$%.2f MXN").format(order.total) + " · ${order.items}",
+                                listOfNotNull(
+                                    etaResumen,
+                                    (if (order.total % 1.0 == 0.0) "$%.0f MXN" else "$%.2f MXN").format(order.total),
+                                    order.items
+                                ).joinToString(" · "),
                                 fontSize = 11.5.sp,
                                 color = HToGoColors.TextSecondary,
                                 maxLines = 1
@@ -431,6 +437,32 @@ private fun TrackingSheet(
                         }
                     } else {
                         Spacer(Modifier.weight(1f))
+                        if (etaResumen != null) {
+                            Surface(
+                                shape = RoundedCornerShape(99.dp),
+                                color = HToGoColors.PrimarySoft
+                            ) {
+                                Row(
+                                    Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Schedule,
+                                        contentDescription = null,
+                                        tint = HToGoColors.Primary,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        etaResumen,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = HToGoColors.Primary
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(6.dp))
+                        }
                     }
                     IconButton(
                         onClick = { isMinimized = !isMinimized },
@@ -689,30 +721,127 @@ fun SeguimientoPedidoScreen(
     onAbrirPurificadora: () -> Unit = {},
     clienteViewModel: ClienteViewModel = viewModel { ClienteViewModel() }
 ) {
-    val livePedido by clienteViewModel.pedidoActivo.collectAsState()
+    val livePedidoActivo by clienteViewModel.pedidoActivo.collectAsState()
+    val livePedidoSeguimiento by clienteViewModel.pedidoSeguimiento.collectAsState()
     val ubicacionRepartidor by clienteViewModel.ubicacionRepartidor.collectAsState()
     val rutaSeguimiento by clienteViewModel.rutaSeguimiento.collectAsState()
+    val distanciaRutaKm by clienteViewModel.distanciaRutaKm.collectAsState()
     val repartidorLlego by clienteViewModel.repartidorLlego.collectAsState()
     val purificadoras by clienteViewModel.purificadoras.collectAsState()
     val perfilPurificadora by clienteViewModel.perfilPurificadora.collectAsState()
 
-    LaunchedEffect(pedidoId) {
-        if (pedidoId != null) {
-            clienteViewModel.cargarDetallePedido(pedidoId)
-            clienteViewModel.iniciarRastreo(pedidoId)
+    var ultimoPedidoValido by remember { mutableStateOf<PedidoResponse?>(null) }
+    var errorCarga by remember { mutableStateOf(false) }
+
+    val idSeguimiento = pedidoId ?: livePedidoSeguimiento?.id ?: livePedidoActivo?.id ?: ultimoPedidoValido?.id
+    LaunchedEffect(idSeguimiento) {
+        if (idSeguimiento != null) {
+            errorCarga = false
+            clienteViewModel.cargarDetallePedido(idSeguimiento) { res ->
+                if (res != null) {
+                    ultimoPedidoValido = res
+                    errorCarga = false
+                } else if (ultimoPedidoValido == null) {
+                    errorCarga = true
+                }
+            }
         }
     }
-    DisposableEffect(pedidoId) { onDispose { clienteViewModel.detenerRastreo() } }
+    LaunchedEffect(pedidoId, ultimoPedidoValido) {
+        if (pedidoId != null && ultimoPedidoValido == null) {
+            kotlinx.coroutines.delay(4500)
+            if (ultimoPedidoValido == null && livePedidoSeguimiento?.id != pedidoId && livePedidoActivo?.id != pedidoId) {
+                errorCarga = true
+            }
+        }
+    }
+    DisposableEffect(idSeguimiento) {
+        if (idSeguimiento != null) {
+            clienteViewModel.vincularRastreo("seguimiento", idSeguimiento)
+        }
+        onDispose { clienteViewModel.desvincularRastreo("seguimiento") }
+    }
 
     val marcas by clienteViewModel.marcas.collectAsState()
-    // Solo el pedido pedido (evita mostrar un instante otro pedido mientras carga).
-    val pedido = livePedido?.takeIf { pedidoId == null || it.id == pedidoId }
+    val pedidoCandidato = livePedidoSeguimiento?.takeIf { pedidoId == null || it.id == pedidoId }
+        ?: livePedidoActivo?.takeIf { pedidoId == null || it.id == pedidoId }
+
+    LaunchedEffect(pedidoCandidato) {
+        if (pedidoCandidato != null) {
+            ultimoPedidoValido = pedidoCandidato
+            errorCarga = false
+        }
+    }
+
+    // Retener el último pedido válido cargado para que el cierre o refresco en segundo plano nunca vacíe la pantalla
+    val pedido = pedidoCandidato ?: ultimoPedidoValido?.takeIf { pedidoId == null || it.id == pedidoId }
     if (pedido == null) {
-        Box(Modifier.fillMaxSize().background(HToGoColors.Background), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().background(HToGoColors.Background)) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.statusBarsPadding().padding(8.dp).align(Alignment.TopStart)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar", tint = HToGoColors.TextPrimary)
+            }
             if (pedidoId == null) {
-                Text("No tienes un pedido en curso", color = HToGoColors.TextSecondary, fontSize = 14.sp)
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("No tienes un pedido en curso", color = HToGoColors.TextSecondary, fontSize = 15.sp)
+                    Spacer(Modifier.height(16.dp))
+                    Button(
+                        onClick = onBack,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                    ) {
+                        Text("Volver al inicio", color = Color.White)
+                    }
+                }
+            } else if (errorCarga) {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(32.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(Icons.Filled.ErrorOutline, null, tint = HToGoColors.TextSecondary, modifier = Modifier.size(56.dp))
+                    Spacer(Modifier.height(16.dp))
+                    Text("No se pudo cargar el pedido #$pedidoId", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = HToGoColors.TextPrimary)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Es posible que ya haya finalizado o no esté disponible.", fontSize = 14.sp, color = HToGoColors.TextSecondary, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Spacer(Modifier.height(24.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                errorCarga = false
+                                clienteViewModel.cargarDetallePedido(pedidoId) { res ->
+                                    if (res != null) ultimoPedidoValido = res else errorCarga = true
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Reintentar")
+                        }
+                        Button(
+                            onClick = onBack,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                        ) {
+                            Text("Volver al inicio", color = Color.White)
+                        }
+                    }
+                }
             } else {
-                CircularProgressIndicator(color = HToGoColors.Primary)
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(color = HToGoColors.Primary)
+                    Spacer(Modifier.height(16.dp))
+                    Text("Cargando información del pedido...", color = HToGoColors.TextSecondary, fontSize = 14.sp)
+                }
             }
         }
         return
@@ -748,7 +877,7 @@ fun SeguimientoPedidoScreen(
         )
     }
 
-    val historialPedido = livePedido?.historial
+    val historialPedido = pedido.historial
     val pasos = remember(order.estado, repartidorLlego) {
         when (order.estado) {
             EstadoPedido.PENDIENTE -> listOf(
@@ -824,10 +953,10 @@ fun SeguimientoPedidoScreen(
         }
     }
 
-    val latDestino = livePedido?.latEntrega
-    val lonDestino = livePedido?.lonEntrega
-    val ubicacionPurificadora = remember(livePedido, purificadoras, perfilPurificadora, order.purificadoraName) {
-        val idNeg = livePedido?.idNegocioSolicitado
+    val latDestino = pedido.latEntrega
+    val lonDestino = pedido.lonEntrega
+    val ubicacionPurificadora = remember(pedido, purificadoras, perfilPurificadora, order.purificadoraName) {
+        val idNeg = pedido.idNegocioSolicitado
         val dirPerfil = perfilPurificadora?.takeIf {
             (idNeg != null && it.id == idNeg) || it.nombreComercial.equals(order.purificadoraName, ignoreCase = true)
         }?.direccionObj
@@ -954,7 +1083,7 @@ fun SeguimientoPedidoScreen(
                 routePoints = puntosRutaMapa,
                 repartidorLabel = if (posicionDemo != null) "Tu repartidor (FakeGPS)" else "Tu repartidor",
                 avisoSinUbicacion = null, // el aviso del cliente se muestra abajo (CU-006 S1)
-                estadoPedido = if (posicionDemo != null && !pedidoCerrado) "en_camino" else livePedido?.estado,
+                estadoPedido = if (posicionDemo != null && !pedidoCerrado) "en_camino" else pedido.estado,
                 margenInferior = screenHeight * 0.62f, // encuadra arriba del panel del pedido
                 baseLat = if (pedidoCerrado) null else ubicacionPurificadora?.first,
                 baseLon = if (pedidoCerrado) null else ubicacionPurificadora?.second,
@@ -993,8 +1122,8 @@ fun SeguimientoPedidoScreen(
                 onSaltarLlegadaDemo = {
                     if (latDestino != null && lonDestino != null) {
                         simulandoDemo = false
-                        posicionDemo = (latDestino + 0.00016) to (lonDestino + 0.00010)
-                        mostrarAviso("FakeGPS: repartidor afuera del domicilio")
+                        posicionDemo = (latDestino + 0.00010) to (lonDestino + 0.00007)
+                        mostrarAviso("FakeGPS: repartidor afuera del domicilio (~15 m)")
                     }
                 },
                 onDesactivarDemo = {
@@ -1126,9 +1255,83 @@ fun SeguimientoPedidoScreen(
         }
 
         Box(Modifier.align(Alignment.BottomCenter)) {
+            val kmRestantesVivo = remember(
+                pedidoCerrado,
+                order.estado,
+                posicionDemo,
+                latEfectivaRepartidor,
+                lonEfectivaRepartidor,
+                puntosRutaMapa,
+                latDestino,
+                lonDestino,
+                distanciaRutaKm
+            ) {
+                if (pedidoCerrado || (order.estado != EstadoPedido.EN_CAMINO && order.estado != EstadoPedido.ASIGNADO && posicionDemo == null)) {
+                    null
+                } else if (latEfectivaRepartidor != null && lonEfectivaRepartidor != null && latDestino != null && lonDestino != null) {
+                    if (puntosRutaMapa.size >= 2) {
+                        com.htogo.app.data.location.distanciaRestanteRutaKm(
+                            lat = latEfectivaRepartidor,
+                            lon = lonEfectivaRepartidor,
+                            ruta = puntosRutaMapa,
+                            destLat = latDestino,
+                            destLon = lonDestino,
+                            distanciaTotalOriginalKm = if (posicionDemo != null) null else distanciaRutaKm
+                        )
+                    } else {
+                        (com.htogo.app.data.location.distanciaM(
+                            latEfectivaRepartidor, lonEfectivaRepartidor, latDestino, lonDestino
+                        ) * 1.25) / 1000.0
+                    }
+                } else {
+                    distanciaRutaKm
+                }
+            }
+            val llegoEfectivo = !pedidoCerrado && (
+                repartidorLlego || (posicionDemo != null && kmRestantesVivo != null && kmRestantesVivo <= 0.030)
+            )
+            val etaResumen = when {
+                pedidoCerrado -> null
+                llegoEfectivo -> "¡Ya llegó afuera!"
+                order.estado == EstadoPedido.ASIGNADO && posicionDemo == null ->
+                    kmRestantesVivo?.let { "~${com.htogo.app.data.location.estimarMinutosRuta(it).coerceAtLeast(1) + 2} min" }
+                (order.estado == EstadoPedido.EN_CAMINO || posicionDemo != null) && kmRestantesVivo != null ->
+                    if (kmRestantesVivo <= 0.08) "< 1 min · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)}"
+                    else "~${com.htogo.app.data.location.estimarMinutosRuta(kmRestantesVivo)} min · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)}"
+                else -> null
+            }
+            val stepsEnVivo = remember(steps, order.estado, kmRestantesVivo, llegoEfectivo, posicionDemo) {
+                steps.map { s ->
+                    when {
+                        s.title.startsWith("Repartidor asignado") && s.state == TrackingStep.StepState.ACTIVE && kmRestantesVivo != null -> {
+                            val minPrep = com.htogo.app.data.location.estimarMinutosRuta(kmRestantesVivo).coerceAtLeast(1) + 2
+                            s.copy(time = s.time.replace("Preparando pedido", "Preparando pedido · llega en ~$minPrep min"))
+                        }
+                        s.title.startsWith("En camino") && (s.state == TrackingStep.StepState.ACTIVE || posicionDemo != null) -> {
+                            val detalleRuta = when {
+                                llegoEfectivo -> "¡Llegó! Está afuera de tu domicilio"
+                                kmRestantesVivo != null && kmRestantesVivo <= 0.08 ->
+                                "Llegando a tu domicilio (< 1 min · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)})"
+                                kmRestantesVivo != null ->
+                                "En ruta · llega en ~${com.htogo.app.data.location.estimarMinutosRuta(kmRestantesVivo)} min (${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)})"
+                                else -> "En ruta a tu casa"
+                            }
+                            val prefijoFecha = s.time.substringBefore(" · ", missingDelimiterValue = "")
+                            s.copy(
+                                state = if (!pedidoCerrado && posicionDemo != null && order.estado != EstadoPedido.EN_CAMINO)
+                                    TrackingStep.StepState.ACTIVE else s.state,
+                                time = if (prefijoFecha.isNotBlank() && s.time.contains(" · ")) "$prefijoFecha · $detalleRuta" else detalleRuta
+                            )
+                        }
+                        else -> s
+                    }
+                }
+            }
+
             TrackingSheet(
                 order = order,
-                steps = steps,
+                steps = stepsEnVivo,
+                etaResumen = etaResumen,
                 maxScreenHeight = screenHeight,
                 onPedidoEntregado = onPedidoEntregado,
                 onAbrirPurificadora = onAbrirPurificadora,

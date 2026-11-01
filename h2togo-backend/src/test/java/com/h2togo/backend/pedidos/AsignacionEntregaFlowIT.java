@@ -46,7 +46,7 @@ import org.testcontainers.utility.MountableFile;
 
 /**
  * F7: asignación (CU-010) y entrega (CU-012). Flujo aceptar→en camino→entregar con
- * consumo de inventario, concurrencia RF-019, carga insuficiente, entrega a ≤50 m,
+ * consumo de inventario, concurrencia RF-019, carga insuficiente, entrega a ≤30 m,
  * entregas parciales (RN-032) y suspensión por 2 ausencias (RN-006).
  */
 @SpringBootTest

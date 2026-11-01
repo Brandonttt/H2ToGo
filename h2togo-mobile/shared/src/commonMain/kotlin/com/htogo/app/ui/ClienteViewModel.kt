@@ -59,6 +59,10 @@ class ClienteViewModel : ViewModel() {
     private val _pedidoActivo = MutableStateFlow<PedidoResponse?>(null)
     val pedidoActivo: StateFlow<PedidoResponse?> = _pedidoActivo.asStateFlow()
 
+    // Pedido visualizado en pantalla de seguimiento (permite inspeccionar pedidos específicos o cerrados sin colisionar con el activo)
+    private val _pedidoSeguimiento = MutableStateFlow<PedidoResponse?>(null)
+    val pedidoSeguimiento: StateFlow<PedidoResponse?> = _pedidoSeguimiento.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -71,12 +75,32 @@ class ClienteViewModel : ViewModel() {
     var purificadoraSeleccionadaDistancia: String? = null
 
 
+    private fun prioridadEstadoActivo(estado: String): Int = when (estado.lowercase()) {
+        "en_camino" -> 4
+        "asignado" -> 3
+        "pendiente" -> 2
+        "pendiente_programado" -> 1
+        else -> 0
+    }
+
     fun cargarHistorial(): Job {
         return viewModelScope.launch {
             try {
                 val resp = apiClient.pedidosApi.obtenerHistorialCliente(page = 0, size = 50)
                 if (resp.isSuccessful && resp.body() != null) {
-                    _historial.value = resp.body()?.elementos ?: emptyList()
+                    val elementos = resp.body()?.elementos ?: emptyList()
+                    _historial.value = elementos
+                    val candidato = elementos
+                        .filter { prioridadEstadoActivo(it.estado) > 0 && cierreConfirmadoPorPedido[it.id] == null }
+                        .maxWithOrNull(compareBy<PedidoResumenDto> { prioridadEstadoActivo(it.estado) }.thenBy { it.id })
+                    val actual = _pedidoActivo.value
+                    if (candidato != null) {
+                        if (actual == null || actual.id != candidato.id || !actual.estado.equals(candidato.estado, ignoreCase = true)) {
+                            refrescarDetalle(candidato.id)
+                        }
+                    } else if (actual != null && actual.estado.lowercase() !in estadosCerrados) {
+                        refrescarDetalle(actual.id)
+                    }
                 }
             } catch (e: Exception) {
                 // Silencioso
@@ -329,24 +353,34 @@ class ClienteViewModel : ViewModel() {
     private val estadosCerrados = setOf("entregado", "no_entregado", "cancelado")
     private val cierreConfirmadoPorPedido = mutableMapOf<Int, String>()
 
-    fun cargarDetallePedido(id: Int) {
-        viewModelScope.launch { refrescarDetalle(id) }
+    fun cargarDetallePedido(id: Int, onComplete: ((PedidoResponse?) -> Unit)? = null) {
+        viewModelScope.launch {
+            val resultado = refrescarDetalle(id)
+            onComplete?.invoke(resultado)
+        }
     }
 
-    private suspend fun refrescarDetalle(id: Int) {
+    private suspend fun refrescarDetalle(id: Int): PedidoResponse? {
         try {
             val estadoPrevio = cierreConfirmadoPorPedido[id]
+                ?: _pedidoSeguimiento.value?.takeIf { it.id == id }?.estado?.lowercase()?.takeIf { it in estadosCerrados }
                 ?: _pedidoActivo.value?.takeIf { it.id == id }?.estado?.lowercase()?.takeIf { it in estadosCerrados }
             val resp = apiClient.pedidosApi.obtenerDetallePedido(id)
             if (resp.isSuccessful && resp.body() != null) {
                 val recibido = resp.body()!!
                 val estadoRecibido = recibido.estado.lowercase()
-                if (estadoRecibido in estadosCerrados) {
+                val aAsignar = if (estadoRecibido in estadosCerrados) {
                     cierreConfirmadoPorPedido[id] = estadoRecibido
-                    _pedidoActivo.value = recibido
+                    recibido
                 } else if (estadoPrevio != null) {
                     // Protege contra respuestas en vuelo previas al commit de la BD para que nunca regrese a "en_camino"
-                    _pedidoActivo.value = recibido.copy(estado = estadoPrevio)
+                    val preliminar = recibido.copy(estado = estadoPrevio)
+                    if (_pedidoSeguimiento.value?.id == id || _pedidoSeguimiento.value == null) {
+                        _pedidoSeguimiento.value = preliminar
+                    }
+                    if (_pedidoActivo.value?.id == id) {
+                        _pedidoActivo.value = preliminar
+                    }
                     delay(450)
                     val respReintento = apiClient.pedidosApi.obtenerDetallePedido(id)
                     val bodyReintento = respReintento.body()
@@ -354,18 +388,28 @@ class ClienteViewModel : ViewModel() {
                         val estReintento = bodyReintento.estado.lowercase()
                         if (estReintento in estadosCerrados) {
                             cierreConfirmadoPorPedido[id] = estReintento
-                            _pedidoActivo.value = bodyReintento
+                            bodyReintento
                         } else {
-                            _pedidoActivo.value = bodyReintento.copy(estado = estadoPrevio)
+                            bodyReintento.copy(estado = estadoPrevio)
                         }
+                    } else {
+                        preliminar
                     }
                 } else {
-                    _pedidoActivo.value = recibido
+                    recibido
                 }
+                if (_pedidoSeguimiento.value?.id == id || _pedidoSeguimiento.value == null) {
+                    _pedidoSeguimiento.value = aAsignar
+                }
+                if (_pedidoActivo.value?.id == id || (_pedidoActivo.value == null && aAsignar.estado.lowercase() !in estadosCerrados)) {
+                    _pedidoActivo.value = aAsignar
+                }
+                return aAsignar
             }
         } catch (e: Exception) {
             // Error
         }
+        return _pedidoSeguimiento.value?.takeIf { it.id == id } ?: _pedidoActivo.value?.takeIf { it.id == id }
     }
 
     private fun aplicarCierrePedidoEnVivo(idPedido: Int, nuevoEstado: String) {
@@ -374,7 +418,10 @@ class ClienteViewModel : ViewModel() {
         _repartidorLlego.value = false
         _ubicacionRepartidor.value = null
         _rutaSeguimiento.value = emptyList()
+        _distanciaRutaKm.value = null
         origenRutaSeguimiento = null
+        observadoresRastreo.values.removeAll { it == idPedido }
+        _pedidoSeguimiento.value = _pedidoSeguimiento.value?.takeIf { it.id == idPedido }?.copy(estado = estadoNorm)
         _pedidoActivo.value = _pedidoActivo.value?.takeIf { it.id == idPedido }?.copy(estado = estadoNorm)
         detenerRastreo()
         viewModelScope.launch {
@@ -394,6 +441,9 @@ class ClienteViewModel : ViewModel() {
     val ubicacionRepartidor: StateFlow<UbicacionEnVivo?> = _ubicacionRepartidor.asStateFlow()
 
     private var rastreoJob: Job? = null
+    private var idPedidoRastreado: Int? = null
+    private var ultimoPedidoRastreadoId: Int? = null
+    private val observadoresRastreo = mutableMapOf<String, Int>()
 
     private val _repartidorLlego = MutableStateFlow(false)
     /** CU-012: el repartidor avisó que ya está en el domicilio ("Llegué al destino"). */
@@ -402,22 +452,57 @@ class ClienteViewModel : ViewModel() {
     private val _rutaSeguimiento = MutableStateFlow<List<Pair<Double, Double>>>(emptyList())
     /** Ruta por calles del repartidor al domicilio; vacía mientras no hay (el mapa dibuja línea recta). */
     val rutaSeguimiento: StateFlow<List<Pair<Double, Double>>> = _rutaSeguimiento.asStateFlow()
+
+    private val _distanciaRutaKm = MutableStateFlow<Double?>(null)
+    /** Distancia total de la ruta por calles calculada por el backend (km). */
+    val distanciaRutaKm: StateFlow<Double?> = _distanciaRutaKm.asStateFlow()
+
     private var origenRutaSeguimiento: UbicacionEnVivo? = null
     private var rutaSeguimientoMs = 0L
 
+    /** Vincula una pantalla ("home" o "seguimiento") al rastreo en vivo del pedido sin reiniciar al navegar entre ambas. */
+    fun vincularRastreo(origen: String, idPedido: Int) {
+        if (cierreConfirmadoPorPedido[idPedido] != null) return
+        observadoresRastreo[origen] = idPedido
+        if (idPedidoRastreado != idPedido || rastreoJob?.isActive != true) {
+            iniciarRastreo(idPedido)
+        }
+    }
+
+    fun desvincularRastreo(origen: String) {
+        observadoresRastreo.remove(origen)
+        if (observadoresRastreo.isEmpty()) {
+            detenerRastreo()
+        } else {
+            val siguiente = observadoresRastreo.values.last()
+            if (idPedidoRastreado != siguiente || rastreoJob?.isActive != true) {
+                iniciarRastreo(siguiente)
+            }
+        }
+    }
+
     /**
-     * Mientras el pedido está activo: escucha el WebSocket (reconecta si se cae) y, cuando no hay
-     * conexión, consulta la última posición cada 10 s. Además refresca el estado del pedido cada
-     * 20 s para que la línea de tiempo avance (asignado → en camino → entregado) sin recargar.
+     * Mientras el pedido está activo: escucha el WebSocket (reconecta si se cae) y respalda con
+     * consultas periódicas de posición y estado para que tanto Inicio ("Pedido en curso") como
+     * Seguimiento avancen en tiempo real (pendiente → asignado → en camino → entregado) y actualicen el ETA.
      */
     fun iniciarRastreo(idPedido: Int) {
+        if (idPedidoRastreado == idPedido && rastreoJob?.isActive == true) return
         rastreoJob?.cancel()
-        _ubicacionRepartidor.value = null
-        _repartidorLlego.value = false
-        _rutaSeguimiento.value = emptyList()
-        origenRutaSeguimiento = null
-        if (cierreConfirmadoPorPedido[idPedido] != null) return
+        if (ultimoPedidoRastreadoId != idPedido) {
+            _ubicacionRepartidor.value = null
+            _repartidorLlego.value = false
+            _rutaSeguimiento.value = emptyList()
+            _distanciaRutaKm.value = null
+            origenRutaSeguimiento = null
+            ultimoPedidoRastreadoId = idPedido
+        }
+        if (cierreConfirmadoPorPedido[idPedido] != null) {
+            idPedidoRastreado = null
+            return
+        }
         val token = sessionManager.obtenerToken() ?: return
+        idPedidoRastreado = idPedido
         rastreoJob = viewModelScope.launch {
             var conectado = false
 
@@ -433,9 +518,11 @@ class ClienteViewModel : ViewModel() {
                         }
                         "pedido_entregado" -> aplicarCierrePedidoEnVivo(idPedido, "entregado")
                         "pedido_no_entregado" -> aplicarCierrePedidoEnVivo(idPedido, "no_entregado")
+                        "pedido_cancelado" -> aplicarCierrePedidoEnVivo(idPedido, "cancelado")
                         "pedido_en_camino", "pedido_asignado" -> {
                             if (cierreConfirmadoPorPedido[idPedido] == null) {
                                 refrescarDetalle(idPedido)
+                                consultarUbicacion(idPedido)
                                 actualizarRutaSeguimiento(idPedido, _ubicacionRepartidor.value)
                             }
                         }
@@ -443,10 +530,13 @@ class ClienteViewModel : ViewModel() {
                 }
             }
 
-            // Consulta inicial inmediata de ubicación y ruta
+            // Consulta inicial inmediata de detalle, ubicación y ruta
             launch {
+                refrescarDetalle(idPedido)
                 consultarUbicacion(idPedido)
-                actualizarRutaSeguimiento(idPedido, _ubicacionRepartidor.value)
+                if (_pedidoActivo.value?.estado?.lowercase() in setOf("asignado", "en_camino")) {
+                    actualizarRutaSeguimiento(idPedido, _ubicacionRepartidor.value)
+                }
             }
 
             // Ruta por calles: se actualiza cuando el repartidor avanza > 45 m (máx. cada 5 s),
@@ -490,7 +580,13 @@ class ClienteViewModel : ViewModel() {
                                         }
                                         else -> {
                                             if (cierreConfirmadoPorPedido[idPedido] == null) {
-                                                parsearUbicacion(evento.cuerpo)?.let { _ubicacionRepartidor.value = it }
+                                                parsearUbicacion(evento.cuerpo)?.let { nueva ->
+                                                    _ubicacionRepartidor.value = nueva
+                                                    // Si llegan coordenadas por el tópico y aún aparecía pendiente/asignado, sincroniza estado
+                                                    if (_pedidoActivo.value?.estado?.lowercase() in setOf("pendiente", "pendiente_programado", "asignado")) {
+                                                        launch { refrescarDetalle(idPedido) }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -503,20 +599,26 @@ class ClienteViewModel : ViewModel() {
                 }
             }
 
-            // Respaldo continuo de ubicación cada 5 s (recupera al instante tras microcortes de red o del repartidor)
+            // Respaldo continuo de ubicación cada 4 s (recupera al instante tras microcortes de red o del repartidor)
             launch {
                 while (isActive) {
-                    consultarUbicacion(idPedido)
-                    delay(5_000)
+                    delay(4_000)
+                    if (_pedidoActivo.value?.estado?.lowercase() in setOf("asignado", "en_camino")) {
+                        consultarUbicacion(idPedido)
+                    }
                 }
             }
 
-            // Refresco periódico de respaldo del detalle del pedido (cada 6 s) y reintento de ruta si el repartidor se movió
+            // Refresco periódico de respaldo del detalle del pedido (cada 4 s) y reintento de ruta si el repartidor se movió
             launch {
                 while (isActive) {
-                    delay(6_000)
+                    delay(4_000)
+                    val estadoAntes = _pedidoActivo.value?.estado?.lowercase()
                     refrescarDetalle(idPedido)
                     val estado = _pedidoActivo.value?.estado?.lowercase()
+                    if (estado != estadoAntes && estado in setOf("asignado", "en_camino")) {
+                        consultarUbicacion(idPedido)
+                    }
                     val uActual = _ubicacionRepartidor.value
                     val origRuta = origenRutaSeguimiento
                     val desfasada = uActual != null && (origRuta == null ||
@@ -547,6 +649,9 @@ class ClienteViewModel : ViewModel() {
                     com.htogo.app.data.location.distanciaM(desde.lat, desde.lon, primero.lat, primero.lon) > 450.0
                 if (!origenDesfasado) {
                     _rutaSeguimiento.value = ruta.coordenadas.map { it.lat to it.lon }
+                    if (ruta.distanciaTotalKm > 0.0) {
+                        _distanciaRutaKm.value = ruta.distanciaTotalKm
+                    }
                     origenRutaSeguimiento = desde ?: UbicacionEnVivo(primero.lat, primero.lon)
                 }
             }
@@ -580,6 +685,7 @@ class ClienteViewModel : ViewModel() {
     fun detenerRastreo() {
         rastreoJob?.cancel()
         rastreoJob = null
+        idPedidoRastreado = null
     }
 
     /** El tópico del pedido lleva {"evento":"llegada" | "entregado" | "no_entregado"}. */
@@ -687,31 +793,62 @@ class ClienteViewModel : ViewModel() {
     }
 
     /**
-     * Cualquier aviso de un pedido (asignado, en camino, entregado…) actualiza la lista de pedidos
-     * aunque la pantalla esté abierta, sin tener que deslizar.
+     * Cualquier aviso de un pedido (asignado, en camino, llegada, entregado…) actualiza de inmediato
+     * tanto el pedido activo ("Pedido en curso" en Inicio) como el historial, sin tener que deslizar.
      */
     private fun refrescarAlRecibirAvisos() {
         viewModelScope.launch {
             CanalNotificaciones.avisos.collect { aviso ->
                 val tipo = aviso.datos["tipo"]
                 val idPed = aviso.datos["idPedido"]?.toIntOrNull()
-                if (idPed != null && _pedidoActivo.value?.id == idPed) {
+                if (idPed != null) {
                     when (tipo) {
                         "pedido_entregado" -> aplicarCierrePedidoEnVivo(idPed, "entregado")
                         "pedido_no_entregado" -> aplicarCierrePedidoEnVivo(idPed, "no_entregado")
+                        "pedido_cancelado" -> aplicarCierrePedidoEnVivo(idPed, "cancelado")
+                        "pedido_asignado" -> if (cierreConfirmadoPorPedido[idPed] == null) {
+                            _pedidoActivo.value?.takeIf {
+                                it.id == idPed && it.estado.lowercase() in setOf("pendiente", "pendiente_programado")
+                            }?.let { _pedidoActivo.value = it.copy(estado = "asignado") }
+                            launch {
+                                refrescarDetalle(idPed)
+                                consultarUbicacion(idPed)
+                                actualizarRutaSeguimiento(idPed, _ubicacionRepartidor.value)
+                            }
+                        }
+                        "pedido_en_camino" -> if (cierreConfirmadoPorPedido[idPed] == null) {
+                            _pedidoActivo.value?.takeIf {
+                                it.id == idPed && it.estado.lowercase() !in estadosCerrados
+                            }?.let { _pedidoActivo.value = it.copy(estado = "en_camino") }
+                            launch {
+                                refrescarDetalle(idPed)
+                                consultarUbicacion(idPed)
+                                actualizarRutaSeguimiento(idPed, _ubicacionRepartidor.value)
+                            }
+                        }
+                        "repartidor_llego" -> if (cierreConfirmadoPorPedido[idPed] == null && (_pedidoActivo.value == null || _pedidoActivo.value?.id == idPed)) {
+                            _repartidorLlego.value = true
+                            launch { refrescarDetalle(idPed) }
+                        }
                     }
                 }
-                if (tipo?.startsWith("pedido_") == true) cargarHistorial()
+                if (tipo?.startsWith("pedido_") == true || tipo == "repartidor_llego") cargarHistorial()
             }
         }
     }
 
     private fun limpiarDatosDeSesion() {
+        observadoresRastreo.clear()
         detenerRastreo()
+        ultimoPedidoRastreadoId = null
         cierreConfirmadoPorPedido.clear()
         _direcciones.value = emptyList()
         _historial.value = emptyList()
         _pedidoActivo.value = null
+        _pedidoSeguimiento.value = null
         _ubicacionRepartidor.value = null
+        _repartidorLlego.value = false
+        _rutaSeguimiento.value = emptyList()
+        _distanciaRutaKm.value = null
     }
 }

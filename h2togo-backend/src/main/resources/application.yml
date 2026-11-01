@@ -76,7 +76,7 @@ h2togo:
     ausencias-umbral: 2
     suspension-dias: 3
     # Radio de entrega (RF-014/RN-011): el repartidor debe estar a ≤ este radio.
-    entrega-radio-m: 50
+    entrega-radio-m: 30
     # Radio de aviso de proximidad al cliente (RF-005/RN-010).
     proximidad-radio-m: 500
   # Ruta óptima de varias paradas (OR-Tools): supuestos del modelo de tiempo.

@@ -283,10 +283,12 @@ fun HToGoNavHost(
             arguments = listOf(navArgument("idPedido") { type = NavType.StringType; nullable = true; defaultValue = null })
         ) { entry ->
             // Sin id explícito (p. ej. desde el inicio) se sigue el último pedido del cliente.
-            val idPedido = entry.arguments?.getString("idPedido")?.toIntOrNull() ?: clienteViewModel.pedidoActivo.value?.id
+            val idPedido = entry.arguments?.getString("idPedido")?.toIntOrNull()
+                ?: clienteViewModel.pedidoSeguimiento.value?.id
+                ?: clienteViewModel.pedidoActivo.value?.id
             SeguimientoPedidoScreen(
                 pedidoId           = idPedido,
-                onBack             = { navController.navigateAndClear(HToGoRoutes.HOME_CLIENTE) },
+                onBack             = { if (!navController.popBackStack()) navController.navigateAndClear(HToGoRoutes.HOME_CLIENTE) },
                 onPedidoEntregado  = { navController.navigateAndClear(HToGoRoutes.HOME_CLIENTE) },
                 onAbrirPurificadora = { navController.navigate(HToGoRoutes.PERFIL_PURIFICADORA) },
                 clienteViewModel   = clienteViewModel

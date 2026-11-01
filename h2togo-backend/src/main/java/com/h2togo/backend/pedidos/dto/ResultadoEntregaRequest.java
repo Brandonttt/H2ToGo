@@ -8,7 +8,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 /**
- * Resultado de la entrega (CU-012). Para {@code ENTREGADO} se validan lat/lon (≤50 m,
+ * Resultado de la entrega (CU-012). Para {@code ENTREGADO} se validan lat/lon (≤30 m,
  * RF-014); {@code motivoNoEntrega} se exige en {@code NO_ENTREGADO}. Las líneas permiten
  * entregas parciales y líneas agregadas en sitio (RN-032).
  */

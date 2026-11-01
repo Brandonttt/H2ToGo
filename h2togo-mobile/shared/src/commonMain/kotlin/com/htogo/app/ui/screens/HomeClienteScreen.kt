@@ -79,10 +79,28 @@ fun HomeClienteScreen(
 
     LaunchedEffect(Unit) {
         clienteViewModel.cargarDirecciones()
+        clienteViewModel.cargarHistorial()
     }
 
     val livePurificadoras by clienteViewModel.purificadoras.collectAsState()
     val livePedidoActivo by clienteViewModel.pedidoActivo.collectAsState()
+    val ubicacionRepartidor by clienteViewModel.ubicacionRepartidor.collectAsState()
+    val rutaSeguimiento by clienteViewModel.rutaSeguimiento.collectAsState()
+    val distanciaRutaKm by clienteViewModel.distanciaRutaKm.collectAsState()
+    val repartidorLlego by clienteViewModel.repartidorLlego.collectAsState()
+
+    val estadosCerradosHome = remember { setOf("entregado", "no_entregado", "cancelado") }
+    val pedidoEnCurso = livePedidoActivo?.takeIf { it.estado.lowercase() !in estadosCerradosHome }
+
+    DisposableEffect(pedidoEnCurso?.id) {
+        val idActivo = pedidoEnCurso?.id
+        if (idActivo != null) {
+            clienteViewModel.vincularRastreo("home", idActivo)
+        }
+        onDispose {
+            clienteViewModel.desvincularRastreo("home")
+        }
+    }
 
     BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     val refrescando by clienteViewModel.refrescando.collectAsState()
@@ -175,7 +193,99 @@ fun HomeClienteScreen(
                     }
                 }
 
-                if (livePedidoActivo != null && livePedidoActivo!!.estado != "entregado" && livePedidoActivo!!.estado != "cancelado") {
+                if (pedidoEnCurso != null) {
+                    val estadoNorm = pedidoEnCurso.estado.lowercase()
+                    val cant = pedidoEnCurso.garrafonesTotales ?: 1
+                    val garrafonesTxt = if (cant == 1) "1 garrafón" else "$cant garrafones"
+                    val negocioTxt = (pedidoEnCurso.repartidor?.negocio ?: pedidoEnCurso.nombreNegocio)
+                        ?.takeIf { it.isNotBlank() }
+                    val resumenCard = if (negocioTxt != null) "$garrafonesTxt · $negocioTxt" else garrafonesTxt
+
+                    val kmRestantes = remember(
+                        pedidoEnCurso,
+                        ubicacionRepartidor,
+                        rutaSeguimiento,
+                        distanciaRutaKm,
+                        livePurificadoras,
+                        defaultDir
+                    ) {
+                        if (estadoNorm !in setOf("asignado", "en_camino")) {
+                            null
+                        } else {
+                            val latDest = pedidoEnCurso.latEntrega ?: defaultDir?.lat
+                            val lonDest = pedidoEnCurso.lonEntrega ?: defaultDir?.lon
+                            val posOrigen = ubicacionRepartidor?.let { it.lat to it.lon }
+                                ?: rutaSeguimiento.firstOrNull()
+                                ?: livePurificadoras.firstOrNull { p ->
+                                    (pedidoEnCurso.idNegocioSolicitado != null && p.id == pedidoEnCurso.idNegocioSolicitado) ||
+                                        (negocioTxt != null && p.nombreComercial.equals(negocioTxt, ignoreCase = true))
+                                }?.let { p ->
+                                    if (p.lat != null && p.lon != null && (p.lat != 0.0 || p.lon != 0.0)) p.lat to p.lon else null
+                                }
+                            when {
+                                posOrigen != null && latDest != null && lonDest != null && rutaSeguimiento.size >= 2 ->
+                                    com.htogo.app.data.location.distanciaRestanteRutaKm(
+                                        lat = posOrigen.first,
+                                        lon = posOrigen.second,
+                                        ruta = rutaSeguimiento,
+                                        destLat = latDest,
+                                        destLon = lonDest,
+                                        distanciaTotalOriginalKm = distanciaRutaKm
+                                    )
+                                distanciaRutaKm != null && distanciaRutaKm!! > 0.0 -> distanciaRutaKm
+                                posOrigen != null && latDest != null && lonDest != null ->
+                                    (com.htogo.app.data.location.distanciaM(
+                                        posOrigen.first, posOrigen.second, latDest, lonDest
+                                    ) * 1.25) / 1000.0
+                                else -> null
+                            }
+                        }
+                    }
+
+                    val llegoAlDomicilio = estadoNorm == "en_camino" &&
+                        (repartidorLlego || (kmRestantes != null && kmRestantes <= 0.030))
+                    val pasosCompletados = when (estadoNorm) {
+                        "pendiente", "pendiente_programado" -> 1
+                        "asignado" -> 2
+                        "en_camino" -> if (llegoAlDomicilio) 4 else 3
+                        else -> 1
+                    }
+                    val textoTiempo = when (estadoNorm) {
+                        "pendiente_programado" -> {
+                            val fp = pedidoEnCurso.fechaProgramada
+                            if (!fp.isNullOrBlank() && fp.length >= 16) {
+                                "Programado · ${fp.substring(8, 10)}/${fp.substring(5, 7)} ${fp.substring(11, 16)}"
+                            } else {
+                                "Pedido programado · esperando horario"
+                            }
+                        }
+                        "pendiente" -> {
+                            val fp = pedidoEnCurso.fechaProgramada
+                            if (pedidoEnCurso.esProgramado && !fp.isNullOrBlank() && fp.length >= 16) {
+                                "Programado · ${fp.substring(8, 10)}/${fp.substring(5, 7)} ${fp.substring(11, 16)}"
+                            } else {
+                                "Esperando que acepten tu pedido…"
+                            }
+                        }
+                        "asignado" -> {
+                            if (kmRestantes != null) {
+                                val minPrep = com.htogo.app.data.location.estimarMinutosRuta(kmRestantes).coerceAtLeast(1) + 2
+                                "Repartidor asignado · llega en ~$minPrep min"
+                            } else {
+                                "Repartidor asignado · preparando tu pedido"
+                            }
+                        }
+                        "en_camino" -> when {
+                            llegoAlDomicilio -> "¡Tu repartidor está afuera de tu domicilio!"
+                            kmRestantes != null && kmRestantes <= 0.08 ->
+                                "Llegando a tu domicilio (< 1 min · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantes)})"
+                            kmRestantes != null ->
+                                "Llega en ~${com.htogo.app.data.location.estimarMinutosRuta(kmRestantes)} min (${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantes)})"
+                            else -> "En camino a tu domicilio"
+                        }
+                        else -> "Actualizando estado…"
+                    }
+
                     Spacer(Modifier.height(20.dp))
                     Text("Pedido en curso",
                         style = MaterialTheme.typography.titleMedium,
@@ -183,9 +293,12 @@ fun HomeClienteScreen(
                         modifier = Modifier.padding(horizontal = 20.dp))
                     Spacer(Modifier.height(8.dp))
                     PedidoActivoCard(
-                        id = livePedidoActivo!!.id.toString(),
-                        resumen = "${livePedidoActivo!!.garrafonesTotales ?: 1} garrafones",
-                        estadoStr = livePedidoActivo!!.estado,
+                        id = pedidoEnCurso.id.toString(),
+                        resumen = resumenCard,
+                        estadoStr = pedidoEnCurso.estado,
+                        pasosCompletados = pasosCompletados,
+                        textoTiempo = textoTiempo,
+                        destacarTiempo = llegoAlDomicilio,
                         onClick = onTrackPedido
                     )
                 }
@@ -279,16 +392,21 @@ private fun PedidoActivoCard(
     id: String = "HG-1287",
     resumen: String = "3 garrafones · Aguas Del Valle",
     estadoStr: String = "en_camino",
+    pasosCompletados: Int = 3,
+    textoTiempo: String = "En camino a tu domicilio",
+    destacarTiempo: Boolean = false,
     onClick: () -> Unit
 ) {
     val estadoEnum = when (estadoStr.lowercase()) {
-        "pendiente" -> EstadoPedido.PENDIENTE
+        "pendiente", "pendiente_programado" -> EstadoPedido.PENDIENTE
         "asignado" -> EstadoPedido.ASIGNADO
         "en_camino" -> EstadoPedido.EN_CAMINO
         "entregado" -> EstadoPedido.ENTREGADO
         "cancelado" -> EstadoPedido.CANCELADO
-        else -> EstadoPedido.EN_CAMINO
+        "no_entregado" -> EstadoPedido.NO_ENTREGADO
+        else -> EstadoPedido.PENDIENTE
     }
+    val colorTiempo = if (destacarTiempo) HToGoColors.StatusEntregado else HToGoColors.TextSecondary
 
     Card(
         onClick = onClick,
@@ -318,7 +436,8 @@ private fun PedidoActivoCard(
             }
             Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                listOf(true, true, true, false).forEachIndexed { i, done ->
+                (0 until 4).forEach { i ->
+                    val done = i < pasosCompletados.coerceIn(1, 4)
                     Box(
                         Modifier
                             .height(6.dp).weight(1f)
@@ -329,13 +448,16 @@ private fun PedidoActivoCard(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Schedule, null,
-                    tint = HToGoColors.TextSecondary, modifier = Modifier.size(14.dp))
+                    tint = colorTiempo, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("Llega en ~8 min",
+                Text(
+                    textoTiempo,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = HToGoColors.TextSecondary)
+                    fontWeight = if (destacarTiempo) FontWeight.SemiBold else FontWeight.Normal,
+                    color = colorTiempo
+                )
             }
         }
     }

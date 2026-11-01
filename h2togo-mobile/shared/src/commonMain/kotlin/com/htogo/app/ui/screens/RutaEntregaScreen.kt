@@ -430,6 +430,24 @@ fun RutaEntregaScreen(
     var avisandoLlegada by remember { mutableStateOf(false) }
     var mostrarModalNoEntregado by remember { mutableStateOf(false) }
 
+    // Respaldo de reconexión y arranque sin fix GPS: al entrar a la ruta el pedido pasa a "en_camino"
+    // usando la ubicación actual o la base de la purificadora si el GPS aún no fija señal.
+    LaunchedEffect(entrega.pedidoId, livePedidoEnRuta?.estado) {
+        val idInt = entrega.pedidoId.toIntOrNull() ?: return@LaunchedEffect
+        delay(1_500L)
+        if (!enCaminoSolicitado && livePedidoEnRuta?.estado.equals("asignado", ignoreCase = true) && errorCargaBase == null) {
+            val posIni = posicionSimulada ?: posicionReal
+                ?: com.htogo.app.data.location.Posicion(ubicacionBasePurificadora.first, ubicacionBasePurificadora.second, 15f)
+            enCaminoSolicitado = true
+            repartidorViewModel.marcarEnCamino(idInt, posIni.lat, posIni.lon, onError = { err ->
+                enCaminoSolicitado = false
+                if (err.contains("apartados en la base", ignoreCase = true) || err.contains("CARGA_PENDIENTE", ignoreCase = true)) {
+                    errorCargaBase = err
+                }
+            })
+        }
+    }
+
     // Respaldo de reconexión: si el repartidor perdió internet mientras avanzaba (con GPS real o FakeGPS)
     // y recupera la conexión cuando ya llegó al destino y está detenido, reenvía periódicamente su
     // posición actual, el estado "en_camino" y el aviso de llegada pendiente para que el cliente se actualice.
@@ -437,16 +455,19 @@ fun RutaEntregaScreen(
         val idInt = entrega.pedidoId.toIntOrNull() ?: return@LaunchedEffect
         while (true) {
             delay(4_000L)
-            val posActual = posicionSimulada ?: posicionReal ?: continue
+            val posActual = posicionSimulada ?: posicionReal
             if (!enCaminoSolicitado && livePedidoEnRuta?.estado.equals("asignado", ignoreCase = true) && errorCargaBase == null) {
+                val posParaSalida = posActual
+                    ?: com.htogo.app.data.location.Posicion(ubicacionBasePurificadora.first, ubicacionBasePurificadora.second, 15f)
                 enCaminoSolicitado = true
-                repartidorViewModel.marcarEnCamino(idInt, posActual.lat, posActual.lon, onError = { err ->
+                repartidorViewModel.marcarEnCamino(idInt, posParaSalida.lat, posParaSalida.lon, onError = { err ->
                     enCaminoSolicitado = false
                     if (err.contains("apartados en la base", ignoreCase = true) || err.contains("CARGA_PENDIENTE", ignoreCase = true)) {
                         errorCargaBase = err
                     }
                 })
             }
+            if (posActual == null) continue
             if (posicionSimulada != null && !simulandoRecorrido) {
                 repartidorViewModel.reportarUbicacionSimulada(posActual.lat, posActual.lon)
             }
@@ -576,14 +597,14 @@ fun RutaEntregaScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("🏁 Saltar al domicilio (a ~20 m para entregar)") },
+                            text = { Text("🏁 Saltar al domicilio (a ~15 m para entregar)") },
                             onClick = {
                                 menuOpciones = false
                                 simulandoRecorrido = false
-                                val latSim = entrega.latDestino + 0.00015
-                                val lonSim = entrega.lonDestino + 0.00010
+                                val latSim = entrega.latDestino + 0.00010
+                                val lonSim = entrega.lonDestino + 0.00007
                                 posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
-                                mostrarAviso("GPS simulado a ~20 m del domicilio")
+                                mostrarAviso("GPS simulado a ~15 m del domicilio")
                             }
                         )
                         if (posicionSimulada != null) {
@@ -796,9 +817,9 @@ fun RutaEntregaScreen(
                                                     onSuccess = {
                                                         errorCargaBase = null
                                                         mostrarAviso("Garrafones cargados al vehículo")
-                                                        posicion?.let { pos ->
-                                                            repartidorViewModel.marcarEnCamino(idInt, pos.lat, pos.lon)
-                                                        }
+                                                        val pos = posicion
+                                                            ?: com.htogo.app.data.location.Posicion(ubicacionBasePurificadora.first, ubicacionBasePurificadora.second, 15f)
+                                                        repartidorViewModel.marcarEnCamino(idInt, pos.lat, pos.lon)
                                                     },
                                                     onError = { err ->
                                                         mostrarAviso(err, largo = true)
@@ -826,7 +847,7 @@ fun RutaEntregaScreen(
                                 Spacer(Modifier.height(14.dp))
                                 Button(
                                     onClick = {
-                                        // RF-014: el backend solo acepta la entrega a ≤ 50 m del domicilio.
+                                        // RF-014: el backend solo acepta la entrega a ≤ 30 m del domicilio.
                                         when {
                                             distanciaDestinoM == null -> mostrarAviso("Esperando la señal del GPS…")
                                             distanciaDestinoM > RADIO_ENTREGA_M -> mostrarAviso("Estás a %.0f m del domicilio. Acércate a menos de %d m.".format(distanciaDestinoM, RADIO_ENTREGA_M), largo = true)
@@ -940,7 +961,7 @@ fun RutaEntregaScreen(
                                 onCompletada()
                             },
                             onError = { err ->
-                                // Se queda en la pantalla para reintentar (p. ej. fuera del radio de 50 m).
+                                // Se queda en la pantalla para reintentar (p. ej. fuera del radio de 30 m).
                                 mostrarAviso(err, largo = true)
                                 mostrarModalEntregado = false
                             }
@@ -1085,7 +1106,8 @@ private fun EnRutaSheet(entrega: EntregaActiva, distanciaDestinoM: Double?, ruta
                 Column(Modifier.weight(1f)) {
                     Text(
                         when {
-                            rutaKm != null -> "%.2f km restantes".format(rutaKm)
+                            rutaKm != null && rutaKm <= 0.08 -> "${(rutaKm * 1000).toInt().coerceAtLeast(5)} m · llegando (< 1 min)"
+                            rutaKm != null -> "%.2f km · ~%d min".format(rutaKm, com.htogo.app.data.location.estimarMinutosRuta(rutaKm))
                             distanciaDestinoM != null && distanciaDestinoM < 1000 -> "%.0f m en línea recta".format(distanciaDestinoM)
                             distanciaDestinoM != null -> "%.2f km en línea recta".format(distanciaDestinoM / 1000)
                             else -> "Buscando tu ubicación…"
@@ -1255,7 +1277,7 @@ private fun LlegadoSheet(entrega: EntregaActiva, segundos: Int) {
 }
 
 /** Radio de entrega del backend (RF-014, h2togo.pedidos.entrega-radio-m). */
-private const val RADIO_ENTREGA_M = 50
+private const val RADIO_ENTREGA_M = 30
 
 /** Navegación paso a paso en Google Maps (o la app de mapas del sistema si no está instalado). */
 private fun abrirGoogleMaps(entrega: EntregaActiva) =
