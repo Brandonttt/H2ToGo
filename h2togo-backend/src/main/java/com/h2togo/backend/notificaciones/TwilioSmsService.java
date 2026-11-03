@@ -32,7 +32,7 @@ public class TwilioSmsService implements SmsService {
             @Value("${h2togo.twilio.account-sid}") String accountSid,
             @Value("${h2togo.twilio.auth-token}") String authToken,
             @Value("${h2togo.twilio.from-number}") String fromNumber,
-            @Value("${h2togo.twilio.verify-service-sid:VAf49c305047af03c695f90bcf94e6a209}") String verifyServiceSid) {
+            @Value("${h2togo.twilio.verify-service-sid:}") String verifyServiceSid) {
         this.accountSid = accountSid;
         this.authToken = authToken;
         this.fromNumber = fromNumber;
