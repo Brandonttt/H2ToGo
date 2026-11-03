@@ -1,6 +1,8 @@
 package com.h2togo.backend.auth;
 
 import com.h2togo.backend.repartidores.MiembrosNegocioService;
+import com.h2togo.backend.auth.dto.CambiarTelefonoOtpRequest;
+import com.h2togo.backend.auth.dto.IniciarVerificacionRequest;
 import com.h2togo.backend.auth.dto.RecuperacionRequest;
 import com.h2togo.backend.auth.dto.RecuperacionConfirmacionRequest;
 import com.h2togo.backend.auth.dto.LoginRequest;
@@ -9,6 +11,7 @@ import com.h2togo.backend.auth.dto.ReenviarOtpRequest;
 import com.h2togo.backend.auth.dto.RegistroRequest;
 import com.h2togo.backend.auth.dto.RegistroResponse;
 import com.h2togo.backend.auth.dto.SesionResponse;
+import com.h2togo.backend.bd.TareaSistema;
 import com.h2togo.backend.common.BusinessRuleException;
 import com.h2togo.backend.common.ConflictException;
 import com.h2togo.backend.common.NotFoundException;
@@ -29,6 +32,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Base64;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -59,6 +63,7 @@ public class AuthService {
     /** Código que siempre se acepta, solo para pruebas y demos. Vacío = desactivado. */
     private final String otpDemo;
     private final MiembrosNegocioService miembrosService;
+    private final TareaSistema tareaSistema;
 
     @org.springframework.beans.factory.annotation.Autowired
     public AuthService(UsuarioRepository usuarioRepository, ClienteRepository clienteRepository,
@@ -70,7 +75,8 @@ public class AuthService {
             @Value("${h2togo.auth.otp-vigencia-minutos}") int otpVigenciaMinutos,
             @Value("${h2togo.auth.token-dias}") int tokenDias,
             @Value("${h2togo.auth.otp-demo:123456}") String otpDemo,
-            MiembrosNegocioService miembrosService) {
+            MiembrosNegocioService miembrosService,
+            TareaSistema tareaSistema) {
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
         this.repartidorRepository = repartidorRepository;
@@ -83,6 +89,7 @@ public class AuthService {
         this.tokenDias = tokenDias;
         this.otpDemo = otpDemo;
         this.miembrosService = miembrosService;
+        this.tareaSistema = tareaSistema;
     }
 
     public AuthService(UsuarioRepository usuarioRepository, ClienteRepository clienteRepository,
@@ -93,11 +100,25 @@ public class AuthService {
             int otpVigenciaMinutos,
             int tokenDias) {
         this(usuarioRepository, clienteRepository, repartidorRepository, negocioRepository,
-                passwordEncoder, smsService, null, otpLongitud, otpVigenciaMinutos, tokenDias, "123456", null);
+                passwordEncoder, smsService, null, otpLongitud, otpVigenciaMinutos, tokenDias, "123456", null, null);
     }
 
     /** Al quinto intento fallido el código SMS deja de servir y hay que pedir otro (v7 [C5]). */
     private static final int MAX_INTENTOS_CODIGO = 5;
+
+    /** Busca primero coincidencia exacta y como respaldo insensible a mayúsculas/espacios. */
+    private Optional<Usuario> buscarPorCorreo(String correo) {
+        if (correo == null || correo.isBlank()) {
+            return Optional.empty();
+        }
+        String limpio = correo.trim();
+        Optional<Usuario> exacto = usuarioRepository.findByCorreo(limpio);
+        if (exacto != null && exacto.isPresent()) {
+            return exacto;
+        }
+        Optional<Usuario> insensible = usuarioRepository.findByCorreoIgnoreCase(limpio);
+        return insensible != null ? insensible : Optional.empty();
+    }
 
     /** CU-001: alta de cuenta + OTP, en una transacción (la BD revisa al COMMIT que el negocio nuevo tenga dueño). */
     @Transactional
@@ -243,7 +264,7 @@ public class AuthService {
     /** CU-001: valida el OTP y su vigencia → telefono_verificado = true (RN-002). */
     @Transactional(noRollbackFor = BusinessRuleException.class) // se guarda el intento fallido
     public void verificarTelefono(OtpRequest req) {
-        Usuario u = usuarioRepository.findByCorreo(req.correo())
+        Usuario u = buscarPorCorreo(req.correo())
                 .orElseThrow(() -> new BusinessRuleException("OTP_INVALIDO",
                         "El código es inválido o expiró."));
         if (u.isTelefonoVerificado()) {
@@ -267,7 +288,7 @@ public class AuthService {
      */
     @Transactional
     public void solicitarRecuperacion(RecuperacionRequest req) {
-        Usuario u = usuarioRepository.findByCorreo(req.correo()).orElse(null);
+        Usuario u = buscarPorCorreo(req.correo()).orElse(null);
         if (u == null || !u.isTelefonoVerificado() || !u.isCuentaActiva()) {
             return;
         }
@@ -280,7 +301,7 @@ public class AuthService {
     /** Valida el código y guarda la nueva contraseña. Cierra la sesión abierta en cualquier dispositivo. */
     @Transactional(noRollbackFor = BusinessRuleException.class) // se guarda el intento fallido
     public void confirmarRecuperacion(RecuperacionConfirmacionRequest req) {
-        Usuario u = usuarioRepository.findByCorreo(req.correo())
+        Usuario u = buscarPorCorreo(req.correo())
                 .filter(x -> x.isTelefonoVerificado() && x.isCuentaActiva())
                 .orElseThrow(() -> new BusinessRuleException("OTP_INVALIDO", "El código es inválido o expiró."));
         if (!codigoValido(u, req.codigo())) {
@@ -329,7 +350,7 @@ public class AuthService {
     /** CU-001: reenvía un OTP nuevo. No revela si el correo existe (RN-016). */
     @Transactional
     public void reenviarOtp(ReenviarOtpRequest req) {
-        Usuario u = usuarioRepository.findByCorreo(req.correo()).orElse(null);
+        Usuario u = buscarPorCorreo(req.correo()).orElse(null);
         if (u == null || u.isTelefonoVerificado()) {
             return;
         }
@@ -339,10 +360,68 @@ public class AuthService {
         smsService.enviarCodigoVerificacion(u.getTelefono(), codigo);
     }
 
+    /**
+     * Retoma la verificación telefónica desde el login cuando {@code telefono_verificado = false}.
+     * Autentica al titular con su contraseña, genera y envía un nuevo OTP y devuelve su teléfono.
+     */
+    @Transactional
+    public RegistroResponse iniciarVerificacionPendiente(IniciarVerificacionRequest req) {
+        Usuario u = buscarPorCorreo(req.correo()).orElse(null);
+        if (u == null || !passwordEncoder.matches(req.password(), u.getPasswordHash())) {
+            throw new UnauthorizedException("CREDENCIALES_INVALIDAS", "Correo o contraseña incorrectos.");
+        }
+        if (!u.isCuentaActiva()) {
+            throw new BusinessRuleException("CUENTA_INACTIVA", "La cuenta está dada de baja.");
+        }
+        if (u.isTelefonoVerificado()) {
+            return new RegistroResponse(u.getId(), u.getCorreo(), u.getTelefono(), true, null,
+                    "El teléfono ya está verificado.");
+        }
+        String codigo = generarOtp();
+        asignarCodigo(u, codigo);
+        usuarioRepository.save(u);
+        smsService.enviarCodigoVerificacion(u.getTelefono(), codigo);
+        return new RegistroResponse(u.getId(), u.getCorreo(), u.getTelefono(), false, null,
+                "Te enviamos un código de verificación por SMS.");
+    }
+
+    /**
+     * Cambia el número telefónico de una cuenta pendiente de verificar y envía un nuevo OTP.
+     * La actualización corre con {@code h2togo_sistema} (vía {@link TareaSistema}) porque el rol
+     * {@code h2togo_publico} no tiene privilegio UPDATE sobre {@code usuarios.telefono} en BD v7.
+     */
+    public void cambiarTelefonoPendiente(CambiarTelefonoOtpRequest req) {
+        String nuevoTel = req.nuevoTelefono().trim();
+        java.util.function.Supplier<String> actualizar = () -> {
+            Usuario u = buscarPorCorreo(req.correo()).orElse(null);
+            if (u == null || !passwordEncoder.matches(req.password(), u.getPasswordHash())) {
+                throw new UnauthorizedException("CREDENCIALES_INVALIDAS", "Correo o contraseña incorrectos.");
+            }
+            if (!u.isCuentaActiva()) {
+                throw new BusinessRuleException("CUENTA_INACTIVA", "La cuenta está dada de baja.");
+            }
+            if (u.isTelefonoVerificado()) {
+                throw new BusinessRuleException("TELEFONO_YA_VERIFICADO",
+                        "El teléfono de esta cuenta ya fue verificado.");
+            }
+            if (!nuevoTel.equals(u.getTelefono()) && usuarioRepository.existsByTelefono(nuevoTel)) {
+                throw new ConflictException("RN-015_TELEFONO_DUPLICADO", "El teléfono ya está registrado.");
+            }
+            String codigo = generarOtp();
+            u.setTelefono(nuevoTel);
+            asignarCodigo(u, codigo);
+            usuarioRepository.save(u);
+            return codigo;
+        };
+
+        String codigo = tareaSistema != null ? tareaSistema.consultar(actualizar) : actualizar.get();
+        smsService.enviarCodigoVerificacion(nuevoTel, codigo);
+    }
+
     /** CU-002: login con sesión única (RN-018) y token opaco de 30 días (RNF-004). */
     @Transactional
     public SesionResponse login(LoginRequest req) {
-        Usuario u = usuarioRepository.findByCorreo(req.correo()).orElse(null);
+        Usuario u = buscarPorCorreo(req.correo()).orElse(null);
         // Mensaje genérico (CU-002 E1, RN-016): no revelar si el correo existe.
         if (u == null || !passwordEncoder.matches(req.password(), u.getPasswordHash())) {
             throw new UnauthorizedException("CREDENCIALES_INVALIDAS", "Correo o contraseña incorrectos.");

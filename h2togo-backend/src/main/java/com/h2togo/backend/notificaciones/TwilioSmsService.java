@@ -45,12 +45,30 @@ public class TwilioSmsService implements SmsService {
         log.info("[TWILIO] Cliente de Twilio inicializado. Emisor: {}, VerifyService: {}", fromNumber, verifyServiceSid);
     }
 
+    private static String normalizarE164Mx(String telefono) {
+        if (telefono == null) {
+            return "";
+        }
+        String t = telefono.trim();
+        if (t.startsWith("+")) {
+            return "+" + t.substring(1).replaceAll("\\D", "");
+        }
+        String digitos = t.replaceAll("\\D", "");
+        if (digitos.length() == 10) {
+            return "+52" + digitos;
+        }
+        if (digitos.length() == 13 && digitos.startsWith("521")) {
+            return "+52" + digitos.substring(3);
+        }
+        if (digitos.length() == 12 && digitos.startsWith("52")) {
+            return "+" + digitos;
+        }
+        return "+52" + digitos;
+    }
+
     @Override
     public void enviarCodigoVerificacion(String telefono, String codigo) {
-        String toNumber = telefono;
-        if (!toNumber.startsWith("+")) {
-            toNumber = "+52" + toNumber;
-        }
+        String toNumber = normalizarE164Mx(telefono);
 
         // 1. Intentar con Twilio Verify API (diseñado para OTP, opera en cuentas Trial y Prod)
         if (verifyServiceSid != null && !verifyServiceSid.isBlank()) {
@@ -84,10 +102,7 @@ public class TwilioSmsService implements SmsService {
             return false;
         }
         try {
-            String toNumber = telefono;
-            if (!toNumber.startsWith("+")) {
-                toNumber = "+52" + toNumber;
-            }
+            String toNumber = normalizarE164Mx(telefono);
             VerificationCheck check = VerificationCheck.creator(verifyServiceSid)
                     .setTo(toNumber)
                     .setCode(codigo)

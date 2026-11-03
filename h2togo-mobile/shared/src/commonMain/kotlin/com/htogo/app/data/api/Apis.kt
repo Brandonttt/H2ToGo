@@ -19,6 +19,10 @@ class AuthApi(private val http: HttpClient) {
         http.post("auth/verificacion-telefono") { setBody(request) }.aRespuesta()
     suspend fun reenviarOtp(request: ReenviarOtpRequest): Respuesta<Unit> =
         http.post("auth/verificacion-telefono/reenviar") { setBody(request) }.aRespuesta()
+    suspend fun iniciarVerificacionTelefono(request: IniciarVerificacionRequest): Respuesta<RegistroResponse> =
+        http.post("auth/verificacion-telefono/iniciar") { setBody(request) }.aRespuesta()
+    suspend fun cambiarTelefonoOtp(request: CambiarTelefonoOtpRequest): Respuesta<Unit> =
+        http.post("auth/verificacion-telefono/cambiar-numero") { setBody(request) }.aRespuesta()
     suspend fun login(request: LoginRequest): Respuesta<SesionResponse> =
         http.post("auth/login") { setBody(request) }.aRespuesta()
     suspend fun logout(): Respuesta<Unit> = http.post("auth/logout").aRespuesta()

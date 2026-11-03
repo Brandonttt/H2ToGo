@@ -2,11 +2,13 @@ package com.htogo.app.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.htogo.shared.data.codigoDeError
 import com.htogo.shared.data.mensajeDeError
-import com.htogo.app.plataforma.ahoraMs
 import com.htogo.app.plataforma.Plataforma
 import com.htogo.app.data.api.ApiClient
+import com.htogo.app.data.dto.CambiarTelefonoOtpRequest
 import com.htogo.app.data.dto.CambioContrasenaRequest
+import com.htogo.app.data.dto.IniciarVerificacionRequest
 import com.htogo.app.data.dto.LoginRequest
 import com.htogo.app.data.dto.RecuperacionConfirmacionRequest
 import com.htogo.app.data.dto.RecuperacionRequest
@@ -26,7 +28,11 @@ sealed class AuthUiState {
     object Idle : AuthUiState()
     object Loading : AuthUiState()
     data class Success(val sesion: SesionResponse) : AuthUiState()
-    data class Error(val message: String) : AuthUiState()
+    data class Error(
+        val message: String,
+        val sesionActiva: Boolean = false,
+        val telefonoNoVerificado: Boolean = false
+    ) : AuthUiState()
 }
 
 sealed class RegistroUiState {
@@ -73,13 +79,39 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    private val _telefonoPendiente = MutableStateFlow("")
+    val telefonoPendiente: StateFlow<String> = _telefonoPendiente.asStateFlow()
+
     // Datos temporales para iniciar sesión automáticamente post-verificación OTP
     var tempCorreo: String = ""
         private set
-    var tempTelefono: String = ""
-        private set
+    var tempTelefono: String
+        get() = _telefonoPendiente.value
+        private set(value) { _telefonoPendiente.value = value }
     var tempPass: String = ""
         private set
+
+    private suspend fun guardarSesionActiva(sesion: SesionResponse) {
+        sessionManager.guardarSesion(
+            token = sesion.token,
+            rol = sesion.rol,
+            idUsuario = sesion.perfil.idUsuario,
+            nombre = "${sesion.perfil.nombre} ${sesion.perfil.apellidos}".trim(),
+            correo = sesion.perfil.correo,
+            telefono = sesion.perfil.telefono
+        )
+        Plataforma.registrarDispositivo()
+        if (sesion.rol.equals("repartidor", ignoreCase = true)) {
+            try {
+                val negocioResp = apiClient.negociosApi.obtenerMiNegocio()
+                if (negocioResp.isSuccessful && negocioResp.body() != null) {
+                    sessionManager.guardarNombreNegocio(negocioResp.body()!!.nombreComercial)
+                }
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+    }
 
     fun login(correo: String, pass: String, forzar: Boolean = false) {
         viewModelScope.launch {
@@ -95,33 +127,34 @@ class AuthViewModel : ViewModel() {
 
                 if (response.isSuccessful && response.body() != null) {
                     val sesion = response.body()!!
-                    sessionManager.guardarSesion(
-                        token = sesion.token,
-                        rol = sesion.rol,
-                        idUsuario = sesion.perfil.idUsuario,
-                        nombre = "${sesion.perfil.nombre} ${sesion.perfil.apellidos}".trim(),
-                        correo = sesion.perfil.correo,
-                        telefono = sesion.perfil.telefono
-                    )
-                    Plataforma.registrarDispositivo()
-                    if (sesion.rol.equals("repartidor", ignoreCase = true)) {
-                        try {
-                            val negocioResp = apiClient.negociosApi.obtenerMiNegocio()
-                            if (negocioResp.isSuccessful && negocioResp.body() != null) {
-                                sessionManager.guardarNombreNegocio(negocioResp.body()!!.nombreComercial)
-                            }
-                        } catch (e: Exception) {
-                            // ignore
-                        }
-                    }
+                    guardarSesionActiva(sesion)
                     _uiState.value = AuthUiState.Success(sesion)
-                } else if (response.code() == 409) {
-                    _uiState.value = AuthUiState.Error("SESION_ACTIVA: Ya hay una sesión abierta en otro dispositivo.")
-                } else if (response.code() == 401) {
-                    _uiState.value = AuthUiState.Error("Credenciales inválidas. Verifica tu correo y contraseña.")
                 } else {
-                    val errMsg = parseError(response.errorBody()?.string())
-                    _uiState.value = AuthUiState.Error(errMsg ?: "Error al iniciar sesión (${response.code()})")
+                    val rawErr = response.errorBody()?.string()
+                    val codErr = codigoDeError(rawErr)
+                    val errMsg = parseError(rawErr)
+
+                    if (response.code() == 409 || codErr == "SESION_ACTIVA_EN_OTRO_DISPOSITIVO") {
+                        _uiState.value = AuthUiState.Error(
+                            message = errMsg ?: "Ya hay una sesión activa en otro dispositivo.",
+                            sesionActiva = true
+                        )
+                    } else if (codErr == "TELEFONO_NO_VERIFICADO" ||
+                        errMsg?.contains("verificar tu teléfono", ignoreCase = true) == true
+                    ) {
+                        tempCorreo = correo.trim()
+                        tempPass = pass
+                        _uiState.value = AuthUiState.Error(
+                            message = errMsg ?: "Debes verificar tu teléfono antes de iniciar sesión.",
+                            telefonoNoVerificado = true
+                        )
+                    } else if (response.code() == 401) {
+                        _uiState.value = AuthUiState.Error(
+                            errMsg ?: "Credenciales inválidas. Verifica tu correo y contraseña."
+                        )
+                    } else {
+                        _uiState.value = AuthUiState.Error(errMsg ?: "Error al iniciar sesión (${response.code()})")
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error(e.message ?: "Error de conexión con el servidor")
@@ -182,6 +215,7 @@ class AuthViewModel : ViewModel() {
                     tempCorreo = correo.trim()
                     tempTelefono = telefono.trim()
                     tempPass = pass
+                    _otpState.value = OtpUiState.Idle
                     _registroState.value = RegistroUiState.Success(response.body()!!)
                 } else {
                     val errMsg = parseError(response.errorBody()?.string())
@@ -202,30 +236,22 @@ class AuthViewModel : ViewModel() {
             _otpState.value = OtpUiState.Loading
             try {
                 val response = apiClient.authApi.verificarTelefono(
-                    OtpRequest(correo = tempCorreo, codigo = codigo.trim())
+                    OtpRequest(correo = tempCorreo.trim(), codigo = codigo.trim())
                 )
                 if (response.isSuccessful) {
                     // Si tenemos la contraseña temporal guardada, iniciamos sesión automáticamente antes de notificar éxito
                     if (tempPass.isNotBlank() && tempCorreo.isNotBlank()) {
                         try {
                             val loginResp = apiClient.authApi.login(
-                                LoginRequest(correo = tempCorreo, password = tempPass, forzar = true)
+                                LoginRequest(correo = tempCorreo.trim(), password = tempPass, forzar = true)
                             )
                             if (loginResp.isSuccessful && loginResp.body() != null) {
                                 val sesion = loginResp.body()!!
-                                sessionManager.guardarSesion(
-                                    token = sesion.token,
-                                    rol = sesion.rol,
-                                    idUsuario = sesion.perfil.idUsuario,
-                                    nombre = "${sesion.perfil.nombre} ${sesion.perfil.apellidos}".trim(),
-                                    correo = sesion.perfil.correo,
-                                    telefono = sesion.perfil.telefono
-                                )
-                                Plataforma.registrarDispositivo()
+                                guardarSesionActiva(sesion)
                                 _uiState.value = AuthUiState.Success(sesion)
                             }
                         } catch (e: Exception) {
-                            // En caso de error de login inmediato, se continuará
+                            // En caso de error de login inmediato, se continuará hacia login manual
                         }
                     }
                     _otpState.value = OtpUiState.Success
@@ -243,15 +269,140 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun reenviarOtp() {
+    fun reenviarOtp(onResult: (String?) -> Unit = {}) {
         viewModelScope.launch {
+            val destinoCorreo = tempCorreo.trim()
+            if (destinoCorreo.isBlank()) {
+                onResult("No se encontró el correo de la cuenta por verificar. Vuelve a iniciar sesión.")
+                return@launch
+            }
+            _otpState.value = OtpUiState.Idle
             try {
-                if (tempCorreo.isNotBlank()) {
-                    apiClient.authApi.reenviarOtp(ReenviarOtpRequest(correo = tempCorreo))
+                val resp = apiClient.authApi.reenviarOtp(ReenviarOtpRequest(correo = destinoCorreo))
+                if (resp.isSuccessful) {
+                    onResult(null)
+                } else {
+                    val errMsg = parseError(resp.errorBody()?.string())
+                    onResult(errMsg ?: "No se pudo reenviar el código (${resp.code()})")
                 }
             } catch (e: Exception) {
-                // Silencioso o log
+                onResult(e.message ?: "Error de conexión al reenviar el código")
             }
+        }
+    }
+
+    /**
+     * Desde la pantalla de login cuando devuelve TELEFONO_NO_VERIFICADO: autentica con correo y
+     * contraseña, pide al backend que genere un código OTP fresco y prepara la pantalla OTP.
+     */
+    fun iniciarVerificacionDesdeLogin(
+        correo: String,
+        pass: String,
+        onResult: (yaVerificado: Boolean, error: String?) -> Unit
+    ) {
+        viewModelScope.launch {
+            val correoLimpio = correo.trim()
+            tempCorreo = correoLimpio
+            tempPass = pass
+            _otpState.value = OtpUiState.Idle
+            try {
+                val resp = apiClient.authApi.iniciarVerificacionTelefono(
+                    IniciarVerificacionRequest(correo = correoLimpio, password = pass)
+                )
+                if (resp.isSuccessful && resp.body() != null) {
+                    val body = resp.body()!!
+                    if (body.telefono.isNotBlank()) {
+                        tempTelefono = body.telefono.trim()
+                    }
+                    if (body.telefonoVerificado) {
+                        onResult(true, null)
+                        login(correoLimpio, pass)
+                    } else {
+                        _uiState.value = AuthUiState.Idle
+                        onResult(false, null)
+                    }
+                } else if (resp.code() == 404) {
+                    // Respaldo si el backend desplegado aún no cuenta con /verificacion-telefono/iniciar
+                    val fallback = apiClient.authApi.reenviarOtp(ReenviarOtpRequest(correo = correoLimpio))
+                    if (fallback.isSuccessful) {
+                        _uiState.value = AuthUiState.Idle
+                        onResult(false, null)
+                    } else {
+                        val errMsg = parseError(fallback.errorBody()?.string())
+                        onResult(false, errMsg ?: "No se pudo generar el código (${fallback.code()})")
+                    }
+                } else {
+                    val errMsg = parseError(resp.errorBody()?.string())
+                    onResult(false, errMsg ?: "No se pudo enviar el código (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onResult(false, e.message ?: "Error de conexión al solicitar el código")
+            }
+        }
+    }
+
+    /**
+     * Actualiza el teléfono de una cuenta aún no verificada y envía un nuevo OTP al número nuevo.
+     */
+    fun cambiarTelefonoOtp(
+        nuevoTelefono: String,
+        passwordManual: String? = null,
+        onResult: (String?) -> Unit
+    ) {
+        viewModelScope.launch {
+            val correoLimpio = tempCorreo.trim()
+            val telLimpio = nuevoTelefono.trim()
+            val passEfectiva = passwordManual?.takeIf { it.isNotBlank() } ?: tempPass
+            if (correoLimpio.isBlank()) {
+                onResult("No se encontró el correo de la cuenta. Vuelve a iniciar sesión.")
+                return@launch
+            }
+            if (passEfectiva.isBlank()) {
+                onResult("Ingresa tu contraseña para confirmar el cambio de número.")
+                return@launch
+            }
+            try {
+                val resp = apiClient.authApi.cambiarTelefonoOtp(
+                    CambiarTelefonoOtpRequest(
+                        correo = correoLimpio,
+                        password = passEfectiva,
+                        nuevoTelefono = telLimpio
+                    )
+                )
+                if (resp.isSuccessful) {
+                    tempTelefono = telLimpio
+                    tempPass = passEfectiva
+                    _otpState.value = OtpUiState.Idle
+                    onResult(null)
+                } else if (resp.code() == 404) {
+                    onResult("El servidor aún no cuenta con esta actualización; despliega la nueva versión del backend.")
+                } else {
+                    val errMsg = parseError(resp.errorBody()?.string())
+                    onResult(errMsg ?: "No se pudo actualizar el número (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onResult(e.message ?: "Error de red al cambiar el número")
+            }
+        }
+    }
+
+    fun tienePasswordTemporal(): Boolean = tempPass.isNotBlank()
+
+    fun consumirRegistroExitoso() {
+        if (_registroState.value is RegistroUiState.Success) {
+            _registroState.value = RegistroUiState.Idle
+        }
+    }
+
+    fun consumirOtpExitoso() {
+        if (_otpState.value is OtpUiState.Success) {
+            _otpState.value = OtpUiState.Idle
+        }
+    }
+
+    fun limpiarErrorOtp() {
+        if (_otpState.value is OtpUiState.Error) {
+            _otpState.value = OtpUiState.Idle
         }
     }
 
@@ -316,8 +467,10 @@ class AuthViewModel : ViewModel() {
     }
 
     fun setRegistrationTarget(correo: String, telefono: String) {
-        tempCorreo = correo
-        tempTelefono = telefono
+        tempCorreo = correo.trim()
+        if (telefono.isNotBlank()) {
+            tempTelefono = telefono.trim()
+        }
     }
 
     fun resetState() {

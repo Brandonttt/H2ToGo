@@ -7,6 +7,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
     Optional<Usuario> findByCorreo(String correo);
 
+    Optional<Usuario> findByCorreoIgnoreCase(String correo);
+
     Optional<Usuario> findByTelefono(String telefono);
 
     Optional<Usuario> findByTokenSesionHash(String tokenSesionHash);

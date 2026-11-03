@@ -1,5 +1,7 @@
 package com.h2togo.backend.auth;
 
+import com.h2togo.backend.auth.dto.CambiarTelefonoOtpRequest;
+import com.h2togo.backend.auth.dto.IniciarVerificacionRequest;
 import com.h2togo.backend.auth.dto.RecuperacionRequest;
 import com.h2togo.backend.auth.dto.RecuperacionConfirmacionRequest;
 import com.h2togo.backend.auth.dto.LoginRequest;
@@ -47,6 +49,18 @@ public class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void reenviarOtp(@Valid @RequestBody ReenviarOtpRequest request) {
         authService.reenviarOtp(request);
+    }
+
+    @PostMapping("/verificacion-telefono/iniciar")
+    public ResponseEntity<RegistroResponse> iniciarVerificacionTelefono(
+            @Valid @RequestBody IniciarVerificacionRequest request) {
+        return ResponseEntity.ok(authService.iniciarVerificacionPendiente(request));
+    }
+
+    @PostMapping("/verificacion-telefono/cambiar-numero")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cambiarTelefonoPendiente(@Valid @RequestBody CambiarTelefonoOtpRequest request) {
+        authService.cambiarTelefonoPendiente(request);
     }
 
     /** "¿Olvidaste tu contraseña?": siempre 204, exista o no el correo. */

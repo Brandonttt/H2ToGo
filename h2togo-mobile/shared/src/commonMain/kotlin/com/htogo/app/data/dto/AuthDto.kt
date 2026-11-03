@@ -83,6 +83,19 @@ data class ReenviarOtpRequest(
     @SerialName("correo") val correo: String
 )
 
+@Serializable
+data class IniciarVerificacionRequest(
+    @SerialName("correo") val correo: String,
+    @SerialName("password") val password: String
+)
+
+@Serializable
+data class CambiarTelefonoOtpRequest(
+    @SerialName("correo") val correo: String,
+    @SerialName("password") val password: String,
+    @SerialName("nuevoTelefono") val nuevoTelefono: String
+)
+
 /** GET /usuarios/me: solo los campos que usa la app. */
 @Serializable
 data class PerfilMeDto(

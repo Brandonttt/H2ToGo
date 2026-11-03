@@ -279,6 +279,7 @@ fun RegistroScreen(
 
             LaunchedEffect(registroState) {
                 if (registroState is RegistroUiState.Success) {
+                    authViewModel.consumirRegistroExitoso()
                     onSubmitSuccess(correo.trim(), telefono.trim())
                 }
             }

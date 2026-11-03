@@ -10,8 +10,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.h2togo.backend.auth.dto.CambiarTelefonoOtpRequest;
+import com.h2togo.backend.auth.dto.IniciarVerificacionRequest;
 import com.h2togo.backend.auth.dto.LoginRequest;
 import com.h2togo.backend.auth.dto.OtpRequest;
+import com.h2togo.backend.auth.dto.ReenviarOtpRequest;
 import com.h2togo.backend.auth.dto.RegistroRequest;
 import com.h2togo.backend.common.BusinessRuleException;
 import com.h2togo.backend.common.ConflictException;
@@ -169,5 +172,93 @@ class AuthServiceTest {
         assertThatThrownBy(() -> service.verificarTelefono(new OtpRequest("ana@test.mx", "000000")))
                 .isInstanceOf(BusinessRuleException.class);
         assertThat(u.isTelefonoVerificado()).isFalse();
+    }
+
+    @Test
+    void reenviarOtpGeneraNuevoCodigoYEnviaSms() {
+        Usuario u = usuarioVerificado("$2a$hash");
+        u.setTelefonoVerificado(false);
+        u.setCodigoVerificacion("111111");
+        u.setCodigoIntentos((short) 3);
+        when(usuarioRepo.findByCorreo("ana@test.mx")).thenReturn(Optional.of(u));
+
+        service.reenviarOtp(new ReenviarOtpRequest("  ana@test.mx  "));
+
+        assertThat(u.getCodigoVerificacion()).hasSize(6);
+        assertThat(u.getCodigoIntentos()).isZero();
+        verify(usuarioRepo).save(u);
+        verify(smsService).enviarCodigoVerificacion(eq("5550000001"), eq(u.getCodigoVerificacion()));
+    }
+
+    @Test
+    void iniciarVerificacionPendienteAutenticaYEnviaOtp() {
+        Usuario u = usuarioVerificado("$2a$hash");
+        u.setTelefonoVerificado(false);
+        when(usuarioRepo.findByCorreo("ana@test.mx")).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("password123", "$2a$hash")).thenReturn(true);
+
+        var resp = service.iniciarVerificacionPendiente(
+                new IniciarVerificacionRequest("ana@test.mx", "password123"));
+
+        assertThat(resp.telefono()).isEqualTo("5550000001");
+        assertThat(resp.telefonoVerificado()).isFalse();
+        verify(usuarioRepo).save(u);
+        verify(smsService).enviarCodigoVerificacion(eq("5550000001"), anyString());
+    }
+
+    @Test
+    void iniciarVerificacionPendienteRechazaPasswordIncorrecto() {
+        Usuario u = usuarioVerificado("$2a$hash");
+        u.setTelefonoVerificado(false);
+        when(usuarioRepo.findByCorreo("ana@test.mx")).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("mal", "$2a$hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.iniciarVerificacionPendiente(
+                new IniciarVerificacionRequest("ana@test.mx", "mal")))
+                .isInstanceOf(UnauthorizedException.class);
+        verify(smsService, never()).enviarCodigoVerificacion(anyString(), anyString());
+    }
+
+    @Test
+    void cambiarTelefonoPendienteActualizaNumeroYEnviaSms() {
+        Usuario u = usuarioVerificado("$2a$hash");
+        u.setTelefonoVerificado(false);
+        when(usuarioRepo.findByCorreo("ana@test.mx")).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("password123", "$2a$hash")).thenReturn(true);
+        when(usuarioRepo.existsByTelefono("5559998888")).thenReturn(false);
+
+        service.cambiarTelefonoPendiente(
+                new CambiarTelefonoOtpRequest("ana@test.mx", "password123", "5559998888"));
+
+        assertThat(u.getTelefono()).isEqualTo("5559998888");
+        verify(usuarioRepo).save(u);
+        verify(smsService).enviarCodigoVerificacion(eq("5559998888"), eq(u.getCodigoVerificacion()));
+    }
+
+    @Test
+    void cambiarTelefonoPendienteRechazaTelefonoDuplicado() {
+        Usuario u = usuarioVerificado("$2a$hash");
+        u.setTelefonoVerificado(false);
+        when(usuarioRepo.findByCorreo("ana@test.mx")).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("password123", "$2a$hash")).thenReturn(true);
+        when(usuarioRepo.existsByTelefono("5559998888")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.cambiarTelefonoPendiente(
+                new CambiarTelefonoOtpRequest("ana@test.mx", "password123", "5559998888")))
+                .isInstanceOfSatisfying(ConflictException.class,
+                        e -> assertThat(e.getCodigo()).isEqualTo("RN-015_TELEFONO_DUPLICADO"));
+        verify(smsService, never()).enviarCodigoVerificacion(anyString(), anyString());
+    }
+
+    @Test
+    void cambiarTelefonoPendienteRechazaCuentaYaVerificada() {
+        Usuario u = usuarioVerificado("$2a$hash");
+        when(usuarioRepo.findByCorreo("ana@test.mx")).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches("password123", "$2a$hash")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.cambiarTelefonoPendiente(
+                new CambiarTelefonoOtpRequest("ana@test.mx", "password123", "5559998888")))
+                .isInstanceOfSatisfying(BusinessRuleException.class,
+                        e -> assertThat(e.getCodigo()).isEqualTo("TELEFONO_YA_VERIFICADO"));
     }
 }

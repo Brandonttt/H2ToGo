@@ -1,6 +1,9 @@
 package com.htogo.app.data.api
 
+import com.htogo.app.data.dto.CambiarTelefonoOtpRequest
+import com.htogo.app.data.dto.IniciarVerificacionRequest
 import com.htogo.app.data.dto.LoginRequest
+import com.htogo.shared.data.codigoDeError
 import com.htogo.shared.data.crearClienteHttp
 import com.htogo.shared.data.mensajeDeError
 import io.ktor.client.engine.mock.MockEngine
@@ -12,6 +15,7 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -44,9 +48,37 @@ class AuthApiTest {
     fun errorDeNegocioConservaElCuerpo() = runTest {
         val r = api(HttpStatusCode.UnprocessableEntity, """{"codigo":"TELEFONO_NO_VERIFICADO","mensaje":"Verifica tu teléfono"}""")
             .login(LoginRequest("a@b.mx", "x"))
+        val raw = r.errorBody()?.string()
         assertEquals(422, r.code())
         assertNull(r.body())
-        assertEquals("Verifica tu teléfono", mensajeDeError(r.errorBody()?.string()))
+        assertEquals("TELEFONO_NO_VERIFICADO", codigoDeError(raw))
+        assertEquals("Verifica tu teléfono", mensajeDeError(raw))
+    }
+
+    @Test
+    fun iniciarVerificacionTelefonoDevuelveDatosDeCuenta() = runTest {
+        var url = ""; var enviado = ""
+        val r = api(HttpStatusCode.OK, """
+            {"idUsuario":12,"correo":"juan@gmail.com","telefono":"5614588669","telefonoVerificado":false,"mensaje":"SMS enviado"}
+        """) { u, b, _ -> url = u; enviado = b }
+            .iniciarVerificacionTelefono(IniciarVerificacionRequest("juan@gmail.com", "secreta1"))
+
+        assertTrue(r.isSuccessful)
+        assertEquals("https://api.test/api/v1/auth/verificacion-telefono/iniciar", url)
+        assertTrue(enviado.contains("\"correo\":\"juan@gmail.com\""), enviado)
+        assertEquals("5614588669", r.body()?.telefono)
+        assertFalse(r.body()?.telefonoVerificado ?: true)
+    }
+
+    @Test
+    fun cambiarTelefonoOtpEnviaNuevoNumero() = runTest {
+        var url = ""; var enviado = ""
+        val r = api(HttpStatusCode.NoContent, "") { u, b, _ -> url = u; enviado = b }
+            .cambiarTelefonoOtp(CambiarTelefonoOtpRequest("juan@gmail.com", "secreta1", "5512345678"))
+
+        assertTrue(r.isSuccessful)
+        assertEquals("https://api.test/api/v1/auth/verificacion-telefono/cambiar-numero", url)
+        assertTrue(enviado.contains("\"nuevoTelefono\":\"5512345678\""), enviado)
     }
 
     @Test

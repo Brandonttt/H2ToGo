@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,8 +33,15 @@ import com.htogo.app.ui.theme.HToGoColors
 sealed interface LoginEstado {
     data object Inactivo : LoginEstado
     data object Cargando : LoginEstado
-    /** [sesionActiva]: RF-016, se ofrece cerrar la otra sesión y entrar. */
-    data class Error(val mensaje: String, val sesionActiva: Boolean = false) : LoginEstado
+    /**
+     * [sesionActiva]: RF-016, se ofrece cerrar la otra sesión y entrar.
+     * [telefonoNoVerificado]: CU-001/002, permite enviar un nuevo OTP y continuar la verificación.
+     */
+    data class Error(
+        val mensaje: String,
+        val sesionActiva: Boolean = false,
+        val telefonoNoVerificado: Boolean = false
+    ) : LoginEstado
 }
 
 /**
@@ -47,6 +55,8 @@ fun LoginContenido(
     onLimpiarError: () -> Unit = {},
     onForgot: () -> Unit = {},
     onRegister: () -> Unit = {},
+    enviandoVerificacion: Boolean = false,
+    onVerificarTelefono: (correo: String, password: String) -> Unit = { _, _ -> },
     /** Regresar al onboarding; null si no hay pantalla previa (p. ej. tras cerrar sesión). */
     onBack: (() -> Unit)? = null
 ) {
@@ -54,7 +64,7 @@ fun LoginContenido(
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(true) }
     val isLoading = estado is LoginEstado.Cargando
-    val canSubmit = correo.contains("@") && password.length >= 6 && !isLoading
+    val canSubmit = correo.contains("@") && password.length >= 6 && !isLoading && !enviandoVerificacion
 
     Box(
         Modifier
@@ -119,6 +129,30 @@ fun LoginContenido(
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                                 modifier = Modifier.fillMaxWidth()
                             ) { Text("Cerrar otra sesión e iniciar aquí") }
+                        }
+                        if (estado.telefonoNoVerificado) {
+                            Spacer(Modifier.height(10.dp))
+                            Button(
+                                onClick = { onVerificarTelefono(correo, password) },
+                                enabled = !enviandoVerificacion && correo.contains("@") && password.isNotBlank(),
+                                colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                if (enviandoVerificacion) {
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Enviando código...")
+                                } else {
+                                    Icon(Icons.Filled.Sms, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Enviar código y verificar teléfono")
+                                }
+                            }
                         }
                     }
                 }

@@ -156,6 +156,7 @@ fun HToGoNavHost(
                 },
                 onRegister = { navController.navigate(HToGoRoutes.REGISTRO) },
                 onForgot   = { navController.navigate(HToGoRoutes.RECUPERAR_CONTRASENA) },
+                onIrAVerificarTelefono = { navController.navigate(HToGoRoutes.OTP) },
                 // Desde el onboarding se puede regresar; tras cerrar sesión el login es la raíz.
                 onBack = if (navController.previousBackStackEntry != null) {
                     { navController.popBackStack() }
@@ -191,6 +192,12 @@ fun HToGoNavHost(
                 authViewModel = authViewModel,
                 onBack = { navController.popBackStack() },
                 onSuccess = {
+                    authViewModel.consumirOtpExitoso()
+                    if (!sessionManager.estaAutenticado()) {
+                        mostrarAviso("Teléfono verificado. Inicia sesión para continuar.")
+                        navController.navigateAndClear(HToGoRoutes.LOGIN)
+                        return@VerificacionTelefonoScreen
+                    }
                     val rol = authViewModel.obtenerRolActual()
                     if (rol?.equals("repartidor", ignoreCase = true) == true) {
                         navController.navigateAndClear(HToGoRoutes.HOME_REPARTIDOR)

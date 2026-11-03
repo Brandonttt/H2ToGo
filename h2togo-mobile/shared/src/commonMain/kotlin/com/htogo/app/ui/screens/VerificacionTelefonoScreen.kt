@@ -9,7 +9,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,17 +25,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.htogo.app.plataforma.mostrarAviso
 import com.htogo.app.ui.AuthUiState
 import com.htogo.app.ui.AuthViewModel
 import com.htogo.app.ui.OtpUiState
 import com.htogo.app.ui.components.HToGoButton
 import com.htogo.app.ui.components.HToGoTextButton
 import com.htogo.app.ui.theme.HToGoColors
-import com.htogo.app.ui.theme.HToGoTheme
 import kotlinx.coroutines.delay
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -42,9 +46,24 @@ fun VerificacionTelefonoScreen(
     onBack: () -> Unit = {},
     onSuccess: () -> Unit = {}
 ) {
-    val telefono = authViewModel.tempTelefono.ifBlank { "tu número registrado" }
+    val telefonoRaw by authViewModel.telefonoPendiente.collectAsState()
+    val telefonoMostrado = when {
+        telefonoRaw.isBlank() -> "tu número registrado"
+        telefonoRaw.startsWith("+") -> telefonoRaw
+        else -> "+52 $telefonoRaw"
+    }
+
     var code by remember { mutableStateOf("") }
     var secondsLeft by remember { mutableStateOf(45) }
+    var cicloTimer by remember { mutableStateOf(0) }
+    var reenviando by remember { mutableStateOf(false) }
+
+    var mostrarDialogoNumero by remember { mutableStateOf(false) }
+    var nuevoTelefono by remember { mutableStateOf("") }
+    var passwordConfirmacion by remember { mutableStateOf("") }
+    var errorCambioNumero by remember { mutableStateOf<String?>(null) }
+    var guardandoNumero by remember { mutableStateOf(false) }
+
     val focusRequester = remember { FocusRequester() }
 
     val otpState by authViewModel.otpState.collectAsState()
@@ -53,16 +72,130 @@ fun VerificacionTelefonoScreen(
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
+    }
+
+    LaunchedEffect(cicloTimer) {
+        secondsLeft = 45
         while (secondsLeft > 0) {
             delay(1000)
             secondsLeft -= 1
         }
     }
 
-    LaunchedEffect(otpState, authState) {
+    LaunchedEffect(otpState) {
         if (otpState is OtpUiState.Success) {
             onSuccess()
         }
+    }
+
+    if (mostrarDialogoNumero) {
+        val requierePass = !authViewModel.tienePasswordTemporal()
+        val puedeGuardar = nuevoTelefono.length == 10 &&
+            (!requierePass || passwordConfirmacion.isNotBlank()) &&
+            !guardandoNumero
+
+        AlertDialog(
+            onDismissRequest = {
+                if (!guardandoNumero) {
+                    mostrarDialogoNumero = false
+                }
+            },
+            title = { Text("Cambiar número de teléfono") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Ingresa el nuevo número de 10 dígitos al que enviaremos tu código de verificación por SMS.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = HToGoColors.TextSecondary
+                    )
+                    OutlinedTextField(
+                        value = nuevoTelefono,
+                        onValueChange = {
+                            nuevoTelefono = it.filter(Char::isDigit).take(10)
+                            errorCambioNumero = null
+                        },
+                        label = { Text("Nuevo teléfono (10 dígitos)") },
+                        placeholder = { Text("Ej. 5512345678") },
+                        prefix = { Text("+52 ") },
+                        leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = null) },
+                        trailingIcon = {
+                            if (nuevoTelefono.isNotEmpty() && !guardandoNumero) {
+                                IconButton(onClick = { nuevoTelefono = ""; errorCambioNumero = null }) {
+                                    Icon(Icons.Filled.Close, contentDescription = "Limpiar")
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (requierePass) {
+                        OutlinedTextField(
+                            value = passwordConfirmacion,
+                            onValueChange = {
+                                passwordConfirmacion = it
+                                errorCambioNumero = null
+                            },
+                            label = { Text("Contraseña de tu cuenta") },
+                            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (errorCambioNumero != null) {
+                        Text(
+                            text = errorCambioNumero!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        guardandoNumero = true
+                        errorCambioNumero = null
+                        authViewModel.cambiarTelefonoOtp(
+                            nuevoTelefono = nuevoTelefono,
+                            passwordManual = if (requierePass) passwordConfirmacion else null
+                        ) { err ->
+                            guardandoNumero = false
+                            if (err == null) {
+                                mostrarDialogoNumero = false
+                                code = ""
+                                cicloTimer += 1
+                                mostrarAviso("Número actualizado. Te enviamos un nuevo código por SMS")
+                            } else {
+                                errorCambioNumero = err
+                            }
+                        }
+                    },
+                    enabled = puedeGuardar,
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                ) {
+                    if (guardandoNumero) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text("Guardar y enviar SMS")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { mostrarDialogoNumero = false },
+                    enabled = !guardandoNumero
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -115,11 +248,19 @@ fun VerificacionTelefonoScreen(
                 textAlign = TextAlign.Center
             )
             Text(
-                "+52 $telefono",
+                telefonoMostrado,
                 style = MaterialTheme.typography.titleMedium,
                 color = HToGoColors.TextPrimary
             )
-            TextButton(onClick = onBack) {
+            TextButton(
+                onClick = {
+                    nuevoTelefono = telefonoRaw.filter(Char::isDigit).takeLast(10)
+                    passwordConfirmacion = ""
+                    errorCambioNumero = null
+                    mostrarDialogoNumero = true
+                },
+                enabled = !isLoading
+            ) {
                 Text("Cambiar número", color = HToGoColors.Primary)
             }
             Spacer(Modifier.height(24.dp))
@@ -158,6 +299,9 @@ fun VerificacionTelefonoScreen(
                 onValueChange = {
                     val filtered = it.filter(Char::isDigit).take(6)
                     code = filtered
+                    if (otpState is OtpUiState.Error && filtered.length < 6) {
+                        authViewModel.limpiarErrorOtp()
+                    }
                     if (filtered.length == 6 && !isLoading) {
                         authViewModel.verificarOtp(filtered)
                     }
@@ -207,20 +351,49 @@ fun VerificacionTelefonoScreen(
             Spacer(Modifier.height(24.dp))
 
             // Reenviar
-            if (secondsLeft > 0) {
-                Text(
-                    "Reenviar código en ${secondsLeft}s",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = HToGoColors.TextSecondary
-                )
-            } else {
-                HToGoTextButton(
-                    text = "Reenviar código",
-                    onClick = {
-                        secondsLeft = 45
-                        authViewModel.reenviarOtp()
+            when {
+                reenviando -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            color = HToGoColors.Primary,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Reenviando código...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = HToGoColors.TextSecondary
+                        )
                     }
-                )
+                }
+                secondsLeft > 0 -> {
+                    Text(
+                        "Reenviar código en ${secondsLeft}s",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = HToGoColors.TextSecondary
+                    )
+                }
+                else -> {
+                    HToGoTextButton(
+                        text = "Reenviar código",
+                        onClick = {
+                            if (!reenviando) {
+                                reenviando = true
+                                authViewModel.reenviarOtp { err ->
+                                    reenviando = false
+                                    if (err == null) {
+                                        code = ""
+                                        cicloTimer += 1
+                                        mostrarAviso("Te enviamos un nuevo código por SMS")
+                                    } else {
+                                        mostrarAviso(err, largo = true)
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
             }
 
             Spacer(Modifier.weight(1f))
