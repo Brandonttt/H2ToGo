@@ -1,5 +1,6 @@
 package com.h2togo.backend.pedidos;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -13,6 +14,12 @@ import com.h2togo.backend.usuarios.RepartidorRepository;
 import com.h2togo.backend.usuarios.UsuarioRepository;
 import com.jayway.jsonpath.JsonPath;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -285,5 +292,46 @@ class PedidosFlowIT {
         mvc.perform(get("/api/v1/clientes/me/pedidos").header("Authorization", "Bearer " + a.token()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contenido[0].id").value(idPedido));
+    }
+
+    /**
+     * CC-03 (RNF-007): más pedidos simultáneos que conexiones en el pool (10). Antes, el aviso
+     * de pedido nuevo pedía una segunda conexión mientras la petición tenía la suya y el pool se
+     * agotaba: todas esperaban 30 s y fallaban.
+     */
+    @Test
+    void veintePedidosSimultaneosSeCreanTodos() throws Exception {
+        Neg n = setupNegocio("dped20@test.mx", "5556662000", "Purif Ped20", "MarcaPed20", "25.00", true);
+        List<Cli> clientes = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            clientes.add(registrarCliente("ped20_" + i + "@test.mx", "55566621%02d".formatted(i), LAT, LON));
+        }
+
+        CountDownLatch listos = new CountDownLatch(clientes.size());
+        CountDownLatch arranque = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(clientes.size());
+        List<Future<Integer>> respuestas = new ArrayList<>();
+        for (Cli c : clientes) {
+            respuestas.add(pool.submit(() -> {
+                listos.countDown();
+                arranque.await();
+                return mvc.perform(post("/api/v1/pedidos").header("Authorization", "Bearer " + c.token())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(pedidoDirecto(n.idNegocio(), c.idDireccion(), n.idMarca(), 1, true)))
+                        .andReturn().getResponse().getStatus();
+            }));
+        }
+        listos.await();
+        long inicio = System.nanoTime();
+        arranque.countDown();
+        List<Integer> estados = new ArrayList<>();
+        for (Future<Integer> r : respuestas) {
+            estados.add(r.get());
+        }
+        long ms = (System.nanoTime() - inicio) / 1_000_000;
+        pool.shutdown();
+
+        assertThat(estados).containsOnly(201);
+        assertThat(ms).isLessThan(10_000);
     }
 }

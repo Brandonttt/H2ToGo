@@ -31,7 +31,12 @@ import com.jayway.jsonpath.JsonPath;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -168,6 +173,48 @@ class PlaneacionFlowIT {
         mvc.perform(delete("/api/v1/pedidos/" + pedidos[0] + "/reserva").header("Authorization", "Bearer " + a.token()))
                 .andExpect(status().isNoContent());
         assertThat(disponibles(b.token())).contains(pedidos[0]);
+    }
+
+    /** CC-05: diez repartidores reservan el mismo programado a la vez; solo uno lo obtiene. */
+    @Test
+    void reservaConcurrenteSoloUnoGana() throws Exception {
+        Rep dueno = setupDueno("pl-cc-due@test.mx", "5558881000", "Purif Plan CC", "MarcaPlanCC");
+        // Cada miembro inicia jornada cargando 20: hace falta más stock que el lote inicial.
+        inventarioService.registrarLote(dueno.idRep(),
+                new LoteEntradaRequest(dueno.idMarca(), 200, LocalDate.now().plusMonths(3), null, null, null));
+        List<Rep> repartidores = new ArrayList<>(List.of(dueno));
+        for (int i = 1; i <= 9; i++) {
+            repartidores.add(addMiembro(dueno.idNegocio(), dueno.idMarca(), "pl-cc-m%d@test.mx".formatted(i),
+                    "555888100" + i));
+        }
+        String cliente = registrarCliente("pl-cc-c@test.mx", "5558881100", CASAS[0]);
+        int pedido = crearProgramado(cliente, dueno.idNegocio(), idDireccion(cliente), dueno.idMarca());
+
+        CountDownLatch listos = new CountDownLatch(repartidores.size());
+        CountDownLatch arranque = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(repartidores.size());
+        List<Future<Integer>> respuestas = new ArrayList<>();
+        for (Rep r : repartidores) {
+            respuestas.add(pool.submit(() -> {
+                listos.countDown();
+                arranque.await();
+                return mvc.perform(post("/api/v1/pedidos/" + pedido + "/reserva")
+                        .header("Authorization", "Bearer " + r.token())).andReturn().getResponse().getStatus();
+            }));
+        }
+        listos.await();
+        arranque.countDown();
+        List<Integer> estados = new ArrayList<>();
+        for (Future<Integer> f : respuestas) {
+            estados.add(f.get());
+        }
+        pool.shutdown();
+
+        assertThat(estados).filteredOn(e -> e == 204).hasSize(1);
+        assertThat(estados).filteredOn(e -> e == 409).hasSize(9);
+        Integer reservadoPor = jdbc.queryForObject("SELECT id_repartidor FROM pedidos WHERE id_pedido = :id",
+                new MapSqlParameterSource("id", pedido), Integer.class);
+        assertThat(repartidores.stream().map(Rep::idRep)).contains(reservadoPor);
     }
 
     // ---------------------------------------------------------------- Apoyo
