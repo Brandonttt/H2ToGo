@@ -549,7 +549,7 @@ private fun PedidoDisponibleCard(
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    "%.2f km".format(pedido.distanciaKm),
+                    com.htogo.app.data.location.formatearDistanciaCorta(pedido.distanciaKm),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = HToGoColors.TextPrimary
@@ -561,8 +561,13 @@ private fun PedidoDisponibleCard(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(Modifier.width(4.dp))
+                val textoTiempoEstimado = if (pedido.rawResponse?.tiempoEstimadoMinutos != null && pedido.tiempoEstimadoMin > 0) {
+                    "~${com.htogo.app.data.location.formatearDuracionMinutos(pedido.tiempoEstimadoMin.toLong())}"
+                } else {
+                    "~${com.htogo.app.data.location.formatearDuracionRuta(pedido.distanciaKm)}"
+                }
                 Text(
-                    "~${pedido.tiempoEstimadoMin} min",
+                    textoTiempoEstimado,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = HToGoColors.TextPrimary

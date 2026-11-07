@@ -1064,15 +1064,11 @@ fun SeguimientoPedidoScreen(
             pedidoCerrado -> emptyList()
             posicionDemo != null && rutaBaseDemo.size >= 2 -> rutaBaseDemo
             order.estado == EstadoPedido.EN_CAMINO || order.estado == EstadoPedido.ASIGNADO -> {
-                val seguimientoCercano = rutaSeguimiento.size >= 2 && (
-                    latEfectivaRepartidor == null || lonEfectivaRepartidor == null ||
-                        rutaSeguimiento.any {
-                            com.htogo.app.data.location.distanciaM(latEfectivaRepartidor, lonEfectivaRepartidor, it.first, it.second) <= 450.0
-                        }
-                    )
-                if (seguimientoCercano) {
+                if (rutaSeguimiento.size >= 2) {
                     rutaSeguimiento
-                } else if (latDestino != null && lonDestino != null && latEfectivaRepartidor != null && lonEfectivaRepartidor != null) {
+                } else if (latDestino != null && lonDestino != null && latEfectivaRepartidor != null && lonEfectivaRepartidor != null &&
+                    com.htogo.app.data.location.distanciaM(latEfectivaRepartidor, lonEfectivaRepartidor, latDestino, lonDestino) <= 50_000.0
+                ) {
                     com.htogo.app.data.location.generarRutaDemoCalles(
                         destLat = latDestino,
                         destLon = lonDestino,
@@ -1080,7 +1076,7 @@ fun SeguimientoPedidoScreen(
                         origenLon = lonEfectivaRepartidor
                     )
                 } else {
-                    rutaSeguimiento
+                    emptyList()
                 }
             }
             else -> emptyList()
@@ -1207,7 +1203,7 @@ fun SeguimientoPedidoScreen(
                 u == null && latEfectivaRepartidor == null && ahoraMs - pantallaAbiertaMs >= 4_000L ->
                     "Ubicación del repartidor no disponible por ahora"
                 u != null && ahoraMs - u.recibidaMs > 120_000 ->
-                    "Última ubicación hace ${(ahoraMs - u.recibidaMs) / 60_000} min"
+                    "Última ubicación hace ${com.htogo.app.data.location.formatearTiempoTranscurrido(ahoraMs - u.recibidaMs)}"
                 else -> null
             }
             if (aviso != null) {
@@ -1312,26 +1308,25 @@ fun SeguimientoPedidoScreen(
                 pedidoCerrado -> null
                 llegoEfectivo -> "¡Ya llegó afuera!"
                 order.estado == EstadoPedido.ASIGNADO && posicionDemo == null ->
-                    kmRestantesVivo?.let { "~${com.htogo.app.data.location.estimarMinutosRuta(it).coerceAtLeast(1) + 2} min" }
+                    kmRestantesVivo?.let { "~${com.htogo.app.data.location.formatearDuracionRuta(it, minutosExtra = 2)}" }
                 (order.estado == EstadoPedido.EN_CAMINO || posicionDemo != null) && kmRestantesVivo != null ->
-                    if (kmRestantesVivo <= 0.08) "< 1 min · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)}"
-                    else "~${com.htogo.app.data.location.estimarMinutosRuta(kmRestantesVivo)} min · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)}"
+                    "~${com.htogo.app.data.location.formatearDuracionRuta(kmRestantesVivo)} · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)}"
                 else -> null
             }
             val stepsEnVivo = remember(steps, order.estado, kmRestantesVivo, llegoEfectivo, posicionDemo) {
                 steps.map { s ->
                     when {
                         s.title.startsWith("Repartidor asignado") && s.state == TrackingStep.StepState.ACTIVE && kmRestantesVivo != null -> {
-                            val minPrep = com.htogo.app.data.location.estimarMinutosRuta(kmRestantesVivo).coerceAtLeast(1) + 2
-                            s.copy(time = s.time.replace("Preparando pedido", "Preparando pedido · llega en ~$minPrep min"))
+                            val tiempoPrep = com.htogo.app.data.location.formatearDuracionRuta(kmRestantesVivo, minutosExtra = 2)
+                            s.copy(time = s.time.replace("Preparando pedido", "Preparando pedido · llega en ~$tiempoPrep"))
                         }
                         s.title.startsWith("En camino") && (s.state == TrackingStep.StepState.ACTIVE || posicionDemo != null) -> {
                             val detalleRuta = when {
                                 llegoEfectivo -> "¡Llegó! Está afuera de tu domicilio"
                                 kmRestantesVivo != null && kmRestantesVivo <= 0.08 ->
-                                "Llegando a tu domicilio (< 1 min · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)})"
+                                    "Llegando a tu domicilio (~${com.htogo.app.data.location.formatearDuracionRuta(kmRestantesVivo)} · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)})"
                                 kmRestantesVivo != null ->
-                                "En ruta · llega en ~${com.htogo.app.data.location.estimarMinutosRuta(kmRestantesVivo)} min (${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)})"
+                                    "En ruta · llega en ~${com.htogo.app.data.location.formatearDuracionRuta(kmRestantesVivo)} (${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)})"
                                 else -> "En ruta a tu casa"
                             }
                             val prefijoFecha = s.time.substringBefore(" · ", missingDelimiterValue = "")

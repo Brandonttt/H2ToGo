@@ -410,11 +410,12 @@ internal fun htmlMapaRuta(
               return tramos;
             }
 
-            // Proyecta un punto [lat, lon] sobre el segmento más cercano de una polilínea vial.
+            // Proyecta un punto [lat, lon] sobre el segmento más cercano de una polilínea vial,
+            // con un ligero sesgo de continuidad hacia el inicio para evitar saltar entre tramos en cruces.
             function proyectarEnRuta(pos, pts) {
               if (!pts || pts.length < 2) return null;
               var cosLat = Math.max(0.1, Math.cos(pos[0] * Math.PI / 180));
-              var mejorIdx = 0, mejorQ = pts[0], minDist = Infinity;
+              var mejorIdx = 0, mejorQ = pts[0], minDist = Infinity, mejorScore = Infinity;
               for (var i = 0; i < pts.length - 1; i++) {
                 var a = pts[i], b = pts[i + 1];
                 var ax = a[1] * cosLat, ay = a[0];
@@ -425,7 +426,8 @@ internal fun htmlMapaRuta(
                 var t = lenSq > 1e-12 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq)) : 0;
                 var q = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
                 var d = distM(pos, q);
-                if (d < minDist) { minDist = d; mejorIdx = i; mejorQ = q; }
+                var score = d + i * 0.15;
+                if (score < mejorScore) { mejorScore = score; minDist = d; mejorIdx = i; mejorQ = q; }
               }
               return { segIdx: mejorIdx, punto: mejorQ, distM: minDist };
             }
@@ -458,12 +460,15 @@ internal fun htmlMapaRuta(
                     var pr = proyectarEnRuta(repPos, tramos[t].puntos);
                     if (pr && pr.distM < dMin) { dMin = pr.distM; mejorT = t; mejorProy = pr; }
                   }
-                  if (mejorProy && mejorProy.distM <= 240) {
+                  if (mejorProy && mejorProy.distM <= 180) {
                     for (var t2 = mejorT; t2 < tramos.length; t2++) {
                       var seg;
                       if (t2 === mejorT) {
                         var colaT = tramos[t2].puntos.slice(mejorProy.segIdx + 1);
-                        seg = (distM(repPos, mejorProy.punto) > 8 ? [repPos, mejorProy.punto] : [repPos]).concat(colaT);
+                        var inicioT = (mejorProy.distM <= 35 && distM(repPos, mejorProy.punto) > 3)
+                          ? [repPos, mejorProy.punto]
+                          : [mejorProy.punto];
+                        seg = inicioT.concat(colaT);
                       } else {
                         seg = tramos[t2].puntos;
                       }
@@ -485,24 +490,25 @@ internal fun htmlMapaRuta(
               var puntos = [];
               var esReal = false;
               if (rutaActual.length >= 2) {
+                esReal = true;
                 if (repPos) {
                   var proy = proyectarEnRuta(repPos, rutaActual);
-                  if (proy && proy.distM <= 240) {
+                  if (proy && proy.distM <= 180) {
                     var resto = rutaActual.slice(proy.segIdx + 1);
-                    puntos = (distM(repPos, proy.punto) > 8 ? [repPos, proy.punto] : [repPos]).concat(resto);
+                    var conector = (proy.distM <= 35 && distM(repPos, proy.punto) > 3)
+                      ? [repPos, proy.punto]
+                      : [proy.punto];
+                    puntos = conector.concat(resto);
                     if (puntos.length < 2) {
-                      puntos = distM(repPos, destino) <= 85 ? [repPos, destino] : rutaUrbanaRespaldo(repPos, destino);
+                      puntos = distM(repPos, destino) <= 85 ? [repPos, destino] : rutaActual;
                     }
-                    esReal = true;
                   } else {
-                    puntos = rutaUrbanaRespaldo(repPos, destino);
-                    esReal = false;
+                    puntos = rutaActual;
                   }
                 } else {
                   puntos = rutaActual;
-                  esReal = true;
                 }
-              } else if (repPos) {
+              } else if (repPos && distM(repPos, destino) <= 50000) {
                 puntos = rutaUrbanaRespaldo(repPos, destino);
                 esReal = false;
               }
@@ -742,13 +748,20 @@ internal fun htmlMapaRuta(
               var firma = JSON.stringify(ruta.length >= 2 ? [ruta[0], ruta[ruta.length - 1], ruta.length] : []);
               rutaActual = ruta;
               if (repLat !== null) {
-                objetivoRep = [repLat, repLon];
+                var nuevoObj = [repLat, repLon];
+                var cambioPos = !objetivoRep || distM(objetivoRep, nuevoObj) > 0.5;
+                objetivoRep = nuevoObj;
                 if (!markerRep) {
-                  markerRep = L.marker([repLat, repLon], { icon: repIcon, zIndexOffset: 1000 }).addTo(map);
+                  markerRep = L.marker(nuevoObj, { icon: repIcon, zIndexOffset: 1000 }).addTo(map);
                   repPos = null;
+                  cambioPos = true;
                 }
                 markerRep.bindPopup('<b>' + etiqueta + '</b>');
-                moverA([repLat, repLon]);
+                if (cambioPos) {
+                  moverA(nuevoObj);
+                } else {
+                  dibujarLinea();
+                }
               } else {
                 if (anim) { cancelAnimationFrame(anim); anim = null; }
                 if (markerRep) { map.removeLayer(markerRep); markerRep = null; }

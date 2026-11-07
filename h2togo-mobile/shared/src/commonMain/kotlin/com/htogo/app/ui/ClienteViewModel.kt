@@ -432,6 +432,7 @@ class ClienteViewModel : ViewModel() {
     private fun aplicarCierrePedidoEnVivo(idPedido: Int, nuevoEstado: String) {
         val estadoNorm = nuevoEstado.lowercase()
         cierreConfirmadoPorPedido[idPedido] = estadoNorm
+        rutaSeguimientoSeq++
         _repartidorLlego.value = false
         _ubicacionRepartidor.value = null
         _rutaSeguimiento.value = emptyList()
@@ -489,6 +490,7 @@ class ClienteViewModel : ViewModel() {
 
     private var origenRutaSeguimiento: UbicacionEnVivo? = null
     private var rutaSeguimientoMs = 0L
+    private var rutaSeguimientoSeq = 0L
 
     /** Vincula una pantalla ("home" o "seguimiento") al rastreo en vivo del pedido sin reiniciar al navegar entre ambas. */
     fun vincularRastreo(origen: String, idPedido: Int) {
@@ -519,6 +521,7 @@ class ClienteViewModel : ViewModel() {
         if (idPedidoRastreado == idPedido && rastreoJob?.isActive == true) return
         rastreoJob?.cancel()
         if (ultimoPedidoRastreadoId != idPedido) {
+            rutaSeguimientoSeq++
             _ubicacionRepartidor.value = null
             _repartidorLlego.value = false
             _rutaSeguimiento.value = emptyList()
@@ -534,6 +537,7 @@ class ClienteViewModel : ViewModel() {
         idPedidoRastreado = idPedido
         rastreoJob = viewModelScope.launch {
             var conectado = false
+            var ultimoMensajeWsMs = 0L
 
             // Avisos instantáneos por el canal de notificaciones (/user/queue/notificaciones).
             launch {
@@ -620,6 +624,7 @@ class ClienteViewModel : ViewModel() {
                                         else -> {
                                             if (cierreConfirmadoPorPedido[idPedido] == null) {
                                                 parsearUbicacion(evento.cuerpo)?.let { nueva ->
+                                                    ultimoMensajeWsMs = ahoraMs()
                                                     _ubicacionRepartidor.value = nueva
                                                     // Si llegan coordenadas por el tópico y aún aparecía pendiente/asignado, sincroniza estado
                                                     if (estadoPedidoRastreado(idPedido) in setOf(null, "pendiente", "pendiente_programado", "asignado")) {
@@ -638,11 +643,13 @@ class ClienteViewModel : ViewModel() {
                 }
             }
 
-            // Respaldo continuo de ubicación (más frecuente mientras no haya posición o el WS esté reconectando)
+            // Respaldo de ubicación por HTTP únicamente cuando el WebSocket no está activo o lleva ≥ 8 s sin emitir
             launch {
                 while (isActive) {
-                    val espera = if (_ubicacionRepartidor.value == null || !conectado) 2_500L else 4_000L
+                    val espera = if (_ubicacionRepartidor.value == null || !conectado) 2_500L else 5_000L
                     delay(espera)
+                    val wsActivoReciente = conectado && _ubicacionRepartidor.value != null && (ahoraMs() - ultimoMensajeWsMs) < 8_000L
+                    if (wsActivoReciente) continue
                     val est = estadoPedidoRastreado(idPedido)
                     if (est == null || est in setOf("asignado", "en_camino")) {
                         consultarUbicacion(idPedido)
@@ -657,14 +664,19 @@ class ClienteViewModel : ViewModel() {
                     val estadoAntes = estadoPedidoRastreado(idPedido)
                     refrescarDetalle(idPedido, comoSeguimiento = observadoresRastreo["seguimiento"] == idPedido)
                     val estado = estadoPedidoRastreado(idPedido)
-                    if (estado != estadoAntes && estado in setOf("asignado", "en_camino")) {
+                    if (estado != estadoAntes && estado in setOf("asignado", "en_camino") &&
+                        (_ubicacionRepartidor.value == null || (ahoraMs() - ultimoMensajeWsMs) >= 8_000L)
+                    ) {
                         consultarUbicacion(idPedido)
                     }
                     val uActual = _ubicacionRepartidor.value
                     val origRuta = origenRutaSeguimiento
                     val desfasada = uActual != null && (origRuta == null ||
                         com.htogo.app.data.location.distanciaM(origRuta.lat, origRuta.lon, uActual.lat, uActual.lon) > 45)
-                    if ((_rutaSeguimiento.value.isEmpty() || desfasada) && estado in setOf("asignado", "en_camino")) {
+                    if ((_rutaSeguimiento.value.isEmpty() || desfasada) &&
+                        estado in setOf("asignado", "en_camino") &&
+                        ahoraMs() - rutaSeguimientoMs >= 5_000L
+                    ) {
                         actualizarRutaSeguimiento(idPedido, uActual)
                     }
                     if (estado in setOf("entregado", "no_entregado", "cancelado")) {
@@ -679,8 +691,10 @@ class ClienteViewModel : ViewModel() {
 
     private suspend fun actualizarRutaSeguimiento(idPedido: Int, desde: UbicacionEnVivo?) {
         rutaSeguimientoMs = ahoraMs()
+        val seq = ++rutaSeguimientoSeq
         try {
             val resp = apiClient.pedidosApi.rutaSeguimiento(idPedido, desde?.lat, desde?.lon)
+            if (seq != rutaSeguimientoSeq || idPedidoRastreado != idPedido) return
             val ruta = resp.body()
             if (resp.isSuccessful && ruta != null && ruta.encontrada && ruta.coordenadas.size >= 2) {
                 val primero = ruta.coordenadas.first()
@@ -724,6 +738,7 @@ class ClienteViewModel : ViewModel() {
     }
 
     fun detenerRastreo() {
+        rutaSeguimientoSeq++
         rastreoJob?.cancel()
         rastreoJob = null
         idPedidoRastreado = null
@@ -752,10 +767,19 @@ class ClienteViewModel : ViewModel() {
                 if (cierreConfirmadoPorPedido[idPedido] != null) return
                 if (u.llegoEn != null) _repartidorLlego.value = true
                 val previa = _ubicacionRepartidor.value
-                // Si cambiaron las coordenadas o el timestamp de reporte del servidor, refresca la marca de tiempo.
-                if (previa == null || previa.lat != u.lat || previa.lon != u.lon ||
-                    (u.timestamp != null && u.timestamp != previa.timestampServidor)
-                ) {
+                val tsPrevio = previa?.timestampServidor?.let {
+                    runCatching { kotlinx.datetime.Instant.parse(it) }.getOrNull()
+                }
+                val tsNuevo = u.timestamp?.let {
+                    runCatching { kotlinx.datetime.Instant.parse(it) }.getOrNull()
+                }
+                // Evita regresar el marcador/ruta a una posición rezagada de PostgreSQL (throttle de 5 s) frente al WebSocket en vivo.
+                if (tsPrevio != null && tsNuevo != null && tsNuevo < tsPrevio) return
+                if (previa != null && tsNuevo == null && (ahoraMs() - previa.recibidaMs) < 8_000L) return
+                val movio = previa == null ||
+                    com.htogo.app.data.location.distanciaM(previa.lat, previa.lon, u.lat, u.lon) > 0.5
+                val tsAvanzo = tsNuevo != null && (tsPrevio == null || tsNuevo > tsPrevio)
+                if (movio || tsAvanzo) {
                     _ubicacionRepartidor.value = UbicacionEnVivo(u.lat, u.lon, ahoraMs(), u.timestamp)
                 }
             }

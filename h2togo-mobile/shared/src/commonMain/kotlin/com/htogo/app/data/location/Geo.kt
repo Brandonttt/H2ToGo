@@ -164,6 +164,15 @@ fun distanciaRestanteRutaKm(
 }
 
 /**
+ * Estima los segundos restantes de traslado urbano a [velocidadKmh] (20 km/h en Benito Juárez).
+ */
+fun estimarSegundosRuta(kmRestantes: Double, velocidadKmh: Double = 20.0): Int {
+    val limpio = kmRestantes.coerceAtLeast(0.0)
+    val vel = velocidadKmh.coerceAtLeast(1.0)
+    return kotlin.math.round((limpio / vel) * 3600.0).toInt().coerceAtLeast(5)
+}
+
+/**
  * Estima los minutos restantes de traslado urbano a [velocidadKmh] (20 km/h en Benito Juárez).
  * Devuelve 0 cuando ya está a ≤ 80 m ("llegando / < 1 min").
  */
@@ -172,13 +181,100 @@ fun estimarMinutosRuta(kmRestantes: Double, velocidadKmh: Double = 20.0): Int {
     return kotlin.math.ceil((kmRestantes / velocidadKmh) * 60.0).toInt().coerceAtLeast(1)
 }
 
-/** Formato compacto de distancia restante para tarjetas y línea de tiempo ("280 m" o "1.2 km"). */
+/**
+ * Formatea una duración en segundos de forma natural y legible según su magnitud:
+ * - `< 60 s`: `"15 s"`, `"45 s"` (redondeado a múltiplos de 5 s para evitar parpadeo)
+ * - `1 min .. 1 min 59 s`: `"1 min"` o `"1 min 25 s"`
+ * - `2 min .. 59 min`: `"8 min"`, `"45 min"`
+ * - `>= 60 min`: `"1 h"`, `"2 h 15 min"`, `"5 h"` (p. ej. 300 min -> `"5 h"`)
+ */
+fun formatearDuracionSegundos(segundosTotales: Int): String {
+    val seg = segundosTotales.coerceAtLeast(1)
+    if (seg < 60) {
+        val segRedondeados = (((seg + 2) / 5) * 5).coerceIn(5, 55)
+        return "$segRedondeados s"
+    }
+    if (seg < 120) {
+        val resto = (((seg - 60 + 2) / 5) * 5)
+        return when {
+            resto <= 0 -> "1 min"
+            resto >= 60 -> "2 min"
+            else -> "1 min $resto s"
+        }
+    }
+    val minRedondeados = (seg + 30) / 60
+    if (minRedondeados < 60) {
+        return "$minRedondeados min"
+    }
+    val horas = minRedondeados / 60
+    val mins = minRedondeados % 60
+    return if (mins == 0) "$horas h" else "$horas h $mins min"
+}
+
+/** Formatea una duración expresada en minutos (`300` -> `"5 h"`, `75` -> `"1 h 15 min"`, `12` -> `"12 min"`). */
+fun formatearDuracionMinutos(minutos: Long): String {
+    if (minutos <= 0L) return "< 1 min"
+    if (minutos < 60L) return "$minutos min"
+    val horas = minutos / 60L
+    val mins = minutos % 60L
+    return if (mins == 0L) "$horas h" else "$horas h $mins min"
+}
+
+/** Atajo para estimar y formatear el tiempo de traslado de [kmRestantes] (con [minutosExtra] opcionales de preparación). */
+fun formatearDuracionRuta(
+    kmRestantes: Double,
+    minutosExtra: Int = 0,
+    velocidadKmh: Double = 20.0
+): String {
+    val totalSeg = estimarSegundosRuta(kmRestantes, velocidadKmh) + (minutosExtra.coerceAtLeast(0) * 60)
+    return formatearDuracionSegundos(totalSeg)
+}
+
+/** Formatea milisegundos transcurridos en segundos, minutos u horas (`"35 s"`, `"4 min"`, `"2 h 10 min"`). */
+fun formatearTiempoTranscurrido(ms: Long): String {
+    val seg = (ms.coerceAtLeast(1_000L) / 1_000L)
+    if (seg < 60L) return "$seg s"
+    val min = seg / 60L
+    if (min < 60L) return "$min min"
+    val horas = min / 60L
+    val restoMin = min % 60L
+    return if (restoMin == 0L) "$horas h" else "$horas h $restoMin min"
+}
+
+private fun formatearEnteroConMiles(valor: Int): String {
+    val str = valor.toString()
+    if (str.length <= 3) return str
+    val sb = StringBuilder()
+    for (i in str.indices) {
+        if (i > 0 && (str.length - i) % 3 == 0) sb.append(',')
+        sb.append(str[i])
+    }
+    return sb.toString()
+}
+
+/**
+ * Formato legible de distancia en metros o kilómetros según convenga:
+ * - `< 1 km`: `"25 m"`, `"280 m"`, `"950 m"`
+ * - `1 km .. 99.9 km`: `"1 km"`, `"1.4 km"`, `"12.5 km"`
+ * - `>= 100 km`: `"250 km"`, `"2,995 km"`
+ */
 fun formatearDistanciaCorta(km: Double): String {
     val limpio = km.coerceAtLeast(0.0)
-    return if (limpio < 1.0) {
-        "${(limpio * 1000.0).toInt().coerceAtLeast(10)} m"
-    } else {
-        val decimos = kotlin.math.round(limpio * 10.0).toInt()
-        "${decimos / 10}.${decimos % 10} km"
+    if (limpio < 1.0) {
+        val metros = kotlin.math.round(limpio * 1000.0).toInt().coerceAtLeast(5)
+        if (metros < 1000) return "$metros m"
     }
+    if (limpio < 100.0) {
+        val decimos = kotlin.math.round(limpio * 10.0).toInt()
+        val enteros = decimos / 10
+        val dec = decimos % 10
+        if (enteros >= 100) return "${formatearEnteroConMiles(enteros)} km"
+        return if (dec == 0) "$enteros km" else "$enteros.$dec km"
+    }
+    val enteros = kotlin.math.round(limpio).toInt()
+    return "${formatearEnteroConMiles(enteros)} km"
 }
+
+/** Igual que [formatearDistanciaCorta], recibiendo directamente metros. */
+fun formatearDistanciaMetros(metros: Double): String =
+    formatearDistanciaCorta(metros.coerceAtLeast(0.0) / 1000.0)

@@ -78,8 +78,8 @@ fun BuscarPurificadorasScreen(
                 id = p.id,
                 nombre = p.nombreComercial,
                 distancia = distKm?.let {
-                    if (it < 1.0) "${(it * 1000).toInt().coerceAtLeast(50)} m"
-                    else "%.1f km".format( it)
+                    com.htogo.app.data.location.formatearDistanciaCorta(it) //
+                    // formato unificado en metros y kilómetros
                 },
                 direccion = p.direccion?.takeIf { it.isNotBlank() } ?: "Benito Juárez, CDMX",
                 precioDesde = p.precioDesde,

@@ -264,18 +264,19 @@ fun RutaEntregaScreen(
             emptyList()
         }
         val pos = posicion
-        val realesCercanas = reales.size >= 2 && (pos == null || reales.any {
-            UbicacionTracker.distanciaM(pos.lat, pos.lon, it.first, it.second) <= 450.0
-        })
-        if (realesCercanas) {
+        val origLat = pos?.lat ?: ubicacionBasePurificadora.first
+        val origLon = pos?.lon ?: ubicacionBasePurificadora.second
+        if (reales.size >= 2) {
             reales
-        } else {
+        } else if (UbicacionTracker.distanciaM(origLat, origLon, entrega.latDestino, entrega.lonDestino) <= 50_000.0) {
             com.htogo.app.data.location.generarRutaDemoCalles(
                 destLat = entrega.latDestino,
                 destLon = entrega.lonDestino,
-                origenLat = pos?.lat ?: ubicacionBasePurificadora.first,
-                origenLon = pos?.lon ?: ubicacionBasePurificadora.second
+                origenLat = origLat,
+                origenLon = origLon
             )
+        } else {
+            emptyList()
         }
     }
 
@@ -383,6 +384,7 @@ fun RutaEntregaScreen(
     LaunchedEffect(tienePermiso, entrega.pedidoId) {
         val idInt = entrega.pedidoId.toIntOrNull() ?: return@LaunchedEffect
         if (!tienePermiso) return@LaunchedEffect
+        EntregaEnCurso.simulacionActiva.value = (posicionSimulada != null || repartidorViewModel.ultimaPosicionSimulada != null)
         EntregaEnCurso.iniciar(idInt)
         var primerFixReal = true
         EntregaEnCurso.posicion.filterNotNull().collect { p ->
@@ -589,6 +591,7 @@ fun RutaEntregaScreen(
                                 menuOpciones = false
                                 simulandoRecorrido = !simulandoRecorrido
                                 if (simulandoRecorrido) {
+                                    EntregaEnCurso.simulacionActiva.value = true
                                     mostrarAviso("🛰️ Iniciando recorrido FakeGPS desde $nombrePurificadora…")
                                 } else {
                                     mostrarAviso("⏸️ Recorrido FakeGPS en pausa")
@@ -601,6 +604,7 @@ fun RutaEntregaScreen(
                                 menuOpciones = false
                                 simulandoRecorrido = false
                                 val (latSim, lonSim) = ubicacionBasePurificadora
+                                EntregaEnCurso.simulacionActiva.value = true
                                 posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
                                 mostrarAviso("GPS simulado en la base: $nombrePurificadora")
                             }
@@ -612,6 +616,7 @@ fun RutaEntregaScreen(
                                 simulandoRecorrido = false
                                 val latSim = entrega.latDestino + 0.00010
                                 val lonSim = entrega.lonDestino + 0.00007
+                                EntregaEnCurso.simulacionActiva.value = true
                                 posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
                                 mostrarAviso("GPS simulado a ~15 m del domicilio")
                             }
@@ -755,10 +760,18 @@ fun RutaEntregaScreen(
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                     val distTexto = when {
-                                        estado == EstadoRuta.LLEGADO -> "En domicilio · Espera: %02d:%02d".format(segundosRestantes / 60, segundosRestantes % 60)
-                                        rutaKmRestantes != null -> "%.2f km restantes".format(rutaKmRestantes)
-                                        distanciaDestinoM != null && distanciaDestinoM < 1000 -> "%.0f m al destino".format(distanciaDestinoM)
-                                        distanciaDestinoM != null -> "%.2f km al destino".format(distanciaDestinoM / 1000)
+                                        estado == EstadoRuta.LLEGADO -> {
+                                            val esp = if (segundosRestantes >= 60) {
+                                                "${segundosRestantes / 60} min ${segundosRestantes % 60} s"
+                                            } else {
+                                                "${segundosRestantes} s"
+                                            }
+                                            "En domicilio · Espera: $esp"
+                                        }
+                                        rutaKmRestantes != null ->
+                                            "${com.htogo.app.data.location.formatearDistanciaCorta(rutaKmRestantes)} restantes · ~${com.htogo.app.data.location.formatearDuracionRuta(rutaKmRestantes)}"
+                                        distanciaDestinoM != null ->
+                                            "${com.htogo.app.data.location.formatearDistanciaMetros(distanciaDestinoM)} al destino"
                                         else -> entrega.direccion.substringBefore(",")
                                     }
                                     Text(
@@ -1115,10 +1128,12 @@ private fun EnRutaSheet(entrega: EntregaActiva, distanciaDestinoM: Double?, ruta
                 Column(Modifier.weight(1f)) {
                     Text(
                         when {
-                            rutaKm != null && rutaKm <= 0.08 -> "${(rutaKm * 1000).toInt().coerceAtLeast(5)} m · llegando (< 1 min)"
-                            rutaKm != null -> "%.2f km · ~%d min".format(rutaKm, com.htogo.app.data.location.estimarMinutosRuta(rutaKm))
-                            distanciaDestinoM != null && distanciaDestinoM < 1000 -> "%.0f m en línea recta".format(distanciaDestinoM)
-                            distanciaDestinoM != null -> "%.2f km en línea recta".format(distanciaDestinoM / 1000)
+                            rutaKm != null && rutaKm <= 0.08 ->
+                                "${com.htogo.app.data.location.formatearDistanciaCorta(rutaKm)} · llegando (~${com.htogo.app.data.location.formatearDuracionRuta(rutaKm)})"
+                            rutaKm != null ->
+                                "${com.htogo.app.data.location.formatearDistanciaCorta(rutaKm)} · ~${com.htogo.app.data.location.formatearDuracionRuta(rutaKm)}"
+                            distanciaDestinoM != null ->
+                                "${com.htogo.app.data.location.formatearDistanciaMetros(distanciaDestinoM)} en línea recta"
                             else -> "Buscando tu ubicación…"
                         },
                         fontSize = 18.sp,

@@ -269,8 +269,8 @@ fun HomeClienteScreen(
                         }
                         "asignado" -> {
                             if (kmRestantes != null) {
-                                val minPrep = com.htogo.app.data.location.estimarMinutosRuta(kmRestantes).coerceAtLeast(1) + 2
-                                "Repartidor asignado · llega en ~$minPrep min"
+                                val tiempoPrep = com.htogo.app.data.location.formatearDuracionRuta(kmRestantes, minutosExtra = 2)
+                                "Repartidor asignado · llega en ~$tiempoPrep (${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantes)})"
                             } else {
                                 "Repartidor asignado · preparando tu pedido"
                             }
@@ -278,9 +278,9 @@ fun HomeClienteScreen(
                         "en_camino" -> when {
                             llegoAlDomicilio -> "¡Tu repartidor está afuera de tu domicilio!"
                             kmRestantes != null && kmRestantes <= 0.08 ->
-                                "Llegando a tu domicilio (< 1 min · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantes)})"
+                                "Llegando a tu domicilio (~${com.htogo.app.data.location.formatearDuracionRuta(kmRestantes)} · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantes)})"
                             kmRestantes != null ->
-                                "Llega en ~${com.htogo.app.data.location.estimarMinutosRuta(kmRestantes)} min (${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantes)})"
+                                "Llega en ~${com.htogo.app.data.location.formatearDuracionRuta(kmRestantes)} (${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantes)})"
                             else -> "En camino a tu domicilio"
                         }
                         else -> "Actualizando estado…"
@@ -349,11 +349,7 @@ fun HomeClienteScreen(
                                 com.htogo.app.data.location.UbicacionTracker.distanciaM(defaultDir.lat, defaultDir.lon, pLat, pLon) / 1000.0
                             else -> p.distanciaKm
                         }
-                        val distanciaStr = when {
-                            distKm < 0.05 -> "< 0.1 km"
-                            distKm < 1.0 -> "${(distKm * 1000).toInt().coerceAtLeast(50)} m"
-                            else -> "%.2f km".format(distKm)
-                        }
+                        val distanciaStr = com.htogo.app.data.location.formatearDistanciaCorta(distKm)
                         PurificadoraMini(
                             nombre = p.nombreComercial,
                             distancia = distanciaStr,

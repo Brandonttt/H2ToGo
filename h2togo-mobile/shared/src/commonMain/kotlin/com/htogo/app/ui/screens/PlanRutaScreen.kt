@@ -558,8 +558,8 @@ private fun ResumenRuta(r: RutaOptimaDto, posicionSimulada: Pair<Double, Double>
         Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Dato("${conDecimales(kmMostrados, 1)} km", if (posicionSimulada != null) "restantes" else "recorrido", Modifier.weight(1f))
-        Dato("${r.duracionMin} min", "con entregas", Modifier.weight(1f))
+        Dato(com.htogo.app.data.location.formatearDistanciaCorta(kmMostrados), if (posicionSimulada != null) "restantes" else "recorrido", Modifier.weight(1f))
+        Dato(com.htogo.app.data.location.formatearDuracionMinutos(r.duracionMin), "con entregas", Modifier.weight(1f))
         Dato(
             if (r.capacidadVehiculo > 0) "${r.garrafonesEnRuta}/${r.capacidadVehiculo}" else "${r.garrafonesEnRuta}",
             "garrafones", Modifier.weight(1f)
@@ -608,7 +608,7 @@ private fun ParadaItem(p: ParadaDto, onLiberar: () -> Unit) {
                     listOfNotNull(
                         llegada?.let { "Llegada ~$it" },
                         programada?.let { "programado $it" },
-                        if (p.orden > 1) "${conDecimales(p.distanciaDesdeAnteriorKm, 1)} km desde la anterior" else null
+                        if (p.orden > 1) "${com.htogo.app.data.location.formatearDistanciaCorta(p.distanciaDesdeAnteriorKm)} desde la anterior" else null
                     ).joinToString(" · "),
                     fontSize = 12.sp, color = HToGoColors.TextSecondary
                 )
@@ -635,7 +635,7 @@ private fun AgendaItem(a: AgendaPedidoDto, onReservar: () -> Unit) {
                 Text(
                     listOfNotNull(
                         "${a.garrafonesTotales} garrafones",
-                        a.distanciaM?.let { "a ${conDecimales(it / 1000, 1)} km" }
+                        a.distanciaM?.let { "a ${com.htogo.app.data.location.formatearDistanciaMetros(it)}" }
                     ).joinToString(" · "),
                     fontSize = 12.sp, color = HToGoColors.TextSecondary
                 )
