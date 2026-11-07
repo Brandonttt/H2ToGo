@@ -1,14 +1,17 @@
 package com.h2togo.backend.usuarios;
 
-import com.h2togo.backend.usuarios.dto.CambioContrasenaRequest;
 import com.h2togo.backend.security.SecurityUtils;
+import com.h2togo.backend.usuarios.dto.CambioContrasenaRequest;
 import com.h2togo.backend.usuarios.dto.DispositivoRequest;
+import com.h2togo.backend.usuarios.dto.EliminarCuentaRequest;
 import com.h2togo.backend.usuarios.dto.PerfilMeResponse;
 import com.h2togo.backend.usuarios.dto.PerfilUpdateRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,5 +51,19 @@ public class UsuariosController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void registrarDispositivo(@Valid @RequestBody DispositivoRequest request) {
         usuarioService.registrarDispositivo(SecurityUtils.idActual(), request.tokenFcm());
+    }
+
+    /** Baja voluntaria de la propia cuenta con confirmación de contraseña actual. */
+    @PostMapping("/baja")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void darDeBaja(@Valid @RequestBody EliminarCuentaRequest request) {
+        usuarioService.eliminarCuenta(SecurityUtils.idActual(), request);
+    }
+
+    /** Alias RESTful DELETE para baja voluntaria de la propia cuenta. */
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminarCuenta(@Valid @RequestBody EliminarCuentaRequest request) {
+        usuarioService.eliminarCuenta(SecurityUtils.idActual(), request);
     }
 }

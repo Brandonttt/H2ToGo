@@ -348,7 +348,11 @@ fun HToGoNavHost(
                 onAvisoPrivacidad = {
                     navController.navigate(HToGoRoutes.AVISO_PRIVACIDAD)
                 },
-                onCambiarContrasena = authViewModel::cambiarContrasena
+                onCambiarContrasena = authViewModel::cambiarContrasena,
+                onEliminarCuenta = authViewModel::eliminarCuenta,
+                onCuentaEliminada = {
+                    navController.navigateAndClear(HToGoRoutes.LOGIN)
+                }
             )
         }
 
@@ -462,6 +466,10 @@ fun HToGoNavHost(
                 onIngresos  = { navController.navigate(HToGoRoutes.INGRESOS) },
                 onHistorial = { navController.navigate(HToGoRoutes.HISTORIAL_REPARTIDOR) },
                 onCambiarContrasena = authViewModel::cambiarContrasena,
+                onEliminarCuenta = authViewModel::eliminarCuenta,
+                onCuentaEliminada = {
+                    navController.navigateAndClear(HToGoRoutes.LOGIN)
+                },
                 repartidorViewModel = repartidorViewModel
             )
         }

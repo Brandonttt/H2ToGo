@@ -2,6 +2,8 @@ package com.htogo.app.ui.screens
 
 import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.ui.components.CambiarContrasenaDialog
+import com.htogo.app.ui.components.EliminarCuentaDialog
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import com.htogo.app.plataforma.mostrarAviso
@@ -84,6 +86,8 @@ fun PerfilRepartidorScreen(
     onIngresos: () -> Unit = {},
     onHistorial: () -> Unit = {},
     onCambiarContrasena: (actual: String, nueva: String, onResult: (String?) -> Unit) -> Unit = { _, _, r -> r(null) },
+    onEliminarCuenta: (password: String, onResult: (String?) -> Unit) -> Unit = { _, r -> r(null) },
+    onCuentaEliminada: () -> Unit = {},
     repartidorViewModel: com.htogo.app.ui.RepartidorViewModel = viewModel { com.htogo.app.ui.RepartidorViewModel() }
 ) {
     val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance() }
@@ -100,6 +104,7 @@ fun PerfilRepartidorScreen(
     var mostrarCambioContrasena by remember { mutableStateOf(false) }
 
     var mostrarDialogLogout by remember { mutableStateOf(false) }
+    var mostrarDialogEliminarCuenta by remember { mutableStateOf(false) }
     var showHorario by remember { mutableStateOf(false) }
     var guardandoHorario by remember { mutableStateOf(false) }
     var showModalCambioNombre by remember { mutableStateOf(false) }
@@ -368,7 +373,8 @@ fun PerfilRepartidorScreen(
                     Column {
                         ActionRow(Icons.Filled.History, "Mi historial de entregas", redText = false, onClick = onHistorial)
                         ActionRow(Icons.Outlined.Lock, "Cambiar contraseña", redText = false, onClick = { mostrarCambioContrasena = true })
-                        ActionRow(Icons.Filled.Logout, "Cerrar sesión", redText = true, isLast = true, onClick = { mostrarDialogLogout = true })
+                        ActionRow(Icons.Filled.Logout, "Cerrar sesión", redText = true, isLast = false, onClick = { mostrarDialogLogout = true })
+                        ActionRow(Icons.Filled.DeleteForever, "Eliminar cuenta", redText = true, isLast = true, onClick = { mostrarDialogEliminarCuenta = true })
                     }
                 }
                 Spacer(Modifier.height(20.dp))
@@ -385,6 +391,14 @@ fun PerfilRepartidorScreen(
 
         if (mostrarCambioContrasena) {
             CambiarContrasenaDialog(onDismiss = { mostrarCambioContrasena = false }, onGuardar = onCambiarContrasena)
+        }
+
+        if (mostrarDialogEliminarCuenta) {
+            EliminarCuentaDialog(
+                onDismiss = { mostrarDialogEliminarCuenta = false },
+                onConfirmar = onEliminarCuenta,
+                onEliminada = onCuentaEliminada
+            )
         }
 
         miembroARechazar?.let { m ->

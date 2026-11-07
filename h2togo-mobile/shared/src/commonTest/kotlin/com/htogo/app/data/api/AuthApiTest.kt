@@ -1,6 +1,7 @@
 package com.htogo.app.data.api
 
 import com.htogo.app.data.dto.CambiarTelefonoOtpRequest
+import com.htogo.app.data.dto.EliminarCuentaRequest
 import com.htogo.app.data.dto.IniciarVerificacionRequest
 import com.htogo.app.data.dto.LoginRequest
 import com.htogo.shared.data.codigoDeError
@@ -79,6 +80,18 @@ class AuthApiTest {
         assertTrue(r.isSuccessful)
         assertEquals("https://api.test/api/v1/auth/verificacion-telefono/cambiar-numero", url)
         assertTrue(enviado.contains("\"nuevoTelefono\":\"5512345678\""), enviado)
+    }
+
+    @Test
+    fun eliminarCuentaEnviaContrasenaAlEndpointDeBaja() = runTest {
+        var url = ""; var enviado = ""; var auth: String? = null
+        val r = api(HttpStatusCode.NoContent, "") { u, b, a -> url = u; enviado = b; auth = a }
+            .eliminarCuenta(EliminarCuentaRequest("secreta123"))
+
+        assertTrue(r.isSuccessful)
+        assertEquals("https://api.test/api/v1/usuarios/me/baja", url)
+        assertTrue(enviado.contains("\"password\":\"secreta123\""), enviado)
+        assertEquals("Bearer tok", auth)
     }
 
     @Test

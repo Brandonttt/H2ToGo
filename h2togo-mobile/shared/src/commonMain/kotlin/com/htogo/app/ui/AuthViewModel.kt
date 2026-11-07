@@ -8,6 +8,7 @@ import com.htogo.app.plataforma.Plataforma
 import com.htogo.app.data.api.ApiClient
 import com.htogo.app.data.dto.CambiarTelefonoOtpRequest
 import com.htogo.app.data.dto.CambioContrasenaRequest
+import com.htogo.app.data.dto.EliminarCuentaRequest
 import com.htogo.app.data.dto.IniciarVerificacionRequest
 import com.htogo.app.data.dto.LoginRequest
 import com.htogo.app.data.dto.RecuperacionConfirmacionRequest
@@ -434,6 +435,32 @@ class AuthViewModel : ViewModel() {
                 else parseError(resp.errorBody()?.string()) ?: "No se pudo cambiar la contraseña (${resp.code()})")
             } catch (e: Exception) {
                 onResult(e.message ?: "Error de red al cambiar la contraseña")
+            }
+        }
+    }
+
+    /** Baja voluntaria de la cuenta actual tras confirmar con la contraseña vigente. */
+    fun eliminarCuenta(password: String, onResult: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.authApi.eliminarCuenta(EliminarCuentaRequest(password))
+                if (resp.isSuccessful) {
+                    sessionManager.cerrarSesion()
+                    tempCorreo = ""
+                    tempTelefono = ""
+                    tempPass = ""
+                    _uiState.value = AuthUiState.Idle
+                    _registroState.value = RegistroUiState.Idle
+                    _otpState.value = OtpUiState.Idle
+                    onResult(null)
+                } else if (resp.code() == 404) {
+                    onResult("El servidor aún no cuenta con esta actualización; despliega la nueva versión del backend.")
+                } else {
+                    val errMsg = parseError(resp.errorBody()?.string())
+                    onResult(errMsg ?: "No se pudo eliminar la cuenta (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onResult(e.message ?: "Error de red al eliminar la cuenta")
             }
         }
     }

@@ -33,6 +33,8 @@ class AuthApi(private val http: HttpClient) {
         http.put("usuarios/me/dispositivo") { setBody(body) }.aRespuesta()
     suspend fun cambiarContrasena(request: CambioContrasenaRequest): Respuesta<Unit> =
         http.put("usuarios/me/contrasena") { setBody(request) }.aRespuesta()
+    suspend fun eliminarCuenta(request: EliminarCuentaRequest): Respuesta<Unit> =
+        http.post("usuarios/me/baja") { setBody(request) }.aRespuesta()
     /** Siempre responde 204, exista o no el correo (no se revela qué cuentas existen). */
     suspend fun solicitarRecuperacion(request: RecuperacionRequest): Respuesta<Unit> =
         http.post("auth/recuperacion") { setBody(request) }.aRespuesta()

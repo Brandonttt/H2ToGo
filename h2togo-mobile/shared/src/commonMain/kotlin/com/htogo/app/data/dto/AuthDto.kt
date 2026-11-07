@@ -135,6 +135,12 @@ data class CambioContrasenaRequest(
     @SerialName("nueva") val nueva: String
 )
 
+/** Confirmación con contraseña actual para eliminar la propia cuenta. */
+@Serializable
+data class EliminarCuentaRequest(
+    @SerialName("password") val password: String
+)
+
 /** Repartidor de la purificadora visto por su dueño (GET negocios/me/repartidores). */
 @Serializable
 data class MiembroNegocioDto(

@@ -37,6 +37,7 @@ import com.htogo.app.data.local.SessionManager
 import com.htogo.app.ui.ClienteViewModel
 import com.htogo.app.ui.components.AgregarDireccionDialog
 import com.htogo.app.ui.components.CambiarContrasenaDialog
+import com.htogo.app.ui.components.EliminarCuentaDialog
 import com.htogo.app.ui.components.ClienteBottomBar
 import com.htogo.app.ui.components.ClienteTab
 import com.htogo.app.ui.theme.HToGoColors
@@ -73,6 +74,8 @@ fun PerfilClienteScreen(
     onLogout: () -> Unit = {},
     onAvisoPrivacidad: () -> Unit = {},
     onCambiarContrasena: (actual: String, nueva: String, onResult: (String?) -> Unit) -> Unit = { _, _, r -> r(null) },
+    onEliminarCuenta: (password: String, onResult: (String?) -> Unit) -> Unit = { _, r -> r(null) },
+    onCuentaEliminada: () -> Unit = {},
     clienteViewModel: ClienteViewModel = viewModel { ClienteViewModel() }
 ) {
     val sessionManager = remember { SessionManager.getInstance() }
@@ -121,6 +124,7 @@ fun PerfilClienteScreen(
     }
     var mostrarDialogFecha by remember { mutableStateOf(false) }
     var mostrarDialogLogout by remember { mutableStateOf(false) }
+    var mostrarDialogEliminarCuenta by remember { mutableStateOf(false) }
 
     val direcciones = remember(direccionesDisponibles, direccionPredeterminadaId) {
         val effectiveDefaultId = direccionPredeterminadaId
@@ -233,7 +237,7 @@ fun PerfilClienteScreen(
                     SettingRow(Icons.Filled.Logout, "Cerrar sesión",
                         danger = true, onClick = { mostrarDialogLogout = true }, showChevron = false)
                     SettingRow(Icons.Filled.DeleteForever, "Eliminar cuenta",
-                        danger = true, onClick = {}, showChevron = false)
+                        danger = true, onClick = { mostrarDialogEliminarCuenta = true }, showChevron = false)
                 }
             }
 
@@ -329,6 +333,14 @@ fun PerfilClienteScreen(
 
         if (mostrarCambioContrasena) {
             CambiarContrasenaDialog(onDismiss = { mostrarCambioContrasena = false }, onGuardar = onCambiarContrasena)
+        }
+
+        if (mostrarDialogEliminarCuenta) {
+            EliminarCuentaDialog(
+                onDismiss = { mostrarDialogEliminarCuenta = false },
+                onConfirmar = onEliminarCuenta,
+                onEliminada = onCuentaEliminada
+            )
         }
 
         if (mostrarDialogLogout) {
