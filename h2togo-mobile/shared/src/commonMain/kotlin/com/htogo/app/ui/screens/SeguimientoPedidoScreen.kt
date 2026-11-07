@@ -341,18 +341,19 @@ private fun TrackingSheet(
     steps: List<TrackingStep>,
     etaResumen: String? = null,
     maxScreenHeight: androidx.compose.ui.unit.Dp = 800.dp,
+    isMinimized: Boolean = false,
+    onMinimizedChange: (Boolean) -> Unit = {},
     onPedidoEntregado: () -> Unit,
     onAbrirPurificadora: () -> Unit,
     onCancelarPedido: () -> Unit = {}
 ) {
     val isEntregado = order.estado == EstadoPedido.ENTREGADO
-    var isMinimized by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
     // Al marcarse como entregado (o cerrado), expande la pestaña automáticamente y muestra el botón de confirmación.
     LaunchedEffect(order.estado) {
         if (order.estado in setOf(EstadoPedido.ENTREGADO, EstadoPedido.NO_ENTREGADO, EstadoPedido.CANCELADO)) {
-            isMinimized = false
+            onMinimizedChange(false)
             kotlinx.coroutines.delay(120)
             scrollState.animateScrollTo(scrollState.maxValue)
         }
@@ -389,13 +390,13 @@ private fun TrackingSheet(
                         orientation = Orientation.Vertical,
                         state = rememberDraggableState { delta ->
                             if (delta > 10f && !isMinimized) {
-                                isMinimized = true
+                                onMinimizedChange(true)
                             } else if (delta < -10f && isMinimized) {
-                                isMinimized = false
+                                onMinimizedChange(false)
                             }
                         }
                     )
-                    .clickable { isMinimized = !isMinimized }
+                    .clickable { onMinimizedChange(!isMinimized) }
                     .padding(top = 10.dp, bottom = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -465,7 +466,7 @@ private fun TrackingSheet(
                         }
                     }
                     IconButton(
-                        onClick = { isMinimized = !isMinimized },
+                        onClick = { onMinimizedChange(!isMinimized) },
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
@@ -1043,8 +1044,19 @@ fun SeguimientoPedidoScreen(
         }
     }
 
+    var isSheetMinimized by remember { mutableStateOf(false) }
+    val navBarBottomMapa = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
     BoxWithConstraints(Modifier.fillMaxSize().background(HToGoColors.Background)) {
         val screenHeight = maxHeight
+        val margenInferiorMapa by animateDpAsState(
+            targetValue = if (isSheetMinimized) (88.dp + navBarBottomMapa) else (screenHeight * 0.65f + navBarBottomMapa),
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "margenInferiorCliente"
+        )
         val pedidoCerrado = order.estado in setOf(EstadoPedido.ENTREGADO, EstadoPedido.NO_ENTREGADO, EstadoPedido.CANCELADO)
         val latEfectivaRepartidor = if (pedidoCerrado) null else (posicionDemo?.first ?: ubicacionRepartidor?.lat ?: rutaSeguimiento.firstOrNull()?.first)
         val lonEfectivaRepartidor = if (pedidoCerrado) null else (posicionDemo?.second ?: ubicacionRepartidor?.lon ?: rutaSeguimiento.firstOrNull()?.second)
@@ -1081,10 +1093,11 @@ fun SeguimientoPedidoScreen(
                 destLat = latDestino,
                 destLon = lonDestino,
                 routePoints = puntosRutaMapa,
+                seguirRepartidor = true,
                 repartidorLabel = if (posicionDemo != null) "Tu repartidor (FakeGPS)" else "Tu repartidor",
                 avisoSinUbicacion = null, // el aviso del cliente se muestra abajo (CU-006 S1)
                 estadoPedido = if (posicionDemo != null && !pedidoCerrado) "en_camino" else pedido.estado,
-                margenInferior = screenHeight * 0.62f, // encuadra arriba del panel del pedido
+                margenInferior = margenInferiorMapa, // centra arriba del panel del pedido (con brújula Norte + Centrar como el repartidor)
                 baseLat = if (pedidoCerrado) null else ubicacionPurificadora?.first,
                 baseLon = if (pedidoCerrado) null else ubicacionPurificadora?.second,
                 baseLabel = order.purificadoraName,
@@ -1178,24 +1191,29 @@ fun SeguimientoPedidoScreen(
             }
         }
 
-        // CU-006 S1: en camino pero sin posición, o sin cambios en más de 2 minutos.
+        // CU-006 S1: en camino pero sin posición tras dar margen a la carga inicial, o sin cambios en más de 2 minutos.
         if (order.estado == EstadoPedido.EN_CAMINO && posicionDemo == null) {
-            var ahoraMs by remember { mutableStateOf(ahoraMs()) }
-            LaunchedEffect(Unit) {
-                while (true) { kotlinx.coroutines.delay(15_000); ahoraMs = ahoraMs() }
+            val pantallaAbiertaMs = remember(order.id) { ahoraMs() }
+            var ahoraMs by remember(order.id) { mutableStateOf(ahoraMs()) }
+            LaunchedEffect(order.id, ubicacionRepartidor == null) {
+                while (true) {
+                    kotlinx.coroutines.delay(if (ubicacionRepartidor == null) 4_000L else 15_000L)
+                    ahoraMs = ahoraMs()
+                }
             }
             val u = ubicacionRepartidor
             val aviso = when {
                 repartidorLlego -> null // ya está en el domicilio: se muestra el aviso de llegada
-                u == null -> "Ubicación del repartidor no disponible por ahora"
-                ahoraMs - u.recibidaMs > 120_000 ->
+                u == null && latEfectivaRepartidor == null && ahoraMs - pantallaAbiertaMs >= 4_000L ->
+                    "Ubicación del repartidor no disponible por ahora"
+                u != null && ahoraMs - u.recibidaMs > 120_000 ->
                     "Última ubicación hace ${(ahoraMs - u.recibidaMs) / 60_000} min"
                 else -> null
             }
             if (aviso != null) {
                 com.htogo.app.ui.components.AvisoMapa(
                     aviso,
-                    modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 70.dp)
+                    modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 112.dp, start = 16.dp, end = 64.dp)
                 )
             }
         }
@@ -1333,6 +1351,8 @@ fun SeguimientoPedidoScreen(
                 steps = stepsEnVivo,
                 etaResumen = etaResumen,
                 maxScreenHeight = screenHeight,
+                isMinimized = isSheetMinimized,
+                onMinimizedChange = { isSheetMinimized = it },
                 onPedidoEntregado = onPedidoEntregado,
                 onAbrirPurificadora = onAbrirPurificadora,
                 onCancelarPedido = { mostrarDialogCancelar = true }

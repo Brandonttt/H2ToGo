@@ -207,14 +207,16 @@ internal fun htmlMapaRuta(
             .rep .rumbo { position: absolute; inset: 0; transition: transform .4s linear; }
             .ctl { position: absolute; right: 12px; width: 44px; height: 44px; border-radius: 22px; background: #fff;
                    box-shadow: 0 2px 8px rgba(15,23,42,.25); display: flex; align-items: center; justify-content: center;
-                   z-index: 1000; -webkit-tap-highlight-color: transparent; }
+                   z-index: 1000; -webkit-tap-highlight-color: transparent; cursor: pointer; user-select: none;
+                   transition: transform .12s ease, background-color .12s ease; }
+            .ctl:active { transform: scale(0.95); background: #F0F9FF; }
             #brujula { top: calc(var(--arriba, 96px) + 54px); }
             #brujula svg { transition: transform .6s ease-out; }
             #estado { position: absolute; left: 12px; top: var(--arriba, 96px); z-index: 1000; display: none; align-items: center; gap: 6px;
                        background: #fff; border-radius: 99px; padding: 6px 12px; box-shadow: 0 2px 8px rgba(15,23,42,.2);
                        font: 600 12px sans-serif; color: #0F172A; }
             #estado i { width: 10px; height: 10px; border-radius: 5px; background: var(--estado, #0284C7); display: inline-block; }
-            #centrar { top: calc(var(--arriba, 96px) + 106px); display: none; color: #0284C7; font: 600 12px sans-serif; width: auto; padding: 0 14px; }
+            #centrar { top: calc(var(--arriba, 96px) + ${if (seguirRepartidor) 106 else 38}px); display: none; color: #0284C7; font: 600 12px sans-serif; width: auto; height: 38px; border-radius: 19px; padding: 0 14px; }
             .leaflet-control-attribution { display: none !important; }
             .parada { width: 28px; height: 28px; border-radius: 14px; background: #0F172A; color: #fff;
                       border: 2.5px solid #fff; box-shadow: 0 2px 6px rgba(15,23,42,.45);
@@ -273,6 +275,7 @@ internal fun htmlMapaRuta(
               if (typeof map !== 'undefined' && map) {
                 map.invalidateSize({ pan: false });
                 if (SEGUIR && siguiendo && repPos) map.setView(centroVisible(repPos, map.getZoom()), map.getZoom(), { animate: false });
+                else if (SEGUIR && siguiendo && !repPos) map.setView(centroVisible(destino, map.getZoom()), map.getZoom(), { animate: false });
               }
             }
             ajustarTamano();
@@ -306,10 +309,12 @@ internal fun htmlMapaRuta(
             var markerRep = null, markerBase = null, lineasRuta = [], encuadrado = false, rutaPrevia = '';
             var rutaActual = [], paradasActuales = [], destino = [$destLat, $destLon];
             var PALETA_TRAMOS = ['#10B981', '#7C3AED', '#EA580C', '#2563EB', '#DB2777', '#0891B2'];
-            var repPos = null, rumbo = 0, anim = null;
-            var siguiendo = SEGUIR, rumboArriba = false, anguloMapa = 0;
+            var repPos = null, objetivoRep = null, rumbo = 0, anim = null;
+            var INTERACTIVO = $isInteractive;
+            var siguiendo = SEGUIR, siguiendoCliente = true, rumboArriba = false, anguloMapa = 0, pedidoCerrado = false;
             var brujula = document.getElementById('brujula'), centrar = document.getElementById('centrar');
             if (SEGUIR) brujula.style.display = 'flex';
+            else if (INTERACTIVO) centrar.style.display = 'flex';
 
             // Compensa la rotación CSS del contenedor #map al arrastrar para que el mapa se mueva
             // exactamente en la dirección del dedo del usuario aunque el Norte esté desactivado.
@@ -507,7 +512,7 @@ internal fun htmlMapaRuta(
 
             // Gira el mapa (rumbo arriba) solo mientras sigue al repartidor; si no, norte arriba.
             function aplicarRotacion() {
-              var objetivo = (SEGUIR && rumboArriba) ? rumbo : 0;
+              var objetivo = (SEGUIR && rumboArriba && repPos && !pedidoCerrado) ? rumbo : 0;
               var delta = ((objetivo - anguloMapa) % 360 + 540) % 360 - 180; // giro más corto
               anguloMapa += delta;
               if (repPos && SEGUIR && siguiendo) map.setView(centroVisible(repPos, map.getZoom()), map.getZoom(), { animate: false });
@@ -526,12 +531,62 @@ internal fun htmlMapaRuta(
             var zoomFijado = false;
             // Alto (px) del panel de la app que tapa la parte de abajo del mapa: el repartidor se
             // centra en la parte visible, no en el centro de la pantalla.
-            var inferior = 0;
+            var inferior = 0, arribaPx = 96;
+            function setArriba(px) {
+              arribaPx = px || 96;
+              document.documentElement.style.setProperty('--arriba', arribaPx + 'px');
+            }
             function centroVisible(p, z) {
               if (!inferior) return p;
-              var a = anguloMapa * Math.PI / 180, d = inferior / 2;
+              var compensacionSuperior = SEGUIR ? 0 : Math.min(arribaPx * 0.55, inferior * 0.3);
+              var a = anguloMapa * Math.PI / 180, d = (inferior - compensacionSuperior) / 2;
               var pt = map.project(p, z).add([-d * Math.sin(a), d * Math.cos(a)]);
               return map.unproject(pt, z);
+            }
+            function ajustarLimitesVisibles(b, maxZ, animar) {
+              if (!b || !b.isValid()) return;
+              var sz = map.getSize();
+              var hMapa = (sz && sz.y > 100) ? sz.y : (window.innerHeight || 600);
+              var padTop = Math.min(Math.round(hMapa * 0.22), Math.max(88, arribaPx + 24));
+              var maxPadBottom = Math.max(40, hMapa - padTop - Math.max(96, Math.round(hMapa * 0.16)));
+              var padBottom = Math.min(24 + inferior, maxPadBottom);
+              map.fitBounds(b, {
+                paddingTopLeft: [44, padTop],
+                paddingBottomRight: [44, padBottom],
+                maxZoom: maxZ || 16,
+                animate: !!animar
+              });
+            }
+            function encuadrarCliente(animar) {
+              if (SEGUIR) return;
+              ajustarTamano();
+              var posRef = objetivoRep || repPos;
+              if (paradasActuales.length > 0) {
+                var bp = L.latLngBounds(paradasActuales.map(function (p) { return [p[0], p[1]]; }));
+                if (posRef) bp.extend(posRef);
+                ajustarLimitesVisibles(bp, 16, animar);
+                encuadrado = true;
+                return;
+              }
+              if (!pedidoCerrado && posRef) {
+                var ptsEncuadre = [posRef, destino];
+                if (rutaActual.length >= 2) {
+                  var pr = proyectarEnRuta(posRef, rutaActual);
+                  if (pr && pr.distM <= 240) {
+                    ptsEncuadre = ptsEncuadre.concat([pr.punto], rutaActual.slice(pr.segIdx + 1));
+                  }
+                }
+                ajustarLimitesVisibles(L.latLngBounds(ptsEncuadre), 17, animar);
+                encuadrado = true;
+                return;
+              }
+              if (!pedidoCerrado && markerBase) {
+                ajustarLimitesVisibles(L.latLngBounds([markerBase.getLatLng(), destino]), 16, animar);
+                encuadrado = true;
+                return;
+              }
+              map.setView(centroVisible(destino, 16), 16, { animate: !!animar });
+              encuadrado = true;
             }
             function seguirA(p) {
               if (!(SEGUIR && siguiendo)) return;
@@ -540,8 +595,12 @@ internal fun htmlMapaRuta(
               zoomFijado = true;
             }
             function setMargenInferior(px) {
-              inferior = px;
+              var nuevo = px || 0;
+              var cambio = Math.abs(nuevo - inferior) > 8;
+              inferior = nuevo;
               if (repPos && SEGUIR && siguiendo) seguirA(repPos);
+              else if (!repPos && SEGUIR && siguiendo) map.setView(centroVisible(destino, map.getZoom() || 16), map.getZoom() || 16, { animate: false });
+              else if (!SEGUIR && cambio && encuadrado && siguiendoCliente) encuadrarCliente(true);
             }
 
             // Desliza el marcador hasta la nueva posición (~1 s) con la cámara detrás.
@@ -567,18 +626,34 @@ internal fun htmlMapaRuta(
 
             // El usuario explora el mapa: se deja de seguir sin rotar ni redimensionar a mitad del arrastre.
             map.on('dragstart', function () {
-              if (!SEGUIR) return;
+              if (!SEGUIR) {
+                siguiendoCliente = false;
+                return;
+              }
               if (anim) { cancelAnimationFrame(anim); anim = null; }
               if (!siguiendo) return;
               siguiendo = false;
               centrar.style.display = 'flex';
             });
+            map.getContainer().addEventListener('touchstart', function (e) {
+              if (e.touches && e.touches.length >= 2) {
+                if (!SEGUIR) siguiendoCliente = false;
+                else if (siguiendo) { siguiendo = false; centrar.style.display = 'flex'; }
+              }
+            }, { passive: true });
             centrar.addEventListener('click', function () {
+              if (!SEGUIR) {
+                siguiendoCliente = true;
+                encuadrarCliente(true);
+                return;
+              }
               siguiendo = true;
               centrar.style.display = 'none';
               if (repPos) {
                 var z = Math.max(map.getZoom(), 16);
                 map.setView(centroVisible(repPos, z), z, { animate: false });
+              } else {
+                map.setView(centroVisible(destino, 16), 16, { animate: true });
               }
               aplicarRotacion();
             });
@@ -591,12 +666,15 @@ internal fun htmlMapaRuta(
               if (repPos) {
                 var z = Math.max(map.getZoom(), 16);
                 map.setView(centroVisible(repPos, z), z, { animate: false });
+              } else {
+                map.setView(centroVisible(destino, 16), 16, { animate: true });
               }
               aplicarRotacion();
             });
 
             // RF-007: color y etiqueta del estado del pedido en los marcadores (destino gris si ya cerró).
             function setEstado(color, texto, cerrado) {
+              pedidoCerrado = !!cerrado;
               document.documentElement.style.setProperty('--estado', color);
               document.documentElement.style.setProperty('--destino', cerrado ? color : '#10B981');
               var chip = document.getElementById('estado');
@@ -607,8 +685,10 @@ internal fun htmlMapaRuta(
                 if (markerRep) { map.removeLayer(markerRep); markerRep = null; }
                 if (markerBase) { map.removeLayer(markerBase); markerBase = null; }
                 repPos = null;
+                objetivoRep = null;
                 rutaActual = [];
                 limpiarLineas();
+                aplicarRotacion();
                 map.setView(centroVisible(destino, 16), 16, { animate: true });
               } else {
                 dibujarLinea();
@@ -650,20 +730,19 @@ internal fun htmlMapaRuta(
                 );
               });
               dibujarLinea();
-              var b = L.latLngBounds(paradasActuales.map(function (p) { return [p[0], p[1]]; }));
-              if (repPos) b.extend(repPos);
-              if (b.isValid()) map.fitBounds(b, { paddingTopLeft: [40, 120], paddingBottomRight: [40, 40 + inferior], maxZoom: 16 });
-              encuadrado = true;
+              encuadrarCliente(false);
             }
 
             // Llamada desde Kotlin en cada cambio. ruta = [[lat,lon],...] o [] (línea recta punteada).
             function actualizar(repLat, repLon, destLat, destLon, ruta, etiqueta) {
               ajustarTamano();
+              var teniaRep = objetivoRep !== null;
               destino = [destLat, destLon];
               markerDest.setLatLng(destino);
               var firma = JSON.stringify(ruta.length >= 2 ? [ruta[0], ruta[ruta.length - 1], ruta.length] : []);
               rutaActual = ruta;
               if (repLat !== null) {
+                objetivoRep = [repLat, repLon];
                 if (!markerRep) {
                   markerRep = L.marker([repLat, repLon], { icon: repIcon, zIndexOffset: 1000 }).addTo(map);
                   repPos = null;
@@ -674,13 +753,16 @@ internal fun htmlMapaRuta(
                 if (anim) { cancelAnimationFrame(anim); anim = null; }
                 if (markerRep) { map.removeLayer(markerRep); markerRep = null; }
                 repPos = null;
+                objetivoRep = null;
                 dibujarLinea();
               }
-              // Sin seguimiento: encuadra repartidor + destino la primera vez o si cambió la ruta.
-              if (!(SEGUIR && siguiendo) && repLat !== null && (!encuadrado || (ruta.length >= 2 && firma !== rutaPrevia))) {
-                var b = rutaActual.length >= 2 ? L.latLngBounds(rutaActual) : L.latLngBounds([[repLat, repLon], destino]);
-                b.extend([repLat, repLon]);
-                if (b.isValid()) map.fitBounds(b, { paddingTopLeft: [50, 130], paddingBottomRight: [50, 50 + inferior], maxZoom: 16 });
+              // Sin seguimiento de rumbo (vista plan): encuadra al iniciar o al asignarse ruta/repartidor.
+              if (!SEGUIR) {
+                if (!encuadrado || (siguiendoCliente && ((!teniaRep && repLat !== null) || (ruta.length >= 2 && firma !== rutaPrevia)))) {
+                  encuadrarCliente(encuadrado);
+                }
+              } else if (siguiendo && repLat === null && !encuadrado) {
+                map.setView(centroVisible(destino, 16), 16, { animate: false });
                 encuadrado = true;
               }
               if (ruta.length >= 2) rutaPrevia = firma;

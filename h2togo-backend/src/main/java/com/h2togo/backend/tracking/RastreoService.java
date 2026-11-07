@@ -57,6 +57,12 @@ public class RastreoService {
         enviarDespuesDelCommit(topico(idPedido), payload);
     }
 
+    /** Publica la posición inicial al pasar un pedido a {@code en_camino} tras confirmar la transacción. */
+    public void publicarPosicionInicial(int idPedido, double lat, double lon) {
+        Object payload = Map.of("lat", lat, "lon", lon, "timestamp", OffsetDateTime.now().toString());
+        enviarDespuesDelCommit(topico(idPedido), payload);
+    }
+
     private void enviarDespuesDelCommit(String destino, Object payload) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -78,7 +84,7 @@ public class RastreoService {
                 new MapSqlParameterSource("u", idRepartidor), Integer.class);
         Object payload = Map.of("lat", lat, "lon", lon, "timestamp", OffsetDateTime.now().toString());
         for (Integer idPedido : activos) {
-            messaging.convertAndSend(topico(idPedido), payload);
+            enviarDespuesDelCommit(topico(idPedido), payload);
         }
     }
 

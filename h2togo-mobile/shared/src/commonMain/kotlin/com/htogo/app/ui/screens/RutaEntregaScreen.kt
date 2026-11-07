@@ -225,11 +225,16 @@ fun RutaEntregaScreen(
     var pasoSimulado by remember { mutableStateOf(0) }
     var totalPasosSimulados by remember { mutableStateOf(0) }
     val posicionReal by EntregaEnCurso.posicion.collectAsState()
-    val posicion = posicionSimulada ?: posicionReal
+    LaunchedEffect(posicionReal) {
+        if (posicionReal != null) repartidorViewModel.ultimaPosicionRealConocida = posicionReal
+    }
+    val posicion = posicionSimulada ?: posicionReal ?: repartidorViewModel.ultimaPosicionRealConocida
     // Con FakeGPS activo el servicio de ubicación no reporta el GPS real (ver EntregaEnCurso).
     SideEffect { EntregaEnCurso.simulacionActiva.value = posicionSimulada != null }
     LaunchedEffect(posicionSimulada != null) { EntregaEnCurso.simulacionActiva.value = posicionSimulada != null }
-    DisposableEffect(Unit) { onDispose { EntregaEnCurso.simulacionActiva.value = false } }
+    DisposableEffect(Unit) {
+        onDispose { EntregaEnCurso.simulacionActiva.value = repartidorViewModel.ultimaPosicionSimulada != null }
+    }
 
     // Coordenadas de la purificadora para partir de ahí en FakeGPS (y mostrar marcador de base)
     val ubicacionBasePurificadora = remember(liveMiNegocio, liveRutaOptima, entrega.latDestino, entrega.lonDestino) {
@@ -399,7 +404,10 @@ fun RutaEntregaScreen(
             }
         }
     }
-    DisposableEffect(Unit) { onDispose { repartidorViewModel.detenerNavegacion() } }
+    DisposableEffect(entrega.pedidoId) {
+        val idSaliente = entrega.pedidoId.toIntOrNull()
+        onDispose { repartidorViewModel.detenerNavegacion(idSaliente) }
+    }
 
     val rutaNoDisponible by repartidorViewModel.rutaNoDisponible.collectAsState()
     val distanciaDestinoM = posicion?.let {
@@ -436,7 +444,7 @@ fun RutaEntregaScreen(
         val idInt = entrega.pedidoId.toIntOrNull() ?: return@LaunchedEffect
         delay(1_500L)
         if (!enCaminoSolicitado && livePedidoEnRuta?.estado.equals("asignado", ignoreCase = true) && errorCargaBase == null) {
-            val posIni = posicionSimulada ?: posicionReal
+            val posIni = posicionSimulada ?: posicionReal ?: repartidorViewModel.ultimaPosicionRealConocida
                 ?: com.htogo.app.data.location.Posicion(ubicacionBasePurificadora.first, ubicacionBasePurificadora.second, 15f)
             enCaminoSolicitado = true
             repartidorViewModel.marcarEnCamino(idInt, posIni.lat, posIni.lon, onError = { err ->
@@ -454,8 +462,9 @@ fun RutaEntregaScreen(
     LaunchedEffect(entrega.pedidoId) {
         val idInt = entrega.pedidoId.toIntOrNull() ?: return@LaunchedEffect
         while (true) {
-            delay(4_000L)
-            val posActual = posicionSimulada ?: posicionReal
+            delay(4_500L)
+            val posActual = posicionSimulada ?: posicionReal ?: repartidorViewModel.ultimaPosicionRealConocida
+            val enCaminoActivo = enCaminoSolicitado || livePedidoEnRuta?.estado.equals("en_camino", ignoreCase = true)
             if (!enCaminoSolicitado && livePedidoEnRuta?.estado.equals("asignado", ignoreCase = true) && errorCargaBase == null) {
                 val posParaSalida = posActual
                     ?: com.htogo.app.data.location.Posicion(ubicacionBasePurificadora.first, ubicacionBasePurificadora.second, 15f)
@@ -467,14 +476,14 @@ fun RutaEntregaScreen(
                     }
                 })
             }
-            if (posActual == null) continue
-            if (posicionSimulada != null && !simulandoRecorrido) {
-                repartidorViewModel.reportarUbicacionSimulada(posActual.lat, posActual.lon)
-            }
+            val posParaReporte = posActual
+                ?: if (enCaminoActivo) com.htogo.app.data.location.Posicion(ubicacionBasePurificadora.first, ubicacionBasePurificadora.second, 15f) else null
+            if (posParaReporte == null) continue
             if (!simulandoRecorrido) {
-                repartidorViewModel.alMoverse(idInt, posActual)
+                repartidorViewModel.reportarUbicacionSimulada(posParaReporte.lat, posParaReporte.lon)
+                repartidorViewModel.alMoverse(idInt, posParaReporte)
             }
-            if (estado == EstadoRuta.LLEGADO && llegadaPendienteSincronizar && idPedidoRuta != null) {
+            if (estado == EstadoRuta.LLEGADO && llegadaPendienteSincronizar && idPedidoRuta != null && posActual != null) {
                 repartidorViewModel.avisarLlegada(
                     idPedidoRuta, posActual.lat, posActual.lon,
                     onSuccess = { llegadaPendienteSincronizar = false },

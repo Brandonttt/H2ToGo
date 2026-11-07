@@ -109,7 +109,7 @@ fun PlanRutaScreen(
         EntregaEnCurso.simulacionActiva.value = posicionSimulada != null
     }
     DisposableEffect(Unit) {
-        onDispose { EntregaEnCurso.simulacionActiva.value = false }
+        onDispose { EntregaEnCurso.simulacionActiva.value = repartidorViewModel.ultimaPosicionSimulada != null }
     }
 
     LaunchedEffect(Unit) {

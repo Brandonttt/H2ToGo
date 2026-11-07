@@ -106,7 +106,7 @@ fun OsmMapView(
  * Mapa con el repartidor, el destino y la ruta (seguimiento del cliente y navegación del
  * repartidor). El marcador se desliza entre posiciones del GPS y lleva una flecha con su rumbo;
  * con [seguirRepartidor] la cámara lo sigue (rumbo arriba o norte arriba) hasta que el usuario
- * arrastra el mapa, y un botón lo vuelve a centrar.
+ * arrastra el mapa, y en ambos modos cuenta con el botón `◎ Centrar` para reencuadrar la vista.
  */
 @Composable
 fun OsmRouteMapView(
@@ -152,7 +152,7 @@ fun OsmRouteMapView(
             CargandoMapa()
         } else {
             // La página no depende de datos que cambien: se arma una vez con el destino inicial.
-            val html = remember(leaflet) {
+            val html = remember(leaflet, seguirRepartidor, isInteractive) {
                 htmlMapaRuta(leaflet.first, leaflet.second, destLat, destLon, isInteractive, seguirRepartidor)
             }
             LocalUiPlataforma.current.VistaWeb(
@@ -181,6 +181,40 @@ fun OsmRouteMapView(
         }
     }
 
+    // Fija primero los márgenes superior e inferior y la base para que el primer encuadre los respete.
+    LaunchedEffect(listo, arriba) {
+        if (listo) control?.ejecutar("setArriba(${arriba.value.toInt()});")
+    }
+
+    LaunchedEffect(listo, margenInferior) {
+        if (listo) control?.ejecutar("setMargenInferior(${margenInferior.value.toInt()});")
+    }
+
+    val baseLabelJs = remember(baseLabel) { baseLabel.replace("\\", "").replace("'", "\\'") }
+    LaunchedEffect(listo, baseLat, baseLon, baseLabelJs) {
+        if (!listo) return@LaunchedEffect
+        if (baseLat != null && baseLon != null && (baseLat != 0.0 || baseLon != 0.0)) {
+            control?.ejecutar("setBase($baseLat, $baseLon, '$baseLabelJs');")
+        } else {
+            control?.ejecutar("setBase(null, null, '');")
+        }
+    }
+
+    LaunchedEffect(listo, estadoPedido) {
+        if (!listo || estadoPedido == null) return@LaunchedEffect
+        val (color, texto) = when (estadoPedido.lowercase()) {
+            "pendiente", "pendiente_programado" -> "#94A3B8" to "Buscando repartidor"
+            "asignado" -> "#F59E0B" to "Repartidor asignado"
+            "en_camino" -> "#0284C7" to "En camino"
+            "entregado" -> "#10B981" to "Entregado"
+            "no_entregado" -> "#EF4444" to "No entregado"
+            "cancelado" -> "#EF4444" to "Cancelado"
+            else -> "#0284C7" to ""
+        }
+        val cerrado = estadoPedido.lowercase() in setOf("entregado", "no_entregado", "cancelado")
+        control?.ejecutar("setEstado('$color', '$texto', $cerrado);")
+    }
+
     val rutaJson = remember(routePoints) {
         routePoints.joinToString(prefix = "[", postfix = "]") { "[${it.first},${it.second}]" }
     }
@@ -197,39 +231,6 @@ fun OsmRouteMapView(
     }
     LaunchedEffect(listo, paradasJson) {
         if (listo) control?.ejecutar("setParadas($paradasJson);")
-    }
-
-    val baseLabelJs = remember(baseLabel) { baseLabel.replace("\\", "").replace("'", "\\'") }
-    LaunchedEffect(listo, baseLat, baseLon, baseLabelJs) {
-        if (!listo) return@LaunchedEffect
-        if (baseLat != null && baseLon != null && (baseLat != 0.0 || baseLon != 0.0)) {
-            control?.ejecutar("setBase($baseLat, $baseLon, '$baseLabelJs');")
-        } else {
-            control?.ejecutar("setBase(null, null, '');")
-        }
-    }
-
-    LaunchedEffect(listo, margenInferior) {
-        if (listo) control?.ejecutar("setMargenInferior(${margenInferior.value.toInt()});")
-    }
-
-    LaunchedEffect(listo, arriba) {
-        if (listo) control?.ejecutar("document.documentElement.style.setProperty('--arriba', '${arriba.value.toInt()}px');")
-    }
-
-    LaunchedEffect(listo, estadoPedido) {
-        if (!listo || estadoPedido == null) return@LaunchedEffect
-        val (color, texto) = when (estadoPedido.lowercase()) {
-            "pendiente", "pendiente_programado" -> "#94A3B8" to "Buscando repartidor"
-            "asignado" -> "#F59E0B" to "Repartidor asignado"
-            "en_camino" -> "#0284C7" to "En camino"
-            "entregado" -> "#10B981" to "Entregado"
-            "no_entregado" -> "#EF4444" to "No entregado"
-            "cancelado" -> "#EF4444" to "Cancelado"
-            else -> "#0284C7" to ""
-        }
-        val cerrado = estadoPedido.lowercase() in setOf("entregado", "no_entregado", "cancelado")
-        control?.ejecutar("setEstado('$color', '$texto', $cerrado);")
     }
 }
 

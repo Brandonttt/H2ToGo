@@ -8,6 +8,8 @@ import com.h2togo.backend.notificaciones.PushService;
 import com.h2togo.backend.pedidos.dto.DetalleResponse;
 import com.h2togo.backend.pedidos.dto.PedidoDisponibleResponse;
 import com.h2togo.backend.pedidos.dto.PedidoResponse;
+import com.h2togo.backend.tracking.RastreoService;
+import com.h2togo.backend.tracking.UbicacionService;
 import com.h2togo.backend.usuarios.Repartidor;
 import com.h2togo.backend.usuarios.RepartidorRepository;
 import com.h2togo.backend.vehiculos.VehiculoNegocio;
@@ -35,6 +37,8 @@ public class AsignacionService {
     private final RepartidorRepository repartidorRepository;
     private final PushService pushService;
     private final VehiculoNegocioRepository vehiculoRepository;
+    private final UbicacionService ubicacionService;
+    private final RastreoService rastreoService;
 
     private final MiembrosNegocioService miembrosService;
 
@@ -42,7 +46,9 @@ public class AsignacionService {
             RepartidorRepository repartidorRepository, PushService pushService,
             VehiculoNegocioRepository vehiculoRepository,
             PedidoEnriquecedor enriquecedor,
-            MiembrosNegocioService miembrosService) {
+            MiembrosNegocioService miembrosService,
+            UbicacionService ubicacionService,
+            RastreoService rastreoService) {
         this.miembrosService = miembrosService;
         this.jdbc = jdbc;
         this.enriquecedor = enriquecedor;
@@ -50,6 +56,8 @@ public class AsignacionService {
         this.repartidorRepository = repartidorRepository;
         this.pushService = pushService;
         this.vehiculoRepository = vehiculoRepository;
+        this.ubicacionService = ubicacionService;
+        this.rastreoService = rastreoService;
     }
 
     /**
@@ -217,6 +225,10 @@ public class AsignacionService {
         jdbc.update("UPDATE pedidos SET estado_actual = 'en_camino'::estado_pedido WHERE id_pedido = :id",
                 new MapSqlParameterSource("id", idPedido));
         insertarHistorial(idPedido, "en_camino", null, lat, lon);
+        if (Double.isFinite(lat) && Double.isFinite(lon) && (lat != 0.0 || lon != 0.0)) {
+            ubicacionService.fijar(idRepartidor, lat, lon);
+            rastreoService.publicarPosicionInicial(idPedido, lat, lon);
+        }
         pushService.notificar((Integer) pedido.get("id_cliente"), "Pedido en camino",
                 "Tu repartidor va en camino a tu domicilio.", datosPedido("pedido_en_camino", idPedido));
         return respuesta(idPedido);

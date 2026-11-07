@@ -875,8 +875,12 @@ class RepartidorViewModel : ViewModel() {
         }
     }
 
-    /** Al salir de la pantalla de ruta: el próximo pedido empieza con ruta nueva. */
-    fun detenerNavegacion() {
+    /** Al salir de la pantalla de ruta: el próximo pedido empieza con ruta nueva (sin borrar la de una parada recién abierta). */
+    fun detenerNavegacion(idPedidoSaliente: Int? = null) {
+        val activo = _pedidoEnRuta.value?.id
+        if (idPedidoSaliente != null && activo != null && activo != idPedidoSaliente) {
+            return
+        }
         rutaJob?.cancel()
         rutaJob = null
         _rutaCalculada.value = null
@@ -896,10 +900,22 @@ class RepartidorViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
+                try {
+                    apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to lat, "lon" to lon))
+                } catch (_: Exception) {
+                    // Mejor esfuerzo previo: el servidor también la fija en /en-camino y se reenvía tras cambiar estado.
+                }
                 val resp = apiClient.repartidorApi.marcarEnCamino(id, mapOf("lat" to lat, "lon" to lon))
                 if (resp.isSuccessful && resp.body() != null) {
-                    _pedidoEnRuta.value = resp.body()!!
-                    onSuccess(resp.body()!!)
+                    val actualizado = resp.body()!!
+                    _pedidoEnRuta.value = actualizado
+                    launch {
+                        try {
+                            apiClient.repartidorApi.reportarUbicacion(mapOf("lat" to lat, "lon" to lon))
+                        } catch (_: Exception) {}
+                    }
+                    alMoverse(id, com.htogo.app.data.location.Posicion(lat, lon, 15f), forzar = true)
+                    onSuccess(actualizado)
                 } else {
                     onError(parseError(resp.errorBody()?.string()) ?: "No se pudo iniciar el viaje (${resp.code()})")
                 }
@@ -1044,6 +1060,9 @@ class RepartidorViewModel : ViewModel() {
      * seguir desde el domicilio recién entregado. null = se usa el GPS real.
      */
     var ultimaPosicionSimulada: com.htogo.app.data.location.Posicion? = null
+
+    /** Última ubicación real conocida del teléfono: evita perder el origen al pasar de una parada a otra en Ruta del día. */
+    var ultimaPosicionRealConocida: com.htogo.app.data.location.Posicion? = null
 
     /** Coordenadas de la base de la purificadora del repartidor (para partir de ahí en FakeGPS). */
     fun ubicacionPurificadora(): Pair<Double, Double>? {
@@ -1285,6 +1304,8 @@ class RepartidorViewModel : ViewModel() {
         enRutaDelDia = false
         _entregasCompletadasRuta.value = 0
         ultimaPosicionSimulada = null
+        ultimaPosicionRealConocida = null
+        com.htogo.app.data.location.EntregaEnCurso.simulacionActiva.value = false
         detenerNavegacion()
     }
 }
