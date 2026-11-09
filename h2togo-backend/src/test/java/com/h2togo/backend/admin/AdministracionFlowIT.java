@@ -374,6 +374,63 @@ class AdministracionFlowIT {
     }
 
     @Test
+    void bicicletasYTriciclosSoloRequierenColorYCapacidad() throws Exception {
+        String admin = adminToken();
+        String tokenDue = registrarDueno("vdue@test.mx", "5551230095", "Negocio Bicis");
+        int idRep = usuarioRepository.findByCorreo("vdue@test.mx").orElseThrow().getId();
+        int idNegocio = repartidorRepository.findById(idRep).orElseThrow().getIdNegocio();
+        String url = "/api/v1/solicitudes";
+        String vehiculo = """
+                {"codigoCambio":"AGREGAR_VEHICULO","valorNuevo":{"tipoVehiculo":"%s","marca":"","modelo":"",
+                 "color":"%s","placas":"","capacidadGarrafones":%d}}""";
+
+        // Auto sin placas, marca ni modelo: sigue rechazado.
+        mvc.perform(post(url).header("Authorization", "Bearer " + tokenDue).contentType(MediaType.APPLICATION_JSON)
+                        .content(vehiculo.formatted("automovil", "Rojo", 20)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("DATOS_VEHICULO_INVALIDOS"));
+        // Bicicleta sin color o triciclo sin capacidad: rechazados.
+        mvc.perform(post(url).header("Authorization", "Bearer " + tokenDue).contentType(MediaType.APPLICATION_JSON)
+                        .content(vehiculo.formatted("bicicleta_carga", " ", 10)))
+                .andExpect(status().isUnprocessableEntity());
+        mvc.perform(post(url).header("Authorization", "Bearer " + tokenDue).contentType(MediaType.APPLICATION_JSON)
+                        .content(vehiculo.formatted("triciclo_carga", "Azul", 0)))
+                .andExpect(status().isUnprocessableEntity());
+
+        // Bicicleta y triciclo con solo color y capacidad: aceptados (sin placas no hay duplicado).
+        int idSol1 = JsonPath.read(mvc.perform(post(url).header("Authorization", "Bearer " + tokenDue)
+                        .contentType(MediaType.APPLICATION_JSON).content(vehiculo.formatted("bicicleta_carga", "Verde", 10)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        int idSol2 = JsonPath.read(mvc.perform(post(url).header("Authorization", "Bearer " + tokenDue)
+                        .contentType(MediaType.APPLICATION_JSON).content(vehiculo.formatted("triciclo_carga", "Azul", 15)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        for (int idSol : new int[] {idSol1, idSol2}) {
+            mvc.perform(post("/api/v1/admin/solicitudes/" + idSol + "/resolucion").header("Authorization", "Bearer " + admin)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"decision\":\"APROBADO\"}"))
+                    .andExpect(status().isOk());
+        }
+        var p = new MapSqlParameterSource().addValue("n", idNegocio);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM vehiculos_negocio WHERE id_negocio = :n AND activo
+                  AND tipo_vehiculo IN ('bicicleta_carga', 'triciclo_carga') AND placas IS NULL AND modelo IS NULL""",
+                p, Integer.class)).isEqualTo(2);
+
+        // Modificar la bicicleta sin color: rechazado; con color y sin marca/modelo/placas: aceptado.
+        int idVeh = jdbc.queryForObject("""
+                SELECT id_vehiculo FROM vehiculos_negocio
+                WHERE id_negocio = :n AND tipo_vehiculo = 'bicicleta_carga'""", p, Integer.class);
+        String modificar = """
+                {"codigoCambio":"DATOS_VEHICULO","idVehiculo":%d,"valorNuevo":{"tipoVehiculo":"bicicleta_carga",
+                 "marca":"","modelo":"","color":"%s","placas":"","capacidadGarrafones":12}}""";
+        mvc.perform(post(url).header("Authorization", "Bearer " + tokenDue).contentType(MediaType.APPLICATION_JSON)
+                        .content(modificar.formatted(idVeh, "")))
+                .andExpect(status().isUnprocessableEntity());
+        mvc.perform(post(url).header("Authorization", "Bearer " + tokenDue).contentType(MediaType.APPLICATION_JSON)
+                        .content(modificar.formatted(idVeh, "Negro")))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     void noDuenoNoPuedeSolicitar() throws Exception {
         String tokenDue = registrarDueno("sdue3@test.mx", "5551230060", "Negocio NoDueno");
         int idRep = usuarioRepository.findByCorreo("sdue3@test.mx").orElseThrow().getId();

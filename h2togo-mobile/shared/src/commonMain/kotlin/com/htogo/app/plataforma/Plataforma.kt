@@ -23,7 +23,7 @@ object Plataforma {
 }
 
 /**
- * Mensaje breve al usuario, igual en Android e iOS: una tarjeta arriba de la pantalla que pinta
+ * Mensaje breve al usuario, igual en Android e iOS: una tarjeta abajo de la pantalla que pinta
  * la raíz de la app ([AvisosEnPantalla]). [largo]: se queda más tiempo (errores, instrucciones).
  */
 fun mostrarAviso(texto: String, largo: Boolean = false) = AvisosEnPantalla.mostrar(texto, largo)

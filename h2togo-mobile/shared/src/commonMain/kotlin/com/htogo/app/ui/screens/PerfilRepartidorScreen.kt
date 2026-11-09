@@ -197,51 +197,59 @@ fun PerfilRepartidorScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
+        Column(Modifier.fillMaxSize().padding(padding)) {
+        // Encabezado fijo: se queda arriba mientras el contenido se desplaza.
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary))
+                )
+                .statusBarsPadding()
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
         ) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                        .background(
-                            Brush.verticalGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary))
-                        )
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar", tint = Color.White)
-                        }
-                        Text(
-                            "Mi perfil",
-                            color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f).padding(start = 4.dp)
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar", tint = Color.White)
+                    }
+                    Text(
+                        "Mi perfil",
+                        color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f).padding(start = 4.dp)
+                    )
+                    IconButton(onClick = {
+                        val nuevoEstado = !notifPush
+                        notifPush = nuevoEstado
+                        sessionManager.guardarNotificacionesActivas(nuevoEstado)
+                        mostrarAviso(if (nuevoEstado) "Notificaciones activadas" else "Notificaciones desactivadas")
+                    }) {
+                        Icon(
+                            if (notifPush) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
+                            contentDescription = if (notifPush) "Desactivar notificaciones" else "Activar notificaciones",
+                            tint = if (notifPush) Color.White else Color.White.copy(alpha = 0.6f)
                         )
-                        IconButton(onClick = {
-                            val nuevoEstado = !notifPush
-                            notifPush = nuevoEstado
-                            sessionManager.guardarNotificacionesActivas(nuevoEstado)
-                            mostrarAviso(if (nuevoEstado) "Notificaciones activadas" else "Notificaciones desactivadas")
-                        }) {
-                            Icon(
-                                if (notifPush) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
-                                contentDescription = if (notifPush) "Desactivar notificaciones" else "Activar notificaciones",
-                                tint = if (notifPush) Color.White else Color.White.copy(alpha = 0.6f)
-                            )
-                        }
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Filled.Settings, null, tint = Color.White)
-                        }
+                    }
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Filled.Settings, null, tint = Color.White)
                     }
                 }
+        }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            item {
+                // Fondo azul bajo la tarjeta de perfil (se superpone con offset).
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(76.dp)
+                        .background(HToGoColors.Primary)
+                )
             }
 
             item {
@@ -379,6 +387,7 @@ fun PerfilRepartidorScreen(
                 }
                 Spacer(Modifier.height(32.dp))
             }
+        }
         }
 
         if (mostrarCambioContrasena) {

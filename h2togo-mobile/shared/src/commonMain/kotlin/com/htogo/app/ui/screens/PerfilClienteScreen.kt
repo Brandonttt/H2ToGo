@@ -1,7 +1,6 @@
 package com.htogo.app.ui.screens
 
 import com.htogo.app.ui.components.BarraEstadoClara
-import com.htogo.app.util.textoConAnio
 
 import com.htogo.app.plataforma.mostrarAviso
 import com.htogo.app.util.format
@@ -37,6 +36,7 @@ import com.htogo.app.data.local.SessionManager
 import com.htogo.app.ui.ClienteViewModel
 import com.htogo.app.ui.components.AgregarDireccionDialog
 import com.htogo.app.ui.components.CambiarContrasenaDialog
+import com.htogo.app.ui.components.CambiarTelefonoDialog
 import com.htogo.app.ui.components.EliminarCuentaDialog
 import com.htogo.app.ui.components.ClienteBottomBar
 import com.htogo.app.ui.components.ClienteTab
@@ -76,16 +76,20 @@ fun PerfilClienteScreen(
     onCambiarContrasena: (actual: String, nueva: String, onResult: (String?) -> Unit) -> Unit = { _, _, r -> r(null) },
     onEliminarCuenta: (password: String, onResult: (String?) -> Unit) -> Unit = { _, r -> r(null) },
     onCuentaEliminada: () -> Unit = {},
+    /** Cambio de teléfono (paso 1: enviar código al número nuevo); mientras sea null la fila del teléfono no es interactiva. */
+    onSolicitarCambioTelefono: ((telefono: String, onResult: (String?) -> Unit) -> Unit)? = null,
+    /** Paso 2: confirmar el código y guardar el número nuevo. */
+    onConfirmarCambioTelefono: (telefono: String, codigo: String, onResult: (String?) -> Unit) -> Unit = { _, _, r -> r(null) },
     clienteViewModel: ClienteViewModel = viewModel { ClienteViewModel() }
 ) {
     val sessionManager = remember { SessionManager.getInstance() }
     var mostrarCambioContrasena by remember { mutableStateOf(false) }
     val savedName = remember { sessionManager.obtenerNombre()?.ifBlank { "Cliente" } ?: "Cliente" }
     val savedEmail = remember { sessionManager.obtenerCorreo() ?: "" }
-    val savedPhone = remember { sessionManager.obtenerTelefono() ?: "No registrado" }
+    var savedPhone by remember { mutableStateOf(sessionManager.obtenerTelefono() ?: "No registrado") }
+    var mostrarCambioTelefono by remember { mutableStateOf(false) }
     
-    // El DOB lo manejamos como state porque el usuario lo puede editar desde esta pantalla
-    var savedDob by remember { mutableStateOf(sessionManager.obtenerFechaNacimiento() ?: "No especificada") }
+    val savedDob by remember { mutableStateOf(sessionManager.obtenerFechaNacimiento() ?: "No especificada") }
     
     // Obtenemos el historial real del viewModel
     val historial by clienteViewModel.historial.collectAsState()
@@ -122,7 +126,6 @@ fun PerfilClienteScreen(
     var direccionPredeterminadaId by remember {
         mutableStateOf(sessionManager.obtenerDireccionPredeterminadaId())
     }
-    var mostrarDialogFecha by remember { mutableStateOf(false) }
     var mostrarDialogLogout by remember { mutableStateOf(false) }
     var mostrarDialogEliminarCuenta by remember { mutableStateOf(false) }
 
@@ -163,15 +166,20 @@ fun PerfilClienteScreen(
         },
         containerColor = HToGoColors.Background
     ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+        // Barra superior fija: solo el contenido de abajo se desplaza.
+        ProfileTopBar(onBack)
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
+            Modifier.fillMaxWidth().weight(1f),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            item { ProfileHeader(user, onBack) }
+            item { ProfileHeader(user) }
             item { StatsRow(user) }
 
             item { SectionTitle("Datos personales") }
-            item { DataList(user, onDobClick = { mostrarDialogFecha = true }) }
+            item {
+                DataList(user, onTelefonoClick = onSolicitarCambioTelefono?.let { { mostrarCambioTelefono = true } })
+            }
 
             item { SectionTitle("Mis direcciones · ${direcciones.size}") }
             if (direcciones.isEmpty()) {
@@ -242,6 +250,7 @@ fun PerfilClienteScreen(
             }
 
             item { Spacer(Modifier.height(24.dp)) }
+        }
         }
 
         if (mostrarDialogDireccion || direccionAEditar != null) {
@@ -330,6 +339,15 @@ fun PerfilClienteScreen(
             CambiarContrasenaDialog(onDismiss = { mostrarCambioContrasena = false }, onGuardar = onCambiarContrasena)
         }
 
+        if (mostrarCambioTelefono && onSolicitarCambioTelefono != null) {
+            CambiarTelefonoDialog(
+                onDismiss = { mostrarCambioTelefono = false },
+                onEnviarCodigo = onSolicitarCambioTelefono,
+                onConfirmar = onConfirmarCambioTelefono,
+                onActualizado = { nuevo -> savedPhone = nuevo }
+            )
+        }
+
         if (mostrarDialogEliminarCuenta) {
             EliminarCuentaDialog(
                 onDismiss = { mostrarDialogEliminarCuenta = false },
@@ -373,43 +391,36 @@ fun PerfilClienteScreen(
                 containerColor = Color.White
             )
         }
+    }
+}
 
-        if (mostrarDialogFecha) {
-            DatePickerModal(
-                onDismiss = { mostrarDialogFecha = false },
-                onDateSelected = { millis ->
-                    if (millis != null) {
-                        val dateString = com.htogo.app.util.fechaDeSelector(millis).textoConAnio()
-                        savedDob = dateString
-                        sessionManager.guardarFechaNacimiento(dateString)
-                    }
-                }
-            )
+@Composable
+private fun ProfileTopBar(onBack: () -> Unit) {
+    Surface(color = HToGoColors.PrimaryDark, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.statusBarsPadding().padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HeaderIconBtn(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
+                Text("Mi perfil",
+                    Modifier.weight(1f),
+                    fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                HeaderIconBtn(Icons.Filled.Settings, onClick = {})
+            }
         }
     }
 }
 
 @Composable
-private fun ProfileHeader(user: UserProfile, onBack: () -> Unit) {
+private fun ProfileHeader(user: UserProfile) {
     Box(Modifier.fillMaxWidth()) {
-        Surface(color = HToGoColors.PrimaryDark, modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.statusBarsPadding().padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 54.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HeaderIconBtn(Icons.AutoMirrored.Filled.ArrowBack, onClick = onBack)
-                    Text("Mi perfil",
-                        Modifier.weight(1f),
-                        fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                    HeaderIconBtn(Icons.Filled.Settings, onClick = {})
-                }
-            }
-        }
+        // Franja del color del encabezado detrás de la mitad superior de la tarjeta.
+        Box(Modifier.fillMaxWidth().height(54.dp).background(HToGoColors.PrimaryDark))
         Surface(
             shape = RoundedCornerShape(18.dp),
             color = HToGoColors.Surface,
             shadowElevation = 4.dp,
             modifier = Modifier
-                .padding(top = 54.dp)
+                .padding(top = 8.dp)
                 .padding(horizontal = 16.dp)
                 .fillMaxWidth()
         ) {
@@ -444,14 +455,6 @@ private fun ProfileHeader(user: UserProfile, onBack: () -> Unit) {
                         }
                     }
                 }
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = HToGoColors.PrimarySoft,
-                    modifier = Modifier.size(36.dp).clickable {}
-                ) { Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Edit, null, tint = HToGoColors.Primary,
-                        modifier = Modifier.size(18.dp))
-                } }
             }
         }
     }
@@ -501,7 +504,7 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun DataList(user: UserProfile, onDobClick: () -> Unit = {}) {
+private fun DataList(user: UserProfile, onTelefonoClick: (() -> Unit)? = null) {
     Surface(shape = RoundedCornerShape(14.dp), color = Color.White,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Column {
@@ -509,16 +512,17 @@ private fun DataList(user: UserProfile, onDobClick: () -> Unit = {}) {
             DividerRow()
             DataRow(Icons.Filled.Mail, "Correo electrónico", user.email)
             DividerRow()
-            DataRow(Icons.Filled.Phone, "Teléfono", user.telefono)
-            DividerRow()
-            DataRow(Icons.Filled.Cake, "Fecha de nacimiento", user.nacimiento, onClick = onDobClick)
+            // Solo el teléfono se puede cambiar (fila con flecha); nombre y correo son informativos.
+            DataRow(Icons.Filled.Phone, "Teléfono", user.telefono, onClick = onTelefonoClick)
         }
     }
 }
 
 @Composable
-private fun DataRow(icon: ImageVector, lbl: String, value: String, onClick: () -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
+private fun DataRow(icon: ImageVector, lbl: String, value: String, onClick: (() -> Unit)? = null) {
+    Row(Modifier.fillMaxWidth()
+        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+        .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
             .background(HToGoColors.PrimarySoft), contentAlignment = Alignment.Center) {
@@ -530,7 +534,7 @@ private fun DataRow(icon: ImageVector, lbl: String, value: String, onClick: () -
             Text(value, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = HToGoColors.TextPrimary,
                 modifier = Modifier.padding(top = 1.dp))
         }
-        Icon(Icons.Filled.ChevronRight, null, tint = HToGoColors.TextTertiary)
+        if (onClick != null) Icon(Icons.Filled.ChevronRight, null, tint = HToGoColors.TextTertiary)
     }
 }
 

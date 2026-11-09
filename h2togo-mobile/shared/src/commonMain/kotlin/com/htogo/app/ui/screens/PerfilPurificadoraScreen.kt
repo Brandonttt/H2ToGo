@@ -394,7 +394,8 @@ private fun DatoRow(icon: ImageVector, label: String, value: String) {
         Column {
             Text(label, fontSize = 11.sp, color = HToGoColors.TextSecondary,
                 fontWeight = FontWeight.SemiBold)
-            Text(value, fontSize = 13.sp, color = HToGoColors.TextPrimary, lineHeight = 18.sp)
+            Text(value, fontSize = 13.sp, color = HToGoColors.TextPrimary, lineHeight = 20.sp,
+                letterSpacing = 0.2.sp, modifier = Modifier.padding(top = 3.dp))
         }
     }
 }

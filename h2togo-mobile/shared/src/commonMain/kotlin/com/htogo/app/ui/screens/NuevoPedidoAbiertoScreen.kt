@@ -66,8 +66,8 @@ private val ABIERTO_ADDRESSES = listOf(
 )
 
 
-private const val PRECIO_MIN = 25
-private const val PRECIO_MAX = 80
+private const val PRECIO_MIN = 20
+private const val PRECIO_MAX = 120
 
 @Composable
 fun NuevoPedidoAbiertoScreen(
@@ -99,7 +99,7 @@ fun NuevoPedidoAbiertoScreen(
         }
     }
 
-    var qty by remember { mutableStateOf(3) }
+    var qty by remember { mutableStateOf(1) }
     var precioMax by remember { mutableStateOf(45) }
     val focusManager = LocalFocusManager.current
     var selectedAddrId by remember { mutableStateOf("") }
@@ -126,7 +126,7 @@ fun NuevoPedidoAbiertoScreen(
     val selectedAddr = addresses.firstOrNull { it.id == selectedAddrId }
     // El envío no se cobra aparte: el tope es solo el agua (más envases si no los entrega).
     val totalMax = qty * precioMax
-    val canConfirm = selectedAddr != null && marcaSelId != null && qty > 0 && precioMax >= 25 && !isLoading
+    val canConfirm = selectedAddr != null && marcaSelId != null && qty > 0 && precioMax >= PRECIO_MIN && !isLoading
 
     fun ejecutarPedidoAbierto() {
         if (selectedAddr == null) {

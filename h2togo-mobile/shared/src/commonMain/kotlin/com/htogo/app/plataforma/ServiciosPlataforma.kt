@@ -21,6 +21,8 @@ interface ServiciosPlataforma {
     suspend fun buscarCoordenadas(texto: String): GeocodingHelper.GeoResult? = null
     suspend fun direccionDeCoordenadas(lat: Double, lon: Double): GeocodingHelper.GeoResult? = null
     fun tienePermisoUbicacion(): Boolean = false
+    /** Posición actual del dispositivo, una sola vez (p. ej. "Mi ubicación" al agregar un domicilio). Null si no hay permiso o señal. */
+    suspend fun ubicacionActual(): Posicion? = null
     /** Inicia el seguimiento GPS de una entrega (en Android, servicio en primer plano). */
     fun iniciarEntrega(idPedido: Int) {}
     fun detenerEntrega() {}

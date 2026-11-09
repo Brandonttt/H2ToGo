@@ -1,7 +1,10 @@
 package com.h2togo.backend.usuarios;
 
+import com.h2togo.backend.auth.AuthService;
 import com.h2togo.backend.security.SecurityUtils;
 import com.h2togo.backend.usuarios.dto.CambioContrasenaRequest;
+import com.h2togo.backend.usuarios.dto.CambioTelefonoConfirmacionRequest;
+import com.h2togo.backend.usuarios.dto.CambioTelefonoSolicitudRequest;
 import com.h2togo.backend.usuarios.dto.DispositivoRequest;
 import com.h2togo.backend.usuarios.dto.EliminarCuentaRequest;
 import com.h2togo.backend.usuarios.dto.PerfilMeResponse;
@@ -24,9 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class UsuariosController {
 
     private final UsuarioService usuarioService;
+    private final AuthService authService;
 
-    public UsuariosController(UsuarioService usuarioService) {
+    public UsuariosController(UsuarioService usuarioService, AuthService authService) {
         this.usuarioService = usuarioService;
+        this.authService = authService;
     }
 
     @GetMapping
@@ -44,6 +49,27 @@ public class UsuariosController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cambiarContrasena(@Valid @RequestBody CambioContrasenaRequest request) {
         usuarioService.cambiarContrasena(SecurityUtils.idActual(), request);
+    }
+
+    /**
+     * Cambio de teléfono con sesión iniciada, paso 1: envía un código por SMS al número nuevo.
+     * 409 si el número ya pertenece a otra cuenta.
+     */
+    @PostMapping("/telefono/solicitud")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void solicitarCambioTelefono(@Valid @RequestBody CambioTelefonoSolicitudRequest request) {
+        authService.solicitarCambioTelefono(SecurityUtils.idActual(), request.telefono());
+    }
+
+    /**
+     * Cambio de teléfono con sesión iniciada, paso 2: valida el código y guarda el número nuevo.
+     * Devuelve el perfil actualizado. 422 OTP_INVALIDO si el código no es válido.
+     */
+    @PostMapping("/telefono/confirmacion")
+    public PerfilMeResponse confirmarCambioTelefono(@Valid @RequestBody CambioTelefonoConfirmacionRequest request) {
+        int id = SecurityUtils.idActual();
+        authService.confirmarCambioTelefono(id, request.telefono(), request.codigo());
+        return usuarioService.perfil(id);
     }
 
     /** Registra el token FCM del dispositivo para recibir notificaciones con la app cerrada. */

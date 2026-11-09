@@ -106,6 +106,7 @@ object UiPlataformaIos : UiPlataforma {
 object ServiciosIos : ServiciosPlataforma {
     override val posicionEntrega: StateFlow<Posicion?> get() = UbicacionIos.posicion
     override fun tienePermisoUbicacion(): Boolean = UbicacionIos.tienePermiso()
+    override suspend fun ubicacionActual(): Posicion? = UbicacionIos.actual()
     override fun iniciarEntrega(idPedido: Int) = UbicacionIos.iniciar()
     override fun detenerEntrega() = UbicacionIos.detener()
 

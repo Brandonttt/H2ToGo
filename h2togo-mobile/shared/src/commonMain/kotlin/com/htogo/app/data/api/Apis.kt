@@ -33,6 +33,12 @@ class AuthApi(private val http: HttpClient) {
         http.put("usuarios/me/dispositivo") { setBody(body) }.aRespuesta()
     suspend fun cambiarContrasena(request: CambioContrasenaRequest): Respuesta<Unit> =
         http.put("usuarios/me/contrasena") { setBody(request) }.aRespuesta()
+    /** Cambio de teléfono con sesión iniciada (cuenta ya verificada): envía el código al número nuevo. */
+    suspend fun solicitarCambioTelefono(request: CambioTelefonoSolicitudRequest): Respuesta<Unit> =
+        http.post("usuarios/me/telefono/solicitud") { setBody(request) }.aRespuesta()
+    /** Valida el código y guarda el número nuevo; responde el perfil actualizado. */
+    suspend fun confirmarCambioTelefono(request: CambioTelefonoConfirmacionRequest): Respuesta<PerfilMeDto> =
+        http.post("usuarios/me/telefono/confirmacion") { setBody(request) }.aRespuesta()
     suspend fun eliminarCuenta(request: EliminarCuentaRequest): Respuesta<Unit> =
         http.post("usuarios/me/baja") { setBody(request) }.aRespuesta()
     /** Siempre responde 204, exista o no el correo (no se revela qué cuentas existen). */

@@ -91,7 +91,8 @@ data class HistPedido(
     val direccionIcon: ImageVector,
     val total: Int,
     val estado: HistEstado,
-    val grupo: String
+    val grupo: String,
+    val garrafones: Int = 0
 )
 
 private data class TabFilter(val label: String, val count: Int)
@@ -134,7 +135,8 @@ fun HistorialPedidosScreen(
                 direccionIcon = Icons.Filled.Home,
                 total = dto.totalPagar?.toInt() ?: 0,
                 estado = estadoEnum,
-                grupo = grupoPorFecha(dto.fechaCreacion)
+                grupo = grupoPorFecha(dto.fechaCreacion),
+                garrafones = dto.garrafonesTotales ?: 0
             )
         }
     }
@@ -216,7 +218,17 @@ fun HistorialPedidosScreen(
                                 p = p,
                                 onTap = { onPedidoTap(p.id.toIntOrNull()) },
                                 onAbrirPurificadora = onAbrirPurificadora,
-                                onRepeat = onRepetir
+                                onRepeat = {
+                                    // Repetir: misma cantidad y, si está entre las cercanas, misma purificadora.
+                                    clienteViewModel.cantidadRepetir = p.garrafones.takeIf { it > 0 }
+                                    clienteViewModel.purificadoras.value
+                                        .firstOrNull { it.nombreComercial.equals(p.purificadora, ignoreCase = true) }
+                                        ?.let {
+                                            clienteViewModel.purificadoraSeleccionadaId = it.id
+                                            clienteViewModel.purificadoraSeleccionadaNombre = it.nombreComercial
+                                        }
+                                    onRepetir()
+                                }
                             )
                         }
                     }

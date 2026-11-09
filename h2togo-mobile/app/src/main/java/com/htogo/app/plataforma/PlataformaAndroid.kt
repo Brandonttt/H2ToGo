@@ -36,6 +36,7 @@ class ServiciosAndroid(context: Context) : ServiciosPlataforma {
         GeocodingAndroid.obtenerDireccionDeCoordenadas(lat, lon)
 
     override fun tienePermisoUbicacion(): Boolean = UbicacionAndroid.tienePermiso(app)
+    override suspend fun ubicacionActual(): Posicion? = UbicacionAndroid.actual(app)
     override fun iniciarEntrega(idPedido: Int) = EntregaEnCursoService.iniciar(app, idPedido)
     override fun detenerEntrega() = EntregaEnCursoService.detener(app)
     override val posicionEntrega: StateFlow<Posicion?> get() = EntregaEnCursoService.posicion

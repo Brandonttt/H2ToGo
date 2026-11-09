@@ -67,6 +67,11 @@ class SessionManager(private val prefs: Settings) {
         prefs.putString(KEY_USER_PHONE, telefono)
     }
 
+    /** Tras cambiar el número desde el perfil. */
+    fun guardarTelefono(telefono: String) {
+        prefs.putString(KEY_USER_PHONE, telefono)
+    }
+
     fun guardarFechaNacimiento(fecha: String) {
         prefs.putString(KEY_USER_DOB, fecha)
     }

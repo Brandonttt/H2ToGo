@@ -9,6 +9,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.foundation.shape.CircleShape
+import com.htogo.app.plataforma.LocalUiPlataforma
+import com.htogo.app.plataforma.Plataforma
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -63,6 +67,48 @@ fun AgregarDireccionDialog(
     var isReverseGeocoding by remember { mutableStateOf(false) }
     var initialGeocodingIgnored by remember { mutableStateOf(isEditMode) }
     val coroutineScope = rememberCoroutineScope()
+
+    // Mueve el pin y llena los campos con la dirección de esas coordenadas.
+    fun moverPin(newLat: Double, newLon: Double) {
+        lat = newLat
+        lon = newLon
+        coroutineScope.launch {
+            isReverseGeocoding = true
+            isGeocoding = true
+            geocodeMessage = "Detectando dirección..."
+            val res = GeocodingHelper.obtenerDireccionDeCoordenadas(newLat, newLon)
+            if (res != null) {
+                if (!res.road.isNullOrBlank()) calle = res.road
+                if (!res.houseNumber.isNullOrBlank()) numeroExterior = res.houseNumber
+                if (!res.neighbourhood.isNullOrBlank()) colonia = res.neighbourhood
+                if (!res.postcode.isNullOrBlank()) codigoPostal = res.postcode
+                geocodeMessage = "Dirección detectada desde el mapa"
+            }
+            isGeocoding = false
+            delay(600)
+            isReverseGeocoding = false
+        }
+    }
+
+    // "Mi ubicación": una sola lectura del GPS del teléfono.
+    var buscandoMiUbicacion by remember { mutableStateOf(false) }
+    fun usarMiUbicacion() {
+        coroutineScope.launch {
+            buscandoMiUbicacion = true
+            geocodeMessage = "Buscando tu ubicación..."
+            val pos = Plataforma.servicios.ubicacionActual()
+            buscandoMiUbicacion = false
+            if (pos == null) {
+                geocodeMessage = "No pudimos obtener tu ubicación. Revisa que la app tenga permiso de ubicación."
+            } else {
+                moverPin(pos.lat, pos.lon)
+            }
+        }
+    }
+    val pedirPermiso = LocalUiPlataforma.current.rememberSolicitudUbicacion { concedido ->
+        if (concedido) usarMiUbicacion()
+        else geocodeMessage = "Activa el permiso de ubicación para usar tu ubicación actual."
+    }
 
     LaunchedEffect(calle, numeroExterior, colonia) {
         if (initialGeocodingIgnored) {
@@ -363,38 +409,43 @@ fun AgregarDireccionDialog(
                         )
                     }
 
-                    // OSM Webview
-                    OsmMapView(
-                        latitude = lat,
-                        longitude = lon,
-                        zoom = 16,
-                        isInteractive = true,
-                        isDraggablePin = true,
-                        onLocationChange = { newLat, newLon ->
-                            lat = newLat
-                            lon = newLon
-                            coroutineScope.launch {
-                                isReverseGeocoding = true
-                                isGeocoding = true
-                                geocodeMessage = "Detectando dirección..."
-                                val res = GeocodingHelper.obtenerDireccionDeCoordenadas(newLat, newLon)
-                                if (res != null) {
-                                    if (!res.road.isNullOrBlank()) calle = res.road
-                                    if (!res.houseNumber.isNullOrBlank()) numeroExterior = res.houseNumber
-                                    if (!res.neighbourhood.isNullOrBlank()) colonia = res.neighbourhood
-                                    if (!res.postcode.isNullOrBlank()) codigoPostal = res.postcode
-                                    geocodeMessage = "Dirección detectada desde el mapa"
-                                }
-                                isGeocoding = false
-                                delay(600)
-                                isReverseGeocoding = false
-                            }
-                        },
-                        modifier = Modifier
+                    // OSM Webview, con botón "Mi ubicación" encima
+                    Box(
+                        Modifier
                             .fillMaxWidth()
                             .height(210.dp)
                             .clip(RoundedCornerShape(14.dp))
-                    )
+                    ) {
+                        OsmMapView(
+                            latitude = lat,
+                            longitude = lon,
+                            zoom = 16,
+                            isInteractive = true,
+                            isDraggablePin = true,
+                            onLocationChange = { newLat, newLon -> moverPin(newLat, newLon) },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White,
+                            shadowElevation = 4.dp,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(10.dp)
+                                .size(40.dp)
+                                .clickable(enabled = !buscandoMiUbicacion) {
+                                    if (Plataforma.servicios.tienePermisoUbicacion()) usarMiUbicacion() else pedirPermiso()
+                                }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                if (buscandoMiUbicacion) {
+                                    CircularProgressIndicator(Modifier.size(18.dp), color = HToGoColors.Primary, strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Filled.MyLocation, "Mi ubicación", tint = HToGoColors.Primary, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
 
                     Spacer(Modifier.height(16.dp))
                 }

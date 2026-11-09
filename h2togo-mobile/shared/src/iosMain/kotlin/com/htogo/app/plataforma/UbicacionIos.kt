@@ -9,6 +9,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 import platform.CoreLocation.CLLocation
 import platform.CoreLocation.CLLocationManager
@@ -81,6 +84,19 @@ internal object UbicacionIos {
         manager.pausesLocationUpdatesAutomatically = false
         manager.location?.let { publicar(it) } // la última conocida pinta el mapa de inmediato
         manager.startUpdatingLocation()
+    }
+
+    /**
+     * Una sola lectura (p. ej. "Mi ubicación" al agregar un domicilio). Si no hay seguimiento de
+     * entrega activo, pide un fix con requestLocation(); [publicar] no lo reporta al backend.
+     */
+    suspend fun actual(): Posicion? {
+        if (!tienePermiso()) return null
+        if (siguiendo) posicion.value?.let { return it }
+        posicion.value = null
+        manager.requestLocation()
+        return withTimeoutOrNull(10_000) { posicion.filterNotNull().first() }
+            ?: manager.location?.coordinate?.useContents { Posicion(latitude, longitude, 50f) }
     }
 
     fun detener() {

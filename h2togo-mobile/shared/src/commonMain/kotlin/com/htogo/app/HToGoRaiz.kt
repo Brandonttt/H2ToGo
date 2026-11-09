@@ -6,23 +6,32 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -42,7 +51,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.rememberNavController
@@ -68,10 +76,11 @@ fun HToGoRaiz(ui: UiPlataforma) {
                 ReconectarAlVolver()
                 val navController = rememberNavController()
                 val hayConexion by rememberHayConexion()
-                Box(Modifier.fillMaxSize()) {
+                val focusManager = LocalFocusManager.current
+                Box(Modifier.fillMaxSize().quitarFocoAlTocarFuera(focusManager)) {
                     HToGoNavHost(navController = navController)
                     SinConexionBanner(visible = !hayConexion, modifier = Modifier.align(Alignment.TopCenter))
-                    AvisoFlotante(Modifier.align(Alignment.TopCenter))
+                    AvisoFlotante(Modifier.align(Alignment.BottomCenter))
                 }
             }
         }
@@ -103,8 +112,9 @@ private fun ReconectarAlVolver() {
 }
 
 /**
- * Avisos de [mostrarAviso] (Android e iOS): tarjeta grande arriba de la pantalla que entra
- * deslizándose; se cierra sola (3 s, o 5 s si es larga) o al tocarla.
+ * Avisos de [mostrarAviso] (Android e iOS): tarjeta compacta abajo, por encima de la barra de
+ * pestañas y del teclado, para no tapar el encabezado; se cierra sola (3 s, o 5 s si es larga)
+ * o al tocarla.
  */
 @Composable
 private fun AvisoFlotante(modifier: Modifier) {
@@ -119,28 +129,51 @@ private fun AvisoFlotante(modifier: Modifier) {
     }
     AnimatedVisibility(
         visible = aviso != null,
-        enter = slideInVertically { -it } + fadeIn(),
-        exit = slideOutVertically { -it } + fadeOut(),
+        enter = slideInVertically { it / 2 } + fadeIn(),
+        exit = slideOutVertically { it / 2 } + fadeOut(),
         modifier = modifier
     ) {
         val a = aviso ?: ultimo ?: return@AnimatedVisibility
         Surface(
-            shape = RoundedCornerShape(18.dp),
-            color = Color(0xFF0F172A),
-            shadowElevation = 10.dp,
-            modifier = Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth()
+            shape = RoundedCornerShape(14.dp),
+            color = HToGoColors.Surface,
+            border = BorderStroke(1.dp, HToGoColors.OutlineSoft),
+            shadowElevation = 6.dp,
+            modifier = Modifier
+                .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
+                .padding(start = 16.dp, end = 16.dp, bottom = 80.dp)
+                .fillMaxWidth()
                 .clickable { AvisosEnPantalla.limpiar(a) }
         ) {
-            Row(Modifier.padding(horizontal = 16.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(34.dp).clip(CircleShape).background(HToGoColors.PrimaryLight),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Notifications, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-                Spacer(Modifier.width(14.dp))
-                Text(a.texto, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 22.sp)
+            Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Info, null, tint = HToGoColors.Primary, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    a.texto,
+                    color = HToGoColors.TextPrimary,
+                    fontSize = 14.sp,
+                    lineHeight = 19.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
 }
+
+/**
+ * Toque fuera de un campo de texto: quita el foco y con eso baja el teclado (en iOS los teclados
+ * numéricos no tienen botón para cerrarse). Solo observa en el pase Final, sin consumir nada,
+ * así que no afecta clics ni scroll. Los campos de texto y los botones consumen su toque en el
+ * pase Main, por lo que aquí solo cuenta un toque que nadie consumió (fondo, tarjetas, textos):
+ * tocar un campo sigue enfocándolo. Un arrastre (scroll) también se consume y no quita el foco.
+ */
+private fun Modifier.quitarFocoAlTocarFuera(focusManager: FocusManager): Modifier =
+    pointerInput(focusManager) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Final)
+            // Devuelve null si el toque se canceló o algún hijo lo consumió (o lo convirtió en arrastre).
+            val up = waitForUpOrCancellation(pass = PointerEventPass.Final)
+            if (up != null && !up.isConsumed) focusManager.clearFocus()
+        }
+    }

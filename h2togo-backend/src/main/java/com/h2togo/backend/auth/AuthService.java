@@ -418,6 +418,86 @@ public class AuthService {
         smsService.enviarCodigoVerificacion(nuevoTel, codigo);
     }
 
+    /**
+     * Cambio de teléfono con sesión iniciada (cuenta ya verificada), paso 1: valida que el número
+     * nuevo no pertenezca a otra cuenta (RN-015) y le envía un código por SMS. El teléfono de la
+     * cuenta no cambia hasta confirmar el código. Corre con {@code h2togo_sistema} porque los roles
+     * de cliente/repartidor no pueden escribir {@code codigo_verificacion} ni {@code telefono}.
+     *
+     * <p>El código guardado en la base va ligado al número nuevo (código + últimos 4 dígitos del
+     * número, cabe en VARCHAR(10)) para que no sirva para confirmar otro número distinto.
+     */
+    public void solicitarCambioTelefono(int idUsuario, String telefono) {
+        String nuevoTel = telefono.trim();
+        java.util.function.Supplier<String> trabajo = () -> {
+            Usuario u = usuarioRepository.findById(idUsuario)
+                    .orElseThrow(() -> new NotFoundException("USUARIO_NO_ENCONTRADO", "Usuario no encontrado."));
+            if (nuevoTel.equals(u.getTelefono())) {
+                throw new BusinessRuleException("TELEFONO_IGUAL",
+                        "El número nuevo es igual al que ya tienes registrado.");
+            }
+            if (usuarioRepository.existsByTelefono(nuevoTel)) {
+                throw new ConflictException("RN-015_TELEFONO_DUPLICADO", "El teléfono ya está registrado.");
+            }
+            String codigo = generarOtp();
+            asignarCodigo(u, codigoLigado(codigo, nuevoTel));
+            usuarioRepository.save(u);
+            return codigo;
+        };
+        String codigo = tareaSistema != null ? tareaSistema.consultar(trabajo) : trabajo.get();
+        smsService.enviarCodigoVerificacion(nuevoTel, codigo);
+    }
+
+    /**
+     * Cambio de teléfono con sesión iniciada, paso 2: valida el código enviado al número nuevo
+     * (el de la base, el de Twilio Verify o el demo, igual que la verificación del registro) y
+     * actualiza {@code usuarios.telefono}. La cuenta sigue verificada. Los intentos fallidos
+     * cuentan igual que en los demás códigos.
+     */
+    public void confirmarCambioTelefono(int idUsuario, String telefono, String codigo) {
+        String nuevoTel = telefono.trim();
+        String cod = codigo.trim();
+        java.util.function.Supplier<Boolean> trabajo = () -> {
+            Usuario u = usuarioRepository.findById(idUsuario)
+                    .orElseThrow(() -> new NotFoundException("USUARIO_NO_ENCONTRADO", "Usuario no encontrado."));
+            if (nuevoTel.equals(u.getTelefono())) {
+                return true; // idempotente: ya quedó con ese número
+            }
+            if (usuarioRepository.existsByTelefono(nuevoTel)) {
+                throw new ConflictException("RN-015_TELEFONO_DUPLICADO", "El teléfono ya está registrado.");
+            }
+            boolean esDemo = otpDemo != null && !otpDemo.isBlank() && otpDemo.equals(cod);
+            boolean validoDb = u.getCodigoVerificacion() != null
+                    && u.getCodigoVerificacion().equals(codigoLigado(cod, nuevoTel))
+                    && u.getCodigoVerificacionExpiracion() != null
+                    && u.getCodigoVerificacionExpiracion().isAfter(OffsetDateTime.now());
+            if (esDemo || validoDb || smsService.verificarCodigo(nuevoTel, cod)) {
+                u.setTelefono(nuevoTel);
+                u.setTelefonoVerificado(true);
+                asignarCodigo(u, null);
+                usuarioRepository.save(u);
+                return true;
+            }
+            if (u.getCodigoVerificacion() != null) {
+                u.setCodigoIntentos((short) (u.getCodigoIntentos() + 1));
+                if (u.getCodigoIntentos() >= MAX_INTENTOS_CODIGO) {
+                    asignarCodigo(u, null);
+                }
+                usuarioRepository.save(u);
+            }
+            return false; // se confirma la transacción para guardar el intento fallido
+        };
+        boolean ok = tareaSistema != null ? tareaSistema.consultar(trabajo) : trabajo.get();
+        if (!ok) {
+            throw new BusinessRuleException("OTP_INVALIDO", "El código es inválido o expiró.");
+        }
+    }
+
+    private static String codigoLigado(String codigo, String telefono) {
+        String sufijo = telefono.length() > 4 ? telefono.substring(telefono.length() - 4) : telefono;
+        return codigo + sufijo;
+    }
+
     /** CU-002: login con sesión única (RN-018) y token opaco de 30 días (RNF-004). */
     @Transactional
     public SesionResponse login(LoginRequest req) {

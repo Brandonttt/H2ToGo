@@ -758,27 +758,22 @@ private fun EditarPrecioDialog(
                     }
                 }
                 Spacer(Modifier.height(18.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Botones apilados: el texto no se parte ni se corta.
+                Button(
+                    onClick = { precioInt?.let(onConfirmar) },
+                    enabled = valido && cambia,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                 ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp),
-                        shape = RoundedCornerShape(23.dp)
-                    ) { Text("Cancelar") }
-                    Button(
-                        onClick = { precioInt?.let(onConfirmar) },
-                        enabled = valido && cambia,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp),
-                        shape = RoundedCornerShape(23.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                    ) { Text("Aplicar precio", fontWeight = FontWeight.SemiBold) }
+                    Text(
+                        "Aplicar precio", fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
                 }
+                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
             }
         }
     }
@@ -853,8 +848,8 @@ private fun AgregarProductoDialog(
                         }
                     }
                 }
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Spacer(Modifier.height(14.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = precioStr,
                         onValueChange = { raw -> precioStr = raw.filter(Char::isDigit).take(3) },
@@ -881,46 +876,43 @@ private fun AgregarProductoDialog(
                     "Agua: si el cliente trae su garrafón ($20 – $120). Envase: cargo extra si no lo trae.",
                     fontSize = 11.sp,
                     color = HToGoColors.TextSecondary,
-                    lineHeight = 14.sp,
-                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                    lineHeight = 16.sp,
+                    modifier = Modifier.padding(top = 8.dp, start = 4.dp)
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
+                // Etiqueta corta (la larga se partía y chocaba con el borde); el detalle va abajo.
                 OutlinedTextField(
                     value = capacidadStr,
                     onValueChange = { raw -> capacidadStr = raw.filter(Char::isDigit).take(4) },
-                    label = { Text("Capacidad máxima en base (garrafones)") },
+                    label = { Text("Capacidad en base", maxLines = 1) },
+                    supportingText = { Text("Máximo de garrafones que caben en tu base") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 Spacer(Modifier.height(18.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Botones apilados: el texto no se parte ni se corta.
+                Button(
+                    onClick = {
+                        val m = marca
+                        if (m != null && precioInt != null && envaseInt != null && capacidadInt != null) {
+                            onEnviar(m, precioInt, envaseInt, capacidadInt)
+                        }
+                    },
+                    enabled = valido && !enviando,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentAmber)
                 ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp),
-                        shape = RoundedCornerShape(23.dp)
-                    ) { Text("Cancelar") }
-                    Button(
-                        onClick = {
-                            val m = marca
-                            if (m != null && precioInt != null && envaseInt != null && capacidadInt != null) {
-                                onEnviar(m, precioInt, envaseInt, capacidadInt)
-                            }
-                        },
-                        enabled = valido && !enviando,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp),
-                        shape = RoundedCornerShape(23.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentAmber)
-                    ) { Text(if (enviando) "Enviando…" else "Enviar a aprobación", fontWeight = FontWeight.SemiBold) }
+                    Text(
+                        if (enviando) "Enviando…" else "Enviar a aprobación", fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
                 }
+                TextButton(onClick = onDismiss, enabled = !enviando, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
             }
         }
     }

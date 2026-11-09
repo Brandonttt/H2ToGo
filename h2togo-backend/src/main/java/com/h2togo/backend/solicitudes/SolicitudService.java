@@ -159,10 +159,10 @@ public class SolicitudService {
             case DATOS_VEHICULO -> {
                 String rawTipo = str(v, "tipoVehiculo");
                 var ps = new MapSqlParameterSource()
-                        .addValue("marca", str(v, "marca"))
-                        .addValue("modelo", str(v, "modelo"))
-                        .addValue("color", str(v, "color"))
-                        .addValue("placas", str(v, "placas"))
+                        .addValue("marca", texto(v, "marca"))
+                        .addValue("modelo", texto(v, "modelo"))
+                        .addValue("color", texto(v, "color"))
+                        .addValue("placas", texto(v, "placas"))
                         .addValue("cap", intg(v, "capacidadGarrafones"))
                         .addValue("veh", s.getIdVehiculo())
                         .addValue("neg", idNegocio);
@@ -186,10 +186,12 @@ public class SolicitudService {
             }
             case AGREGAR_VEHICULO -> jdbc.update("""
                     INSERT INTO vehiculos_negocio (id_negocio, tipo_vehiculo, marca, modelo, color, placas, capacidad_garrafones)
-                    VALUES (:neg, CAST(:tipo AS tipo_vehiculo), :marca, :modelo, :color, :placas, :cap)""",
+                    VALUES (:neg, CAST(:tipo AS tipo_vehiculo), COALESCE(:marca, ''), :modelo, :color, :placas, :cap)""",
+                    // marca es NOT NULL en el esquema: sin marca (bicicletas/triciclos) se guarda vacía.
+                    // Placas y modelo vacíos se guardan como NULL.
                     new MapSqlParameterSource().addValue("neg", idNegocio).addValue("tipo", normalizarTipoVehiculo(str(v, "tipoVehiculo")))
-                            .addValue("marca", str(v, "marca")).addValue("modelo", str(v, "modelo"))
-                            .addValue("color", str(v, "color")).addValue("placas", str(v, "placas"))
+                            .addValue("marca", texto(v, "marca")).addValue("modelo", texto(v, "modelo"))
+                            .addValue("color", texto(v, "color")).addValue("placas", texto(v, "placas"))
                             .addValue("cap", intg(v, "capacidadGarrafones")));
             case ELIMINAR_VEHICULO -> jdbc.update(
                     "UPDATE vehiculos_negocio SET activo = FALSE WHERE id_vehiculo = :veh AND id_negocio = :neg",
@@ -236,18 +238,25 @@ public class SolicitudService {
     }
 
     private void validarAgregarVehiculo(int idNegocio, Map<String, Object> v) {
-        String placas = str(v, "placas");
-        String marca = str(v, "marca");
-        String modelo = str(v, "modelo");
+        String placas = texto(v, "placas");
+        String marca = texto(v, "marca");
+        String modelo = texto(v, "modelo");
+        String color = texto(v, "color");
         Integer cap = intg(v, "capacidadGarrafones");
 
-        if (placas == null || placas.isBlank() || marca == null || marca.isBlank()
-                || modelo == null || modelo.isBlank() || cap == null || cap <= 0) {
+        if (esSinMotor(normalizarTipoVehiculo(str(v, "tipoVehiculo")))) {
+            // Bicicletas y triciclos no llevan placas, marca ni modelo: basta el color.
+            if (color == null || cap == null || cap <= 0) {
+                throw new BusinessRuleException("DATOS_VEHICULO_INVALIDOS",
+                        "Para bicicletas y triciclos indica el color y una capacidad mayor a 0.");
+            }
+        } else if (placas == null || marca == null || modelo == null || cap == null || cap <= 0) {
             throw new BusinessRuleException("DATOS_VEHICULO_INVALIDOS",
                     "Agregar vehículo requiere marca, modelo, placas y capacidad mayor a 0.");
         }
+        if (placas == null) return;
 
-        var p = new MapSqlParameterSource().addValue("placas", placas.trim().toUpperCase()).addValue("neg", idNegocio);
+        var p = new MapSqlParameterSource().addValue("placas", placas.toUpperCase()).addValue("neg", idNegocio);
         Integer yaExiste = jdbc.queryForObject("""
                 SELECT (SELECT COUNT(*) FROM vehiculos_negocio WHERE id_negocio = :neg AND UPPER(placas) = :placas AND activo = TRUE)
                      + (SELECT COUNT(*) FROM solicitudes_cambio_perfil
@@ -268,6 +277,22 @@ public class SolicitudService {
                 p, rs -> rs.next() ? rs.getBoolean(1) : null);
         if (existe == null) {
             throw new NotFoundException("VEHICULO_NO_ENCONTRADO", "El vehículo no existe en tu negocio.");
+        }
+
+        // Misma regla que al agregar: un campo que se envía vacío no puede dejar sin dato
+        // obligatorio al vehículo (los que no se envían conservan su valor actual).
+        String rawTipo = str(v, "tipoVehiculo");
+        String tipo = rawTipo != null && !rawTipo.isBlank() ? normalizarTipoVehiculo(rawTipo)
+                : jdbc.queryForObject("SELECT tipo_vehiculo::text FROM vehiculos_negocio WHERE id_vehiculo = :veh",
+                        p, String.class);
+        Integer cap = intg(v, "capacidadGarrafones");
+        boolean vacioObligatorio = esSinMotor(tipo)
+                ? enviadoVacio(v, "color")
+                : enviadoVacio(v, "marca") || enviadoVacio(v, "modelo") || enviadoVacio(v, "placas");
+        if (vacioObligatorio || (cap != null && cap <= 0)) {
+            throw new BusinessRuleException("DATOS_VEHICULO_INVALIDOS", esSinMotor(tipo)
+                    ? "Para bicicletas y triciclos indica el color y una capacidad mayor a 0."
+                    : "El vehículo requiere marca, modelo, placas y capacidad mayor a 0.");
         }
 
         String placas = str(v, "placas");
@@ -442,6 +467,21 @@ public class SolicitudService {
     private static String str(Map<String, Object> m, String k) {
         Object v = m.get(k);
         return v == null ? null : v.toString();
+    }
+
+    /** Valor de texto recortado; {@code null} si falta o está en blanco. */
+    private static String texto(Map<String, Object> m, String k) {
+        String s = str(m, k);
+        return s == null || s.isBlank() ? null : s.trim();
+    }
+
+    /** El campo viene en la solicitud pero en blanco (intento de borrarlo). */
+    private static boolean enviadoVacio(Map<String, Object> m, String k) {
+        return m.containsKey(k) && texto(m, k) == null;
+    }
+
+    private static boolean esSinMotor(String tipo) {
+        return "bicicleta_carga".equals(tipo) || "triciclo_carga".equals(tipo);
     }
 
     private static Integer intg(Map<String, Object> m, String k) {

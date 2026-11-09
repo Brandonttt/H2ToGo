@@ -91,7 +91,6 @@ fun RegistroScreen(
     var nuevoLon by remember { mutableStateOf(-99.165057) }
     var nuevoHorarioApertura by remember { mutableStateOf("08:00") }
     var nuevoHorarioCierre by remember { mutableStateOf("19:00") }
-    var nuevoRfc by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         authViewModel.cargarPurificadoras()
@@ -249,9 +248,7 @@ fun RegistroScreen(
                     horarioApertura = nuevoHorarioApertura,
                     onHorarioAperturaChange = { nuevoHorarioApertura = it },
                     horarioCierre = nuevoHorarioCierre,
-                    onHorarioCierreChange = { nuevoHorarioCierre = it },
-                    rfc = nuevoRfc,
-                    onRfcChange = { nuevoRfc = it.uppercase().take(13) }
+                    onHorarioCierreChange = { nuevoHorarioCierre = it }
                 )
             }
 
@@ -490,9 +487,7 @@ private fun BloquePurificadora(
     horarioApertura: String,
     onHorarioAperturaChange: (String) -> Unit,
     horarioCierre: String,
-    onHorarioCierreChange: (String) -> Unit,
-    rfc: String,
-    onRfcChange: (String) -> Unit
+    onHorarioCierreChange: (String) -> Unit
 ) {
     var isGeocoding by remember { mutableStateOf(false) }
     var geocodeMessage by remember { mutableStateOf<String?>(null) }
@@ -795,13 +790,6 @@ private fun BloquePurificadora(
                             modifier = Modifier.weight(1f)
                         )
                     }
-                    Spacer(Modifier.height(8.dp))
-                    HToGoTextField(
-                        value = rfc,
-                        onValueChange = onRfcChange,
-                        label = "RFC del negocio (opcional)",
-                        supportingText = "Para emisión de facturas a clientes"
-                    )
                     Spacer(Modifier.height(8.dp))
                     Surface(
                         shape = RoundedCornerShape(10.dp),

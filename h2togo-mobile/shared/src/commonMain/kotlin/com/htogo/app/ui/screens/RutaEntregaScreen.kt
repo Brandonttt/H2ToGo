@@ -14,6 +14,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -229,6 +230,8 @@ fun RutaEntregaScreen(
     var posicionSimulada by remember { mutableStateOf(repartidorViewModel.ultimaPosicionSimulada) }
     LaunchedEffect(posicionSimulada) { repartidorViewModel.ultimaPosicionSimulada = posicionSimulada }
     var simulandoRecorrido by remember { mutableStateOf(false) }
+    // El recorrido simulado terminó en el domicilio: se muestra la tarjeta de llegada en la hoja.
+    var llegoAlDomicilio by remember(entrega.pedidoId) { mutableStateOf(false) }
     var pasoSimulado by remember { mutableStateOf(0) }
     var totalPasosSimulados by remember { mutableStateOf(0) }
     val posicionReal by EntregaEnCurso.posicion.collectAsState()
@@ -312,6 +315,7 @@ fun RutaEntregaScreen(
     // Recorrido automático paso a paso sobre las calles de la ruta partiendo desde la purificadora (FakeGPS en vivo)
     LaunchedEffect(simulandoRecorrido) {
         if (!simulandoRecorrido) return@LaunchedEffect
+        llegoAlDomicilio = false
         val idInt = entrega.pedidoId.toIntOrNull()
         val actual = posicionSimulada
         var puntosDesdePurificadora: List<Pair<Double, Double>> = emptyList()
@@ -365,7 +369,7 @@ fun RutaEntregaScreen(
         }
         if (simulandoRecorrido) {
             simulandoRecorrido = false
-            mostrarAviso("Llegaste al domicilio. Ya puedes pulsar 'Llegué al destino'", largo = true)
+            llegoAlDomicilio = true
         }
     }
 
@@ -826,6 +830,11 @@ fun RutaEntregaScreen(
                                     rutaNoDisponible = rutaNoDisponible
                                 )
                                 Spacer(Modifier.height(14.dp))
+                                val dentroDelRadio = distanciaDestinoM != null && distanciaDestinoM <= RADIO_ENTREGA_M
+                                if (llegoAlDomicilio || dentroDelRadio) {
+                                    LlegasteAlDomicilioCard()
+                                    Spacer(Modifier.height(12.dp))
+                                }
                                 Button(
                                     onClick = {
                                         // RF-014: el backend solo acepta la entrega a ≤ 30 m del domicilio.
@@ -1261,6 +1270,41 @@ private fun LlegadoSheet(entrega: EntregaActiva, segundos: Int) {
 
 /** Radio de entrega del backend (RF-014, h2togo.pedidos.entrega-radio-m). */
 private const val RADIO_ENTREGA_M = 30
+
+/** Aviso dentro de la hoja (no bloquea): ya está en el domicilio y puede registrar la llegada. */
+@Composable
+private fun LlegasteAlDomicilioCard() {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = HToGoColors.PrimaryWash,
+        border = BorderStroke(1.dp, HToGoColors.Primary.copy(alpha = .25f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).background(HToGoColors.Primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Filled.Flag, null, tint = Color.White, modifier = Modifier.size(22.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Llegaste al domicilio",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = HToGoColors.PrimaryDark
+                )
+                Text(
+                    "Ya puedes registrar la entrega: pulsa \u201cLlegué al destino\u201d.",
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    color = HToGoColors.TextSecondary
+                )
+            }
+        }
+    }
+}
 
 /** Navegación paso a paso en Google Maps (o la app de mapas del sistema si no está instalado). */
 private fun abrirGoogleMaps(entrega: EntregaActiva) =

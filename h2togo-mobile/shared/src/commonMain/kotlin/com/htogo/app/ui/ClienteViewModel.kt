@@ -74,6 +74,9 @@ class ClienteViewModel : ViewModel() {
     var purificadoraSeleccionadaNombre: String? = null
     var purificadoraSeleccionadaDistancia: String? = null
 
+    /** Cantidad del pedido que se repite desde el historial; NuevoPedido la toma una vez. */
+    var cantidadRepetir: Int? = null
+
 
     private fun prioridadEstadoActivo(estado: String): Int = when (estado.lowercase()) {
         "en_camino" -> 4
@@ -106,6 +109,27 @@ class ClienteViewModel : ViewModel() {
                 // Silencioso
             }
         }
+    }
+
+    /**
+     * Carrusel del inicio: vuelve [id] el pedido activo para que el seguimiento abra ese pedido.
+     * Se usa el resumen del historial mientras llega el detalle completo.
+     */
+    fun enfocarPedidoActivo(id: Int) {
+        if (_pedidoActivo.value?.id == id) return
+        val resumen = _historial.value.firstOrNull { it.id == id } ?: return
+        _pedidoActivo.value = PedidoResponse(
+            id = resumen.id,
+            estado = resumen.estado,
+            tipoSolicitud = resumen.tipoSolicitud,
+            totalPagar = resumen.totalPagar,
+            garrafonesTotales = resumen.garrafonesTotales,
+            esProgramado = resumen.esProgramado,
+            fechaCreacion = resumen.fechaCreacion,
+            direccionTexto = resumen.direccionTexto,
+            nombreNegocio = resumen.nombreNegocio
+        )
+        viewModelScope.launch { refrescarDetalle(id) }
     }
 
     fun cargarMarcas() {

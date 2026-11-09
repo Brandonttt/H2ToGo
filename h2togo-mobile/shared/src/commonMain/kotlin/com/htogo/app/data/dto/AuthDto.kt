@@ -96,6 +96,19 @@ data class CambiarTelefonoOtpRequest(
     @SerialName("nuevoTelefono") val nuevoTelefono: String
 )
 
+/** Cambio de teléfono con sesión iniciada, paso 1: número nuevo al que se envía el código. */
+@Serializable
+data class CambioTelefonoSolicitudRequest(
+    @SerialName("telefono") val telefono: String
+)
+
+/** Cambio de teléfono con sesión iniciada, paso 2: número nuevo y código recibido por SMS. */
+@Serializable
+data class CambioTelefonoConfirmacionRequest(
+    @SerialName("telefono") val telefono: String,
+    @SerialName("codigo") val codigo: String
+)
+
 /** GET /usuarios/me: solo los campos que usa la app. */
 @Serializable
 data class PerfilMeDto(

@@ -792,7 +792,9 @@ fun NuevoPedidoScreen(
         }
     }
 
-    var qty by remember { mutableStateOf(3) }
+    // "Repetir" desde el historial trae la cantidad de ese pedido; si no, 1 garrafón.
+    var qty by remember { mutableStateOf(clienteViewModel.cantidadRepetir?.coerceIn(1, 30) ?: 1) }
+    LaunchedEffect(Unit) { clienteViewModel.cantidadRepetir = null }
     var selectedAddrId by remember { mutableStateOf("") }
     var selectedBrandId by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }

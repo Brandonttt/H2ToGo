@@ -13,7 +13,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -63,6 +72,8 @@ fun HorarioNegocioDialog(
     onGuardar: (List<HorarioNegocioDto>) -> Unit
 ) {
     var editandoHora by remember { mutableStateOf<Pair<String, (String) -> Unit>?>(null) }
+    // Al tocar una hora primero se ofrece escribirla; desde ahí se puede abrir el reloj.
+    var escribiendoHora by remember { mutableStateOf<Pair<String, (String) -> Unit>?>(null) }
     var dias by remember {
         mutableStateOf((1..7).map { d ->
             val h = actuales?.firstOrNull { it.diaSemana == d }
@@ -77,7 +88,16 @@ fun HorarioNegocioDialog(
     val invalido = dias.firstOrNull { !it.cerrado && it.apertura >= it.cierre }
 
     fun elegirHora(actual: String, alElegir: (String) -> Unit) {
-        editandoHora = actual to alElegir
+        escribiendoHora = actual to alElegir
+    }
+
+    escribiendoHora?.let { (actual, alElegir) ->
+        EscribirHoraDialog(
+            actual = actual,
+            onGuardar = { alElegir(it); escribiendoHora = null },
+            onUsarReloj = { escribiendoHora = null; editandoHora = actual to alElegir },
+            onCancelar = { escribiendoHora = null }
+        )
     }
 
     editandoHora?.let { (actual, alElegir) ->
@@ -97,19 +117,29 @@ fun HorarioNegocioDialog(
                 Text(
                     "Los clientes solo pueden pedir dentro de este horario; fuera de él se ofrece programar.",
                     fontSize = 12.sp,
+                    lineHeight = 17.sp,
                     color = HToGoColors.TextSecondary
                 )
-                Spacer(Modifier.padding(top = 8.dp))
+                Text(
+                    "Toca una hora para escribirla.",
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    color = HToGoColors.TextSecondary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Spacer(Modifier.padding(top = 10.dp))
                 dias.forEachIndexed { i, d ->
+                    if (i > 0) HorizontalDivider(color = HToGoColors.OutlineSoft)
                     Row(
-                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        Modifier.fillMaxWidth().padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(DIAS[i], fontSize = 14.sp, modifier = Modifier.width(84.dp))
+                        Text(DIAS[i], fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1,
+                            modifier = Modifier.width(88.dp))
                         if (d.cerrado) {
                             Text("Cerrado", fontSize = 13.sp, color = HToGoColors.TextSecondary, modifier = Modifier.weight(1f))
                         } else {
-                            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalAlignment = Alignment.CenterVertically) {
                                 HoraChip(d.apertura) { elegirHora(d.apertura) { actualizar(i, d.copy(apertura = it)) } }
                                 Text("–", fontSize = 13.sp)
@@ -162,7 +192,69 @@ private fun HoraChip(hora: String, onClick: () -> Unit) {
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = HToGoColors.Primary,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
         )
     }
+}
+
+/** Convierte "8", "830", "0830" o "8:30" en "08:30"; null si no es una hora válida. */
+private fun parsearHora(texto: String): String? {
+    val t = texto.trim()
+    val (h, m) = if (':' in t) {
+        val partes = t.split(":")
+        if (partes.size != 2) return null
+        (partes[0].toIntOrNull() ?: return null) to (partes[1].ifEmpty { "0" }.toIntOrNull() ?: return null)
+    } else when (t.length) {
+        1, 2 -> (t.toIntOrNull() ?: return null) to 0
+        3 -> (t.take(1).toIntOrNull() ?: return null) to (t.drop(1).toIntOrNull() ?: return null)
+        4 -> (t.take(2).toIntOrNull() ?: return null) to (t.drop(2).toIntOrNull() ?: return null)
+        else -> return null
+    }
+    if (h !in 0..23 || m !in 0..59) return null
+    return "%02d:%02d".format(h, m)
+}
+
+/** Escribir la hora a mano (campo vacío para que funcione bien en iOS). */
+@Composable
+private fun EscribirHoraDialog(
+    actual: String,
+    onGuardar: (String) -> Unit,
+    onUsarReloj: () -> Unit,
+    onCancelar: () -> Unit
+) {
+    var texto by remember { mutableStateOf("") }
+    val hora = parsearHora(texto)
+    val foco = remember { FocusRequester() }
+    LaunchedEffect(Unit) { foco.requestFocus() }
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        title = { Text("Escribir hora") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = texto,
+                    onValueChange = { nuevo -> texto = nuevo.filter { it.isDigit() || it == ':' }.take(5) },
+                    singleLine = true,
+                    placeholder = { Text(actual) },
+                    supportingText = {
+                        Text(
+                            if (texto.isNotEmpty() && hora == null) "Hora no válida (00:00 a 23:59)"
+                            else "Formato 24 h, p. ej. 0830 o 1900",
+                            color = if (texto.isNotEmpty() && hora == null) HToGoColors.AccentRose else HToGoColors.TextSecondary
+                        )
+                    },
+                    isError = texto.isNotEmpty() && hora == null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { hora?.let(onGuardar) }),
+                    modifier = Modifier.focusRequester(foco)
+                )
+                TextButton(onClick = onUsarReloj) { Text("Elegir en el reloj") }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { hora?.let(onGuardar) }, enabled = hora != null) { Text("Listo") }
+        },
+        dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar") } }
+    )
 }

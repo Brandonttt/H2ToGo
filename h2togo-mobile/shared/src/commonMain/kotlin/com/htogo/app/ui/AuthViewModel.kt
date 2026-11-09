@@ -8,6 +8,8 @@ import com.htogo.app.plataforma.Plataforma
 import com.htogo.app.data.api.ApiClient
 import com.htogo.app.data.dto.CambiarTelefonoOtpRequest
 import com.htogo.app.data.dto.CambioContrasenaRequest
+import com.htogo.app.data.dto.CambioTelefonoConfirmacionRequest
+import com.htogo.app.data.dto.CambioTelefonoSolicitudRequest
 import com.htogo.app.data.dto.EliminarCuentaRequest
 import com.htogo.app.data.dto.IniciarVerificacionRequest
 import com.htogo.app.data.dto.LoginRequest
@@ -435,6 +437,42 @@ class AuthViewModel : ViewModel() {
                 else parseError(resp.errorBody()?.string()) ?: "No se pudo cambiar la contraseña (${resp.code()})")
             } catch (e: Exception) {
                 onResult(e.message ?: "Error de red al cambiar la contraseña")
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- Teléfono (con sesión)
+
+    /** Cambio de teléfono de una cuenta ya verificada, paso 1: el backend manda un código al número nuevo. */
+    fun solicitarCambioTelefono(telefono: String, onResult: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resp = apiClient.authApi.solicitarCambioTelefono(CambioTelefonoSolicitudRequest(telefono.trim()))
+                onResult(when {
+                    resp.isSuccessful -> null
+                    resp.code() == 404 -> "El servidor aún no cuenta con esta actualización; despliega la nueva versión del backend."
+                    else -> parseError(resp.errorBody()?.string()) ?: "No se pudo enviar el código (${resp.code()})"
+                })
+            } catch (e: Exception) {
+                onResult(e.message ?: "Error de red al enviar el código")
+            }
+        }
+    }
+
+    /** Paso 2: valida el código y guarda el número nuevo; también lo actualiza en la sesión local. */
+    fun confirmarCambioTelefono(telefono: String, codigo: String, onResult: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val tel = telefono.trim()
+                val resp = apiClient.authApi.confirmarCambioTelefono(CambioTelefonoConfirmacionRequest(tel, codigo.trim()))
+                if (resp.isSuccessful) {
+                    sessionManager.guardarTelefono(tel)
+                    onResult(null)
+                } else {
+                    onResult(parseError(resp.errorBody()?.string()) ?: "No se pudo cambiar el teléfono (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                onResult(e.message ?: "Error de red al cambiar el teléfono")
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.htogo.app.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
+
 import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.ui.components.SelectorFecha
@@ -69,6 +71,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import com.htogo.app.ui.components.RepartidorBottomBar
 import com.htogo.app.ui.components.RepartidorTab
 import com.htogo.app.ui.theme.HToGoColors
@@ -326,8 +335,8 @@ fun InventarioVehiculoScreen(
             ) {
                 when (tab) {
                     TabInventario.EN_BASE -> {
-                        item { ResumenBaseCard(totalGarrafones = totalBaseStock, capacidad = totalCapacidadBase, numMarcas = marcasBase.size) }
                         item { ProductosPreciosShortcut(onProductosPrecios) }
+                        item { ResumenBaseCard(totalGarrafones = totalBaseStock, capacidad = totalCapacidadBase, numMarcas = marcasBase.size) }
                         item { SectionTitle("Marcas en base") }
                         if (marcasBase.isEmpty()) {
                             item {
@@ -351,7 +360,7 @@ fun InventarioVehiculoScreen(
                                         Text("Sin marcas registradas", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = HToGoColors.TextPrimary)
                                         Spacer(Modifier.height(4.dp))
                                         Text(
-                                            "Entra a 'Productos y precios' para configurar el catálogo de tu negocio.",
+                                            "Entra a 'Mis productos y precios' para configurar el catálogo de tu negocio.",
                                             fontSize = 12.sp,
                                             color = HToGoColors.TextSecondary,
                                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -892,47 +901,47 @@ private fun TabPill(label: String, icon: ImageVector, selected: Boolean, modifie
 @Composable
 private fun ProductosPreciosShortcut(onClick: () -> Unit) {
     Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, HToGoColors.OutlineSoft),
+        shape = RoundedCornerShape(16.dp),
+        color = HToGoColors.PrimarySoft,
+        border = BorderStroke(1.dp, HToGoColors.Primary.copy(alpha = .25f)),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
     ) {
         Row(
-            Modifier.padding(14.dp),
+            Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 Modifier
-                    .size(40.dp)
+                    .size(46.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(HToGoColors.PrimarySoft),
+                    .background(HToGoColors.Primary),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Filled.AttachMoney, null,
-                    tint = HToGoColors.Primary,
-                    modifier = Modifier.size(22.dp)
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
                 )
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Productos y precios",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    "Mis productos y precios",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
                     color = HToGoColors.TextPrimary
                 )
                 Text(
                     "Gestiona el catálogo del negocio",
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     color = HToGoColors.TextSecondary
                 )
             }
             Icon(
                 Icons.Filled.ChevronRight, null,
-                tint = HToGoColors.TextTertiary
+                tint = HToGoColors.Primary
             )
         }
     }
@@ -1397,11 +1406,11 @@ private fun VehiculoDetalleCard(
                 Spacer(Modifier.height(14.dp))
                 Button(
                     onClick = onIniciarJornada,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                 ) {
-                    Text("Iniciar jornada con este vehículo", fontWeight = FontWeight.SemiBold)
+                    Text("Iniciar jornada con este vehículo", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -1516,7 +1525,7 @@ private fun RegistrarEntradaDialog(
                 Spacer(Modifier.height(6.dp))
                 if (marcas.isEmpty()) {
                     Text(
-                        "Tu negocio aún no tiene productos en el catálogo. Agrégalos en Productos y precios.",
+                        "Tu negocio aún no tiene productos en el catálogo. Agrégalos en Mis productos y precios.",
                         fontSize = 12.sp, color = HToGoColors.AccentRose
                     )
                 } else {
@@ -1663,7 +1672,7 @@ private fun RegistrarEntradaDialog(
                 if (libres > 0) {
                     Spacer(Modifier.height(14.dp))
                     Text("CANTIDAD DEL LOTE", fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold)
-                    QtyStepper(cantidad, max = libres) { cantidad = it.coerceAtLeast(1) }
+                    QtyStepper(cantidad, max = libres, min = 1) { cantidad = it.coerceAtLeast(1) }
                     Text(
                         "Máximo $libres (espacio disponible en base para esta marca)",
                         fontSize = 11.sp, color = HToGoColors.TextSecondary,
@@ -1680,8 +1689,8 @@ private fun RegistrarEntradaDialog(
                     enabled = motivoDeshabilitado == null && !registrando,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(25.dp),
+                        .heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                 ) {
                     if (registrando) {
@@ -1733,132 +1742,134 @@ private fun CargarVehiculoDialog(
             color = Color.White,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(Modifier.padding(20.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp)) {
                 Text("Cargar al vehículo", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Mueve garrafones de la base a tu vehículo. Se descontarán del stock compartido.",
-                    fontSize = 13.sp, color = HToGoColors.TextSecondary
-                )
                 Spacer(Modifier.height(14.dp))
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(HToGoColors.PrimarySoft)
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Filled.SwapHoriz, null, tint = HToGoColors.Primary)
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text("Base → Vehículo", fontSize = 13.sp, color = HToGoColors.PrimaryDark, fontWeight = FontWeight.SemiBold)
-                        Text("Vehículo: $ocupadoVehiculo / $capacidadVehiculo cap. · libre $espacioLibre espacios", fontSize = 11.sp, color = HToGoColors.TextSecondary)
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                Text("MARCA (DISPONIBLE EN BASE)", fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(6.dp))
+
+                // Marca: pastillas con lo disponible en base.
                 if (marcas.isEmpty()) {
                     Text("No hay marcas disponibles en la base", fontSize = 13.sp, color = HToGoColors.TextSecondary)
                 } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         marcas.forEach { m ->
                             val sel = m.id == seleccionada
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .border(
-                                        1.dp,
-                                        if (sel) HToGoColors.Primary else HToGoColors.OutlineSoft,
-                                        RoundedCornerShape(10.dp)
-                                    )
-                                    .background(if (sel) HToGoColors.PrimaryWash else Color.White)
-                                    .clickable {
-                                        seleccionada = m.id
-                                    }
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            Surface(
+                                shape = RoundedCornerShape(99.dp),
+                                color = if (sel) HToGoColors.PrimarySoft else Color.White,
+                                border = BorderStroke(1.dp, if (sel) HToGoColors.Primary else HToGoColors.OutlineSoft),
+                                modifier = Modifier.clickable { seleccionada = m.id }
                             ) {
                                 Text(
-                                    "${m.nombre} · ${m.capacidad} — ${m.enBase} disp.",
-                                    fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f)
+                                    "${m.nombre} · ${m.enBase}",
+                                    fontSize = 13.sp,
+                                    fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Medium,
+                                    color = if (sel) HToGoColors.Primary else HToGoColors.TextPrimary,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
                                 )
-                                if (sel) Icon(Icons.Filled.CheckCircle, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
                 }
-                Spacer(Modifier.height(14.dp))
-                Text("CANTIDAD A CARGAR", fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold)
-                QtyStepper(cantidad, max = maxCarga) { cantidad = it }
+
+                Spacer(Modifier.height(10.dp))
+                QtyStepper(cantidad, max = maxCarga, min = 1) { cantidad = it }
                 Text(
-                    if (maxCarga <= 0) {
-                        if (espacioLibre <= 0) "Vehículo lleno (capacidad $capacidadVehiculo alcanzada)"
-                        else "Sin stock disponible de esta marca en la base"
-                    } else {
-                        "Máx. $maxCarga — limitado por espacio disponible ($espacioLibre libres en vehículo, $stockEnBase en base)"
-                    },
-                    fontSize = 11.sp,
-                    color = if (maxCarga <= 0) HToGoColors.AccentRose else HToGoColors.TextSecondary,
-                    modifier = Modifier.padding(top = 4.dp)
+                    if (cantidad == 1) "garrafón" else "garrafones",
+                    fontSize = 12.sp, color = HToGoColors.TextSecondary,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
-                Spacer(Modifier.height(12.dp))
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.dp, HToGoColors.OutlineSoft),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text("RESUMEN DEL TRASPASO", fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold)
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                            Icon(Icons.Filled.Warehouse, null, tint = HToGoColors.TextSecondary, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Base: $stockEnBase → ", fontSize = 13.sp)
-                            Text("${maxOf(0, stockEnBase - cantidad)}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HToGoColors.AccentRose)
-                            Text("  ·  ", fontSize = 13.sp, color = HToGoColors.TextTertiary)
-                            Icon(Icons.Filled.LocalShipping, null, tint = HToGoColors.Primary, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Vehículo: $ocupadoVehiculo → ", fontSize = 13.sp)
-                            Text("${ocupadoVehiculo + cantidad}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HToGoColors.AccentEmerald)
+                // Atajo: el caso más común es llenar el vehículo.
+                if (maxCarga > 0 && cantidad != maxCarga) {
+                    Spacer(Modifier.height(8.dp))
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Surface(
+                            shape = RoundedCornerShape(99.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, HToGoColors.Primary),
+                            modifier = Modifier.clickable { cantidad = maxCarga }
+                        ) {
+                            Text(
+                                "Llenar ($maxCarga)",
+                                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = HToGoColors.Primary,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                            )
                         }
                     }
                 }
-                Spacer(Modifier.height(18.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp),
-                        shape = RoundedCornerShape(23.dp)
-                    ) { Text("Cancelar") }
-                    Button(
-                        onClick = {
-                            val idMarcaInt = seleccionMarca?.id?.toIntOrNull() ?: 1
-                            onCargar(idMarcaInt, cantidad)
-                        },
-                        enabled = cantidad > 0 && cantidad <= maxCarga,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp),
-                        shape = RoundedCornerShape(23.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = HToGoColors.Primary,
-                            disabledContainerColor = HToGoColors.OutlineSoft,
-                            disabledContentColor = HToGoColors.TextTertiary
+
+                Spacer(Modifier.height(16.dp))
+                if (maxCarga <= 0) {
+                    Text(
+                        if (espacioLibre <= 0) "El vehículo ya está lleno ($capacidadVehiculo de $capacidadVehiculo)."
+                        else "No hay garrafones de esta marca en la base.",
+                        fontSize = 13.sp, color = HToGoColors.AccentRose
+                    )
+                } else {
+                    // Barra de capacidad: lo que ya trae el vehículo + lo que se va a cargar.
+                    val cap = capacidadVehiculo.coerceAtLeast(1).toFloat()
+                    val fracActual = (ocupadoVehiculo / cap).coerceIn(0f, 1f)
+                    val fracNueva = (cantidad / cap).coerceIn(0f, 1f - fracActual)
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(HToGoColors.Background)
+                    ) {
+                        if (fracActual > 0f) Box(Modifier.fillMaxHeight().weight(fracActual).background(HToGoColors.Primary))
+                        if (fracNueva > 0f) Box(Modifier.fillMaxHeight().weight(fracNueva).background(HToGoColors.PrimaryLight))
+                        val resto = 1f - fracActual - fracNueva
+                        if (resto > 0f) Spacer(Modifier.weight(resto))
+                    }
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        Text(
+                            "Vehículo: ${ocupadoVehiculo + cantidad} de $capacidadVehiculo",
+                            fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary,
+                            modifier = Modifier.weight(1f)
                         )
-                    ) { Text("Confirmar carga", fontWeight = FontWeight.SemiBold) }
+                        Text(
+                            "Base queda en ${maxOf(0, stockEnBase - cantidad)}",
+                            fontSize = 12.sp, color = HToGoColors.TextSecondary
+                        )
+                    }
                 }
+
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        val idMarcaInt = seleccionMarca?.id?.toIntOrNull() ?: 1
+                        onCargar(idMarcaInt, cantidad)
+                    },
+                    enabled = cantidad > 0 && cantidad <= maxCarga,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HToGoColors.Primary,
+                        disabledContainerColor = HToGoColors.OutlineSoft,
+                        disabledContentColor = HToGoColors.TextTertiary
+                    )
+                ) {
+                    Text(
+                        if (cantidad == 1) "Cargar 1 garrafón" else "Cargar $cantidad garrafones",
+                        fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                }
+                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
             }
         }
     }
 }
 
 @Composable
-private fun QtyStepper(value: Int, max: Int, onChange: (Int) -> Unit) {
+private fun QtyStepper(value: Int, max: Int, min: Int = 0, onChange: (Int) -> Unit) {
+    // El número se puede tocar para escribirlo; − / + siguen funcionando igual.
+    var escribiendo by remember { mutableStateOf(false) }
     Row(
         Modifier
             .fillMaxWidth()
@@ -1872,13 +1883,23 @@ private fun QtyStepper(value: Int, max: Int, onChange: (Int) -> Unit) {
                 .clip(RoundedCornerShape(50))
                 .background(HToGoColors.PrimarySoft)
         ) { Icon(Icons.Filled.Remove, null, tint = HToGoColors.Primary) }
-        Text(
-            "$value",
-            fontSize = 26.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .weight(1f),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(enabled = max > 0) { escribiendo = true }
+                    .padding(horizontal = 10.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("$value", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                if (max > 0) {
+                    Icon(
+                        Icons.Filled.Edit, "Escribir cantidad", tint = HToGoColors.TextTertiary,
+                        modifier = Modifier.padding(start = 6.dp).size(16.dp)
+                    )
+                }
+            }
+        }
         IconButton(
             onClick = { if (value < max) onChange(value + 1) },
             modifier = Modifier
@@ -1887,6 +1908,53 @@ private fun QtyStepper(value: Int, max: Int, onChange: (Int) -> Unit) {
                 .background(HToGoColors.PrimarySoft)
         ) { Icon(Icons.Filled.Add, null, tint = HToGoColors.Primary) }
     }
+    if (escribiendo) {
+        EscribirCantidadDialog(
+            actual = value,
+            min = min.coerceAtMost(max),
+            max = max,
+            onGuardar = { onChange(it); escribiendo = false },
+            onCancelar = { escribiendo = false }
+        )
+    }
+}
+
+/** Diálogo pequeño para escribir una cantidad entera (campo vacío para que funcione bien en iOS). */
+@Composable
+private fun EscribirCantidadDialog(actual: Int, min: Int, max: Int, onGuardar: (Int) -> Unit, onCancelar: () -> Unit) {
+    var texto by remember { mutableStateOf("") }
+    val valor = texto.toIntOrNull()
+    val valido = valor != null && valor in min..max
+    val foco = remember { FocusRequester() }
+    LaunchedEffect(Unit) { foco.requestFocus() }
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        containerColor = Color.White,
+        title = { Text("Cantidad de garrafones") },
+        text = {
+            OutlinedTextField(
+                value = texto,
+                onValueChange = { texto = it.filter(Char::isDigit).take(4) },
+                singleLine = true,
+                placeholder = { Text(actual.toString()) },
+                supportingText = {
+                    Text(
+                        "Entre $min y $max",
+                        color = if (texto.isNotEmpty() && !valido) HToGoColors.AccentRose else HToGoColors.TextSecondary
+                    )
+                },
+                isError = texto.isNotEmpty() && !valido,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (valido) onGuardar(valor!!) }),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.focusRequester(foco)
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onGuardar(valor!!) }, enabled = valido) { Text("Listo") }
+        },
+        dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar") } }
+    )
 }
 
 @Composable
@@ -1910,7 +1978,7 @@ private fun SalidaManualDialog(
             color = Color.White,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(Modifier.padding(20.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp)) {
                 Text("Registrar salida manual", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -1975,7 +2043,7 @@ private fun SalidaManualDialog(
                 Text("CANTIDAD A RESTAR", fontSize = 11.sp, color = HToGoColors.TextSecondary,
                     fontWeight = FontWeight.SemiBold)
                 val maxDisponible = seleccionMarca?.enBase ?: 0
-                QtyStepper(cantidad, max = maxOf(1, maxDisponible)) { cantidad = it }
+                QtyStepper(cantidad, max = maxOf(1, maxDisponible), min = 1) { cantidad = it }
                 if (maxDisponible <= 0) {
                     Text(
                         "Sin stock disponible en base para esta marca",
@@ -2012,37 +2080,31 @@ private fun SalidaManualDialog(
                     }
                 }
                 Spacer(Modifier.height(18.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        enabled = !enviando,
-                        modifier = Modifier.weight(1f).height(46.dp),
-                        shape = RoundedCornerShape(23.dp)
-                    ) { Text("Cancelar") }
-                    Button(
-                        onClick = {
-                            val idMarcaInt = seleccionMarca?.id?.toIntOrNull()
-                            if (idMarcaInt != null && cantidad > 0 && maxDisponible >= cantidad) {
-                                enviando = true
-                                onSalida(idMarcaInt, cantidad, motivo)
-                            }
-                        },
-                        enabled = !enviando && seleccionMarca != null && maxDisponible >= cantidad && cantidad > 0,
-                        modifier = Modifier.weight(1f).height(46.dp),
-                        shape = RoundedCornerShape(23.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentRose)
-                    ) {
-                        if (enviando) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("Confirmar salida", fontWeight = FontWeight.SemiBold)
+                // Botones apilados: el texto no se parte ni se corta.
+                Button(
+                    onClick = {
+                        val idMarcaInt = seleccionMarca?.id?.toIntOrNull()
+                        if (idMarcaInt != null && cantidad > 0 && maxDisponible >= cantidad) {
+                            enviando = true
+                            onSalida(idMarcaInt, cantidad, motivo)
                         }
+                    },
+                    enabled = !enviando && seleccionMarca != null && maxDisponible >= cantidad && cantidad > 0,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentRose)
+                ) {
+                    if (enviando) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Confirmar salida", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
+                TextButton(onClick = onDismiss, enabled = !enviando, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
             }
         }
     }
@@ -2070,6 +2132,8 @@ private fun SolicitarCambioVehiculoDialog(
     var capacidad by remember { mutableStateOf((vehiculo?.capacidadGarrafones ?: 30).toString()) }
     var motivo by remember { mutableStateOf("") }
     val tipos = listOf("Motocicleta", "Camioneta", "Automóvil", "Bicicleta de carga", "Triciclo de carga")
+    // Bicicletas y triciclos no tienen marca/modelo/placas: solo se piden color y capacidad.
+    val esSinPlacas = tipoNuevo == "Bicicleta de carga" || tipoNuevo == "Triciclo de carga"
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -2102,7 +2166,7 @@ private fun SolicitarCambioVehiculoDialog(
                         Spacer(Modifier.width(10.dp))
                         Column {
                             Text(
-                                "Vehículo actual: ${vehiculo?.marca ?: "Italika"} ${vehiculo?.modelo ?: "FT150"} · ${vehiculo?.placas ?: "ABC1234"}",
+                                "Vehículo actual: " + listOfNotNull(vehiculo?.marca, vehiculo?.modelo, vehiculo?.placas).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { vehiculo?.tipoVehiculo ?: "sin datos" },
                                 fontSize = 13.sp, color = HToGoColors.PrimaryDark,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -2146,7 +2210,7 @@ private fun SolicitarCambioVehiculoDialog(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!esSinPlacas) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = marca,
                         onValueChange = { marca = it },
@@ -2164,22 +2228,33 @@ private fun SolicitarCambioVehiculoDialog(
                         singleLine = true
                     )
                 }
-                Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = placas,
-                        onValueChange = { placas = it },
-                        label = { Text("Placas") },
-                        placeholder = { Text("ABC1234") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
+                if (!esSinPlacas) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = placas,
+                            onValueChange = { placas = it },
+                            label = { Text("Placas") },
+                            placeholder = { Text("ABC1234") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = color,
+                            onValueChange = { color = it },
+                            label = { Text("Color") },
+                            placeholder = { Text("Rojo / Blanco") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                    }
+                } else {
                     OutlinedTextField(
                         value = color,
                         onValueChange = { color = it },
                         label = { Text("Color") },
                         placeholder = { Text("Rojo / Blanco") },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
                 }
@@ -2200,41 +2275,43 @@ private fun SolicitarCambioVehiculoDialog(
                     minLines = 2
                 )
                 Spacer(Modifier.height(18.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f).height(46.dp),
-                        shape = RoundedCornerShape(23.dp)
-                    ) { Text("Cancelar") }
-                    Button(
-                        onClick = {
-                            val tipoEnumStr = when (tipoNuevo) {
-                                "Motocicleta" -> "motocicleta"
-                                "Camioneta" -> "camioneta"
-                                "Automóvil" -> "automovil"
-                                "Bicicleta de carga" -> "bicicleta_carga"
-                                "Triciclo de carga" -> "triciclo_carga"
-                                else -> "motocicleta"
-                            }
-                            onGuardar(
-                                com.htogo.app.data.dto.ActualizarVehiculoRequest(
-                                    tipoVehiculo = tipoEnumStr,
-                                    marca = marca.trim(),
-                                    modelo = modelo.trim(),
-                                    color = color.trim(),
-                                    placas = placas.trim(),
-                                    capacidadGarrafones = capacidad.toIntOrNull() ?: 30
-                                )
+                // Botones apilados: el texto no se parte ni se corta.
+                Button(
+                    onClick = {
+                        val tipoEnumStr = when (tipoNuevo) {
+                            "Motocicleta" -> "motocicleta"
+                            "Camioneta" -> "camioneta"
+                            "Automóvil" -> "automovil"
+                            "Bicicleta de carga" -> "bicicleta_carga"
+                            "Triciclo de carga" -> "triciclo_carga"
+                            else -> "motocicleta"
+                        }
+                        // Sin placas: en alta se omiten (null); en un cambio se mandan vacíos
+                        // para que no se conserven los datos del vehículo anterior.
+                        val vacio: String? = if (esNuevo) null else ""
+                        onGuardar(
+                            com.htogo.app.data.dto.ActualizarVehiculoRequest(
+                                tipoVehiculo = tipoEnumStr,
+                                marca = if (esSinPlacas) vacio else marca.trim(),
+                                modelo = if (esSinPlacas) vacio else modelo.trim(),
+                                color = color.trim(),
+                                placas = if (esSinPlacas) vacio else placas.trim(),
+                                capacidadGarrafones = capacidad.toIntOrNull() ?: 30
                             )
-                        },
-                        enabled = marca.isNotBlank() && modelo.isNotBlank() && placas.isNotBlank(),
-                        modifier = Modifier.weight(1.2f).height(46.dp),
-                        shape = RoundedCornerShape(23.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                    ) {
-                        Text(if (esNuevo) "Enviar a aprobación" else "Solicitar cambio", fontWeight = FontWeight.SemiBold)
-                    }
+                        )
+                    },
+                    enabled = if (esSinPlacas) color.isNotBlank() && (capacidad.toIntOrNull() ?: 0) > 0
+                        else marca.isNotBlank() && modelo.isNotBlank() && placas.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                ) {
+                    Text(
+                        if (esNuevo) "Enviar a aprobación" else "Solicitar cambio",
+                        fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
                 }
+                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
             }
         }
     }
@@ -2371,25 +2448,20 @@ private fun IniciarJornadaDialog(
                     )
                 }
                 Spacer(Modifier.height(18.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f).height(46.dp),
-                        shape = RoundedCornerShape(23.dp)
-                    ) { Text("Cancelar") }
-                    Button(
-                        onClick = {
-                            val idMarcaInt = marcaElegida?.id?.toIntOrNull()
-                            onIniciar(idMarcaInt, cantidad)
-                        },
-                        enabled = !errorExcedeCapacidad && (!errorSinStock || cantidad == 0),
-                        modifier = Modifier.weight(1.3f).height(46.dp),
-                        shape = RoundedCornerShape(23.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                    ) {
-                        Text("Iniciar jornada", fontWeight = FontWeight.SemiBold)
-                    }
+                // Botones apilados: el texto no se parte ni se corta.
+                Button(
+                    onClick = {
+                        val idMarcaInt = marcaElegida?.id?.toIntOrNull()
+                        onIniciar(idMarcaInt, cantidad)
+                    },
+                    enabled = !errorExcedeCapacidad && (!errorSinStock || cantidad == 0),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                ) {
+                    Text("Iniciar jornada", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
             }
         }
     }

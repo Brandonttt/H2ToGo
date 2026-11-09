@@ -1166,7 +1166,8 @@ fun SeguimientoPedidoScreen(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .statusBarsPadding()
-                    .padding(start = 16.dp, top = 66.dp)
+                    // Debajo de la etiqueta de estado del mapa ("En camino"), que va a 72 dp bajo la barra de estado.
+                    .padding(start = 12.dp, top = 110.dp)
             )
         }
 

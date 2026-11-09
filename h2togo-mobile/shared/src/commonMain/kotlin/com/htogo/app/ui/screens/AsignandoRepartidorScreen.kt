@@ -150,7 +150,8 @@ fun AsignandoRepartidorScreen(
         SearchingMap(
             modifier = Modifier.fillMaxSize(),
             modoDirecto = modoDirecto,
-            purificadoraName = purificadoraName
+            purificadoraName = purificadoraName,
+            precioMax = precioMax
         )
 
         Row(
@@ -205,7 +206,8 @@ private fun IconCircle(icon: ImageVector, onClick: () -> Unit) {
 private fun SearchingMap(
     modifier: Modifier = Modifier,
     modoDirecto: Boolean,
-    purificadoraName: String
+    purificadoraName: String,
+    precioMax: Double = 0.0
 ) {
     val infinite = rememberInfiniteTransition(label = "search")
     val r1 by infinite.animateFloat(
@@ -243,6 +245,20 @@ private fun SearchingMap(
                         "Buscando purificadoras con tu precio máximo..."
                     Text(bannerText,
                         fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary)
+                }
+                if (!modoDirecto) {
+                    // Pedido abierto: el precio máximo va aquí para liberar espacio en la hoja inferior.
+                    Row(
+                        Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.AttachMoney, null, tint = Color(0xFFB45309),
+                            modifier = Modifier.size(13.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Pedido abierto · Precio máx ${dineroMx(precioMax)} c/u",
+                            fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFB45309))
+                    }
                 }
                 LinearProgressIndicator(
                     modifier = Modifier
@@ -403,39 +419,20 @@ private fun AssignSheet(
         shadowElevation = 8.dp,
         modifier = modifier.fillMaxWidth().fillMaxHeight(0.66f)
     ) {
-        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(top = 14.dp, bottom = 16.dp)) {
+        Column(Modifier.fillMaxSize().navigationBarsPadding().padding(top = 14.dp, bottom = 12.dp)) {
             Box(
                 Modifier.align(Alignment.CenterHorizontally)
                     .width(44.dp).height(4.dp).clip(RoundedCornerShape(2.dp))
                     .background(HToGoColors.OutlineSoft)
             )
             Spacer(Modifier.height(10.dp))
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
             ) {
-                if (!modoDirecto) {
-                    Surface(
-                        shape = RoundedCornerShape(99.dp),
-                        color = HToGoColors.AccentAmber.copy(alpha = 0.10f)
-                    ) {
-                        Row(
-                            Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Filled.AttachMoney, null, tint = Color(0xFFB45309),
-                                modifier = Modifier.size(13.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Pedido abierto · Precio máx ${dineroMx(precioMax)} c/u",
-                                fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFB45309))
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                }
-
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = HToGoColors.StatusAsignado.copy(alpha = 0.08f),
+                    modifier = Modifier.fillMaxWidth(),
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp, HToGoColors.StatusAsignado.copy(alpha = 0.20f)
                     )
@@ -504,9 +501,6 @@ private fun AssignSheet(
 
                 Spacer(Modifier.height(14.dp))
                 OrderRow("Pedido", items)
-                if (!modoDirecto) {
-                    OrderRow("Precio máx", "${dineroMx(precioMax)} c/u")
-                }
                 OrderRow("Domicilio", address)
                 Divider(Modifier.padding(vertical = 8.dp), color = HToGoColors.OutlineSoft)
                 OrderRow(
@@ -515,11 +509,15 @@ private fun AssignSheet(
                     valueColor = HToGoColors.Primary, bold = true
                 )
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
+            }
+            // Pie fijo: "Cancelar pedido" siempre visible sin desplazar.
+            Divider(color = HToGoColors.OutlineSoft)
+            Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(top = 12.dp)) {
                 OutlinedButton(
                     onClick = onCancel,
                     enabled = !cancelando,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     border = androidx.compose.foundation.BorderStroke(1.5.dp, HToGoColors.StatusCancelado),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = HToGoColors.StatusCancelado)
@@ -545,8 +543,6 @@ private fun AssignSheet(
                         "Puedes cancelar sin costo mientras ninguna purificadora acepta"
                     Text(hint, fontSize = 11.sp, color = HToGoColors.TextSecondary)
                 }
-
-
             }
         }
     }

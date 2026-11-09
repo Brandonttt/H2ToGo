@@ -22,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Map
@@ -126,82 +128,87 @@ fun HomeRepartidorScreen(
             )
         }
     ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            // Encabezado fijo: se queda arriba mientras el contenido se desplaza.
+            Box(
+                Modifier.fillMaxWidth().background(
+                    Brush.verticalGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary))
+                ).statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = .2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            nombre.firstOrNull()?.toString()?.uppercase() ?: "R",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Hola, $nombre",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Storefront,
+                                null,
+                                tint = HToGoColors.PrimarySoft,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                nombreNegocio,
+                                color = HToGoColors.PrimarySoft,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Text(
+                            fechaHoy,
+                            color = HToGoColors.PrimarySoft.copy(alpha = .85f),
+                            fontSize = 12.sp
+                        )
+                    }
+                    IconButton(onClick = onHistorial) {
+                        Icon(
+                            Icons.Filled.History,
+                            contentDescription = "Mi historial de entregas",
+                            tint = Color.White
+                        )
+                    }
+                    IconButton(onClick = {
+                        val nuevoEstado = !notificacionesActivas
+                        notificacionesActivas = nuevoEstado
+                        sessionManager.guardarNotificacionesActivas(nuevoEstado)
+                        mostrarAviso(if (nuevoEstado) "Notificaciones activadas" else "Notificaciones desactivadas")
+                    }) {
+                        Icon(
+                            if (notificacionesActivas) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
+                            contentDescription = if (notificacionesActivas) "Desactivar notificaciones" else "Activar notificaciones",
+                            tint = if (notificacionesActivas) Color.White else Color.White.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
         // Deslizar hacia abajo para actualizar los datos de la pantalla.
-        DeslizarParaActualizar(refrescando, { repartidorViewModel.refrescar() }, Modifier.fillMaxSize(), bajoBarraDeEstado = true) {
+        DeslizarParaActualizar(refrescando, { repartidorViewModel.refrescar() }, Modifier.weight(1f).fillMaxWidth()) {
             Column(
-                Modifier.fillMaxSize().padding(padding)
+                Modifier.fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 24.dp)
             ) {
-                Box(
-                    Modifier.fillMaxWidth().background(
-                        Brush.verticalGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary))
-                    ).statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp)
-                ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = .2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    nombre.firstOrNull()?.toString()?.uppercase() ?: "R",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp
-                                )
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    "Hola, $nombre",
-                                    color = Color.White,
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Filled.Storefront,
-                                        null,
-                                        tint = HToGoColors.PrimarySoft,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        nombreNegocio,
-                                        color = HToGoColors.PrimarySoft,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                                Text(
-                                    fechaHoy,
-                                    color = HToGoColors.PrimarySoft.copy(alpha = .85f),
-                                    fontSize = 12.sp
-                                )
-                            }
-                            IconButton(onClick = onHistorial) {
-                                Icon(
-                                    Icons.Filled.History,
-                                    contentDescription = "Mi historial de entregas",
-                                    tint = Color.White
-                                )
-                            }
-                            IconButton(onClick = {
-                                val nuevoEstado = !notificacionesActivas
-                                notificacionesActivas = nuevoEstado
-                                sessionManager.guardarNotificacionesActivas(nuevoEstado)
-                                mostrarAviso(if (nuevoEstado) "Notificaciones activadas" else "Notificaciones desactivadas")
-                            }) {
-                                Icon(
-                                    if (notificacionesActivas) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
-                                    contentDescription = if (notificacionesActivas) "Desactivar notificaciones" else "Activar notificaciones",
-                                    tint = if (notificacionesActivas) Color.White else Color.White.copy(alpha = 0.6f)
-                                )
-                            }
-                        }
-                        if (!pendienteAprobacion) {
-                        Spacer(Modifier.height(20.dp))
+                if (!pendienteAprobacion) {
+                    Box(
+                        Modifier.fillMaxWidth().background(HToGoColors.Primary)
+                            .padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 20.dp)
+                    ) {
                         Card(
                             Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
@@ -213,7 +220,7 @@ fun HomeRepartidorScreen(
                                         .background(if (enLinea) HToGoColors.StatusEntregado else HToGoColors.StatusPendiente)
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Column(Modifier.weight(1f)) {
+                                Column(Modifier.weight(1f).padding(end = 8.dp)) {
                                     Text(
                                         if (enLinea) "En línea" else "Fuera de línea",
                                         fontSize = 15.sp,
@@ -234,14 +241,14 @@ fun HomeRepartidorScreen(
                                     Button(
                                         onClick = onInventario,
                                         shape = RoundedCornerShape(99.dp),
-                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
+                                        modifier = Modifier.heightIn(min = 44.dp),
                                         colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                                     ) {
-                                        Text("Iniciar jornada", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                        Text("Iniciar jornada", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
                                     }
                                 }
                             }
-                        }
                         }
                     }
                 }
@@ -261,10 +268,10 @@ fun HomeRepartidorScreen(
                 Spacer(Modifier.height(8.dp))
                 ResumenJornada(
                     listOf(
-                        Metrica("Entregas", "$entregasHoyCount/${liveMisEntregas.size}", onHistorial),
-                        Metrica("En vehículo", "${liveVehiculo?.ocupado ?: 0}", onInventario),
-                        Metrica("En base", "${liveBase?.lotes?.sumOf { it.cantidadActual } ?: 0}", onInventario),
-                        Metrica("En ruta", "$enRutaCount", null),
+                        Metrica("Entregas", "$entregasHoyCount/${liveMisEntregas.size}", onHistorial, Icons.Filled.CheckCircle),
+                        Metrica("Garrafones en vehículo", "${liveVehiculo?.ocupado ?: 0}", onInventario, Icons.Filled.LocalShipping),
+                        Metrica("Garrafones en base", "${liveBase?.lotes?.sumOf { it.cantidadActual } ?: 0}", onInventario, Icons.Filled.Warehouse),
+                        Metrica("En ruta", "$enRutaCount", null, Icons.Filled.Route),
                     )
                 )
 
@@ -474,6 +481,7 @@ fun HomeRepartidorScreen(
                 }
             }
         }
+        }
     }
 
     if (showDesconectarDialog) {
@@ -579,7 +587,7 @@ private fun ColaItem(
     }
 }
 
-private class Metrica(val etiqueta: String, val valor: String, val onClick: (() -> Unit)?)
+private class Metrica(val etiqueta: String, val valor: String, val onClick: (() -> Unit)?, val icono: ImageVector)
 
 /** Resumen compacto de la jornada: una sola tarjeta con las cifras del día en fila. */
 @Composable
@@ -599,11 +607,16 @@ private fun ResumenJornada(metricas: List<Metrica>) {
                     Modifier
                         .weight(1f)
                         .then(if (m.onClick != null) Modifier.clickable(onClick = m.onClick) else Modifier)
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = 4.dp, horizontal = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Icon(m.icono, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.height(4.dp))
                     Text(m.valor, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
-                    Text(m.etiqueta, fontSize = 11.sp, color = HToGoColors.TextSecondary)
+                    Text(
+                        m.etiqueta, fontSize = 11.sp, lineHeight = 13.sp, color = HToGoColors.TextSecondary,
+                        textAlign = TextAlign.Center, maxLines = 2
+                    )
                 }
             }
         }

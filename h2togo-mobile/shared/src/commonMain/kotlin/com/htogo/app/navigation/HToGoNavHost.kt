@@ -352,7 +352,9 @@ fun HToGoNavHost(
                 onEliminarCuenta = authViewModel::eliminarCuenta,
                 onCuentaEliminada = {
                     navController.navigateAndClear(HToGoRoutes.LOGIN)
-                }
+                },
+                onSolicitarCambioTelefono = authViewModel::solicitarCambioTelefono,
+                onConfirmarCambioTelefono = authViewModel::confirmarCambioTelefono
             )
         }
 
