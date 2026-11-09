@@ -301,19 +301,20 @@ class AsignacionEntregaFlowIT {
         int exitos = 0;
         int fallos = 0;
         for (Future<Boolean> f : futures) {
-            try {
-                if (Boolean.TRUE.equals(f.get())) {
-                    exitos++;
-                } else {
-                    fallos++;
-                }
-            } catch (Exception ignored) {
+            // false = 409 de conflicto; cualquier otro error propaga y hace fallar la prueba.
+            if (Boolean.TRUE.equals(f.get())) {
+                exitos++;
+            } else {
                 fallos++;
             }
         }
         pool.shutdown();
         assertThat(exitos).isEqualTo(1);
         assertThat(fallos).isEqualTo(9);
+        // Los 2 garrafones del pedido se apartaron una sola vez.
+        var p = new org.springframework.jdbc.core.namedparam.MapSqlParameterSource("p", ped[0]);
+        assertThat(jdbc.queryForObject("SELECT SUM(cantidad) FROM apartados_pedido WHERE id_pedido = :p", p, Integer.class))
+                .isEqualTo(2);
     }
 
     private boolean intentarAceptar(int idRep, int idPedido, CountDownLatch listos, CountDownLatch arranque)
@@ -337,6 +338,19 @@ class AsignacionEntregaFlowIT {
         mvc.perform(post("/api/v1/pedidos/" + ped[0] + "/aceptacion").header("Authorization", "Bearer " + r.token()))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("STOCK_INSUFICIENTE"));
+
+        // CC-04 (RNF-014): la aceptación falló a medias y no dejó nada guardado.
+        var p = new org.springframework.jdbc.core.namedparam.MapSqlParameterSource()
+                .addValue("p", ped[0]).addValue("n", r.idNegocio());
+        assertThat(jdbc.queryForObject("SELECT estado_actual::text FROM pedidos WHERE id_pedido = :p", p, String.class))
+                .isEqualTo("pendiente");
+        assertThat(jdbc.queryForObject("SELECT id_repartidor FROM pedidos WHERE id_pedido = :p", p, Integer.class)).isNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM apartados_pedido WHERE id_pedido = :p", p, Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COALESCE(SUM(cantidad_apartada), 0) FROM lotes_inventario WHERE id_negocio = :n",
+                p, Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COALESCE(SUM(cantidad_apartada), 0) FROM inventario_vehiculo WHERE id_negocio = :n",
+                p, Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM movimientos_inventario WHERE id_pedido = :p", p, Integer.class)).isZero();
     }
 
     @Test

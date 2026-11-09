@@ -1,0 +1,65 @@
+
+
+  █ THRESHOLDS 
+
+    checks
+    ✓ 'rate>0.99' rate=100.00%
+
+    errores_5xx
+    ✓ 'count==0' count=0
+
+    http_req_duration{op:crear_pedido}
+    ✓ 'p(95)<3000' p(95)=0s
+
+    http_req_duration{op:rafaga_crear}
+    ✓ 'p(95)<3000' p(95)=2.14s
+
+    http_req_duration{op:reportar_ubicacion}
+    ✓ 'p(95)<3000' p(95)=0s
+
+    http_req_duration{scenario:mezcla}
+    ✓ 'p(95)<3000' p(95)=0s
+
+    http_req_failed{scenario:mezcla}
+    ✓ 'rate<0.01' rate=0.00%
+
+    http_req_failed{scenario:rafaga}
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 200     5.487624/s
+    checks_succeeded...: 100.00% 200 out of 200
+    checks_failed......: 0.00%   0 out of 200
+
+    ✓ rafaga_crear → 201
+    ✓ rafaga_cancelar → 200
+
+    CUSTOM
+    errores_5xx....................: 0      0/s
+
+    HTTP
+    http_req_duration..............: avg=644.11ms min=77.57ms  med=232.58ms p(90)=1.56s p(95)=1.81s max=2.6s
+      { expected_response:true }...: avg=644.11ms min=77.57ms  med=232.58ms p(90)=1.56s p(95)=1.81s max=2.6s
+      { op:crear_pedido }..........: avg=0s       min=0s       med=0s       p(90)=0s    p(95)=0s    max=0s  
+      { op:rafaga_crear }..........: avg=1.3s     min=152.41ms med=1.39s    p(90)=1.96s p(95)=2.14s max=2.6s
+      { op:reportar_ubicacion }....: avg=0s       min=0s       med=0s       p(90)=0s    p(95)=0s    max=0s  
+      { scenario:mezcla }..........: avg=0s       min=0s       med=0s       p(90)=0s    p(95)=0s    max=0s  
+    http_req_failed................: 0.00%  0 out of 411
+      { scenario:mezcla }..........: 0.00%  0 out of 0
+      { scenario:rafaga }..........: 0.00%  0 out of 200
+    http_reqs......................: 411    11.277067/s
+
+    EXECUTION
+    iteration_duration.............: avg=2.53s    min=1.07s    med=2.59s    p(90)=3s    p(95)=3.04s max=3.3s
+    iterations.....................: 100    2.743812/s
+    vus............................: 25     min=0        max=100
+    vus_max........................: 100    min=100      max=100
+
+    NETWORK
+    data_received..................: 1.0 MB 28 kB/s
+    data_sent......................: 246 kB 6.8 kB/s
+
+
+

@@ -1,0 +1,1995 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: cc03_100_usuarios.js
+ web dashboard: http://127.0.0.1:5665
+        output: -
+
+     scenarios: (100.00%) 2 scenarios, 100 max VUs, 17m10s max duration (incl. graceful stop):
+              * mezcla: Up to 100 looping VUs for 6m0s over 3 stages (gracefulRampDown: 30s, gracefulStop: 30s)
+              * rafaga: 1 iterations for each of 100 VUs (maxDuration: 10m0s, exec: rafaga, startTime: 6m40s, gracefulStop: 30s)
+
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+Run      [ 100% ] setup()
+mezcla   [   0% ]
+rafaga   [   0% ]
+
+running (00m35.0s), 000/100 VUs, 0 complete and 0 interrupted iterations
+mezcla   [   0% ] 000/100 VUs  0m00.2s/6m00.0s
+rafaga • [   0% ] waiting      6m39.8s
+
+running (00m36.0s), 003/100 VUs, 0 complete and 0 interrupted iterations
+mezcla   [   0% ] 003/100 VUs  0m01.2s/6m00.0s
+rafaga • [   0% ] waiting      6m38.8s
+
+running (00m37.0s), 007/100 VUs, 0 complete and 0 interrupted iterations
+mezcla   [   1% ] 007/100 VUs  0m02.2s/6m00.0s
+rafaga • [   0% ] waiting      6m37.8s
+
+running (00m38.0s), 010/100 VUs, 0 complete and 0 interrupted iterations
+mezcla   [   1% ] 010/100 VUs  0m03.2s/6m00.0s
+rafaga • [   0% ] waiting      6m36.8s
+
+running (00m39.0s), 013/100 VUs, 0 complete and 0 interrupted iterations
+mezcla   [   1% ] 013/100 VUs  0m04.2s/6m00.0s
+rafaga • [   0% ] waiting      6m35.8s
+
+running (00m40.0s), 017/100 VUs, 0 complete and 0 interrupted iterations
+mezcla   [   1% ] 017/100 VUs  0m05.2s/6m00.0s
+rafaga • [   0% ] waiting      6m34.8s
+
+running (00m41.0s), 020/100 VUs, 0 complete and 0 interrupted iterations
+mezcla   [   2% ] 020/100 VUs  0m06.2s/6m00.0s
+rafaga • [   0% ] waiting      6m33.8s
+
+running (00m42.0s), 023/100 VUs, 0 complete and 0 interrupted iterations
+mezcla   [   2% ] 023/100 VUs  0m07.2s/6m00.0s
+rafaga • [   0% ] waiting      6m32.8s
+
+running (00m43.0s), 027/100 VUs, 0 complete and 0 interrupted iterations
+mezcla   [   2% ] 027/100 VUs  0m08.2s/6m00.0s
+rafaga • [   0% ] waiting      6m31.8s
+
+running (00m44.0s), 030/100 VUs, 1 complete and 0 interrupted iterations
+mezcla   [   3% ] 030/100 VUs  0m09.2s/6m00.0s
+rafaga • [   0% ] waiting      6m30.8s
+
+running (00m45.0s), 033/100 VUs, 4 complete and 0 interrupted iterations
+mezcla   [   3% ] 033/100 VUs  0m10.2s/6m00.0s
+rafaga • [   0% ] waiting      6m29.8s
+
+running (00m46.0s), 037/100 VUs, 8 complete and 0 interrupted iterations
+mezcla   [   3% ] 037/100 VUs  0m11.2s/6m00.0s
+rafaga • [   0% ] waiting      6m28.8s
+
+running (00m47.0s), 040/100 VUs, 10 complete and 0 interrupted iterations
+mezcla   [   3% ] 040/100 VUs  0m12.2s/6m00.0s
+rafaga • [   0% ] waiting      6m27.8s
+
+running (00m48.0s), 043/100 VUs, 13 complete and 0 interrupted iterations
+mezcla   [   4% ] 043/100 VUs  0m13.2s/6m00.0s
+rafaga • [   0% ] waiting      6m26.8s
+
+running (00m49.0s), 047/100 VUs, 17 complete and 0 interrupted iterations
+mezcla   [   4% ] 047/100 VUs  0m14.2s/6m00.0s
+rafaga • [   0% ] waiting      6m25.8s
+
+running (00m50.0s), 050/100 VUs, 17 complete and 0 interrupted iterations
+mezcla   [   4% ] 050/100 VUs  0m15.2s/6m00.0s
+rafaga • [   0% ] waiting      6m24.8s
+
+running (00m51.0s), 053/100 VUs, 20 complete and 0 interrupted iterations
+mezcla   [   4% ] 053/100 VUs  0m16.2s/6m00.0s
+rafaga • [   0% ] waiting      6m23.8s
+
+running (00m52.0s), 057/100 VUs, 24 complete and 0 interrupted iterations
+mezcla   [   5% ] 057/100 VUs  0m17.2s/6m00.0s
+rafaga • [   0% ] waiting      6m22.8s
+
+running (00m53.0s), 060/100 VUs, 30 complete and 0 interrupted iterations
+mezcla   [   5% ] 060/100 VUs  0m18.2s/6m00.0s
+rafaga • [   0% ] waiting      6m21.8s
+
+running (00m54.0s), 063/100 VUs, 33 complete and 0 interrupted iterations
+mezcla   [   5% ] 063/100 VUs  0m19.2s/6m00.0s
+rafaga • [   0% ] waiting      6m20.8s
+
+running (00m55.0s), 067/100 VUs, 40 complete and 0 interrupted iterations
+mezcla   [   6% ] 067/100 VUs  0m20.2s/6m00.0s
+rafaga • [   0% ] waiting      6m19.8s
+
+running (00m56.0s), 070/100 VUs, 45 complete and 0 interrupted iterations
+mezcla   [   6% ] 070/100 VUs  0m21.2s/6m00.0s
+rafaga • [   0% ] waiting      6m18.8s
+
+running (00m57.0s), 073/100 VUs, 53 complete and 0 interrupted iterations
+mezcla   [   6% ] 073/100 VUs  0m22.2s/6m00.0s
+rafaga • [   0% ] waiting      6m17.8s
+
+running (00m58.0s), 077/100 VUs, 61 complete and 0 interrupted iterations
+mezcla   [   6% ] 077/100 VUs  0m23.2s/6m00.0s
+rafaga • [   0% ] waiting      6m16.8s
+
+running (00m59.0s), 080/100 VUs, 63 complete and 0 interrupted iterations
+mezcla   [   7% ] 080/100 VUs  0m24.2s/6m00.0s
+rafaga • [   0% ] waiting      6m15.8s
+
+running (01m00.0s), 083/100 VUs, 66 complete and 0 interrupted iterations
+mezcla   [   7% ] 083/100 VUs  0m25.2s/6m00.0s
+rafaga • [   0% ] waiting      6m14.8s
+
+running (01m01.0s), 087/100 VUs, 76 complete and 0 interrupted iterations
+mezcla   [   7% ] 087/100 VUs  0m26.2s/6m00.0s
+rafaga • [   0% ] waiting      6m13.8s
+
+running (01m02.0s), 090/100 VUs, 83 complete and 0 interrupted iterations
+mezcla   [   8% ] 090/100 VUs  0m27.2s/6m00.0s
+rafaga • [   0% ] waiting      6m12.8s
+
+running (01m03.0s), 093/100 VUs, 90 complete and 0 interrupted iterations
+mezcla   [   8% ] 093/100 VUs  0m28.2s/6m00.0s
+rafaga • [   0% ] waiting      6m11.8s
+
+running (01m04.0s), 097/100 VUs, 95 complete and 0 interrupted iterations
+mezcla   [   8% ] 097/100 VUs  0m29.2s/6m00.0s
+rafaga • [   0% ] waiting      6m10.8s
+
+running (01m05.0s), 100/100 VUs, 107 complete and 0 interrupted iterations
+mezcla   [   8% ] 100/100 VUs  0m30.2s/6m00.0s
+rafaga • [   0% ] waiting      6m09.8s
+
+running (01m06.0s), 100/100 VUs, 115 complete and 0 interrupted iterations
+mezcla   [   9% ] 100/100 VUs  0m31.2s/6m00.0s
+rafaga • [   0% ] waiting      6m08.8s
+
+running (01m07.0s), 100/100 VUs, 124 complete and 0 interrupted iterations
+mezcla   [   9% ] 100/100 VUs  0m32.2s/6m00.0s
+rafaga • [   0% ] waiting      6m07.8s
+
+running (01m08.0s), 100/100 VUs, 131 complete and 0 interrupted iterations
+mezcla   [   9% ] 100/100 VUs  0m33.2s/6m00.0s
+rafaga • [   0% ] waiting      6m06.8s
+
+running (01m09.0s), 100/100 VUs, 139 complete and 0 interrupted iterations
+mezcla   [   9% ] 100/100 VUs  0m34.2s/6m00.0s
+rafaga • [   0% ] waiting      6m05.8s
+
+running (01m10.0s), 100/100 VUs, 151 complete and 0 interrupted iterations
+mezcla   [  10% ] 100/100 VUs  0m35.2s/6m00.0s
+rafaga • [   0% ] waiting      6m04.8s
+
+running (01m11.0s), 100/100 VUs, 154 complete and 0 interrupted iterations
+mezcla   [  10% ] 100/100 VUs  0m36.2s/6m00.0s
+rafaga • [   0% ] waiting      6m03.8s
+
+running (01m12.0s), 100/100 VUs, 160 complete and 0 interrupted iterations
+mezcla   [  10% ] 100/100 VUs  0m37.2s/6m00.0s
+rafaga • [   0% ] waiting      6m02.8s
+
+running (01m13.0s), 100/100 VUs, 166 complete and 0 interrupted iterations
+mezcla   [  11% ] 100/100 VUs  0m38.2s/6m00.0s
+rafaga • [   0% ] waiting      6m01.8s
+
+running (01m14.0s), 100/100 VUs, 172 complete and 0 interrupted iterations
+mezcla   [  11% ] 100/100 VUs  0m39.2s/6m00.0s
+rafaga • [   0% ] waiting      6m00.8s
+
+running (01m15.0s), 100/100 VUs, 177 complete and 0 interrupted iterations
+mezcla   [  11% ] 100/100 VUs  0m40.2s/6m00.0s
+rafaga • [   0% ] waiting      5m59.8s
+
+running (01m16.0s), 100/100 VUs, 184 complete and 0 interrupted iterations
+mezcla   [  11% ] 100/100 VUs  0m41.2s/6m00.0s
+rafaga • [   0% ] waiting      5m58.8s
+
+running (01m17.0s), 100/100 VUs, 204 complete and 0 interrupted iterations
+mezcla   [  12% ] 100/100 VUs  0m42.2s/6m00.0s
+rafaga • [   0% ] waiting      5m57.8s
+
+running (01m18.0s), 100/100 VUs, 216 complete and 0 interrupted iterations
+mezcla   [  12% ] 100/100 VUs  0m43.2s/6m00.0s
+rafaga • [   0% ] waiting      5m56.8s
+
+running (01m19.0s), 100/100 VUs, 222 complete and 0 interrupted iterations
+mezcla   [  12% ] 100/100 VUs  0m44.2s/6m00.0s
+rafaga • [   0% ] waiting      5m55.8s
+
+running (01m20.0s), 100/100 VUs, 228 complete and 0 interrupted iterations
+mezcla   [  13% ] 100/100 VUs  0m45.2s/6m00.0s
+rafaga • [   0% ] waiting      5m54.8s
+
+running (01m21.0s), 100/100 VUs, 236 complete and 0 interrupted iterations
+mezcla   [  13% ] 100/100 VUs  0m46.2s/6m00.0s
+rafaga • [   0% ] waiting      5m53.8s
+
+running (01m22.0s), 100/100 VUs, 246 complete and 0 interrupted iterations
+mezcla   [  13% ] 100/100 VUs  0m47.2s/6m00.0s
+rafaga • [   0% ] waiting      5m52.8s
+
+running (01m23.0s), 100/100 VUs, 262 complete and 0 interrupted iterations
+mezcla   [  13% ] 100/100 VUs  0m48.2s/6m00.0s
+rafaga • [   0% ] waiting      5m51.8s
+
+running (01m24.0s), 100/100 VUs, 270 complete and 0 interrupted iterations
+mezcla   [  14% ] 100/100 VUs  0m49.2s/6m00.0s
+rafaga • [   0% ] waiting      5m50.8s
+
+running (01m25.0s), 100/100 VUs, 280 complete and 0 interrupted iterations
+mezcla   [  14% ] 100/100 VUs  0m50.2s/6m00.0s
+rafaga • [   0% ] waiting      5m49.8s
+
+running (01m26.0s), 100/100 VUs, 292 complete and 0 interrupted iterations
+mezcla   [  14% ] 100/100 VUs  0m51.2s/6m00.0s
+rafaga • [   0% ] waiting      5m48.8s
+
+running (01m27.0s), 100/100 VUs, 298 complete and 0 interrupted iterations
+mezcla   [  14% ] 100/100 VUs  0m52.2s/6m00.0s
+rafaga • [   0% ] waiting      5m47.8s
+
+running (01m28.0s), 100/100 VUs, 311 complete and 0 interrupted iterations
+mezcla   [  15% ] 100/100 VUs  0m53.2s/6m00.0s
+rafaga • [   0% ] waiting      5m46.8s
+
+running (01m29.0s), 100/100 VUs, 324 complete and 0 interrupted iterations
+mezcla   [  15% ] 100/100 VUs  0m54.2s/6m00.0s
+rafaga • [   0% ] waiting      5m45.8s
+
+running (01m30.0s), 100/100 VUs, 335 complete and 0 interrupted iterations
+mezcla   [  15% ] 100/100 VUs  0m55.2s/6m00.0s
+rafaga • [   0% ] waiting      5m44.8s
+
+running (01m31.0s), 100/100 VUs, 343 complete and 0 interrupted iterations
+mezcla   [  16% ] 100/100 VUs  0m56.2s/6m00.0s
+rafaga • [   0% ] waiting      5m43.8s
+
+running (01m32.0s), 100/100 VUs, 356 complete and 0 interrupted iterations
+mezcla   [  16% ] 100/100 VUs  0m57.2s/6m00.0s
+rafaga • [   0% ] waiting      5m42.8s
+
+running (01m33.0s), 100/100 VUs, 368 complete and 0 interrupted iterations
+mezcla   [  16% ] 100/100 VUs  0m58.2s/6m00.0s
+rafaga • [   0% ] waiting      5m41.8s
+
+running (01m34.0s), 100/100 VUs, 380 complete and 0 interrupted iterations
+mezcla   [  16% ] 100/100 VUs  0m59.2s/6m00.0s
+rafaga • [   0% ] waiting      5m40.8s
+
+running (01m35.0s), 100/100 VUs, 389 complete and 0 interrupted iterations
+mezcla   [  17% ] 100/100 VUs  1m00.2s/6m00.0s
+rafaga • [   0% ] waiting      5m39.8s
+
+running (01m36.0s), 100/100 VUs, 396 complete and 0 interrupted iterations
+mezcla   [  17% ] 100/100 VUs  1m01.2s/6m00.0s
+rafaga • [   0% ] waiting      5m38.8s
+
+running (01m37.0s), 100/100 VUs, 417 complete and 0 interrupted iterations
+mezcla   [  17% ] 100/100 VUs  1m02.2s/6m00.0s
+rafaga • [   0% ] waiting      5m37.8s
+
+running (01m38.0s), 100/100 VUs, 431 complete and 0 interrupted iterations
+mezcla   [  18% ] 100/100 VUs  1m03.2s/6m00.0s
+rafaga • [   0% ] waiting      5m36.8s
+
+running (01m39.0s), 100/100 VUs, 444 complete and 0 interrupted iterations
+mezcla   [  18% ] 100/100 VUs  1m04.2s/6m00.0s
+rafaga • [   0% ] waiting      5m35.8s
+
+running (01m40.0s), 100/100 VUs, 455 complete and 0 interrupted iterations
+mezcla   [  18% ] 100/100 VUs  1m05.2s/6m00.0s
+rafaga • [   0% ] waiting      5m34.8s
+
+running (01m41.0s), 100/100 VUs, 466 complete and 0 interrupted iterations
+mezcla   [  18% ] 100/100 VUs  1m06.2s/6m00.0s
+rafaga • [   0% ] waiting      5m33.8s
+
+running (01m42.0s), 100/100 VUs, 471 complete and 0 interrupted iterations
+mezcla   [  19% ] 100/100 VUs  1m07.2s/6m00.0s
+rafaga • [   0% ] waiting      5m32.8s
+
+running (01m43.0s), 100/100 VUs, 478 complete and 0 interrupted iterations
+mezcla   [  19% ] 100/100 VUs  1m08.2s/6m00.0s
+rafaga • [   0% ] waiting      5m31.8s
+
+running (01m44.0s), 100/100 VUs, 486 complete and 0 interrupted iterations
+mezcla   [  19% ] 100/100 VUs  1m09.2s/6m00.0s
+rafaga • [   0% ] waiting      5m30.8s
+
+running (01m45.0s), 100/100 VUs, 501 complete and 0 interrupted iterations
+mezcla   [  19% ] 100/100 VUs  1m10.2s/6m00.0s
+rafaga • [   0% ] waiting      5m29.8s
+
+running (01m46.0s), 100/100 VUs, 506 complete and 0 interrupted iterations
+mezcla   [  20% ] 100/100 VUs  1m11.2s/6m00.0s
+rafaga • [   0% ] waiting      5m28.8s
+
+running (01m47.0s), 100/100 VUs, 519 complete and 0 interrupted iterations
+mezcla   [  20% ] 100/100 VUs  1m12.2s/6m00.0s
+rafaga • [   0% ] waiting      5m27.8s
+
+running (01m48.0s), 100/100 VUs, 532 complete and 0 interrupted iterations
+mezcla   [  20% ] 100/100 VUs  1m13.2s/6m00.0s
+rafaga • [   0% ] waiting      5m26.8s
+
+running (01m49.0s), 100/100 VUs, 544 complete and 0 interrupted iterations
+mezcla   [  21% ] 100/100 VUs  1m14.2s/6m00.0s
+rafaga • [   0% ] waiting      5m25.8s
+
+running (01m50.0s), 100/100 VUs, 555 complete and 0 interrupted iterations
+mezcla   [  21% ] 100/100 VUs  1m15.2s/6m00.0s
+rafaga • [   0% ] waiting      5m24.8s
+
+running (01m51.0s), 100/100 VUs, 564 complete and 0 interrupted iterations
+mezcla   [  21% ] 100/100 VUs  1m16.2s/6m00.0s
+rafaga • [   0% ] waiting      5m23.8s
+
+running (01m52.0s), 100/100 VUs, 569 complete and 0 interrupted iterations
+mezcla   [  21% ] 100/100 VUs  1m17.2s/6m00.0s
+rafaga • [   0% ] waiting      5m22.8s
+
+running (01m53.0s), 100/100 VUs, 583 complete and 0 interrupted iterations
+mezcla   [  22% ] 100/100 VUs  1m18.2s/6m00.0s
+rafaga • [   0% ] waiting      5m21.8s
+
+running (01m54.0s), 100/100 VUs, 589 complete and 0 interrupted iterations
+mezcla   [  22% ] 100/100 VUs  1m19.2s/6m00.0s
+rafaga • [   0% ] waiting      5m20.8s
+
+running (01m55.0s), 100/100 VUs, 604 complete and 0 interrupted iterations
+mezcla   [  22% ] 100/100 VUs  1m20.2s/6m00.0s
+rafaga • [   0% ] waiting      5m19.8s
+
+running (01m56.0s), 100/100 VUs, 619 complete and 0 interrupted iterations
+mezcla   [  23% ] 100/100 VUs  1m21.2s/6m00.0s
+rafaga • [   0% ] waiting      5m18.8s
+
+running (01m57.0s), 100/100 VUs, 636 complete and 0 interrupted iterations
+mezcla   [  23% ] 100/100 VUs  1m22.2s/6m00.0s
+rafaga • [   0% ] waiting      5m17.8s
+
+running (01m58.0s), 100/100 VUs, 650 complete and 0 interrupted iterations
+mezcla   [  23% ] 100/100 VUs  1m23.2s/6m00.0s
+rafaga • [   0% ] waiting      5m16.8s
+
+running (01m59.0s), 100/100 VUs, 655 complete and 0 interrupted iterations
+mezcla   [  23% ] 100/100 VUs  1m24.2s/6m00.0s
+rafaga • [   0% ] waiting      5m15.8s
+
+running (02m00.0s), 100/100 VUs, 665 complete and 0 interrupted iterations
+mezcla   [  24% ] 100/100 VUs  1m25.2s/6m00.0s
+rafaga • [   0% ] waiting      5m14.8s
+
+running (02m01.0s), 100/100 VUs, 673 complete and 0 interrupted iterations
+mezcla   [  24% ] 100/100 VUs  1m26.2s/6m00.0s
+rafaga • [   0% ] waiting      5m13.8s
+
+running (02m02.0s), 100/100 VUs, 688 complete and 0 interrupted iterations
+mezcla   [  24% ] 100/100 VUs  1m27.2s/6m00.0s
+rafaga • [   0% ] waiting      5m12.8s
+
+running (02m03.0s), 100/100 VUs, 697 complete and 0 interrupted iterations
+mezcla   [  24% ] 100/100 VUs  1m28.2s/6m00.0s
+rafaga • [   0% ] waiting      5m11.8s
+
+running (02m04.0s), 100/100 VUs, 714 complete and 0 interrupted iterations
+mezcla   [  25% ] 100/100 VUs  1m29.2s/6m00.0s
+rafaga • [   0% ] waiting      5m10.8s
+
+running (02m05.0s), 100/100 VUs, 732 complete and 0 interrupted iterations
+mezcla   [  25% ] 100/100 VUs  1m30.2s/6m00.0s
+rafaga • [   0% ] waiting      5m09.8s
+
+running (02m06.0s), 100/100 VUs, 743 complete and 0 interrupted iterations
+mezcla   [  25% ] 100/100 VUs  1m31.2s/6m00.0s
+rafaga • [   0% ] waiting      5m08.8s
+
+running (02m07.0s), 100/100 VUs, 759 complete and 0 interrupted iterations
+mezcla   [  26% ] 100/100 VUs  1m32.2s/6m00.0s
+rafaga • [   0% ] waiting      5m07.8s
+
+running (02m08.0s), 100/100 VUs, 769 complete and 0 interrupted iterations
+mezcla   [  26% ] 100/100 VUs  1m33.2s/6m00.0s
+rafaga • [   0% ] waiting      5m06.8s
+
+running (02m09.0s), 100/100 VUs, 776 complete and 0 interrupted iterations
+mezcla   [  26% ] 100/100 VUs  1m34.2s/6m00.0s
+rafaga • [   0% ] waiting      5m05.8s
+
+running (02m10.0s), 100/100 VUs, 780 complete and 0 interrupted iterations
+mezcla   [  26% ] 100/100 VUs  1m35.2s/6m00.0s
+rafaga • [   0% ] waiting      5m04.8s
+
+running (02m11.0s), 100/100 VUs, 795 complete and 0 interrupted iterations
+mezcla   [  27% ] 100/100 VUs  1m36.2s/6m00.0s
+rafaga • [   0% ] waiting      5m03.8s
+
+running (02m12.0s), 100/100 VUs, 802 complete and 0 interrupted iterations
+mezcla   [  27% ] 100/100 VUs  1m37.2s/6m00.0s
+rafaga • [   0% ] waiting      5m02.8s
+
+running (02m13.0s), 100/100 VUs, 818 complete and 0 interrupted iterations
+mezcla   [  27% ] 100/100 VUs  1m38.2s/6m00.0s
+rafaga • [   0% ] waiting      5m01.8s
+
+running (02m14.0s), 100/100 VUs, 832 complete and 0 interrupted iterations
+mezcla   [  28% ] 100/100 VUs  1m39.2s/6m00.0s
+rafaga • [   0% ] waiting      5m00.8s
+
+running (02m15.0s), 100/100 VUs, 845 complete and 0 interrupted iterations
+mezcla   [  28% ] 100/100 VUs  1m40.2s/6m00.0s
+rafaga • [   0% ] waiting      4m59.8s
+
+running (02m16.0s), 100/100 VUs, 857 complete and 0 interrupted iterations
+mezcla   [  28% ] 100/100 VUs  1m41.2s/6m00.0s
+rafaga • [   0% ] waiting      4m58.8s
+
+running (02m17.0s), 100/100 VUs, 870 complete and 0 interrupted iterations
+mezcla   [  28% ] 100/100 VUs  1m42.2s/6m00.0s
+rafaga • [   0% ] waiting      4m57.8s
+
+running (02m18.0s), 100/100 VUs, 880 complete and 0 interrupted iterations
+mezcla   [  29% ] 100/100 VUs  1m43.2s/6m00.0s
+rafaga • [   0% ] waiting      4m56.8s
+
+running (02m19.0s), 100/100 VUs, 888 complete and 0 interrupted iterations
+mezcla   [  29% ] 100/100 VUs  1m44.2s/6m00.0s
+rafaga • [   0% ] waiting      4m55.8s
+
+running (02m20.0s), 100/100 VUs, 898 complete and 0 interrupted iterations
+mezcla   [  29% ] 100/100 VUs  1m45.2s/6m00.0s
+rafaga • [   0% ] waiting      4m54.8s
+
+running (02m21.0s), 100/100 VUs, 909 complete and 0 interrupted iterations
+mezcla   [  29% ] 100/100 VUs  1m46.2s/6m00.0s
+rafaga • [   0% ] waiting      4m53.8s
+
+running (02m22.0s), 100/100 VUs, 922 complete and 0 interrupted iterations
+mezcla   [  30% ] 100/100 VUs  1m47.2s/6m00.0s
+rafaga • [   0% ] waiting      4m52.8s
+
+running (02m23.0s), 100/100 VUs, 938 complete and 0 interrupted iterations
+mezcla   [  30% ] 100/100 VUs  1m48.2s/6m00.0s
+rafaga • [   0% ] waiting      4m51.8s
+
+running (02m24.0s), 100/100 VUs, 959 complete and 0 interrupted iterations
+mezcla   [  30% ] 100/100 VUs  1m49.2s/6m00.0s
+rafaga • [   0% ] waiting      4m50.8s
+
+running (02m25.0s), 100/100 VUs, 973 complete and 0 interrupted iterations
+mezcla   [  31% ] 100/100 VUs  1m50.2s/6m00.0s
+rafaga • [   0% ] waiting      4m49.8s
+
+running (02m26.0s), 100/100 VUs, 983 complete and 0 interrupted iterations
+mezcla   [  31% ] 100/100 VUs  1m51.2s/6m00.0s
+rafaga • [   0% ] waiting      4m48.8s
+
+running (02m27.0s), 100/100 VUs, 995 complete and 0 interrupted iterations
+mezcla   [  31% ] 100/100 VUs  1m52.2s/6m00.0s
+rafaga • [   0% ] waiting      4m47.8s
+
+running (02m28.0s), 100/100 VUs, 1001 complete and 0 interrupted iterations
+mezcla   [  31% ] 100/100 VUs  1m53.2s/6m00.0s
+rafaga • [   0% ] waiting      4m46.8s
+
+running (02m29.0s), 100/100 VUs, 1013 complete and 0 interrupted iterations
+mezcla   [  32% ] 100/100 VUs  1m54.2s/6m00.0s
+rafaga • [   0% ] waiting      4m45.8s
+
+running (02m30.0s), 100/100 VUs, 1026 complete and 0 interrupted iterations
+mezcla   [  32% ] 100/100 VUs  1m55.2s/6m00.0s
+rafaga • [   0% ] waiting      4m44.8s
+
+running (02m31.0s), 100/100 VUs, 1036 complete and 0 interrupted iterations
+mezcla   [  32% ] 100/100 VUs  1m56.2s/6m00.0s
+rafaga • [   0% ] waiting      4m43.8s
+
+running (02m32.0s), 100/100 VUs, 1056 complete and 0 interrupted iterations
+mezcla   [  33% ] 100/100 VUs  1m57.2s/6m00.0s
+rafaga • [   0% ] waiting      4m42.8s
+
+running (02m33.0s), 100/100 VUs, 1071 complete and 0 interrupted iterations
+mezcla   [  33% ] 100/100 VUs  1m58.2s/6m00.0s
+rafaga • [   0% ] waiting      4m41.8s
+
+running (02m34.0s), 100/100 VUs, 1087 complete and 0 interrupted iterations
+mezcla   [  33% ] 100/100 VUs  1m59.2s/6m00.0s
+rafaga • [   0% ] waiting      4m40.8s
+
+running (02m35.0s), 100/100 VUs, 1094 complete and 0 interrupted iterations
+mezcla   [  33% ] 100/100 VUs  2m00.2s/6m00.0s
+rafaga • [   0% ] waiting      4m39.8s
+
+running (02m36.0s), 100/100 VUs, 1104 complete and 0 interrupted iterations
+mezcla   [  34% ] 100/100 VUs  2m01.2s/6m00.0s
+rafaga • [   0% ] waiting      4m38.8s
+
+running (02m37.0s), 100/100 VUs, 1113 complete and 0 interrupted iterations
+mezcla   [  34% ] 100/100 VUs  2m02.2s/6m00.0s
+rafaga • [   0% ] waiting      4m37.8s
+
+running (02m38.0s), 100/100 VUs, 1125 complete and 0 interrupted iterations
+mezcla   [  34% ] 100/100 VUs  2m03.2s/6m00.0s
+rafaga • [   0% ] waiting      4m36.8s
+
+running (02m39.0s), 100/100 VUs, 1138 complete and 0 interrupted iterations
+mezcla   [  34% ] 100/100 VUs  2m04.2s/6m00.0s
+rafaga • [   0% ] waiting      4m35.8s
+
+running (02m40.0s), 100/100 VUs, 1157 complete and 0 interrupted iterations
+mezcla   [  35% ] 100/100 VUs  2m05.2s/6m00.0s
+rafaga • [   0% ] waiting      4m34.8s
+
+running (02m41.0s), 100/100 VUs, 1178 complete and 0 interrupted iterations
+mezcla   [  35% ] 100/100 VUs  2m06.2s/6m00.0s
+rafaga • [   0% ] waiting      4m33.8s
+
+running (02m42.0s), 100/100 VUs, 1187 complete and 0 interrupted iterations
+mezcla   [  35% ] 100/100 VUs  2m07.2s/6m00.0s
+rafaga • [   0% ] waiting      4m32.8s
+
+running (02m43.0s), 100/100 VUs, 1194 complete and 0 interrupted iterations
+mezcla   [  36% ] 100/100 VUs  2m08.2s/6m00.0s
+rafaga • [   0% ] waiting      4m31.8s
+
+running (02m44.0s), 100/100 VUs, 1202 complete and 0 interrupted iterations
+mezcla   [  36% ] 100/100 VUs  2m09.2s/6m00.0s
+rafaga • [   0% ] waiting      4m30.8s
+
+running (02m45.0s), 100/100 VUs, 1210 complete and 0 interrupted iterations
+mezcla   [  36% ] 100/100 VUs  2m10.2s/6m00.0s
+rafaga • [   0% ] waiting      4m29.8s
+
+running (02m46.0s), 100/100 VUs, 1215 complete and 0 interrupted iterations
+mezcla   [  36% ] 100/100 VUs  2m11.2s/6m00.0s
+rafaga • [   0% ] waiting      4m28.8s
+
+running (02m47.0s), 100/100 VUs, 1218 complete and 0 interrupted iterations
+mezcla   [  37% ] 100/100 VUs  2m12.2s/6m00.0s
+rafaga • [   0% ] waiting      4m27.8s
+
+running (02m48.0s), 100/100 VUs, 1224 complete and 0 interrupted iterations
+mezcla   [  37% ] 100/100 VUs  2m13.2s/6m00.0s
+rafaga • [   0% ] waiting      4m26.8s
+
+running (02m49.0s), 100/100 VUs, 1234 complete and 0 interrupted iterations
+mezcla   [  37% ] 100/100 VUs  2m14.2s/6m00.0s
+rafaga • [   0% ] waiting      4m25.8s
+
+running (02m50.0s), 100/100 VUs, 1251 complete and 0 interrupted iterations
+mezcla   [  38% ] 100/100 VUs  2m15.2s/6m00.0s
+rafaga • [   0% ] waiting      4m24.8s
+
+running (02m51.0s), 100/100 VUs, 1267 complete and 0 interrupted iterations
+mezcla   [  38% ] 100/100 VUs  2m16.2s/6m00.0s
+rafaga • [   0% ] waiting      4m23.8s
+
+running (02m52.0s), 100/100 VUs, 1279 complete and 0 interrupted iterations
+mezcla   [  38% ] 100/100 VUs  2m17.2s/6m00.0s
+rafaga • [   0% ] waiting      4m22.8s
+
+running (02m53.0s), 100/100 VUs, 1292 complete and 0 interrupted iterations
+mezcla   [  38% ] 100/100 VUs  2m18.2s/6m00.0s
+rafaga • [   0% ] waiting      4m21.8s
+
+running (02m54.0s), 100/100 VUs, 1304 complete and 0 interrupted iterations
+mezcla   [  39% ] 100/100 VUs  2m19.2s/6m00.0s
+rafaga • [   0% ] waiting      4m20.8s
+
+running (02m55.0s), 100/100 VUs, 1312 complete and 0 interrupted iterations
+mezcla   [  39% ] 100/100 VUs  2m20.2s/6m00.0s
+rafaga • [   0% ] waiting      4m19.8s
+
+running (02m56.0s), 100/100 VUs, 1322 complete and 0 interrupted iterations
+mezcla   [  39% ] 100/100 VUs  2m21.2s/6m00.0s
+rafaga • [   0% ] waiting      4m18.8s
+
+running (02m57.0s), 100/100 VUs, 1331 complete and 0 interrupted iterations
+mezcla   [  39% ] 100/100 VUs  2m22.2s/6m00.0s
+rafaga • [   0% ] waiting      4m17.8s
+
+running (02m58.0s), 100/100 VUs, 1342 complete and 0 interrupted iterations
+mezcla   [  40% ] 100/100 VUs  2m23.2s/6m00.0s
+rafaga • [   0% ] waiting      4m16.8s
+
+running (02m59.0s), 100/100 VUs, 1353 complete and 0 interrupted iterations
+mezcla   [  40% ] 100/100 VUs  2m24.2s/6m00.0s
+rafaga • [   0% ] waiting      4m15.8s
+
+running (03m00.0s), 100/100 VUs, 1370 complete and 0 interrupted iterations
+mezcla   [  40% ] 100/100 VUs  2m25.2s/6m00.0s
+rafaga • [   0% ] waiting      4m14.8s
+
+running (03m01.0s), 100/100 VUs, 1382 complete and 0 interrupted iterations
+mezcla   [  41% ] 100/100 VUs  2m26.2s/6m00.0s
+rafaga • [   0% ] waiting      4m13.8s
+
+running (03m02.0s), 100/100 VUs, 1399 complete and 0 interrupted iterations
+mezcla   [  41% ] 100/100 VUs  2m27.2s/6m00.0s
+rafaga • [   0% ] waiting      4m12.8s
+
+running (03m03.0s), 100/100 VUs, 1412 complete and 0 interrupted iterations
+mezcla   [  41% ] 100/100 VUs  2m28.2s/6m00.0s
+rafaga • [   0% ] waiting      4m11.8s
+
+running (03m04.0s), 100/100 VUs, 1423 complete and 0 interrupted iterations
+mezcla   [  41% ] 100/100 VUs  2m29.2s/6m00.0s
+rafaga • [   0% ] waiting      4m10.8s
+
+running (03m05.0s), 100/100 VUs, 1430 complete and 0 interrupted iterations
+mezcla   [  42% ] 100/100 VUs  2m30.2s/6m00.0s
+rafaga • [   0% ] waiting      4m09.8s
+
+running (03m06.0s), 100/100 VUs, 1445 complete and 0 interrupted iterations
+mezcla   [  42% ] 100/100 VUs  2m31.2s/6m00.0s
+rafaga • [   0% ] waiting      4m08.8s
+
+running (03m07.0s), 100/100 VUs, 1454 complete and 0 interrupted iterations
+mezcla   [  42% ] 100/100 VUs  2m32.2s/6m00.0s
+rafaga • [   0% ] waiting      4m07.8s
+
+running (03m08.0s), 100/100 VUs, 1464 complete and 0 interrupted iterations
+mezcla   [  43% ] 100/100 VUs  2m33.2s/6m00.0s
+rafaga • [   0% ] waiting      4m06.8s
+
+running (03m09.0s), 100/100 VUs, 1480 complete and 0 interrupted iterations
+mezcla   [  43% ] 100/100 VUs  2m34.2s/6m00.0s
+rafaga • [   0% ] waiting      4m05.8s
+
+running (03m10.0s), 100/100 VUs, 1496 complete and 0 interrupted iterations
+mezcla   [  43% ] 100/100 VUs  2m35.2s/6m00.0s
+rafaga • [   0% ] waiting      4m04.8s
+
+running (03m11.0s), 100/100 VUs, 1509 complete and 0 interrupted iterations
+mezcla   [  43% ] 100/100 VUs  2m36.2s/6m00.0s
+rafaga • [   0% ] waiting      4m03.8s
+
+running (03m12.0s), 100/100 VUs, 1520 complete and 0 interrupted iterations
+mezcla   [  44% ] 100/100 VUs  2m37.2s/6m00.0s
+rafaga • [   0% ] waiting      4m02.8s
+
+running (03m13.0s), 100/100 VUs, 1531 complete and 0 interrupted iterations
+mezcla   [  44% ] 100/100 VUs  2m38.2s/6m00.0s
+rafaga • [   0% ] waiting      4m01.8s
+
+running (03m14.0s), 100/100 VUs, 1544 complete and 0 interrupted iterations
+mezcla   [  44% ] 100/100 VUs  2m39.2s/6m00.0s
+rafaga • [   0% ] waiting      4m00.8s
+
+running (03m15.0s), 100/100 VUs, 1556 complete and 0 interrupted iterations
+mezcla   [  44% ] 100/100 VUs  2m40.2s/6m00.0s
+rafaga • [   0% ] waiting      3m59.8s
+
+running (03m16.0s), 100/100 VUs, 1562 complete and 0 interrupted iterations
+mezcla   [  45% ] 100/100 VUs  2m41.2s/6m00.0s
+rafaga • [   0% ] waiting      3m58.8s
+
+running (03m17.0s), 100/100 VUs, 1574 complete and 0 interrupted iterations
+mezcla   [  45% ] 100/100 VUs  2m42.2s/6m00.0s
+rafaga • [   0% ] waiting      3m57.8s
+
+running (03m18.0s), 100/100 VUs, 1598 complete and 0 interrupted iterations
+mezcla   [  45% ] 100/100 VUs  2m43.2s/6m00.0s
+rafaga • [   0% ] waiting      3m56.8s
+
+running (03m19.0s), 100/100 VUs, 1612 complete and 0 interrupted iterations
+mezcla   [  46% ] 100/100 VUs  2m44.2s/6m00.0s
+rafaga • [   0% ] waiting      3m55.8s
+
+running (03m20.0s), 100/100 VUs, 1626 complete and 0 interrupted iterations
+mezcla   [  46% ] 100/100 VUs  2m45.2s/6m00.0s
+rafaga • [   0% ] waiting      3m54.8s
+
+running (03m21.0s), 100/100 VUs, 1634 complete and 0 interrupted iterations
+mezcla   [  46% ] 100/100 VUs  2m46.2s/6m00.0s
+rafaga • [   0% ] waiting      3m53.8s
+
+running (03m22.0s), 100/100 VUs, 1643 complete and 0 interrupted iterations
+mezcla   [  46% ] 100/100 VUs  2m47.2s/6m00.0s
+rafaga • [   0% ] waiting      3m52.8s
+
+running (03m23.0s), 100/100 VUs, 1649 complete and 0 interrupted iterations
+mezcla   [  47% ] 100/100 VUs  2m48.2s/6m00.0s
+rafaga • [   0% ] waiting      3m51.8s
+
+running (03m24.0s), 100/100 VUs, 1658 complete and 0 interrupted iterations
+mezcla   [  47% ] 100/100 VUs  2m49.2s/6m00.0s
+rafaga • [   0% ] waiting      3m50.8s
+
+running (03m25.0s), 100/100 VUs, 1672 complete and 0 interrupted iterations
+mezcla   [  47% ] 100/100 VUs  2m50.2s/6m00.0s
+rafaga • [   0% ] waiting      3m49.8s
+
+running (03m26.0s), 100/100 VUs, 1690 complete and 0 interrupted iterations
+mezcla   [  48% ] 100/100 VUs  2m51.2s/6m00.0s
+rafaga • [   0% ] waiting      3m48.8s
+
+running (03m27.0s), 100/100 VUs, 1704 complete and 0 interrupted iterations
+mezcla   [  48% ] 100/100 VUs  2m52.2s/6m00.0s
+rafaga • [   0% ] waiting      3m47.8s
+
+running (03m28.0s), 100/100 VUs, 1719 complete and 0 interrupted iterations
+mezcla   [  48% ] 100/100 VUs  2m53.2s/6m00.0s
+rafaga • [   0% ] waiting      3m46.8s
+
+running (03m29.0s), 100/100 VUs, 1728 complete and 0 interrupted iterations
+mezcla   [  48% ] 100/100 VUs  2m54.2s/6m00.0s
+rafaga • [   0% ] waiting      3m45.8s
+
+running (03m30.0s), 100/100 VUs, 1741 complete and 0 interrupted iterations
+mezcla   [  49% ] 100/100 VUs  2m55.2s/6m00.0s
+rafaga • [   0% ] waiting      3m44.8s
+
+running (03m31.0s), 100/100 VUs, 1747 complete and 0 interrupted iterations
+mezcla   [  49% ] 100/100 VUs  2m56.2s/6m00.0s
+rafaga • [   0% ] waiting      3m43.8s
+
+running (03m32.0s), 100/100 VUs, 1754 complete and 0 interrupted iterations
+mezcla   [  49% ] 100/100 VUs  2m57.2s/6m00.0s
+rafaga • [   0% ] waiting      3m42.8s
+
+running (03m33.0s), 100/100 VUs, 1774 complete and 0 interrupted iterations
+mezcla   [  49% ] 100/100 VUs  2m58.2s/6m00.0s
+rafaga • [   0% ] waiting      3m41.8s
+
+running (03m34.0s), 100/100 VUs, 1785 complete and 0 interrupted iterations
+mezcla   [  50% ] 100/100 VUs  2m59.2s/6m00.0s
+rafaga • [   0% ] waiting      3m40.8s
+
+running (03m35.0s), 100/100 VUs, 1795 complete and 0 interrupted iterations
+mezcla   [  50% ] 100/100 VUs  3m00.2s/6m00.0s
+rafaga • [   0% ] waiting      3m39.8s
+
+running (03m36.0s), 100/100 VUs, 1813 complete and 0 interrupted iterations
+mezcla   [  50% ] 100/100 VUs  3m01.2s/6m00.0s
+rafaga • [   0% ] waiting      3m38.8s
+
+running (03m37.0s), 100/100 VUs, 1831 complete and 0 interrupted iterations
+mezcla   [  51% ] 100/100 VUs  3m02.2s/6m00.0s
+rafaga • [   0% ] waiting      3m37.8s
+
+running (03m38.0s), 100/100 VUs, 1842 complete and 0 interrupted iterations
+mezcla   [  51% ] 100/100 VUs  3m03.2s/6m00.0s
+rafaga • [   0% ] waiting      3m36.8s
+
+running (03m39.0s), 100/100 VUs, 1850 complete and 0 interrupted iterations
+mezcla   [  51% ] 100/100 VUs  3m04.2s/6m00.0s
+rafaga • [   0% ] waiting      3m35.8s
+
+running (03m40.0s), 100/100 VUs, 1863 complete and 0 interrupted iterations
+mezcla   [  51% ] 100/100 VUs  3m05.2s/6m00.0s
+rafaga • [   0% ] waiting      3m34.8s
+
+running (03m41.0s), 100/100 VUs, 1870 complete and 0 interrupted iterations
+mezcla   [  52% ] 100/100 VUs  3m06.2s/6m00.0s
+rafaga • [   0% ] waiting      3m33.8s
+
+running (03m42.0s), 100/100 VUs, 1880 complete and 0 interrupted iterations
+mezcla   [  52% ] 100/100 VUs  3m07.2s/6m00.0s
+rafaga • [   0% ] waiting      3m32.8s
+
+running (03m43.0s), 100/100 VUs, 1893 complete and 0 interrupted iterations
+mezcla   [  52% ] 100/100 VUs  3m08.2s/6m00.0s
+rafaga • [   0% ] waiting      3m31.8s
+
+running (03m44.0s), 100/100 VUs, 1904 complete and 0 interrupted iterations
+mezcla   [  53% ] 100/100 VUs  3m09.2s/6m00.0s
+rafaga • [   0% ] waiting      3m30.8s
+
+running (03m45.0s), 100/100 VUs, 1916 complete and 0 interrupted iterations
+mezcla   [  53% ] 100/100 VUs  3m10.2s/6m00.0s
+rafaga • [   0% ] waiting      3m29.8s
+
+running (03m46.0s), 100/100 VUs, 1925 complete and 0 interrupted iterations
+mezcla   [  53% ] 100/100 VUs  3m11.2s/6m00.0s
+rafaga • [   0% ] waiting      3m28.8s
+
+running (03m47.0s), 100/100 VUs, 1937 complete and 0 interrupted iterations
+mezcla   [  53% ] 100/100 VUs  3m12.2s/6m00.0s
+rafaga • [   0% ] waiting      3m27.8s
+
+running (03m48.0s), 100/100 VUs, 1951 complete and 0 interrupted iterations
+mezcla   [  54% ] 100/100 VUs  3m13.2s/6m00.0s
+rafaga • [   0% ] waiting      3m26.8s
+
+running (03m49.0s), 100/100 VUs, 1960 complete and 0 interrupted iterations
+mezcla   [  54% ] 100/100 VUs  3m14.2s/6m00.0s
+rafaga • [   0% ] waiting      3m25.8s
+
+running (03m50.0s), 100/100 VUs, 1962 complete and 0 interrupted iterations
+mezcla   [  54% ] 100/100 VUs  3m15.2s/6m00.0s
+rafaga • [   0% ] waiting      3m24.8s
+
+running (03m51.0s), 100/100 VUs, 1963 complete and 0 interrupted iterations
+mezcla   [  54% ] 100/100 VUs  3m16.2s/6m00.0s
+rafaga • [   0% ] waiting      3m23.8s
+
+running (03m52.0s), 100/100 VUs, 1965 complete and 0 interrupted iterations
+mezcla   [  55% ] 100/100 VUs  3m17.2s/6m00.0s
+rafaga • [   0% ] waiting      3m22.8s
+
+running (03m53.0s), 100/100 VUs, 1967 complete and 0 interrupted iterations
+mezcla   [  55% ] 100/100 VUs  3m18.2s/6m00.0s
+rafaga • [   0% ] waiting      3m21.8s
+
+running (03m54.0s), 100/100 VUs, 1980 complete and 0 interrupted iterations
+mezcla   [  55% ] 100/100 VUs  3m19.2s/6m00.0s
+rafaga • [   0% ] waiting      3m20.8s
+
+running (03m55.0s), 100/100 VUs, 1992 complete and 0 interrupted iterations
+mezcla   [  56% ] 100/100 VUs  3m20.2s/6m00.0s
+rafaga • [   0% ] waiting      3m19.8s
+
+running (03m56.0s), 100/100 VUs, 2002 complete and 0 interrupted iterations
+mezcla   [  56% ] 100/100 VUs  3m21.2s/6m00.0s
+rafaga • [   0% ] waiting      3m18.8s
+
+running (03m57.0s), 100/100 VUs, 2022 complete and 0 interrupted iterations
+mezcla   [  56% ] 100/100 VUs  3m22.2s/6m00.0s
+rafaga • [   0% ] waiting      3m17.8s
+
+running (03m58.0s), 100/100 VUs, 2041 complete and 0 interrupted iterations
+mezcla   [  56% ] 100/100 VUs  3m23.2s/6m00.0s
+rafaga • [   0% ] waiting      3m16.8s
+
+running (03m59.0s), 100/100 VUs, 2054 complete and 0 interrupted iterations
+mezcla   [  57% ] 100/100 VUs  3m24.2s/6m00.0s
+rafaga • [   0% ] waiting      3m15.8s
+
+running (04m00.0s), 100/100 VUs, 2057 complete and 0 interrupted iterations
+mezcla   [  57% ] 100/100 VUs  3m25.2s/6m00.0s
+rafaga • [   0% ] waiting      3m14.8s
+
+running (04m01.0s), 100/100 VUs, 2066 complete and 0 interrupted iterations
+mezcla   [  57% ] 100/100 VUs  3m26.2s/6m00.0s
+rafaga • [   0% ] waiting      3m13.8s
+
+running (04m02.0s), 100/100 VUs, 2072 complete and 0 interrupted iterations
+mezcla   [  58% ] 100/100 VUs  3m27.2s/6m00.0s
+rafaga • [   0% ] waiting      3m12.8s
+
+running (04m03.0s), 100/100 VUs, 2088 complete and 0 interrupted iterations
+mezcla   [  58% ] 100/100 VUs  3m28.2s/6m00.0s
+rafaga • [   0% ] waiting      3m11.8s
+
+running (04m04.0s), 100/100 VUs, 2101 complete and 0 interrupted iterations
+mezcla   [  58% ] 100/100 VUs  3m29.2s/6m00.0s
+rafaga • [   0% ] waiting      3m10.8s
+
+running (04m05.0s), 100/100 VUs, 2112 complete and 0 interrupted iterations
+mezcla   [  58% ] 100/100 VUs  3m30.2s/6m00.0s
+rafaga • [   0% ] waiting      3m09.8s
+
+running (04m06.0s), 100/100 VUs, 2132 complete and 0 interrupted iterations
+mezcla   [  59% ] 100/100 VUs  3m31.2s/6m00.0s
+rafaga • [   0% ] waiting      3m08.8s
+
+running (04m07.0s), 100/100 VUs, 2149 complete and 0 interrupted iterations
+mezcla   [  59% ] 100/100 VUs  3m32.2s/6m00.0s
+rafaga • [   0% ] waiting      3m07.8s
+
+running (04m08.0s), 100/100 VUs, 2158 complete and 0 interrupted iterations
+mezcla   [  59% ] 100/100 VUs  3m33.2s/6m00.0s
+rafaga • [   0% ] waiting      3m06.8s
+
+running (04m09.0s), 100/100 VUs, 2171 complete and 0 interrupted iterations
+mezcla   [  59% ] 100/100 VUs  3m34.2s/6m00.0s
+rafaga • [   0% ] waiting      3m05.8s
+
+running (04m10.0s), 100/100 VUs, 2184 complete and 0 interrupted iterations
+mezcla   [  60% ] 100/100 VUs  3m35.2s/6m00.0s
+rafaga • [   0% ] waiting      3m04.8s
+
+running (04m11.0s), 100/100 VUs, 2189 complete and 0 interrupted iterations
+mezcla   [  60% ] 100/100 VUs  3m36.2s/6m00.0s
+rafaga • [   0% ] waiting      3m03.8s
+
+running (04m12.0s), 100/100 VUs, 2204 complete and 0 interrupted iterations
+mezcla   [  60% ] 100/100 VUs  3m37.2s/6m00.0s
+rafaga • [   0% ] waiting      3m02.8s
+
+running (04m13.0s), 100/100 VUs, 2215 complete and 0 interrupted iterations
+mezcla   [  61% ] 100/100 VUs  3m38.2s/6m00.0s
+rafaga • [   0% ] waiting      3m01.8s
+
+running (04m14.0s), 100/100 VUs, 2235 complete and 0 interrupted iterations
+mezcla   [  61% ] 100/100 VUs  3m39.2s/6m00.0s
+rafaga • [   0% ] waiting      3m00.8s
+
+running (04m15.0s), 100/100 VUs, 2256 complete and 0 interrupted iterations
+mezcla   [  61% ] 100/100 VUs  3m40.2s/6m00.0s
+rafaga • [   0% ] waiting      2m59.8s
+
+running (04m16.0s), 100/100 VUs, 2269 complete and 0 interrupted iterations
+mezcla   [  61% ] 100/100 VUs  3m41.2s/6m00.0s
+rafaga • [   0% ] waiting      2m58.8s
+
+running (04m17.0s), 100/100 VUs, 2275 complete and 0 interrupted iterations
+mezcla   [  62% ] 100/100 VUs  3m42.2s/6m00.0s
+rafaga • [   0% ] waiting      2m57.8s
+
+running (04m18.0s), 100/100 VUs, 2285 complete and 0 interrupted iterations
+mezcla   [  62% ] 100/100 VUs  3m43.2s/6m00.0s
+rafaga • [   0% ] waiting      2m56.8s
+
+running (04m19.0s), 100/100 VUs, 2296 complete and 0 interrupted iterations
+mezcla   [  62% ] 100/100 VUs  3m44.2s/6m00.0s
+rafaga • [   0% ] waiting      2m55.8s
+
+running (04m20.0s), 100/100 VUs, 2314 complete and 0 interrupted iterations
+mezcla   [  63% ] 100/100 VUs  3m45.2s/6m00.0s
+rafaga • [   0% ] waiting      2m54.8s
+
+running (04m21.0s), 100/100 VUs, 2328 complete and 0 interrupted iterations
+mezcla   [  63% ] 100/100 VUs  3m46.2s/6m00.0s
+rafaga • [   0% ] waiting      2m53.8s
+
+running (04m22.0s), 100/100 VUs, 2337 complete and 0 interrupted iterations
+mezcla   [  63% ] 100/100 VUs  3m47.2s/6m00.0s
+rafaga • [   0% ] waiting      2m52.8s
+
+running (04m23.0s), 100/100 VUs, 2352 complete and 0 interrupted iterations
+mezcla   [  63% ] 100/100 VUs  3m48.2s/6m00.0s
+rafaga • [   0% ] waiting      2m51.8s
+
+running (04m24.0s), 100/100 VUs, 2373 complete and 0 interrupted iterations
+mezcla   [  64% ] 100/100 VUs  3m49.2s/6m00.0s
+rafaga • [   0% ] waiting      2m50.8s
+
+running (04m25.0s), 100/100 VUs, 2384 complete and 0 interrupted iterations
+mezcla   [  64% ] 100/100 VUs  3m50.2s/6m00.0s
+rafaga • [   0% ] waiting      2m49.8s
+
+running (04m26.0s), 100/100 VUs, 2393 complete and 0 interrupted iterations
+mezcla   [  64% ] 100/100 VUs  3m51.2s/6m00.0s
+rafaga • [   0% ] waiting      2m48.8s
+
+running (04m27.0s), 100/100 VUs, 2409 complete and 0 interrupted iterations
+mezcla   [  64% ] 100/100 VUs  3m52.2s/6m00.0s
+rafaga • [   0% ] waiting      2m47.8s
+
+running (04m28.0s), 100/100 VUs, 2421 complete and 0 interrupted iterations
+mezcla   [  65% ] 100/100 VUs  3m53.2s/6m00.0s
+rafaga • [   0% ] waiting      2m46.8s
+
+running (04m29.0s), 100/100 VUs, 2435 complete and 0 interrupted iterations
+mezcla   [  65% ] 100/100 VUs  3m54.2s/6m00.0s
+rafaga • [   0% ] waiting      2m45.8s
+
+running (04m30.0s), 100/100 VUs, 2450 complete and 0 interrupted iterations
+mezcla   [  65% ] 100/100 VUs  3m55.2s/6m00.0s
+rafaga • [   0% ] waiting      2m44.8s
+
+running (04m31.0s), 100/100 VUs, 2459 complete and 0 interrupted iterations
+mezcla   [  66% ] 100/100 VUs  3m56.2s/6m00.0s
+rafaga • [   0% ] waiting      2m43.8s
+
+running (04m32.0s), 100/100 VUs, 2477 complete and 0 interrupted iterations
+mezcla   [  66% ] 100/100 VUs  3m57.2s/6m00.0s
+rafaga • [   0% ] waiting      2m42.8s
+
+running (04m33.0s), 100/100 VUs, 2489 complete and 0 interrupted iterations
+mezcla   [  66% ] 100/100 VUs  3m58.2s/6m00.0s
+rafaga • [   0% ] waiting      2m41.8s
+
+running (04m34.0s), 100/100 VUs, 2506 complete and 0 interrupted iterations
+mezcla   [  66% ] 100/100 VUs  3m59.2s/6m00.0s
+rafaga • [   0% ] waiting      2m40.8s
+
+running (04m35.0s), 100/100 VUs, 2517 complete and 0 interrupted iterations
+mezcla   [  67% ] 100/100 VUs  4m00.2s/6m00.0s
+rafaga • [   0% ] waiting      2m39.8s
+
+running (04m36.0s), 100/100 VUs, 2529 complete and 0 interrupted iterations
+mezcla   [  67% ] 100/100 VUs  4m01.2s/6m00.0s
+rafaga • [   0% ] waiting      2m38.8s
+
+running (04m37.0s), 100/100 VUs, 2545 complete and 0 interrupted iterations
+mezcla   [  67% ] 100/100 VUs  4m02.2s/6m00.0s
+rafaga • [   0% ] waiting      2m37.8s
+
+running (04m38.0s), 100/100 VUs, 2558 complete and 0 interrupted iterations
+mezcla   [  68% ] 100/100 VUs  4m03.2s/6m00.0s
+rafaga • [   0% ] waiting      2m36.8s
+
+running (04m39.0s), 100/100 VUs, 2571 complete and 0 interrupted iterations
+mezcla   [  68% ] 100/100 VUs  4m04.2s/6m00.0s
+rafaga • [   0% ] waiting      2m35.8s
+
+running (04m40.0s), 100/100 VUs, 2585 complete and 0 interrupted iterations
+mezcla   [  68% ] 100/100 VUs  4m05.2s/6m00.0s
+rafaga • [   0% ] waiting      2m34.8s
+
+running (04m41.0s), 100/100 VUs, 2604 complete and 0 interrupted iterations
+mezcla   [  68% ] 100/100 VUs  4m06.2s/6m00.0s
+rafaga • [   0% ] waiting      2m33.8s
+
+running (04m42.0s), 100/100 VUs, 2614 complete and 0 interrupted iterations
+mezcla   [  69% ] 100/100 VUs  4m07.2s/6m00.0s
+rafaga • [   0% ] waiting      2m32.8s
+
+running (04m43.0s), 100/100 VUs, 2629 complete and 0 interrupted iterations
+mezcla   [  69% ] 100/100 VUs  4m08.2s/6m00.0s
+rafaga • [   0% ] waiting      2m31.8s
+
+running (04m44.0s), 100/100 VUs, 2642 complete and 0 interrupted iterations
+mezcla   [  69% ] 100/100 VUs  4m09.2s/6m00.0s
+rafaga • [   0% ] waiting      2m30.8s
+
+running (04m45.0s), 100/100 VUs, 2657 complete and 0 interrupted iterations
+mezcla   [  69% ] 100/100 VUs  4m10.2s/6m00.0s
+rafaga • [   0% ] waiting      2m29.8s
+
+running (04m46.0s), 100/100 VUs, 2662 complete and 0 interrupted iterations
+mezcla   [  70% ] 100/100 VUs  4m11.2s/6m00.0s
+rafaga • [   0% ] waiting      2m28.8s
+
+running (04m47.0s), 100/100 VUs, 2669 complete and 0 interrupted iterations
+mezcla   [  70% ] 100/100 VUs  4m12.2s/6m00.0s
+rafaga • [   0% ] waiting      2m27.8s
+
+running (04m48.0s), 100/100 VUs, 2677 complete and 0 interrupted iterations
+mezcla   [  70% ] 100/100 VUs  4m13.2s/6m00.0s
+rafaga • [   0% ] waiting      2m26.8s
+
+running (04m49.0s), 100/100 VUs, 2685 complete and 0 interrupted iterations
+mezcla   [  71% ] 100/100 VUs  4m14.2s/6m00.0s
+rafaga • [   0% ] waiting      2m25.8s
+
+running (04m50.0s), 100/100 VUs, 2691 complete and 0 interrupted iterations
+mezcla   [  71% ] 100/100 VUs  4m15.2s/6m00.0s
+rafaga • [   0% ] waiting      2m24.8s
+
+running (04m51.0s), 100/100 VUs, 2708 complete and 0 interrupted iterations
+mezcla   [  71% ] 100/100 VUs  4m16.2s/6m00.0s
+rafaga • [   0% ] waiting      2m23.8s
+
+running (04m52.0s), 100/100 VUs, 2720 complete and 0 interrupted iterations
+mezcla   [  71% ] 100/100 VUs  4m17.2s/6m00.0s
+rafaga • [   0% ] waiting      2m22.8s
+
+running (04m53.0s), 100/100 VUs, 2734 complete and 0 interrupted iterations
+mezcla   [  72% ] 100/100 VUs  4m18.2s/6m00.0s
+rafaga • [   0% ] waiting      2m21.8s
+
+running (04m54.0s), 100/100 VUs, 2740 complete and 0 interrupted iterations
+mezcla   [  72% ] 100/100 VUs  4m19.2s/6m00.0s
+rafaga • [   0% ] waiting      2m20.8s
+
+running (04m55.0s), 100/100 VUs, 2751 complete and 0 interrupted iterations
+mezcla   [  72% ] 100/100 VUs  4m20.2s/6m00.0s
+rafaga • [   0% ] waiting      2m19.8s
+
+running (04m56.0s), 100/100 VUs, 2763 complete and 0 interrupted iterations
+mezcla   [  73% ] 100/100 VUs  4m21.2s/6m00.0s
+rafaga • [   0% ] waiting      2m18.8s
+
+running (04m57.0s), 100/100 VUs, 2779 complete and 0 interrupted iterations
+mezcla   [  73% ] 100/100 VUs  4m22.2s/6m00.0s
+rafaga • [   0% ] waiting      2m17.8s
+
+running (04m58.0s), 100/100 VUs, 2785 complete and 0 interrupted iterations
+mezcla   [  73% ] 100/100 VUs  4m23.2s/6m00.0s
+rafaga • [   0% ] waiting      2m16.8s
+
+running (04m59.0s), 100/100 VUs, 2793 complete and 0 interrupted iterations
+mezcla   [  73% ] 100/100 VUs  4m24.2s/6m00.0s
+rafaga • [   0% ] waiting      2m15.8s
+
+running (05m00.0s), 100/100 VUs, 2809 complete and 0 interrupted iterations
+mezcla   [  74% ] 100/100 VUs  4m25.2s/6m00.0s
+rafaga • [   0% ] waiting      2m14.8s
+
+running (05m01.0s), 100/100 VUs, 2823 complete and 0 interrupted iterations
+mezcla   [  74% ] 100/100 VUs  4m26.2s/6m00.0s
+rafaga • [   0% ] waiting      2m13.8s
+
+running (05m02.0s), 100/100 VUs, 2834 complete and 0 interrupted iterations
+mezcla   [  74% ] 100/100 VUs  4m27.2s/6m00.0s
+rafaga • [   0% ] waiting      2m12.8s
+
+running (05m03.0s), 100/100 VUs, 2852 complete and 0 interrupted iterations
+mezcla   [  74% ] 100/100 VUs  4m28.2s/6m00.0s
+rafaga • [   0% ] waiting      2m11.8s
+
+running (05m04.0s), 100/100 VUs, 2859 complete and 0 interrupted iterations
+mezcla   [  75% ] 100/100 VUs  4m29.2s/6m00.0s
+rafaga • [   0% ] waiting      2m10.8s
+
+running (05m05.0s), 100/100 VUs, 2871 complete and 0 interrupted iterations
+mezcla   [  75% ] 100/100 VUs  4m30.2s/6m00.0s
+rafaga • [   0% ] waiting      2m09.8s
+
+running (05m06.0s), 100/100 VUs, 2885 complete and 0 interrupted iterations
+mezcla   [  75% ] 100/100 VUs  4m31.2s/6m00.0s
+rafaga • [   0% ] waiting      2m08.8s
+
+running (05m07.0s), 100/100 VUs, 2894 complete and 0 interrupted iterations
+mezcla   [  76% ] 100/100 VUs  4m32.2s/6m00.0s
+rafaga • [   0% ] waiting      2m07.8s
+
+running (05m08.0s), 100/100 VUs, 2898 complete and 0 interrupted iterations
+mezcla   [  76% ] 100/100 VUs  4m33.2s/6m00.0s
+rafaga • [   0% ] waiting      2m06.8s
+
+running (05m09.0s), 100/100 VUs, 2920 complete and 0 interrupted iterations
+mezcla   [  76% ] 100/100 VUs  4m34.2s/6m00.0s
+rafaga • [   0% ] waiting      2m05.8s
+
+running (05m10.0s), 100/100 VUs, 2936 complete and 0 interrupted iterations
+mezcla   [  76% ] 100/100 VUs  4m35.2s/6m00.0s
+rafaga • [   0% ] waiting      2m04.8s
+
+running (05m11.0s), 100/100 VUs, 2948 complete and 0 interrupted iterations
+mezcla   [  77% ] 100/100 VUs  4m36.2s/6m00.0s
+rafaga • [   0% ] waiting      2m03.8s
+
+running (05m12.0s), 100/100 VUs, 2958 complete and 0 interrupted iterations
+mezcla   [  77% ] 100/100 VUs  4m37.2s/6m00.0s
+rafaga • [   0% ] waiting      2m02.8s
+
+running (05m13.0s), 100/100 VUs, 2971 complete and 0 interrupted iterations
+mezcla   [  77% ] 100/100 VUs  4m38.2s/6m00.0s
+rafaga • [   0% ] waiting      2m01.8s
+
+running (05m14.0s), 100/100 VUs, 2985 complete and 0 interrupted iterations
+mezcla   [  78% ] 100/100 VUs  4m39.2s/6m00.0s
+rafaga • [   0% ] waiting      2m00.8s
+
+running (05m15.0s), 100/100 VUs, 2993 complete and 0 interrupted iterations
+mezcla   [  78% ] 100/100 VUs  4m40.2s/6m00.0s
+rafaga • [   0% ] waiting      1m59.8s
+
+running (05m16.0s), 100/100 VUs, 3004 complete and 0 interrupted iterations
+mezcla   [  78% ] 100/100 VUs  4m41.2s/6m00.0s
+rafaga • [   0% ] waiting      1m58.8s
+
+running (05m17.0s), 100/100 VUs, 3021 complete and 0 interrupted iterations
+mezcla   [  78% ] 100/100 VUs  4m42.2s/6m00.0s
+rafaga • [   0% ] waiting      1m57.8s
+
+running (05m18.0s), 100/100 VUs, 3034 complete and 0 interrupted iterations
+mezcla   [  79% ] 100/100 VUs  4m43.2s/6m00.0s
+rafaga • [   0% ] waiting      1m56.8s
+
+running (05m19.0s), 100/100 VUs, 3051 complete and 0 interrupted iterations
+mezcla   [  79% ] 100/100 VUs  4m44.2s/6m00.0s
+rafaga • [   0% ] waiting      1m55.8s
+
+running (05m20.0s), 100/100 VUs, 3058 complete and 0 interrupted iterations
+mezcla   [  79% ] 100/100 VUs  4m45.2s/6m00.0s
+rafaga • [   0% ] waiting      1m54.8s
+
+running (05m21.0s), 100/100 VUs, 3072 complete and 0 interrupted iterations
+mezcla   [  79% ] 100/100 VUs  4m46.2s/6m00.0s
+rafaga • [   0% ] waiting      1m53.8s
+
+running (05m22.0s), 100/100 VUs, 3087 complete and 0 interrupted iterations
+mezcla   [  80% ] 100/100 VUs  4m47.2s/6m00.0s
+rafaga • [   0% ] waiting      1m52.8s
+
+running (05m23.0s), 100/100 VUs, 3095 complete and 0 interrupted iterations
+mezcla   [  80% ] 100/100 VUs  4m48.2s/6m00.0s
+rafaga • [   0% ] waiting      1m51.8s
+
+running (05m24.0s), 100/100 VUs, 3108 complete and 0 interrupted iterations
+mezcla   [  80% ] 100/100 VUs  4m49.2s/6m00.0s
+rafaga • [   0% ] waiting      1m50.8s
+
+running (05m25.0s), 100/100 VUs, 3120 complete and 0 interrupted iterations
+mezcla   [  81% ] 100/100 VUs  4m50.2s/6m00.0s
+rafaga • [   0% ] waiting      1m49.8s
+
+running (05m26.0s), 100/100 VUs, 3136 complete and 0 interrupted iterations
+mezcla   [  81% ] 100/100 VUs  4m51.2s/6m00.0s
+rafaga • [   0% ] waiting      1m48.8s
+
+running (05m27.0s), 100/100 VUs, 3156 complete and 0 interrupted iterations
+mezcla   [  81% ] 100/100 VUs  4m52.2s/6m00.0s
+rafaga • [   0% ] waiting      1m47.8s
+
+running (05m28.0s), 100/100 VUs, 3172 complete and 0 interrupted iterations
+mezcla   [  81% ] 100/100 VUs  4m53.2s/6m00.0s
+rafaga • [   0% ] waiting      1m46.8s
+
+running (05m29.0s), 100/100 VUs, 3178 complete and 0 interrupted iterations
+mezcla   [  82% ] 100/100 VUs  4m54.2s/6m00.0s
+rafaga • [   0% ] waiting      1m45.8s
+
+running (05m30.0s), 100/100 VUs, 3189 complete and 0 interrupted iterations
+mezcla   [  82% ] 100/100 VUs  4m55.2s/6m00.0s
+rafaga • [   0% ] waiting      1m44.8s
+
+running (05m31.0s), 100/100 VUs, 3206 complete and 0 interrupted iterations
+mezcla   [  82% ] 100/100 VUs  4m56.2s/6m00.0s
+rafaga • [   0% ] waiting      1m43.8s
+
+running (05m32.0s), 100/100 VUs, 3220 complete and 0 interrupted iterations
+mezcla   [  83% ] 100/100 VUs  4m57.2s/6m00.0s
+rafaga • [   0% ] waiting      1m42.8s
+
+running (05m33.0s), 100/100 VUs, 3226 complete and 0 interrupted iterations
+mezcla   [  83% ] 100/100 VUs  4m58.2s/6m00.0s
+rafaga • [   0% ] waiting      1m41.8s
+
+running (05m34.0s), 100/100 VUs, 3243 complete and 0 interrupted iterations
+mezcla   [  83% ] 100/100 VUs  4m59.2s/6m00.0s
+rafaga • [   0% ] waiting      1m40.8s
+
+running (05m35.0s), 100/100 VUs, 3265 complete and 0 interrupted iterations
+mezcla   [  83% ] 100/100 VUs  5m00.2s/6m00.0s
+rafaga • [   0% ] waiting      1m39.8s
+
+running (05m36.0s), 100/100 VUs, 3275 complete and 0 interrupted iterations
+mezcla   [  84% ] 100/100 VUs  5m01.2s/6m00.0s
+rafaga • [   0% ] waiting      1m38.8s
+
+running (05m37.0s), 100/100 VUs, 3286 complete and 0 interrupted iterations
+mezcla   [  84% ] 100/100 VUs  5m02.2s/6m00.0s
+rafaga • [   0% ] waiting      1m37.8s
+
+running (05m38.0s), 100/100 VUs, 3302 complete and 0 interrupted iterations
+mezcla   [  84% ] 100/100 VUs  5m03.2s/6m00.0s
+rafaga • [   0% ] waiting      1m36.8s
+
+running (05m39.0s), 100/100 VUs, 3309 complete and 0 interrupted iterations
+mezcla   [  84% ] 100/100 VUs  5m04.2s/6m00.0s
+rafaga • [   0% ] waiting      1m35.8s
+
+running (05m40.0s), 100/100 VUs, 3318 complete and 0 interrupted iterations
+mezcla   [  85% ] 100/100 VUs  5m05.2s/6m00.0s
+rafaga • [   0% ] waiting      1m34.8s
+
+running (05m41.0s), 100/100 VUs, 3336 complete and 0 interrupted iterations
+mezcla   [  85% ] 100/100 VUs  5m06.2s/6m00.0s
+rafaga • [   0% ] waiting      1m33.8s
+
+running (05m42.0s), 100/100 VUs, 3352 complete and 0 interrupted iterations
+mezcla   [  85% ] 100/100 VUs  5m07.2s/6m00.0s
+rafaga • [   0% ] waiting      1m32.8s
+
+running (05m43.0s), 100/100 VUs, 3364 complete and 0 interrupted iterations
+mezcla   [  86% ] 100/100 VUs  5m08.2s/6m00.0s
+rafaga • [   0% ] waiting      1m31.8s
+
+running (05m44.0s), 100/100 VUs, 3380 complete and 0 interrupted iterations
+mezcla   [  86% ] 100/100 VUs  5m09.2s/6m00.0s
+rafaga • [   0% ] waiting      1m30.8s
+
+running (05m45.0s), 100/100 VUs, 3387 complete and 0 interrupted iterations
+mezcla   [  86% ] 100/100 VUs  5m10.2s/6m00.0s
+rafaga • [   0% ] waiting      1m29.8s
+
+running (05m46.0s), 100/100 VUs, 3390 complete and 0 interrupted iterations
+mezcla   [  86% ] 100/100 VUs  5m11.2s/6m00.0s
+rafaga • [   0% ] waiting      1m28.8s
+
+running (05m47.0s), 100/100 VUs, 3397 complete and 0 interrupted iterations
+mezcla   [  87% ] 100/100 VUs  5m12.2s/6m00.0s
+rafaga • [   0% ] waiting      1m27.8s
+
+running (05m48.0s), 100/100 VUs, 3400 complete and 0 interrupted iterations
+mezcla   [  87% ] 100/100 VUs  5m13.2s/6m00.0s
+rafaga • [   0% ] waiting      1m26.8s
+
+running (05m49.0s), 100/100 VUs, 3406 complete and 0 interrupted iterations
+mezcla   [  87% ] 100/100 VUs  5m14.2s/6m00.0s
+rafaga • [   0% ] waiting      1m25.8s
+
+running (05m50.0s), 100/100 VUs, 3420 complete and 0 interrupted iterations
+mezcla   [  88% ] 100/100 VUs  5m15.2s/6m00.0s
+rafaga • [   0% ] waiting      1m24.8s
+
+running (05m51.0s), 100/100 VUs, 3432 complete and 0 interrupted iterations
+mezcla   [  88% ] 100/100 VUs  5m16.2s/6m00.0s
+rafaga • [   0% ] waiting      1m23.8s
+
+running (05m52.0s), 100/100 VUs, 3444 complete and 0 interrupted iterations
+mezcla   [  88% ] 100/100 VUs  5m17.2s/6m00.0s
+rafaga • [   0% ] waiting      1m22.8s
+
+running (05m53.0s), 100/100 VUs, 3461 complete and 0 interrupted iterations
+mezcla   [  88% ] 100/100 VUs  5m18.2s/6m00.0s
+rafaga • [   0% ] waiting      1m21.8s
+
+running (05m54.0s), 100/100 VUs, 3475 complete and 0 interrupted iterations
+mezcla   [  89% ] 100/100 VUs  5m19.2s/6m00.0s
+rafaga • [   0% ] waiting      1m20.8s
+
+running (05m55.0s), 100/100 VUs, 3487 complete and 0 interrupted iterations
+mezcla   [  89% ] 100/100 VUs  5m20.2s/6m00.0s
+rafaga • [   0% ] waiting      1m19.8s
+
+running (05m56.0s), 100/100 VUs, 3494 complete and 0 interrupted iterations
+mezcla   [  89% ] 100/100 VUs  5m21.2s/6m00.0s
+rafaga • [   0% ] waiting      1m18.8s
+
+running (05m57.0s), 100/100 VUs, 3505 complete and 0 interrupted iterations
+mezcla   [  89% ] 100/100 VUs  5m22.2s/6m00.0s
+rafaga • [   0% ] waiting      1m17.8s
+
+running (05m58.0s), 100/100 VUs, 3514 complete and 0 interrupted iterations
+mezcla   [  90% ] 100/100 VUs  5m23.2s/6m00.0s
+rafaga • [   0% ] waiting      1m16.8s
+
+running (05m59.0s), 100/100 VUs, 3528 complete and 0 interrupted iterations
+mezcla   [  90% ] 100/100 VUs  5m24.2s/6m00.0s
+rafaga • [   0% ] waiting      1m15.8s
+
+running (06m00.0s), 100/100 VUs, 3544 complete and 0 interrupted iterations
+mezcla   [  90% ] 100/100 VUs  5m25.2s/6m00.0s
+rafaga • [   0% ] waiting      1m14.8s
+
+running (06m01.0s), 100/100 VUs, 3556 complete and 0 interrupted iterations
+mezcla   [  91% ] 100/100 VUs  5m26.2s/6m00.0s
+rafaga • [   0% ] waiting      1m13.8s
+
+running (06m02.0s), 100/100 VUs, 3572 complete and 0 interrupted iterations
+mezcla   [  91% ] 100/100 VUs  5m27.2s/6m00.0s
+rafaga • [   0% ] waiting      1m12.8s
+
+running (06m03.0s), 100/100 VUs, 3586 complete and 0 interrupted iterations
+mezcla   [  91% ] 100/100 VUs  5m28.2s/6m00.0s
+rafaga • [   0% ] waiting      1m11.8s
+
+running (06m04.0s), 100/100 VUs, 3598 complete and 0 interrupted iterations
+mezcla   [  91% ] 100/100 VUs  5m29.2s/6m00.0s
+rafaga • [   0% ] waiting      1m10.8s
+
+running (06m05.0s), 100/100 VUs, 3605 complete and 0 interrupted iterations
+mezcla   [  92% ] 100/100 VUs  5m30.2s/6m00.0s
+rafaga • [   0% ] waiting      1m09.8s
+
+running (06m06.0s), 100/100 VUs, 3615 complete and 0 interrupted iterations
+mezcla   [  92% ] 100/100 VUs  5m31.2s/6m00.0s
+rafaga • [   0% ] waiting      1m08.8s
+
+running (06m07.0s), 099/100 VUs, 3624 complete and 0 interrupted iterations
+mezcla   [  92% ] 099/100 VUs  5m32.2s/6m00.0s
+rafaga • [   0% ] waiting      1m07.8s
+
+running (06m08.0s), 098/100 VUs, 3644 complete and 0 interrupted iterations
+mezcla   [  93% ] 098/100 VUs  5m33.2s/6m00.0s
+rafaga • [   0% ] waiting      1m06.8s
+
+running (06m09.0s), 097/100 VUs, 3655 complete and 0 interrupted iterations
+mezcla   [  93% ] 097/100 VUs  5m34.2s/6m00.0s
+rafaga • [   0% ] waiting      1m05.8s
+
+running (06m10.0s), 093/100 VUs, 3663 complete and 0 interrupted iterations
+mezcla   [  93% ] 093/100 VUs  5m35.2s/6m00.0s
+rafaga • [   0% ] waiting      1m04.8s
+
+running (06m11.0s), 092/100 VUs, 3673 complete and 0 interrupted iterations
+mezcla   [  93% ] 092/100 VUs  5m36.2s/6m00.0s
+rafaga • [   0% ] waiting      1m03.8s
+
+running (06m12.0s), 089/100 VUs, 3684 complete and 0 interrupted iterations
+mezcla   [  94% ] 089/100 VUs  5m37.2s/6m00.0s
+rafaga • [   0% ] waiting      1m02.8s
+
+running (06m13.0s), 085/100 VUs, 3698 complete and 0 interrupted iterations
+mezcla   [  94% ] 085/100 VUs  5m38.2s/6m00.0s
+rafaga • [   0% ] waiting      1m01.8s
+
+running (06m14.0s), 082/100 VUs, 3705 complete and 0 interrupted iterations
+mezcla   [  94% ] 082/100 VUs  5m39.2s/6m00.0s
+rafaga • [   0% ] waiting      1m00.8s
+
+running (06m15.0s), 080/100 VUs, 3722 complete and 0 interrupted iterations
+mezcla   [  94% ] 080/100 VUs  5m40.2s/6m00.0s
+rafaga • [   0% ] waiting      0m59.8s
+
+running (06m16.0s), 076/100 VUs, 3737 complete and 0 interrupted iterations
+mezcla   [  95% ] 076/100 VUs  5m41.2s/6m00.0s
+rafaga • [   0% ] waiting      0m58.8s
+
+running (06m17.0s), 074/100 VUs, 3749 complete and 0 interrupted iterations
+mezcla   [  95% ] 074/100 VUs  5m42.2s/6m00.0s
+rafaga • [   0% ] waiting      0m57.8s
+
+running (06m18.0s), 070/100 VUs, 3757 complete and 0 interrupted iterations
+mezcla   [  95% ] 070/100 VUs  5m43.2s/6m00.0s
+rafaga • [   0% ] waiting      0m56.8s
+
+running (06m19.0s), 065/100 VUs, 3766 complete and 0 interrupted iterations
+mezcla   [  96% ] 065/100 VUs  5m44.2s/6m00.0s
+rafaga • [   0% ] waiting      0m55.8s
+
+running (06m20.0s), 061/100 VUs, 3774 complete and 0 interrupted iterations
+mezcla   [  96% ] 061/100 VUs  5m45.2s/6m00.0s
+rafaga • [   0% ] waiting      0m54.8s
+
+running (06m21.0s), 059/100 VUs, 3785 complete and 0 interrupted iterations
+mezcla   [  96% ] 059/100 VUs  5m46.2s/6m00.0s
+rafaga • [   0% ] waiting      0m53.8s
+
+running (06m22.0s), 052/100 VUs, 3797 complete and 0 interrupted iterations
+mezcla   [  96% ] 052/100 VUs  5m47.2s/6m00.0s
+rafaga • [   0% ] waiting      0m52.8s
+
+running (06m23.0s), 046/100 VUs, 3809 complete and 0 interrupted iterations
+mezcla   [  97% ] 046/100 VUs  5m48.2s/6m00.0s
+rafaga • [   0% ] waiting      0m51.8s
+
+running (06m24.0s), 044/100 VUs, 3825 complete and 0 interrupted iterations
+mezcla   [  97% ] 044/100 VUs  5m49.2s/6m00.0s
+rafaga • [   0% ] waiting      0m50.8s
+
+running (06m25.0s), 043/100 VUs, 3828 complete and 0 interrupted iterations
+mezcla   [  97% ] 043/100 VUs  5m50.2s/6m00.0s
+rafaga • [   0% ] waiting      0m49.8s
+
+running (06m26.0s), 042/100 VUs, 3831 complete and 0 interrupted iterations
+mezcla   [  98% ] 042/100 VUs  5m51.2s/6m00.0s
+rafaga • [   0% ] waiting      0m48.8s
+
+running (06m27.0s), 042/100 VUs, 3831 complete and 0 interrupted iterations
+mezcla   [  98% ] 042/100 VUs  5m52.2s/6m00.0s
+rafaga • [   0% ] waiting      0m47.8s
+
+running (06m28.0s), 038/100 VUs, 3842 complete and 0 interrupted iterations
+mezcla   [  98% ] 038/100 VUs  5m53.2s/6m00.0s
+rafaga • [   0% ] waiting      0m46.8s
+
+running (06m29.0s), 033/100 VUs, 3849 complete and 0 interrupted iterations
+mezcla   [  98% ] 033/100 VUs  5m54.2s/6m00.0s
+rafaga • [   0% ] waiting      0m45.8s
+
+running (06m30.0s), 032/100 VUs, 3854 complete and 0 interrupted iterations
+mezcla   [  99% ] 032/100 VUs  5m55.2s/6m00.0s
+rafaga • [   0% ] waiting      0m44.8s
+
+running (06m31.0s), 028/100 VUs, 3859 complete and 0 interrupted iterations
+mezcla   [  99% ] 028/100 VUs  5m56.2s/6m00.0s
+rafaga • [   0% ] waiting      0m43.8s
+
+running (06m32.0s), 020/100 VUs, 3871 complete and 0 interrupted iterations
+mezcla   [  99% ] 020/100 VUs  5m57.2s/6m00.0s
+rafaga • [   0% ] waiting      0m42.8s
+
+running (06m33.0s), 019/100 VUs, 3872 complete and 0 interrupted iterations
+mezcla   [  99% ] 019/100 VUs  5m58.2s/6m00.0s
+rafaga • [   0% ] waiting      0m41.8s
+
+running (06m34.0s), 017/100 VUs, 3874 complete and 0 interrupted iterations
+mezcla   [ 100% ] 017/100 VUs  5m59.2s/6m00.0s
+rafaga • [   0% ] waiting      0m40.8s
+
+running (06m35.0s), 013/100 VUs, 3878 complete and 0 interrupted iterations
+mezcla ↓ [ 100% ] 014/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m39.8s
+
+running (06m36.0s), 009/100 VUs, 3882 complete and 0 interrupted iterations
+mezcla ↓ [ 100% ] 014/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m38.8s
+
+running (06m37.0s), 008/100 VUs, 3883 complete and 0 interrupted iterations
+mezcla ↓ [ 100% ] 014/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m37.8s
+
+running (06m38.0s), 006/100 VUs, 3885 complete and 0 interrupted iterations
+mezcla ↓ [ 100% ] 014/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m36.8s
+
+running (06m39.0s), 004/100 VUs, 3887 complete and 0 interrupted iterations
+mezcla ↓ [ 100% ] 014/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m35.8s
+
+running (06m40.0s), 003/100 VUs, 3888 complete and 0 interrupted iterations
+mezcla ↓ [ 100% ] 014/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m34.8s
+
+running (06m41.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m33.8s
+
+running (06m42.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m32.8s
+
+running (06m43.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m31.8s
+
+running (06m44.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m30.8s
+
+running (06m45.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m29.8s
+
+running (06m46.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m28.8s
+
+running (06m47.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m27.8s
+
+running (06m48.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m26.8s
+
+running (06m49.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m25.8s
+
+running (06m50.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m24.8s
+
+running (06m51.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m23.8s
+
+running (06m52.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m22.8s
+
+running (06m53.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m21.8s
+
+running (06m54.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m20.8s
+
+running (06m55.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m19.8s
+
+running (06m56.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m18.8s
+
+running (06m57.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m17.8s
+
+running (06m58.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m16.8s
+
+running (06m59.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m15.8s
+
+running (07m00.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m14.8s
+
+running (07m01.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m13.8s
+
+running (07m02.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m12.8s
+
+running (07m03.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m11.8s
+
+running (07m04.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m10.8s
+
+running (07m05.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m09.8s
+
+running (07m06.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m08.8s
+
+running (07m07.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m07.8s
+
+running (07m08.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m06.8s
+
+running (07m09.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m05.8s
+
+running (07m10.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m04.8s
+
+running (07m11.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m03.8s
+
+running (07m12.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m02.8s
+
+running (07m13.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m01.8s
+
+running (07m14.0s), 000/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s
+rafaga • [   0% ] waiting      0m00.8s
+
+running (07m15.0s), 100/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [   0% ] 100 VUs      00m00.2s/10m0s  000/100 iters, 1 per VU
+
+running (07m16.0s), 100/100 VUs, 3891 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [   0% ] 100 VUs      00m01.2s/10m0s  000/100 iters, 1 per VU
+
+running (07m17.0s), 037/100 VUs, 3954 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  63% ] 100 VUs      00m02.2s/10m0s  063/100 iters, 1 per VU
+
+running (07m18.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m03.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m19.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m04.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m20.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m05.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m21.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m06.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m22.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m07.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m23.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m08.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m24.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m09.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m25.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m10.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m26.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m11.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m27.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m12.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m28.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m13.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m29.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m14.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m30.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m15.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m31.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m16.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m32.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m17.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m33.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m18.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m34.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m19.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m35.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m20.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m36.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m21.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m37.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m22.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m38.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m23.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m39.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m24.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m40.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m25.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m41.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m26.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m42.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m27.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m43.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m28.2s/10m0s  098/100 iters, 1 per VU
+
+running (07m44.0s), 002/100 VUs, 3989 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  98% ] 100 VUs      00m29.2s/10m0s  098/100 iters, 1 per VU
+time="2026-11-04T18:09:51-06:00" level=warning msg="Request Failed" error="Post \"https://h2togo-api.orangecliff-485fd1d3.eastus.azurecontainerapps.io/api/v1/pedidos\": request timeout"
+
+running (07m45.0s), 001/100 VUs, 3990 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  99% ] 100 VUs      00m30.2s/10m0s  099/100 iters, 1 per VU
+
+running (07m46.0s), 001/100 VUs, 3990 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  99% ] 100 VUs      00m31.2s/10m0s  099/100 iters, 1 per VU
+
+running (07m47.0s), 001/100 VUs, 3990 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  99% ] 100 VUs      00m32.2s/10m0s  099/100 iters, 1 per VU
+
+running (07m48.0s), 001/100 VUs, 3990 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  99% ] 100 VUs      00m33.2s/10m0s  099/100 iters, 1 per VU
+
+running (07m49.0s), 001/100 VUs, 3990 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  99% ] 100 VUs      00m34.2s/10m0s  099/100 iters, 1 per VU
+
+running (07m50.0s), 001/100 VUs, 3990 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  99% ] 100 VUs      00m35.2s/10m0s  099/100 iters, 1 per VU
+
+running (07m51.0s), 001/100 VUs, 3990 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  99% ] 100 VUs      00m36.2s/10m0s  099/100 iters, 1 per VU
+
+running (07m52.0s), 001/100 VUs, 3990 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  99% ] 100 VUs      00m37.2s/10m0s  099/100 iters, 1 per VU
+
+running (07m53.0s), 001/100 VUs, 3990 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  99% ] 100 VUs      00m38.2s/10m0s  099/100 iters, 1 per VU
+
+running (07m54.0s), 001/100 VUs, 3990 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga   [  99% ] 100 VUs      00m39.2s/10m0s  099/100 iters, 1 per VU
+time="2026-11-04T18:10:00-06:00" level=warning msg="Request Failed" error="Post \"https://h2togo-api.orangecliff-485fd1d3.eastus.azurecontainerapps.io/api/v1/pedidos\": request timeout"
+
+
+  █ THRESHOLDS 
+
+    checks
+    ✓ 'rate>0.99' rate=99.99%
+
+    errores_5xx
+    ✓ 'count==0' count=0
+
+    http_req_duration{op:crear_pedido}
+    ✓ 'p(95)<3000' p(95)=1.13s
+
+    http_req_duration{op:rafaga_crear}
+    ✓ 'p(95)<3000' p(95)=1.75s
+
+    http_req_duration{op:reportar_ubicacion}
+    ✓ 'p(95)<3000' p(95)=1.22s
+
+    http_req_duration{scenario:mezcla}
+    ✓ 'p(95)<3000' p(95)=1.24s
+
+    http_req_failed{scenario:mezcla}
+    ✓ 'rate<0.01' rate=0.00%
+
+    http_req_failed{scenario:rafaga}
+    ✗ 'rate<0.01' rate=1.01%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 22377  47.200674/s
+    checks_succeeded...: 99.99% 22375 out of 22377
+    checks_failed......: 0.00%  2 out of 22377
+
+    ✓ reportar_ubicacion → 204
+    ✓ negocios_cercanos → 200
+    ✓ perfil_negocio → 200
+    ✓ pedidos_disponibles → 200
+    ✓ mis_entregas → 200
+    ✓ crear_pedido → 201
+    ✓ detalle_pedido → 200
+    ✓ cancelar_pedido → 200
+    ✓ mis_pedidos → 200
+    ✗ rafaga_crear → 201
+      ↳  98% — ✓ 98 / ✗ 2
+    ✓ rafaga_cancelar → 200
+
+    CUSTOM
+    errores_5xx....................: 0      0/s
+
+    HTTP
+    http_req_duration..............: avg=470.83ms min=78.9ms   med=311.91ms p(90)=903.23ms p(95)=1.25s  max=39.27s
+      { expected_response:true }...: avg=467.8ms  min=78.9ms   med=311.88ms p(90)=903.12ms p(95)=1.25s  max=5.54s 
+      { op:crear_pedido }..........: avg=421.66ms min=110.21ms med=301.15ms p(90)=833.79ms p(95)=1.13s  max=3.63s 
+      { op:rafaga_crear }..........: avg=1.83s    min=529.04ms med=1.21s    p(90)=1.57s    p(95)=1.75s  max=39.27s
+      { op:reportar_ubicacion }....: avg=456.78ms min=137.11ms med=350.19ms p(90)=926.84ms p(95)=1.22s  max=2.08s 
+      { scenario:mezcla }..........: avg=465.64ms min=78.9ms   med=312.08ms p(90)=888.59ms p(95)=1.24s  max=5.54s 
+    http_req_failed................: 0.00%  2 out of 22588
+      { scenario:mezcla }..........: 0.00%  0 out of 22179
+      { scenario:rafaga }..........: 1.01%  2 out of 198
+    http_reqs......................: 22588  47.645745/s
+
+    EXECUTION
+    iteration_duration.............: avg=8.43s    min=1.65s    med=8.47s    p(90)=10.58s   p(95)=11.45s max=39.27s
+    iterations.....................: 3991   8.418371/s
+    vus............................: 1      min=0          max=100
+    vus_max........................: 100    min=100        max=100
+
+    NETWORK
+    data_received..................: 43 MB  91 kB/s
+    data_sent......................: 2.5 MB 5.2 kB/s
+
+
+
+
+running (07m54.1s), 000/100 VUs, 3991 complete and 0 interrupted iterations
+mezcla ✓ [ 100% ] 000/100 VUs  6m0s           
+rafaga ✓ [ 100% ] 100 VUs      00m39.3s/10m0s  100/100 iters, 1 per VU
+time="2026-11-04T18:10:01-06:00" level=error msg="thresholds on metrics 'http_req_failed{scenario:rafaga}' have been crossed"

@@ -1,0 +1,838 @@
+{
+    "metrics": {
+        "http_req_receiving": {
+            "avg": 0.09395863746958637,
+            "min": 0.023,
+            "med": 0.089,
+            "p(90)": 0.121,
+            "p(95)": 0.141,
+            "max": 2.491
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 411,
+            "value": 0
+        },
+        "http_req_duration{op:rafaga_crear}": {
+            "avg": 1412.98233,
+            "min": 622.644,
+            "med": 1456.083,
+            "p(90)": 1966.0731,
+            "p(95)": 2058.2770499999997,
+            "max": 2500.318,
+            "thresholds": {
+                "p(95)<3000": false
+            }
+        },
+        "iteration_duration": {
+            "min": 2207.861292,
+            "med": 2973.3603540000004,
+            "p(90)": 3408.8902125,
+            "p(95)": 3461.3809416500003,
+            "max": 3534.496208,
+            "avg": 2911.880551659999
+        },
+        "data_sent": {
+            "count": 246114,
+            "rate": 6718.518889170153
+        },
+        "iterations": {
+            "count": 100,
+            "rate": 2.729840191606391
+        },
+        "http_req_blocked": {
+            "avg": 53.65697810218986,
+            "min": 0,
+            "med": 0.001,
+            "p(90)": 228.103,
+            "p(95)": 242.77349999999998,
+            "max": 257.291
+        },
+        "http_req_tls_handshaking": {
+            "min": 0,
+            "med": 0,
+            "p(90)": 142.701,
+            "p(95)": 152.0645,
+            "max": 163.797,
+            "avg": 32.71565936739659
+        },
+        "data_received": {
+            "count": 1024414,
+            "rate": 27964.865100442694
+        },
+        "http_req_duration{op:reportar_ubicacion}": {
+            "min": 0,
+            "med": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "max": 0,
+            "avg": 0,
+            "thresholds": {
+                "p(95)<3000": false
+            }
+        },
+        "errores_5xx": {
+            "count": 0,
+            "rate": 0,
+            "thresholds": {
+                "count==0": false
+            }
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 1687.861,
+            "p(95)": 1832.0815,
+            "max": 2694.574,
+            "avg": 735.0181265206816,
+            "min": 79.859,
+            "med": 247.821
+        },
+        "http_req_connecting": {
+            "avg": 20.895187347931884,
+            "min": 0,
+            "med": 0,
+            "p(90)": 84.41,
+            "p(95)": 92.475,
+            "max": 96.12
+        },
+        "http_req_sending": {
+            "avg": 0.13687104622871038,
+            "min": 0.008,
+            "med": 0.125,
+            "p(90)": 0.213,
+            "p(95)": 0.2345,
+            "max": 4.569
+        },
+        "http_req_waiting": {
+            "p(90)": 1687.741,
+            "p(95)": 1831.985,
+            "max": 2694.411,
+            "avg": 734.787296836983,
+            "min": 79.572,
+            "med": 247.48
+        },
+        "checks": {
+            "passes": 200,
+            "fails": 0,
+            "thresholds": {
+                "rate>0.99": false
+            },
+            "value": 1
+        },
+        "http_req_duration{scenario:mezcla}": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "max": 0,
+            "thresholds": {
+                "p(95)<3000": false
+            }
+        },
+        "http_reqs": {
+            "count": 411,
+            "rate": 11.219643187502266
+        },
+        "http_req_duration{op:crear_pedido}": {
+            "p(95)": 0,
+            "max": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "p(90)": 0,
+            "thresholds": {
+                "p(95)<3000": false
+            }
+        },
+        "vus_max": {
+            "value": 100,
+            "min": 100,
+            "max": 100
+        },
+        "http_req_failed{scenario:rafaga}": {
+            "passes": 0,
+            "fails": 200,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        },
+        "vus": {
+            "value": 51,
+            "min": 0,
+            "max": 100
+        },
+        "http_req_duration": {
+            "avg": 735.0181265206816,
+            "min": 79.859,
+            "med": 247.821,
+            "p(90)": 1687.861,
+            "p(95)": 1832.0815,
+            "max": 2694.574
+        },
+        "http_req_failed{scenario:mezcla}": {
+            "passes": 0,
+            "fails": 0,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        }
+    },
+    "setup_data": {
+        "clientes": [
+            {
+                "idDireccion": 115,
+                "lat": 19.40250397535406,
+                "lon": -99.14794577123456,
+                "token": "pIVDwRJyQxp1QI73C2WzuQl23MGH1nMg8Z6ZaZ7tGio"
+            },
+            {
+                "token": "RurL-dbP7mgvQAG24l9KHhdNudR5m1bgwBDAJieMAmE",
+                "idDireccion": 116,
+                "lat": 19.370071269775817,
+                "lon": -99.1861489001344
+            },
+            {
+                "idDireccion": 117,
+                "lat": 19.391932002189385,
+                "lon": -99.1612443135092,
+                "token": "2mQhKRRGO0FjqSS7VuSsrFk8C8wu1snw31o8fpYQn_g"
+            },
+            {
+                "idDireccion": 118,
+                "lat": 19.379810337271554,
+                "lon": -99.15328053905523,
+                "token": "5Q6AQC5uzpx6l4ra5TXypZ6K_qzQHduvdOKfQCoYWyU"
+            },
+            {
+                "token": "HjZnoKwve4sxlwwDK7fHbYOHXGZFLK-2qaHEMqX9hT8",
+                "idDireccion": 119,
+                "lat": 19.382573678344148,
+                "lon": -99.14692753598688
+            },
+            {
+                "lon": -99.16608774883126,
+                "token": "9h6YNqFo88SKjtAYt49Xnh2WyfPTQQreg1Na78GubnI",
+                "idDireccion": 120,
+                "lat": 19.382457651845517
+            },
+            {
+                "idDireccion": 121,
+                "lat": 19.369567287542825,
+                "lon": -99.16048584636695,
+                "token": "R1oM1x2R7hMGVSbFk6jd5n73bb1T5vGblD6SclsMl60"
+            },
+            {
+                "idDireccion": 122,
+                "lat": 19.37882669978898,
+                "lon": -99.13658549068185,
+                "token": "M4uq49g0km9WjEVBtAiugzFcqiHMDvGDNYmzgWH4kuQ"
+            },
+            {
+                "idDireccion": 123,
+                "lat": 19.391016161627284,
+                "lon": -99.13815611687912,
+                "token": "rIkGJvpNgdfrx90YsWHXbXzrYUen5tfL20Y06wnfQFg"
+            },
+            {
+                "lat": 19.396933470634895,
+                "lon": -99.17313069671273,
+                "token": "ygVt8DLXHDS_IZubWAXMw6YPxfENK11ylvepGxd1YTE",
+                "idDireccion": 124
+            },
+            {
+                "idDireccion": 125,
+                "lat": 19.370309889047213,
+                "lon": -99.17184429955074,
+                "token": "dn5PQBYYY7OfiY1XSMpkCjvt4aNFedHqIHQljbQ6ytk"
+            },
+            {
+                "idDireccion": 126,
+                "lat": 19.379100728664756,
+                "lon": -99.14298663436409,
+                "token": "rIKSkHkzH01EW0IvZvjiUSG8JnDwYUk9hbK8WMCFGRI"
+            },
+            {
+                "lat": 19.361965692032836,
+                "lon": -99.16073067744135,
+                "token": "3uNuMy-njgL2ROpckDLxvSvZcxL2r3TZabrYjUQCrMY",
+                "idDireccion": 127
+            },
+            {
+                "idDireccion": 128,
+                "lat": 19.393344135566036,
+                "lon": -99.1459620485476,
+                "token": "rAxINySGdVPmVzHrvKQSunIl7zk_LduTHb9Rkq0pvh4"
+            },
+            {
+                "idDireccion": 129,
+                "lat": 19.39373840596415,
+                "lon": -99.13188000994344,
+                "token": "MhdraAF3PvcKqQYC-Wnc_wL8lVEN7HJEJNBi4h1_dng"
+            },
+            {
+                "lat": 19.370916452461774,
+                "lon": -99.17783370278026,
+                "token": "mn053sHRK2fStuKquhogtjUAVIS2Oea9UnLHsJMplws",
+                "idDireccion": 130
+            },
+            {
+                "lon": -99.16046687242472,
+                "token": "Lw9oPDijs-KfJGhBFHvVjPvnm68RT0T0R3PyDrhywxw",
+                "idDireccion": 131,
+                "lat": 19.382204655111348
+            },
+            {
+                "idDireccion": 132,
+                "lat": 19.367632303468294,
+                "lon": -99.16926675170747,
+                "token": "dmmmmxIbOoUX4HG74fViY4Uh0RYMEI8I6LxVraNcOK0"
+            },
+            {
+                "token": "6_id0nJR0ebbAPPCay8FJdol5on8IIhnMUWBCYDnVqY",
+                "idDireccion": 133,
+                "lat": 19.383645887446775,
+                "lon": -99.13993907651276
+            },
+            {
+                "idDireccion": 134,
+                "lat": 19.376762398073296,
+                "lon": -99.1725434743256,
+                "token": "gRgfaXguAPLEWNhMzrNsdsGgTszZMxrYEq5Q7yJBgec"
+            },
+            {
+                "idDireccion": 135,
+                "lat": 19.378859711717777,
+                "lon": -99.13580563072476,
+                "token": "-YHmHl9eC33oEfpQnI6YTy6bVic2CBMcIWw9FVPZFFs"
+            },
+            {
+                "idDireccion": 136,
+                "lat": 19.38644539136679,
+                "lon": -99.17121516928552,
+                "token": "9AknwejQYa-6i8wy5O6vnR04YEOQPrV8yI8BLoKDiHI"
+            },
+            {
+                "idDireccion": 137,
+                "lat": 19.3765926626048,
+                "lon": -99.16267864326011,
+                "token": "N8IicTtDcOz7wXXgClFpmMqaM9kYmX_R0C0HI244ORI"
+            },
+            {
+                "idDireccion": 138,
+                "lat": 19.39883049093367,
+                "lon": -99.16900319384264,
+                "token": "eiwlrbP7Ds02yOmsviWjdhTf469371xbb-u7bEaZsJY"
+            },
+            {
+                "lat": 19.377835521326706,
+                "lon": -99.15472137405916,
+                "token": "CQSp-MishJGoU5-RU9pwDm04gGhl1-BaJyuHyzBFiJY",
+                "idDireccion": 139
+            },
+            {
+                "token": "h3DjZEdV4P59H_Q9padVSoA7ZWcUpCCwCFA_CI-sTds",
+                "idDireccion": 140,
+                "lat": 19.396853220476093,
+                "lon": -99.1345930768733
+            },
+            {
+                "idDireccion": 141,
+                "lat": 19.36534572051581,
+                "lon": -99.14665401687076,
+                "token": "HJM-ybj7TkOmjrrUz_qp4_8Xk4wkL1sionZSyItYoDM"
+            },
+            {
+                "idDireccion": 142,
+                "lat": 19.3846045104002,
+                "lon": -99.15296277810346,
+                "token": "Ln0OHyJUUctN72oSYpe8SQY8YjTRz6fwapdKQa0qu5o"
+            },
+            {
+                "token": "bnvG4U9yVf0aOKHZoqiq4hwDRQ6pOPCT5Nj67mQKdak",
+                "idDireccion": 143,
+                "lat": 19.366094254355144,
+                "lon": -99.14929387645778
+            },
+            {
+                "lat": 19.389098727804754,
+                "lon": -99.15885435397122,
+                "token": "bNX4Dgn1Y14czNd8t_zrmowcdux7qsGUMIgrbaCPEHI",
+                "idDireccion": 144
+            },
+            {
+                "idDireccion": 145,
+                "lat": 19.36138864582319,
+                "lon": -99.15495133137237,
+                "token": "ZyQSFlWvJ0JRi_BERktxs14z8Yy6bMQd0xkMtkWvAJY"
+            },
+            {
+                "token": "xdDUrEgTrcIZ_HFpT9pSDJ--wa5HEowH_RKfWJmFwNY",
+                "idDireccion": 146,
+                "lat": 19.390702896975583,
+                "lon": -99.17280913021648
+            },
+            {
+                "lat": 19.3749305324298,
+                "lon": -99.15020797696498,
+                "token": "bWq5hFmdP1YhmSmnlmCP8W_vvO-mImeNsD8aYtfi25I",
+                "idDireccion": 147
+            },
+            {
+                "token": "5tohYH6TBW76kV0M2Ww8wop2xkQEGPVzNmq6A7wh21k",
+                "idDireccion": 148,
+                "lat": 19.39735457335071,
+                "lon": -99.13859681573017
+            },
+            {
+                "idDireccion": 149,
+                "lat": 19.380368366795178,
+                "lon": -99.17552575048458,
+                "token": "YcAYCUHAPF57mK7g2tXX1dILhAW1nedSuxJj_IwEhBU"
+            },
+            {
+                "idDireccion": 150,
+                "lat": 19.385161653133313,
+                "lon": -99.16675863661094,
+                "token": "dEEoWWjwsC-CejdGiWFgDRY-JCgddAIA9qfIJQ1VQwY"
+            },
+            {
+                "lon": -99.18611227804836,
+                "token": "IUEeXs17-x0C2MurGiMgjNX33W-7ov7X_NHPdA5iOhI",
+                "idDireccion": 151,
+                "lat": 19.363443490210432
+            },
+            {
+                "lon": -99.16402649358537,
+                "token": "RegZLBNex8FVAy-8tXSxyCQ7Fc6iCVThfhFO1IdqKVg",
+                "idDireccion": 152,
+                "lat": 19.396074534150678
+            },
+            {
+                "lon": -99.1800897785061,
+                "token": "DxOJawPCGtYLKDpwO2qRzwF5KbqBgNZWz4IYtBU_PJ0",
+                "idDireccion": 153,
+                "lat": 19.389974164757223
+            },
+            {
+                "idDireccion": 154,
+                "lat": 19.359072390496426,
+                "lon": -99.14534434457907,
+                "token": "1lXJWqJMdRRLxHtpqPLqFdWKivgB5726m-5Y7G4PO3E"
+            },
+            {
+                "lat": 19.375019331660084,
+                "lon": -99.1824733555224,
+                "token": "qEwz-1x443AcVjx24S4jvvWDkYRcYv4KwWh0hlNyl1Q",
+                "idDireccion": 155
+            },
+            {
+                "token": "oBFmvUqkyk2ke4ognSfSwIljrdVAgnG5ckFx5P8PBvU",
+                "idDireccion": 156,
+                "lat": 19.372737329663643,
+                "lon": -99.15712653442776
+            },
+            {
+                "token": "jHKMYhzHz0-0VUgwljVPWxJeQwMUUgvsnJUqwBC-5RM",
+                "idDireccion": 157,
+                "lat": 19.37796338635776,
+                "lon": -99.18717482445857
+            },
+            {
+                "idDireccion": 158,
+                "lat": 19.387481738569473,
+                "lon": -99.14210532398377,
+                "token": "B9Z0gT7odrHrBL0l58XDn7Iv5qee_Fl4H1IV2677AfU"
+            },
+            {
+                "idDireccion": 159,
+                "lat": 19.398332306552916,
+                "lon": -99.1558790517884,
+                "token": "tw-CqCovWOR2exNf8UDuJdCQHFzFwWlermMGSx9TOTA"
+            },
+            {
+                "idDireccion": 160,
+                "lat": 19.38678479216345,
+                "lon": -99.15639040153368,
+                "token": "RMAmNPO6hiHDaZW9C8RtA3sFE7z-P7Q8X3Iq5LdqdOs"
+            },
+            {
+                "lon": -99.166557374697,
+                "token": "w3QtpPKPkSNIiVlgpR4ZoeCIOb1e0QWm2uJD-KuQNy0",
+                "idDireccion": 161,
+                "lat": 19.37664739416913
+            },
+            {
+                "idDireccion": 162,
+                "lat": 19.37737302082666,
+                "lon": -99.17871177075432,
+                "token": "sAe2FqZF7SjaQ9guOZozAWrWFqkIuJ4JXFx_IuUzk2g"
+            },
+            {
+                "idDireccion": 163,
+                "lat": 19.36583006303039,
+                "lon": -99.16407321783548,
+                "token": "0G5O8HxUeeFEc4xvKZURIGhLuO8qZY-EkcOfWMAs4Jo"
+            },
+            {
+                "idDireccion": 164,
+                "lat": 19.36693898983883,
+                "lon": -99.1901341024818,
+                "token": "mXOaPrXlq-xG6foVtKUeNN3HJ2cP74hfZpQYc5a-uU8"
+            },
+            {
+                "lon": -99.19042955884363,
+                "token": "pWtvF2avUkys8QrvNrz_eCMyfVQl12uaDhq4Ruth77I",
+                "idDireccion": 165,
+                "lat": 19.38204085732757
+            },
+            {
+                "lat": 19.367517091495472,
+                "lon": -99.15545047793788,
+                "token": "FVccQmH4L9AOhWpj0e5RbD9vKMBu6uzCv2vjT8pG97E",
+                "idDireccion": 166
+            },
+            {
+                "idDireccion": 167,
+                "lat": 19.393899364551455,
+                "lon": -99.18599013073434,
+                "token": "7kwWkdYPEQbC8Z_1ywfD8WIvzEbvcVmbDusV3WKx3AY"
+            },
+            {
+                "lon": -99.14764590059909,
+                "token": "_2_YkO5zC4_fZZbKpXcps0YCCe5f7Eurjbbq0JTq7_8",
+                "idDireccion": 168,
+                "lat": 19.36082993614766
+            },
+            {
+                "idDireccion": 169,
+                "lat": 19.36106313579197,
+                "lon": -99.16531958310259,
+                "token": "Dpt8UYjXc3CJn6GttlsTGm9tOzUzNp-LZ0LFy1WdJHI"
+            },
+            {
+                "lon": -99.13901815160547,
+                "token": "TIeqwxSw8cHDqePV-MVAAW0T0ZVuagPV8vhS2iuCef8",
+                "idDireccion": 170,
+                "lat": 19.389713479985442
+            },
+            {
+                "token": "M5v-qjzetkOitlQ8I1OfU6lJPNA812oXb8bns7C0ZuQ",
+                "idDireccion": 171,
+                "lat": 19.3932629009814,
+                "lon": -99.15452450988252
+            },
+            {
+                "idDireccion": 172,
+                "lat": 19.37232469465352,
+                "lon": -99.14493149347174,
+                "token": "KdsgjgoNa9r1-drlqyJwOqfaxjjiZj3J_tFYRNL2oog"
+            },
+            {
+                "idDireccion": 173,
+                "lat": 19.398755679000512,
+                "lon": -99.142586326677,
+                "token": "vxhqTrA6ymUKJqul8Esp5dsoQaLHXcY6EXCmyk8x28Q"
+            },
+            {
+                "idDireccion": 174,
+                "lat": 19.39974773594236,
+                "lon": -99.14971325785974,
+                "token": "BLY9Bi2PS4uAmvfMYbBVqcV1749oAn45u1v1oRLl89E"
+            },
+            {
+                "idDireccion": 175,
+                "lat": 19.3681426926765,
+                "lon": -99.14194001980199,
+                "token": "GNUJuHD8vD4jJAzWyhKRY1ODVoJAPKo604QwDasV7Bg"
+            },
+            {
+                "lat": 19.402192473544964,
+                "lon": -99.14058986715668,
+                "token": "5eXNQAcgd-G6dxbVbGtV1U3EUQytwBoiI34OMIe-bb8",
+                "idDireccion": 176
+            },
+            {
+                "idDireccion": 177,
+                "lat": 19.365568910206466,
+                "lon": -99.17377723631458,
+                "token": "2dIRGl8Xerfjdc-cv7fzOi-Uz24OlOvTvJrVt8ENZlw"
+            },
+            {
+                "idDireccion": 178,
+                "lat": 19.38500930979407,
+                "lon": -99.14913710544842,
+                "token": "QCBhnsuJS7oDOeJ-eHIaMcPYQwUoSHm2agCGmIlArcI"
+            },
+            {
+                "idDireccion": 179,
+                "lat": 19.39552774688892,
+                "lon": -99.1771345045234,
+                "token": "xAZgvlX2SUkjEFukKXzoc0KQ64HAPGECFIscvZeHHG4"
+            },
+            {
+                "idDireccion": 180,
+                "lat": 19.38845403582325,
+                "lon": -99.18147657158991,
+                "token": "3yHdAxcWmurqBCsiLNFjIf-PEuF8PUEQwHuQ5PHmxcg"
+            },
+            {
+                "idDireccion": 181,
+                "lat": 19.37096146763905,
+                "lon": -99.15113471527125,
+                "token": "GwCbw_ijdjaDH8cDIZzkGcSMYbVYStn1EiUabHYe_m0"
+            },
+            {
+                "idDireccion": 182,
+                "lat": 19.370871416074525,
+                "lon": -99.16565975324083,
+                "token": "mF6Rl1BIMGnGfUu1FQOOG0s44pwbD3V30tyEQXMBNrA"
+            },
+            {
+                "token": "JhLUFwqMs3iYBwKNn6XY0aFNM_LoIn0xaZCdJ-zYdDo",
+                "idDireccion": 183,
+                "lat": 19.382648097826667,
+                "lon": -99.17037631639036
+            },
+            {
+                "idDireccion": 184,
+                "lat": 19.394785683672865,
+                "lon": -99.16838130581431,
+                "token": "MAgw3KcrVyxWWTfGH8KkeoKn2fF03fhjRMJ9U3ruxEs"
+            },
+            {
+                "lon": -99.17955554171904,
+                "token": "Psy-NZb5tmtdnYZ_HESpPNh8rv0fOkRmKhIDl6Yshi0",
+                "idDireccion": 185,
+                "lat": 19.365626645657414
+            },
+            {
+                "token": "h3_IqwpWICbN6M9uzL__zICNCG3EcVbto5F9cztwFm8",
+                "idDireccion": 186,
+                "lat": 19.391378163627152,
+                "lon": -99.14842497356163
+            },
+            {
+                "idDireccion": 187,
+                "lat": 19.379888729698557,
+                "lon": -99.18498072930342,
+                "token": "yU-RBTsdOQCkqZFPgOE7BlBz_Aq03_Y-z9z8yKwY9DM"
+            },
+            {
+                "token": "_Po3Qh213BiMP38dn540H-VntpmNfFIJ3y-OatUbHPE",
+                "idDireccion": 188,
+                "lat": 19.369400029509478,
+                "lon": -99.18856764178982
+            },
+            {
+                "idDireccion": 189,
+                "lat": 19.37272365810683,
+                "lon": -99.18477312040689,
+                "token": "nF3dpEH2akLJZQ50yKS0YmFRoxOHwSApEynRL9Tcl0s"
+            },
+            {
+                "idDireccion": 190,
+                "lat": 19.390550036941406,
+                "lon": -99.16206490286812,
+                "token": "ZNW_1fkKdHF_mESe9ft7eOWtBUx-jbXa4ZcEeTN8CNo"
+            },
+            {
+                "idDireccion": 191,
+                "lat": 19.379276796628726,
+                "lon": -99.15419545798983,
+                "token": "asrtX40TV3BOC7I-Mg3W3cxpcl9oQBp3Nw-Xl9wP5fY"
+            },
+            {
+                "idDireccion": 192,
+                "lat": 19.38423831462805,
+                "lon": -99.13438880508566,
+                "token": "Obb1zj-ObU6bdCsqWKyo1SYZFva0-FbFnmWf81QgvUI"
+            },
+            {
+                "lon": -99.14615909108028,
+                "token": "oWR1977EGBjE3GWIK9EB1lfK_3D6CVBnY9WV7cbv5SQ",
+                "idDireccion": 193,
+                "lat": 19.38109641505331
+            },
+            {
+                "idDireccion": 194,
+                "lat": 19.37933318882,
+                "lon": -99.1693474412058,
+                "token": "x75xa5KG3q70bf_N5786tcUnxbVlnieGspV4X2A5iFw"
+            },
+            {
+                "lat": 19.372603614704893,
+                "lon": -99.16307608983608,
+                "token": "AB1QGkpR40_fxmqovXfBSFV_dAjBWizjnpBBont1L3I",
+                "idDireccion": 195
+            },
+            {
+                "lat": 19.377083661521024,
+                "lon": -99.13822761868022,
+                "token": "bNCjZG-WkAaM_TzZWHHkrGyko8qqdI7uGU1OM9KKTeI",
+                "idDireccion": 196
+            },
+            {
+                "idDireccion": 197,
+                "lat": 19.394562727861903,
+                "lon": -99.13661837588188,
+                "token": "f42h_tkPrnH5_JCY-5fpvjqMtbEwYEoFaJ-Kmw5Fxbc"
+            },
+            {
+                "token": "UA3AQz_SQPoSsHG2yqAqTnPAht2Lz3XLxzmvejdJ4-A",
+                "idDireccion": 198,
+                "lat": 19.373378537947243,
+                "lon": -99.1724257164431
+            },
+            {
+                "lon": -99.1441242326701,
+                "token": "-KVeoFwSz4HyNxq3fwvvEULkYdfv-1w7Xi1IYkF19tA",
+                "idDireccion": 199,
+                "lat": 19.376331058337644
+            },
+            {
+                "lon": -99.16303644113012,
+                "token": "4-KxyqJ_GxHxfDYW2AmRH6ljKUDJ61NQiJPtGy3PhnA",
+                "idDireccion": 200,
+                "lat": 19.360407196608158
+            },
+            {
+                "lat": 19.393233282558235,
+                "lon": -99.1424714510301,
+                "token": "e7YSdvVX2O9d9DnuiO0W6cDKP7zUP3EuY56EYVnwUY8",
+                "idDireccion": 201
+            },
+            {
+                "idDireccion": 202,
+                "lat": 19.4017561962785,
+                "lon": -99.14431238713694,
+                "token": "0CsfYwDoWgiEpjIBX5-b_2VLfRDIsvFiAGMEaA5NHI0"
+            },
+            {
+                "idDireccion": 203,
+                "lat": 19.394225451024095,
+                "lon": -99.13504959161838,
+                "token": "uGosU052bC1gTT0QE2J861dDu5_mgAPh7zT7kVHwZes"
+            },
+            {
+                "idDireccion": 204,
+                "lat": 19.36996527707037,
+                "lon": -99.17714661773111,
+                "token": "rhhjjupg4rZ2j1qxjGggD4xB7TkxeCRLLMrYtgrs3FI"
+            },
+            {
+                "idDireccion": 205,
+                "lat": 19.38840590120164,
+                "lon": -99.13607309053882,
+                "token": "q0PxhWJxs9KpOcu3749mSUzM5nMoqvszA-PahGYFPQI"
+            },
+            {
+                "idDireccion": 206,
+                "lat": 19.38059104351113,
+                "lon": -99.15912446869304,
+                "token": "qaOfFiPqcbTNnwVMhv3UUImjWCyfXCpcYPqhD2COt0E"
+            },
+            {
+                "idDireccion": 207,
+                "lat": 19.36637130996483,
+                "lon": -99.16773161031713,
+                "token": "3dofvUg74_QY7cVydWdAMOWoZNPdWXyMsAGIEvHZvbc"
+            },
+            {
+                "idDireccion": 208,
+                "lat": 19.382091611323037,
+                "lon": -99.14044804475874,
+                "token": "RO5p3_p2Yrs1mg6GPxEUziawY5WgZXlHuavOQnJ8b8E"
+            },
+            {
+                "idDireccion": 209,
+                "lat": 19.374545147685577,
+                "lon": -99.173821261224,
+                "token": "ypcwmpOYBsL0wTgwNp7Qlb9B0P3OyALmaOkr-oDPFrU"
+            },
+            {
+                "idDireccion": 210,
+                "lat": 19.38845262310977,
+                "lon": -99.17425277013429,
+                "token": "inV4WN7awarx7b9PF5xjKjcfAIZAbSNphH_uXLlaJgY"
+            },
+            {
+                "lon": -99.15932773388371,
+                "token": "O2gYeHrUCuXxJny6KDMV2J25X0B6tJcd-2tQ4p_ENHc",
+                "idDireccion": 211,
+                "lat": 19.379054308957993
+            },
+            {
+                "lat": 19.39992155929906,
+                "lon": -99.16795866490496,
+                "token": "UhqJQsOiJjyWf-_V7aWpJHRE4NhXCYnqV0yYAaoB8-o",
+                "idDireccion": 212
+            },
+            {
+                "idDireccion": 213,
+                "lat": 19.376076581094235,
+                "lon": -99.15602672210885,
+                "token": "Jz-Und_zz8NEjaDS0eoqUm9sj8XnA0AZ2Bnn0wpVmME"
+            },
+            {
+                "idDireccion": 214,
+                "lat": 19.39623992218272,
+                "lon": -99.1346527856889,
+                "token": "uiZg6U89DD420wCTzp7nXne2W1znsqOgCeoPdwhyGII"
+            }
+        ],
+        "negocio": {
+            "idMarca": 497,
+            "idNegocio": 112,
+            "lat": 19.388,
+            "lon": -99.156,
+            "vehiculos": [
+                116,
+                117,
+                118,
+                119,
+                120,
+                121,
+                122,
+                123,
+                124,
+                125
+            ]
+        },
+        "repartidores": [
+            "1KejeI7Pi2pXQzY-RAGbu9ZPoCA_7CXVMXLcrVyM0f8",
+            "EXSmPomxVfJ00uPyUW1V-7NhRUWPkaV9QSaNabkwDmI",
+            "0bBaLmOux9Ubmrj_NEYqosdR5XIsaj3RCHbUjB0Zvck",
+            "aoO7TrXw9K3nXktg82NSctRhYByFzZFuvTki11SRYus",
+            "3riatvl9pPszdHvWmBrYGDl0EufT2u9Aa1uXK42_7vs",
+            "a1_MCMpRet6KzE3W5sJ098BZ05j1mkjprcdWizaL1e4",
+            "gOkxB-lFPU0dDpOWAvpHfqiG4sYtplubce0G3LgGpkE",
+            "TVyJdX2bPzLLJE1RCWmzip4WhACMpWtSAJaBoDjFzK4",
+            "9qiKX2IFz7tOSX0EUjq3HmgHgcvUMjV-bhAcxUcsf_I",
+            "drwtVJkitWp4o-fUFobq7nkZWiXc6VcbdnwaImvvaSQ"
+        ]
+    },
+    "root_group": {
+        "groups": {},
+        "checks": {
+                "rafaga_crear → 201": {
+                    "passes": 100,
+                    "fails": 0,
+                    "name": "rafaga_crear → 201",
+                    "path": "::rafaga_crear → 201",
+                    "id": "44a4dcabb48239ba741d9bb8658fce8d"
+                },
+                "rafaga_cancelar → 200": {
+                    "name": "rafaga_cancelar → 200",
+                    "path": "::rafaga_cancelar → 200",
+                    "id": "389652ed8b3d39424450cc83d6ac5ec6",
+                    "passes": 100,
+                    "fails": 0
+                }
+            },
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+}

@@ -11,6 +11,7 @@
 //
 // Al final, una ráfaga: los 100 clientes crean un pedido en el mismo instante, para
 // tener 100 transacciones de escritura simultáneas en la base (lo que pide RNF-007).
+// Para repetir solo la ráfaga: -e SOLO_RAFAGA=1.
 //
 // Criterios del plan de pruebas: menos de 1% de errores HTTP y 0 errores de base de
 // datos (aquí: 0 respuestas 5xx; confirmar en el log del backend). Se reporta p95.
@@ -31,12 +32,13 @@ const errores5xx = new Counter('errores_5xx');
 // La ráfaga empieza cuando terminó la mezcla (rampa + sostenido + bajada + margen).
 const DURACION = __ENV.DURACION || '5m';
 const segundos = (d) => parseInt(d, 10) * ({ s: 1, m: 60, h: 3600 })[d.slice(-1)];
-const INICIO_RAFAGA = `${30 + segundos(DURACION) + 30 + 30 + 10}s`;
+const SOLO_RAFAGA = !!__ENV.SOLO_RAFAGA;
+const INICIO_RAFAGA = SOLO_RAFAGA ? '0s' : `${30 + segundos(DURACION) + 30 + 30 + 10}s`;
 
 export const options = {
     setupTimeout: '5m',
     scenarios: {
-        mezcla: {
+        ...(SOLO_RAFAGA ? {} : { mezcla: {
             executor: 'ramping-vus',
             startVUs: 0,
             stages: [
@@ -45,7 +47,7 @@ export const options = {
                 { duration: '30s', target: 0 },
             ],
             gracefulRampDown: '30s',
-        },
+        } }),
         rafaga: {
             executor: 'per-vu-iterations',
             vus: USUARIOS,

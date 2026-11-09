@@ -34,7 +34,7 @@ registrar su evidencia. Las de seguridad (SE-01 a SE-06) ya están en `docs/evid
    ```
    Dentro del contenedor:
    ```bash
-   psql -U h2togo -d h2togo_v6
+   psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
    ```
    Pega todo el contenido de `01_datos_carga.sql`. Al final debe imprimir `10 | 100 | 100`
    (repartidores, clientes y direcciones en cobertura). Escribe `\q` y `exit` para salir.

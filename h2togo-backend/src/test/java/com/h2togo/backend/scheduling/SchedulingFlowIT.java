@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -134,8 +135,8 @@ class SchedulingFlowIT {
                 "SELECT estado_actual = 'pendiente' AND notificado_programado FROM pedidos WHERE id_pedido = :id",
                 new MapSqlParameterSource("id", idPedido), Boolean.class);
         assertThat(activado).isTrue();
-        // El repartidor del negocio recibe exactamente un aviso.
-        verify(pushService, times(1)).notificar(eq(idRep), eq("Nuevo pedido disponible"), anyString(), anyMap());
+        // El repartidor del negocio recibe exactamente un aviso (sale en segundo plano).
+        verify(pushService, after(2000).times(1)).notificar(eq(idRep), eq("Nuevo pedido disponible"), anyString(), anyMap());
     }
 
     @Test
