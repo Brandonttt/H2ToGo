@@ -241,12 +241,7 @@ fun PerfilClienteScreen(
                 }
             }
 
-            item {
-                Text("H2ToGo v1.0.0 · Build 142",
-                    fontSize = 11.sp, color = HToGoColors.TextTertiary,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            }
+            item { Spacer(Modifier.height(24.dp)) }
         }
 
         if (mostrarDialogDireccion || direccionAEditar != null) {

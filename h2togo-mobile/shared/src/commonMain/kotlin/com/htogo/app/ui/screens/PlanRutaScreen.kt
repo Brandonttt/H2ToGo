@@ -14,6 +14,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Route
@@ -40,6 +43,8 @@ import com.htogo.app.plataforma.mostrarAviso
 import com.htogo.app.ui.RepartidorViewModel
 import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.ui.components.OsmRouteMapView
+import com.htogo.app.ui.components.OpcionSimulacion
+import com.htogo.app.ui.components.SimulacionGpsChip
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.util.conDecimales
 import com.htogo.app.util.fechaCdmx
@@ -175,7 +180,7 @@ fun PlanRutaScreen(
         }
         if (simulandoRecorrido) {
             simulandoRecorrido = false
-            mostrarAviso("🏁 FakeGPS: Recorrido completo de la ruta del día finalizado", largo = true)
+            mostrarAviso("Recorrido simulado de la ruta completado", largo = true)
         }
     }
 
@@ -217,54 +222,41 @@ fun PlanRutaScreen(
                             Icon(
                                 Icons.Filled.MoreVert,
                                 contentDescription = "Opciones FakeGPS",
-                                tint = if (posicionSimulada != null) Color(0xFFC4B5FD) else Color.White
+                                tint = Color.White
                             )
                         }
                         DropdownMenu(
                             expanded = menuFakeGps,
                             onDismissRequest = { menuFakeGps = false }
                         ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        if (simulandoRecorrido) "⏸️ Pausar recorrido OR-Tools (FakeGPS)"
-                                        else if (posicionSimulada != null) "▶️ Simular ruta desde aquí (FakeGPS)"
-                                        else "▶️ Simular ruta desde purificadora (FakeGPS)",
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                },
-                                onClick = {
-                                    menuFakeGps = false
-                                    simulandoRecorrido = !simulandoRecorrido
-                                    if (simulandoRecorrido) {
-                                        mostrarAviso("🛰️ Saliendo de $nombrePurificadora y siguiendo ruta OR-Tools…")
-                                    } else {
-                                        mostrarAviso("⏸️ Simulación FakeGPS en pausa")
-                                    }
+                            OpcionSimulacion(
+                                if (simulandoRecorrido) "Pausar recorrido simulado" else "Simular recorrido",
+                                if (simulandoRecorrido) Icons.Filled.Pause else Icons.Filled.PlayArrow
+                            ) {
+                                menuFakeGps = false
+                                simulandoRecorrido = !simulandoRecorrido
+                                if (simulandoRecorrido) {
+                                    mostrarAviso("Simulando la ruta desde $nombrePurificadora")
+                                } else {
+                                    mostrarAviso("Simulación en pausa")
                                 }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("🏪 Situar en la purificadora (inicio de ruta)") },
-                                onClick = {
+                            }
+                            OpcionSimulacion("Ir a la purificadora", Icons.Filled.Storefront) {
+                                menuFakeGps = false
+                                simulandoRecorrido = false
+                                val base = ubicacionPurificadora
+                                posicionSimulada = base
+                                repartidorViewModel.cargarPlanDesdeUbicacion(base.first, base.second)
+                                mostrarAviso("Ubicación simulada en $nombrePurificadora")
+                            }
+                            if (posicionSimulada != null) {
+                                OpcionSimulacion("Volver a la ubicación real", Icons.Filled.MyLocation) {
                                     menuFakeGps = false
                                     simulandoRecorrido = false
-                                    val base = ubicacionPurificadora
-                                    posicionSimulada = base
-                                    repartidorViewModel.cargarPlanDesdeUbicacion(base.first, base.second)
-                                    mostrarAviso("📍 FakeGPS situado en $nombrePurificadora")
+                                    posicionSimulada = null
+                                    repartidorViewModel.cargarPlan()
+                                    mostrarAviso("Volviendo al GPS real")
                                 }
-                            )
-                            if (posicionSimulada != null) {
-                                DropdownMenuItem(
-                                    text = { Text("📍 Volver al GPS real del teléfono") },
-                                    onClick = {
-                                        menuFakeGps = false
-                                        simulandoRecorrido = false
-                                        posicionSimulada = null
-                                        repartidorViewModel.cargarPlan()
-                                        mostrarAviso("Volviendo al GPS real")
-                                    }
-                                )
                             }
                         }
                     }
@@ -406,7 +398,7 @@ private fun MapaRuta(
             destLat = primera.lat,
             destLon = primera.lon,
             routePoints = r.coordenadas.map { it.lat to it.lon },
-            repartidorLabel = if (posicionSimulada != null) "Tú (FakeGPS)" else "Tú",
+            repartidorLabel = "Tú",
             avisoSinUbicacion = null,
             paradas = r.paradas.map { it.lat to it.lon },
             baseLat = baseLat,
@@ -416,46 +408,18 @@ private fun MapaRuta(
         )
 
         if (posicionSimulada != null) {
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = Color(0xFF7C3AED).copy(alpha = 0.95f),
-                shadowElevation = 4.dp,
+            SimulacionGpsChip(
+                simulando = simulandoRecorrido,
+                paso = pasoSimulado,
+                totalPasos = totalPasosSimulados,
+                onAlternar = onToggleSimulacion,
+                onSalir = onCerrarSimulacion,
                 modifier = Modifier.align(Alignment.TopStart).padding(10.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        if (simulandoRecorrido) "🛰️ FakeGPS ($pasoSimulado/$totalPasosSimulados)"
-                        else "🧪 FakeGPS en $nombrePurificadora",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onToggleSimulacion() }
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (simulandoRecorrido) "⏸" else "▶",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onToggleSimulacion() }
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "✕",
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onCerrarSimulacion() }
-                    )
-                }
-            }
+            )
         } else {
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = Color(0xFF0F172A).copy(alpha = 0.88f),
+                color = Color.White,
                 shadowElevation = 4.dp,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -466,11 +430,11 @@ private fun MapaRuta(
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Filled.Storefront, null, tint = Color(0xFF38BDF8), modifier = Modifier.size(14.dp))
+                    Icon(Icons.Filled.PlayArrow, null, tint = HToGoColors.Primary, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "▶ Probar FakeGPS desde $nombrePurificadora",
-                        color = Color.White,
+                        "Simular recorrido",
+                        color = HToGoColors.TextPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -500,7 +464,7 @@ private fun LeyendaColoresTramos(r: RutaOptimaDto, nombrePurificadora: String) {
                 Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("🏪", fontSize = 11.sp)
+                Icon(Icons.Filled.Storefront, null, tint = HToGoColors.TextSecondary, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(4.dp))
                 Text(
                     "Base: $nombrePurificadora",

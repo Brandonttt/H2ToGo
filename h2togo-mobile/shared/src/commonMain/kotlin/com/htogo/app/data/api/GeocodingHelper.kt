@@ -25,7 +25,7 @@ object GeocodingHelper {
 
     /** Mensaje para el usuario según la precisión del resultado. */
     fun mensajeUbicacion(result: GeoResult): String =
-        if (result.exacto) "✓ Ubicación colocada en el mapa"
+        if (result.exacto) "Ubicación colocada en el mapa"
         else "Ubicamos la calle, pero no el número. Arrastra el pin hasta tu puerta."
 
     suspend fun buscarCoordenadas(direccionTexto: String): GeoResult? =

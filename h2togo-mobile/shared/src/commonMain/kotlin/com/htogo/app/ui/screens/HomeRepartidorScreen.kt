@@ -90,9 +90,6 @@ fun HomeRepartidorScreen(
     val pedidosEntregados = remember(liveMisEntregas) {
         liveMisEntregas.filter { it.estado.equals("entregado", ignoreCase = true) }
     }
-    val totalIngresosHoy = remember(pedidosEntregados) {
-        pedidosEntregados.sumOf { it.totalPagar ?: 0.0 }
-    }
     val entregasHoyCount = remember(pedidosEntregados) {
         pedidosEntregados.size
     }
@@ -206,14 +203,7 @@ fun HomeRepartidorScreen(
                         if (!pendienteAprobacion) {
                         Spacer(Modifier.height(20.dp))
                         Card(
-                            Modifier.fillMaxWidth().clickable {
-                                if (enLinea) {
-                                    showDesconectarDialog = true
-                                } else {
-                                    mostrarAviso("Inicia tu jornada y carga tu vehículo en Mi negocio para recibir pedidos")
-                                    onInventario()
-                                }
-                            },
+                            Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
@@ -231,26 +221,25 @@ fun HomeRepartidorScreen(
                                         color = HToGoColors.TextPrimary
                                     )
                                     Text(
-                                        if (enLinea) "Recibiendo pedidos" else "Inicia jornada en Mi negocio para recibir pedidos",
+                                        if (enLinea) "Recibiendo pedidos" else "Carga tu vehículo para recibir pedidos",
                                         fontSize = 12.sp,
                                         color = HToGoColors.TextSecondary
                                     )
                                 }
-                                Switch(
-                                    checked = enLinea,
-                                    onCheckedChange = { activar ->
-                                        if (activar) {
-                                            mostrarAviso("Inicia tu jornada y carga tu vehículo en Mi negocio para recibir pedidos")
-                                            onInventario()
-                                        } else {
-                                            showDesconectarDialog = true
-                                        }
-                                    },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = HToGoColors.Primary
-                                    )
-                                )
+                                if (enLinea) {
+                                    TextButton(onClick = { showDesconectarDialog = true }) {
+                                        Text("Terminar", color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold)
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = onInventario,
+                                        shape = RoundedCornerShape(99.dp),
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                                    ) {
+                                        Text("Iniciar jornada", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
                             }
                         }
                         }
@@ -270,44 +259,14 @@ fun HomeRepartidorScreen(
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )
                 Spacer(Modifier.height(8.dp))
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    StatCard(
-                        label = "Entregas",
-                        big = "$entregasHoyCount",
-                        small = "/ ${liveMisEntregas.size}",
-                        icon = Icons.Filled.CheckCircle,
-                        accent = HToGoColors.StatusEntregado,
-                        modifier = Modifier.weight(1f),
-                        onClick = onHistorial
+                ResumenJornada(
+                    listOf(
+                        Metrica("Entregas", "$entregasHoyCount/${liveMisEntregas.size}", onHistorial),
+                        Metrica("En vehículo", "${liveVehiculo?.ocupado ?: 0}", onInventario),
+                        Metrica("En base", "${liveBase?.lotes?.sumOf { it.cantidadActual } ?: 0}", onInventario),
+                        Metrica("En ruta", "$enRutaCount", null),
                     )
-                    StatCard(
-                        label = "En tu vehículo",
-                        big = "${liveVehiculo?.ocupado ?: 0}",
-                        small = "garrafones",
-                        icon = Icons.Filled.DirectionsCar,
-                        accent = HToGoColors.Primary,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    StatCard("En base", "${liveBase?.lotes?.sumOf { it.cantidadActual } ?: 0}", "garrafones", Icons.Filled.Warehouse, HToGoColors.AccentPurple, Modifier.weight(1f))
-                    StatCard("Ingresos", "$${totalIngresosHoy.toInt()}", "MXN", Icons.Filled.Payments, HToGoColors.StatusAsignado, Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    StatCard("En ruta", "$enRutaCount", if (enRutaCount == 1) "pedido activo" else "pedidos", Icons.Filled.Schedule, HToGoColors.PrimaryDark, Modifier.weight(1f))
-                    Spacer(Modifier.weight(1f))
-                }
+                )
 
                 Spacer(Modifier.height(24.dp))
                 if (livePedidoEnRuta != null) {
@@ -395,7 +354,9 @@ fun HomeRepartidorScreen(
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(
-                                    if (livePedidosDisponibles.isNotEmpty())
+                                    if (livePedidosDisponibles.size == 1)
+                                        "1 pedido listo para entrega"
+                                    else if (livePedidosDisponibles.isNotEmpty())
                                         "${livePedidosDisponibles.size} pedidos listos para entrega"
                                     else
                                         "No hay pedidos pendientes",
@@ -409,7 +370,6 @@ fun HomeRepartidorScreen(
                                     color = HToGoColors.TextSecondary
                                 )
                             }
-                            EstadoPedidoChip(EstadoPedido.PENDIENTE)
                         }
                         Spacer(Modifier.height(14.dp))
                         Button(
@@ -591,41 +551,6 @@ private fun PendienteAprobacionCard(nombreNegocio: String) {
 }
 
 @Composable
-private fun StatCard(
-    label: String, big: String, small: String, icon: ImageVector,
-    accent: Color, modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
-) {
-    Card(
-        modifier = modifier
-            .height(110.dp)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(accent.copy(alpha = .14f)),
-                    contentAlignment = Alignment.Center
-                ) { Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp)) }
-                Spacer(Modifier.width(8.dp))
-                Text(label, fontSize = 12.sp, color = HToGoColors.TextSecondary)
-            }
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(big, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    small, fontSize = 12.sp, color = HToGoColors.TextSecondary,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun ColaItem(
     id: String, cliente: String, colonia: String, cant: String, monto: String,
     estado: EstadoPedido, onClick: () -> Unit
@@ -650,6 +575,37 @@ private fun ColaItem(
                 Text(cant, fontSize = 12.sp, color = HToGoColors.TextSecondary)
             }
             Text(monto, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = HToGoColors.PrimaryDark)
+        }
+    }
+}
+
+private class Metrica(val etiqueta: String, val valor: String, val onClick: (() -> Unit)?)
+
+/** Resumen compacto de la jornada: una sola tarjeta con las cifras del día en fila. */
+@Composable
+private fun ResumenJornada(metricas: List<Metrica>) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(vertical = 12.dp)) {
+            metricas.forEachIndexed { i, m ->
+                if (i > 0) {
+                    Box(Modifier.width(1.dp).fillMaxHeight().background(HToGoColors.OutlineSoft))
+                }
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .then(if (m.onClick != null) Modifier.clickable(onClick = m.onClick) else Modifier)
+                        .padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(m.valor, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
+                    Text(m.etiqueta, fontSize = 11.sp, color = HToGoColors.TextSecondary)
+                }
+            }
         }
     }
 }

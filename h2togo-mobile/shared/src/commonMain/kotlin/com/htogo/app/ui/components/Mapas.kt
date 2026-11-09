@@ -1,5 +1,7 @@
 package com.htogo.app.ui.components
 
+import androidx.compose.material.icons.filled.Layers
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -247,13 +249,22 @@ private fun SelectorCapa(control: ControlWeb?, modifier: Modifier, compacto: Boo
             control?.ejecutar("if (window.setCapa) window.setCapa('${if (capaOsm) "osm" else "google"}');")
         }
     ) {
-        Text(
-            if (capaOsm) "🗺️ OSM" else "🗺️ Google Maps",
-            fontSize = if (compacto) 10.sp else 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (capaOsm) Color(0xFF0284C7) else Color(0xFF1A73E8),
-            modifier = Modifier.padding(horizontal = if (compacto) 8.dp else 10.dp, vertical = if (compacto) 4.dp else 6.dp)
-        )
+        Row(
+            Modifier.padding(horizontal = if (compacto) 8.dp else 10.dp, vertical = if (compacto) 4.dp else 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            androidx.compose.material3.Icon(
+                androidx.compose.material.icons.Icons.Filled.Layers, null,
+                tint = Color(0xFF64748B), modifier = Modifier.size(if (compacto) 12.dp else 14.dp)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                if (capaOsm) "OSM" else "Google Maps",
+                fontSize = if (compacto) 10.sp else 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF0F172A)
+            )
+        }
     }
 }
 

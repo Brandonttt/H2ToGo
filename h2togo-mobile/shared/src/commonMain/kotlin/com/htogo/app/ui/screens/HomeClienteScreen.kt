@@ -58,12 +58,6 @@ fun HomeClienteScreen(
     onSwitchRol: () -> Unit = {},
     clienteViewModel: ClienteViewModel = viewModel { ClienteViewModel() }
 ) {
-    // "Nuevo pedido" genérico: sin purificadora fija, la pantalla elige la más cercana.
-    val nuevoPedidoSinPurificadora = {
-        clienteViewModel.purificadoraSeleccionadaId = null
-        clienteViewModel.purificadoraSeleccionadaNombre = null
-        onNuevoPedido()
-    }
     val sessionManager = remember { com.htogo.app.data.local.SessionManager.getInstance() }
     val nombre = remember { sessionManager.obtenerNombre()?.substringBefore(" ")?.ifBlank { "Cliente" } ?: "Cliente" }
     var notificacionesActivas by remember { mutableStateOf(sessionManager.estanNotificacionesActivas()) }
@@ -117,14 +111,34 @@ fun HomeClienteScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = nuevoPedidoSinPurificadora,
-                containerColor = HToGoColors.Primary,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(28.dp),
-                icon = { Icon(Icons.Filled.Add, null) },
-                text = { Text("Pedir agua", fontWeight = FontWeight.SemiBold) }
-            )
+            var menuPedir by remember { mutableStateOf(false) }
+            Box {
+                ExtendedFloatingActionButton(
+                    onClick = { menuPedir = true },
+                    containerColor = HToGoColors.Primary,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(28.dp),
+                    icon = { Icon(Icons.Filled.Add, null) },
+                    text = { Text("Pedir agua", fontWeight = FontWeight.SemiBold) }
+                )
+                DropdownMenu(
+                    expanded = menuPedir,
+                    onDismissRequest = { menuPedir = false },
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    listOf(
+                        Triple(Icons.Filled.Storefront, "Directo a una purificadora", onElegirPurificadora),
+                        Triple(Icons.Filled.AttachMoney, "Con precio máximo", onPedirAbierto),
+                        Triple(Icons.Filled.History, "Repetir un pedido", onHistorial),
+                    ).forEach { (icono, texto, accion) ->
+                        DropdownMenuItem(
+                            text = { Text(texto, fontSize = 15.sp) },
+                            leadingIcon = { Icon(icono, null, tint = HToGoColors.Primary) },
+                            onClick = { menuPedir = false; accion() }
+                        )
+                    }
+                }
+            }
         }
     ) { padding ->
         // Deslizar hacia abajo para actualizar los datos de la pantalla.
@@ -305,31 +319,18 @@ fun HomeClienteScreen(
 
                 Spacer(Modifier.height(24.dp))
 
-                Text("Acciones rápidas",
+                Text("¿Cómo quieres pedir?",
                     style = MaterialTheme.typography.titleMedium,
                     color = HToGoColors.TextPrimary,
                     modifier = Modifier.padding(horizontal = 20.dp))
                 Spacer(Modifier.height(8.dp))
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    QuickActionTile(
-                        Icons.Filled.Storefront, "Elegir purificadora",
-                        "Pide a un negocio específico", Modifier.weight(1f), onElegirPurificadora
-                    )
-                    QuickActionTile(
-                        Icons.Filled.AttachMoney, "Pedir con precio máximo",
-                        "Te asignamos el primero disponible", Modifier.weight(1f), onPedirAbierto
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    QuickActionTile(Icons.Filled.History, "Repetir último", "Historial", Modifier.weight(1f), onHistorial)
-                    QuickActionTile(Icons.Filled.Schedule, "Nuevo pedido", "Directo", Modifier.weight(1f), nuevoPedidoSinPurificadora)
+                    OpcionPedido(Icons.Filled.Storefront, "Directo a purificadora", "Tú eliges cuál", Modifier.weight(1f), onElegirPurificadora)
+                    OpcionPedido(Icons.Filled.AttachMoney, "Precio máximo", "Tú pones el tope", Modifier.weight(1f), onPedirAbierto)
+                    OpcionPedido(Icons.Filled.History, "Repetir pedido", "De tu historial", Modifier.weight(1f), onHistorial)
                 }
 
                 Spacer(Modifier.height(24.dp))
@@ -460,47 +461,29 @@ private fun PedidoActivoCard(
 }
 
 @Composable
-private fun QuickActionTile(
+private fun OpcionPedido(
     icon: ImageVector, title: String, subtitle: String,
     modifier: Modifier = Modifier, onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(144.dp),
+        modifier = modifier.aspectRatio(1f),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(horizontal = 14.dp, vertical = 12.dp)
-        ) {
+        Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Box(
-                Modifier.size(34.dp).clip(RoundedCornerShape(10.dp))
-                    .background(HToGoColors.PrimarySoft),
+                Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(HToGoColors.PrimarySoft),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, null, tint = HToGoColors.Primary,
-                    modifier = Modifier.size(18.dp))
+                Icon(icon, null, tint = HToGoColors.Primary, modifier = Modifier.size(22.dp))
             }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                title,
-                fontSize = 13.5.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = HToGoColors.TextPrimary,
-                lineHeight = 17.sp,
-                maxLines = 2
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                subtitle,
-                fontSize = 11.5.sp,
-                color = HToGoColors.TextSecondary,
-                lineHeight = 14.sp,
-                maxLines = 2
-            )
+            Column {
+                Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary,
+                    lineHeight = 16.sp, maxLines = 2)
+                Text(subtitle, fontSize = 11.sp, color = HToGoColors.TextSecondary, lineHeight = 13.sp, maxLines = 2)
+            }
         }
     }
 }

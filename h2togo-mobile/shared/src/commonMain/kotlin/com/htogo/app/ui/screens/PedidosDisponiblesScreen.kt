@@ -666,8 +666,8 @@ private fun AceptarPedidoDialog(
                                         color = HToGoColors.TextPrimary
                                     )
                                     Text(
-                                        if (d.tieneEnvase) "✓ Envase retornado (propio del cliente)"
-                                        else "⚠ Requiere envase nuevo (sin envase)",
+                                        if (d.tieneEnvase) "Envase retornado (propio del cliente)"
+                                        else "Requiere envase nuevo (sin envase)",
                                         fontSize = 11.sp,
                                         color = if (d.tieneEnvase) HToGoColors.StatusEntregado else HToGoColors.AccentAmber
                                     )

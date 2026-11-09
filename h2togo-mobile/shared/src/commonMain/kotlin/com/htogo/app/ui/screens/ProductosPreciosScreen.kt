@@ -1,5 +1,7 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.BarraEstadoClara
+
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import com.htogo.app.data.dto.aMapaJson
@@ -194,6 +196,7 @@ fun ProductosPreciosScreen(
         }
     }
 
+    BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
         containerColor = HToGoColors.Background,
         topBar = {
@@ -231,7 +234,7 @@ fun ProductosPreciosScreen(
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "$nombreNegocio · CU-23",
+                        nombreNegocio,
                         color = HToGoColors.PrimarySoft, fontSize = 12.sp
                     )
                 }
@@ -381,7 +384,7 @@ private fun ReglasCard() {
                 icon = Icons.Filled.HourglassTop,
                 color = HToGoColors.AccentAmber,
                 titulo = "Agregar nuevo producto",
-                detalle = "Requiere aprobación del admin (RN-020). Verás la solicitud abajo hasta que se apruebe."
+                detalle = "Requiere aprobación del admin. Verás la solicitud abajo hasta que se apruebe."
             )
         }
     }
@@ -445,7 +448,7 @@ private fun ProductoCard(p: ProductoCatalogo, onEditar: (() -> Unit)?) {
                         .background(p.accent.copy(alpha = .14f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(p.codigo, color = p.accent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Icon(Icons.Filled.WaterDrop, null, tint = p.accent, modifier = Modifier.size(22.dp))
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {

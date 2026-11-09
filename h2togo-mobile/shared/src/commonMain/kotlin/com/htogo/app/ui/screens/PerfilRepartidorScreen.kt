@@ -377,15 +377,7 @@ fun PerfilRepartidorScreen(
                         ActionRow(Icons.Filled.DeleteForever, "Eliminar cuenta", redText = true, isLast = true, onClick = { mostrarDialogEliminarCuenta = true })
                     }
                 }
-                Spacer(Modifier.height(20.dp))
-                Text(
-                    "H2ToGo · v1.0.0",
-                    fontSize = 11.sp, color = HToGoColors.TextTertiary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 24.dp),
-                    textAlign = TextAlign.Center
-                )
+                Spacer(Modifier.height(32.dp))
             }
         }
 
@@ -815,7 +807,7 @@ private fun DialogCambioNombreComercial(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Ya existe una solicitud pendiente para cambiar el nombre comercial de tu negocio (RN-019).",
+                        "Ya existe una solicitud pendiente para cambiar el nombre comercial de tu negocio.",
                         color = HToGoColors.TextSecondary,
                         fontSize = 14.sp
                     )
@@ -860,7 +852,7 @@ private fun DialogCambioNombreComercial(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Ingresa el nuevo nombre comercial. La solicitud quedará pendiente hasta ser aprobada por el administrador (RN-019).",
+                        "Ingresa el nuevo nombre comercial. La solicitud quedará pendiente hasta ser aprobada por el administrador.",
                         fontSize = 13.sp,
                         color = HToGoColors.TextSecondary
                     )
@@ -948,7 +940,7 @@ private fun ModalCambioDireccionBase(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Ya existe una solicitud pendiente para cambiar la dirección de la base de tu negocio (RN-019).",
+                        "Ya existe una solicitud pendiente para cambiar la dirección de la base de tu negocio.",
                         color = HToGoColors.TextSecondary,
                         fontSize = 14.sp
                     )
@@ -1052,7 +1044,7 @@ private fun ModalCambioDireccionBase(
                 if (result != null) {
                     lat = result.lat
                     lon = result.lon
-                    geocodeMessage = if (result.exacto) "✓ Pin ubicado: ${result.displayName.take(45)}..."
+                    geocodeMessage = if (result.exacto) "Pin ubicado: ${result.displayName.take(45)}..."
                     else GeocodingHelper.mensajeUbicacion(result)
                     if (!result.postcode.isNullOrBlank()) {
                         cp = result.postcode
@@ -1085,7 +1077,7 @@ private fun ModalCambioDireccionBase(
                 ) {
                     Column {
                         Text("Cambiar dirección de la base", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
-                        Text("Solicitud de cambio (CU-020)", fontSize = 12.sp, color = HToGoColors.TextSecondary)
+                        Text("Solicitud de cambio", fontSize = 12.sp, color = HToGoColors.TextSecondary)
                     }
                     IconButton(onClick = onDismiss, enabled = !enviando) {
                         Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = HToGoColors.TextSecondary)
@@ -1104,7 +1096,7 @@ private fun ModalCambioDireccionBase(
                 }
 
                 Text(
-                    "Esta solicitud quedará en estado pendiente hasta ser aprobada por el administrador (RN-019).",
+                    "Esta solicitud quedará en estado pendiente hasta ser aprobada por el administrador.",
                     fontSize = 12.sp,
                     color = HToGoColors.TextSecondary
                 )
@@ -1209,7 +1201,7 @@ private fun ModalCambioDireccionBase(
                                 Text(
                                     geocodeMessage!!,
                                     fontSize = 11.sp,
-                                    color = if (geocodeMessage!!.startsWith("✓")) Color(0xFF16A34A) else HToGoColors.TextSecondary
+                                    color = if (geocodeMessage!!.let { it.startsWith("Pin ubicado") || it.startsWith("Dirección detectada") || it.startsWith("Ubicación colocada") }) Color(0xFF16A34A) else HToGoColors.TextSecondary
                                 )
                             }
                         }
@@ -1240,7 +1232,7 @@ private fun ModalCambioDireccionBase(
                                     if (!res.houseNumber.isNullOrBlank()) numExt = res.houseNumber
                                     if (!res.neighbourhood.isNullOrBlank()) colonia = res.neighbourhood
                                     if (!res.postcode.isNullOrBlank()) cp = res.postcode
-                                    geocodeMessage = "✓ Dirección detectada desde el mapa"
+                                    geocodeMessage = "Dirección detectada desde el mapa"
                                 }
                                 isGeocoding = false
                                 delay(600)

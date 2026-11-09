@@ -163,7 +163,7 @@ private fun BrandRow(
                         Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(b.color),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(b.short, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Icon(Icons.Filled.WaterDrop, null, tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(10.dp))
                     Column {
@@ -198,7 +198,7 @@ private fun QuantityCard(brand: WaterBrand, qty: Int, onQty: (Int) -> Unit) {
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text("${brand.name} · Garrafón 20 L", fontSize = 16.sp,
+                Text("Garrafones de 20 L", fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary)
                 Text("${dinero(brand.price)} c/u", fontSize = 13.sp, color = HToGoColors.TextSecondary)
             }
@@ -229,31 +229,6 @@ private fun StepperBtn(label: String, enabled: Boolean, onClick: () -> Unit) {
         Box(contentAlignment = Alignment.Center) {
             Text(label, fontSize = 18.sp, fontWeight = FontWeight.Bold,
                 color = if (enabled) HToGoColors.Primary else HToGoColors.TextTertiary)
-        }
-    }
-}
-
-@Composable
-private fun PresetRow(qty: Int, onPick: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(1, 3, 5, 10).forEach { n ->
-            val active = n == qty
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = if (active) HToGoColors.PrimarySoft else HToGoColors.Surface,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.5.dp, if (active) HToGoColors.Primary else HToGoColors.OutlineSoft
-                ),
-                modifier = Modifier.weight(1f).height(40.dp).clickable { onPick(n) }
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        n.toString(),
-                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                        color = if (active) HToGoColors.Primary else HToGoColors.TextSecondary
-                    )
-                }
-            }
         }
     }
 }
@@ -1085,8 +1060,6 @@ fun NuevoPedidoScreen(
                 Spacer(Modifier.height(10.dp))
                 Column(Modifier.padding(horizontal = 16.dp)) {
                     QuantityCard(brand, qty) { qty = it }
-                    Spacer(Modifier.height(12.dp))
-                    PresetRow(qty) { qty = it }
                     Spacer(Modifier.height(12.dp))
                     // RN-031: si no entrega un garrafón vacío, paga también el envase.
                     Surface(

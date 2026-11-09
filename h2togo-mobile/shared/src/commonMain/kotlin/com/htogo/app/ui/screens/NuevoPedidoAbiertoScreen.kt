@@ -12,6 +12,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -53,7 +65,9 @@ private val ABIERTO_ADDRESSES = listOf(
     AbiertoAddr("a3", "Casa de mamá", "Calle Heriberto Frías 890, Col. Nápoles", Icons.Filled.Favorite)
 )
 
-private val PRECIOS_PRESET = listOf(35, 40, 45, 50)
+
+private const val PRECIO_MIN = 25
+private const val PRECIO_MAX = 80
 
 @Composable
 fun NuevoPedidoAbiertoScreen(
@@ -87,6 +101,7 @@ fun NuevoPedidoAbiertoScreen(
 
     var qty by remember { mutableStateOf(3) }
     var precioMax by remember { mutableStateOf(45) }
+    val focusManager = LocalFocusManager.current
     var selectedAddrId by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var marcaSelId by remember { mutableStateOf<Int?>(null) }
@@ -176,6 +191,8 @@ fun NuevoPedidoAbiertoScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                // Tocar fuera de un campo cierra el teclado (el teclado numérico de iOS no trae "Listo").
+                .pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }
         ) {
             if (errorMsg != null) {
                 Surface(
@@ -206,14 +223,9 @@ fun NuevoPedidoAbiertoScreen(
             Box(Modifier.padding(horizontal = 16.dp)) {
                 PrecioMaximoCard(
                     precio = precioMax,
-                    onPrecio = { precioMax = it.coerceIn(25, 80) }
+                    onPrecio = { precioMax = it.coerceIn(PRECIO_MIN, PRECIO_MAX) }
                 )
             }
-            Spacer(Modifier.height(10.dp))
-            Box(Modifier.padding(horizontal = 16.dp)) {
-                PresetPrecios(precio = precioMax) { precioMax = it }
-            }
-            Spacer(Modifier.height(8.dp))
             HintRow(precio = precioMax)
 
             Spacer(Modifier.height(20.dp))
@@ -247,22 +259,11 @@ fun NuevoPedidoAbiertoScreen(
                     }
                 }
             }
-            Text(
-                "Solo podrán tomarlo purificadoras que vendan esta marca a tu precio máximo o menos.",
-                fontSize = 11.sp,
-                color = HToGoColors.TextTertiary,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
-            )
-
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(20.dp))
             SectionTitle("¿Cuántos garrafones?")
             Spacer(Modifier.height(10.dp))
             Box(Modifier.padding(horizontal = 16.dp)) {
                 CantidadCard(qty = qty, onQty = { qty = it.coerceIn(1, 30) })
-            }
-            Spacer(Modifier.height(10.dp))
-            Box(Modifier.padding(horizontal = 16.dp)) {
-                PresetCantidad(qty = qty) { qty = it }
             }
 
             Spacer(Modifier.height(10.dp))
@@ -385,23 +386,6 @@ private fun TopBar(onBack: () -> Unit) {
                     "Pedido con precio máximo",
                     fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Color.White
                 )
-                Text(
-                    "Modo abierto · primero en aceptar",
-                    fontSize = 12.sp, color = HToGoColors.PrimarySoft
-                )
-            }
-            Surface(shape = RoundedCornerShape(99.dp), color = Color.White.copy(alpha = .10f)) {
-                Row(
-                    Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Filled.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(12.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        "Abierto",
-                        fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.White
-                    )
-                }
             }
         }
     }
@@ -412,44 +396,15 @@ private fun HeroExplicacion() {
     Box(
         Modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary)))
-            .padding(horizontal = 16.dp, vertical = 16.dp)
+            .background(HToGoColors.PrimaryDark)
+            .padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
     ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = Color.White,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(HToGoColors.PrimarySoft),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Speed, null, tint = HToGoColors.Primary, modifier = Modifier.size(22.dp))
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(
-                        "Tú pones el precio tope",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = HToGoColors.TextPrimary
-                    )
-                    Text(
-                        "Cualquier purificadora cercana puede tomar el pedido si su precio es ≤ tu tope. Te asignamos al primero que acepte.",
-                        fontSize = 12.sp,
-                        color = HToGoColors.TextSecondary,
-                        lineHeight = 16.sp
-                    )
-                }
-            }
-        }
+        Text(
+            "Te asignamos la primera purificadora que acepte tu precio.",
+            fontSize = 13.sp,
+            color = HToGoColors.PrimarySoft,
+            lineHeight = 18.sp
+        )
     }
 }
 
@@ -494,17 +449,23 @@ private fun PrecioMaximoCard(precio: Int, onPrecio: (Int) -> Unit) {
                     fontSize = 12.sp,
                     color = HToGoColors.TextSecondary
                 )
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        "$$precio",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = HToGoColors.Primary
-                    )
-                    Text(
-                        " MXN",
-                        fontSize = 13.sp,
-                        color = HToGoColors.TextSecondary
+                // Se puede escribir el precio (al tocarlo) o ajustarlo con − / + de $5 en $5.
+                var escribiendo by remember { mutableStateOf(false) }
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { escribiendo = true }
+                ) {
+                    Text("$$precio", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = HToGoColors.Primary)
+                    Text(" MXN", fontSize = 13.sp, color = HToGoColors.TextSecondary,
+                        modifier = Modifier.padding(bottom = 6.dp))
+                    Icon(Icons.Filled.Edit, "Escribir precio", tint = HToGoColors.TextTertiary,
+                        modifier = Modifier.padding(start = 6.dp, bottom = 9.dp).size(16.dp))
+                }
+                if (escribiendo) {
+                    EscribirPrecioDialog(
+                        actual = precio,
+                        onGuardar = { onPrecio(it); escribiendo = false },
+                        onCancelar = { escribiendo = false }
                     )
                 }
             }
@@ -514,18 +475,56 @@ private fun PrecioMaximoCard(precio: Int, onPrecio: (Int) -> Unit) {
                     .padding(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                StepBtn(label = "−", enabled = precio > 25) { onPrecio(precio - 1) }
-                Text(
-                    "ajustar",
-                    Modifier.padding(horizontal = 8.dp),
-                    fontSize = 11.sp,
-                    color = HToGoColors.TextSecondary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                StepBtn(label = "+", enabled = precio < 80) { onPrecio(precio + 1) }
+                // Pasos de $5, alineados a múltiplos de 5 (p. ej. 47 → 45 o 50).
+                val fm = LocalFocusManager.current
+                StepBtn(label = "−", enabled = precio > PRECIO_MIN) {
+                    fm.clearFocus()
+                    onPrecio((((precio - 1) / 5) * 5).coerceIn(PRECIO_MIN, PRECIO_MAX))
+                }
+                Spacer(Modifier.width(8.dp))
+                StepBtn(label = "+", enabled = precio < PRECIO_MAX) {
+                    fm.clearFocus()
+                    onPrecio((((precio / 5) + 1) * 5).coerceIn(PRECIO_MIN, PRECIO_MAX))
+                }
             }
         }
     }
+}
+
+@Composable
+private fun EscribirPrecioDialog(actual: Int, onGuardar: (Int) -> Unit, onCancelar: () -> Unit) {
+    var texto by remember { mutableStateOf("") }
+    val valor = texto.toIntOrNull()
+    val valido = valor != null && valor in PRECIO_MIN..PRECIO_MAX
+    val foco = remember { FocusRequester() }
+    LaunchedEffect(Unit) { foco.requestFocus() }
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        title = { Text("Precio máximo por garrafón") },
+        text = {
+            OutlinedTextField(
+                value = texto,
+                onValueChange = { texto = it.filter(Char::isDigit).take(3) },
+                singleLine = true,
+                prefix = { Text("$") },
+                placeholder = { Text(actual.toString()) },
+                supportingText = {
+                    Text(
+                        "Entre $$PRECIO_MIN y $$PRECIO_MAX",
+                        color = if (texto.isNotEmpty() && !valido) HToGoColors.AccentRose else HToGoColors.TextSecondary
+                    )
+                },
+                isError = texto.isNotEmpty() && !valido,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (valido) onGuardar(valor!!) }),
+                modifier = Modifier.focusRequester(foco)
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onGuardar(valor!!) }, enabled = valido) { Text("Listo") }
+        },
+        dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar") } }
+    )
 }
 
 @Composable
@@ -550,49 +549,17 @@ private fun StepBtn(label: String, enabled: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PresetPrecios(precio: Int, onPick: (Int) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        PRECIOS_PRESET.forEach { p ->
-            val active = p == precio
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = if (active) HToGoColors.PrimarySoft else Color.White,
-                border = BorderStroke(
-                    1.5.dp,
-                    if (active) HToGoColors.Primary else HToGoColors.OutlineSoft
-                ),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp)
-                    .clickable { onPick(p) }
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        "$$p",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (active) HToGoColors.Primary else HToGoColors.TextSecondary
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun HintRow(precio: Int) {
+    // Solo avisa cuando el precio es bajo; con un precio normal no hace falta decir nada.
     val (texto, color) = when {
         precio < 35 -> "Pocas purificadoras aceptarán este precio" to HToGoColors.AccentRose
-        precio in 35..40 -> "Probable que tarde unos minutos" to HToGoColors.AccentAmber
-        else -> "Asignación inmediata, varias purificadoras lo aceptan" to HToGoColors.AccentEmerald
+        precio in 35..40 -> "Puede tardar unos minutos en aceptarse" to Color(0xFFB45309)
+        else -> return
     }
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -664,39 +631,6 @@ private fun CantidadCard(qty: Int, onQty: (Int) -> Unit) {
                     color = HToGoColors.TextPrimary
                 )
                 StepBtn("+", enabled = qty < 30) { onQty(qty + 1) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PresetCantidad(qty: Int, onPick: (Int) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        listOf(1, 3, 5, 10).forEach { n ->
-            val active = n == qty
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = if (active) HToGoColors.PrimarySoft else Color.White,
-                border = BorderStroke(
-                    1.5.dp,
-                    if (active) HToGoColors.Primary else HToGoColors.OutlineSoft
-                ),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp)
-                    .clickable { onPick(n) }
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        n.toString(),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (active) HToGoColors.Primary else HToGoColors.TextSecondary
-                    )
-                }
             }
         }
     }
@@ -847,7 +781,7 @@ private fun ResumenAbiertoCard(qty: Int, precioMax: Int, tieneEnvase: Boolean) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(14.dp)) {
-            ResumenRow("$qty × Garrafón 20 L", "≤ $$sub.00")
+            ResumenRow("$qty × Garrafón 20 L", "$$sub o menos")
             ResumenRow("Envío", "Sin costo")
             if (!tieneEnvase) ResumenRow("$qty × Envase nuevo", "Precio del negocio")
             HorizontalDivider(
@@ -859,50 +793,19 @@ private fun ResumenAbiertoCard(qty: Int, precioMax: Int, tieneEnvase: Boolean) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        "Tope total a pagar",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = HToGoColors.TextPrimary
-                    )
-                    Text(
-                        "El precio final puede ser menor según la purificadora que acepte",
-                        fontSize = 10.sp,
-                        color = HToGoColors.TextTertiary,
-                        lineHeight = 13.sp
-                    )
-                }
                 Text(
-                    "≤ $$total",
+                    "Pagas",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = HToGoColors.TextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "$$total o menos",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = HToGoColors.Primary
                 )
-            }
-            Spacer(Modifier.height(10.dp))
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = HToGoColors.PrimarySoft,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    Modifier.padding(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Verified, null,
-                        tint = HToGoColors.Primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Solo cobramos lo que cobre la purificadora que acepte. Si nadie acepta en 10 min, te avisamos.",
-                        fontSize = 11.sp,
-                        color = HToGoColors.PrimaryDark,
-                        lineHeight = 14.sp
-                    )
-                }
             }
         }
     }

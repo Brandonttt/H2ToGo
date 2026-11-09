@@ -1,5 +1,7 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.BarraEstadoClara
+
 import com.htogo.app.util.format
 
 import com.htogo.app.util.horaAmPm
@@ -104,6 +106,7 @@ fun SolicitudPedidoProgramadoScreen(
         else -> ui.estado.replaceFirstChar { it.uppercase() }
     }
 
+    BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
         containerColor = HToGoColors.Background,
         bottomBar = {

@@ -37,6 +37,11 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Remove
@@ -61,6 +66,8 @@ import com.htogo.app.data.location.EntregaEnCurso
 import com.htogo.app.data.location.UbicacionTracker
 import com.htogo.app.ui.RepartidorViewModel
 import com.htogo.app.ui.components.OsmRouteMapView
+import com.htogo.app.ui.components.OpcionSimulacion
+import com.htogo.app.ui.components.SimulacionGpsChip
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
 import kotlinx.coroutines.delay
@@ -358,7 +365,7 @@ fun RutaEntregaScreen(
         }
         if (simulandoRecorrido) {
             simulandoRecorrido = false
-            mostrarAviso("🏁 FakeGPS: Llegaste al domicilio (< 30 m). Ya puedes pulsar 'Llegué al destino'", largo = true)
+            mostrarAviso("Llegaste al domicilio. Ya puedes pulsar 'Llegué al destino'", largo = true)
         }
     }
 
@@ -580,112 +587,64 @@ fun RutaEntregaScreen(
                         expanded = menuOpciones,
                         onDismissRequest = { menuOpciones = false }
                     ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    if (simulandoRecorrido) "⏸️ Pausar recorrido en vivo (FakeGPS)"
-                                    else "▶️ Simular desde purificadora (FakeGPS)"
-                                )
-                            },
-                            onClick = {
-                                menuOpciones = false
-                                simulandoRecorrido = !simulandoRecorrido
-                                if (simulandoRecorrido) {
-                                    EntregaEnCurso.simulacionActiva.value = true
-                                    mostrarAviso("🛰️ Iniciando recorrido FakeGPS desde $nombrePurificadora…")
-                                } else {
-                                    mostrarAviso("⏸️ Recorrido FakeGPS en pausa")
-                                }
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("🏪 Saltar a la purificadora (inicio de ruta)") },
-                            onClick = {
-                                menuOpciones = false
-                                simulandoRecorrido = false
-                                val (latSim, lonSim) = ubicacionBasePurificadora
+                        OpcionSimulacion(
+                            if (simulandoRecorrido) "Pausar recorrido simulado" else "Simular recorrido",
+                            if (simulandoRecorrido) Icons.Filled.Pause else Icons.Filled.PlayArrow
+                        ) {
+                            menuOpciones = false
+                            simulandoRecorrido = !simulandoRecorrido
+                            if (simulandoRecorrido) {
                                 EntregaEnCurso.simulacionActiva.value = true
-                                posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
-                                mostrarAviso("GPS simulado en la base: $nombrePurificadora")
+                                mostrarAviso("Simulando el recorrido desde $nombrePurificadora")
+                            } else {
+                                mostrarAviso("Simulación en pausa")
                             }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("🏁 Saltar al domicilio (a ~15 m para entregar)") },
-                            onClick = {
-                                menuOpciones = false
-                                simulandoRecorrido = false
-                                val latSim = entrega.latDestino + 0.00010
-                                val lonSim = entrega.lonDestino + 0.00007
-                                EntregaEnCurso.simulacionActiva.value = true
-                                posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
-                                mostrarAviso("GPS simulado a ~15 m del domicilio")
-                            }
-                        )
+                        }
+                        OpcionSimulacion("Ir a la purificadora", Icons.Filled.Storefront) {
+                            menuOpciones = false
+                            simulandoRecorrido = false
+                            val (latSim, lonSim) = ubicacionBasePurificadora
+                            EntregaEnCurso.simulacionActiva.value = true
+                            posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
+                            mostrarAviso("Ubicación simulada en $nombrePurificadora")
+                        }
+                        OpcionSimulacion("Ir al domicilio", Icons.Filled.Home) {
+                            menuOpciones = false
+                            simulandoRecorrido = false
+                            val latSim = entrega.latDestino + 0.00010
+                            val lonSim = entrega.lonDestino + 0.00007
+                            EntregaEnCurso.simulacionActiva.value = true
+                            posicionSimulada = com.htogo.app.data.location.Posicion(latSim, lonSim, 5f)
+                            mostrarAviso("Ubicación simulada afuera del domicilio")
+                        }
                         if (posicionSimulada != null) {
-                            DropdownMenuItem(
-                                text = { Text("📍 Volver al GPS real del teléfono") },
-                                onClick = {
-                                    menuOpciones = false
-                                    simulandoRecorrido = false
-                                    posicionSimulada = null
-                                    mostrarAviso("Volviendo al GPS real")
-                                }
-                            )
+                            OpcionSimulacion("Volver a la ubicación real", Icons.Filled.MyLocation) {
+                                menuOpciones = false
+                                simulandoRecorrido = false
+                                posicionSimulada = null
+                                mostrarAviso("Volviendo al GPS real")
+                            }
                         }
                     }
                 }
             }
 
-            // Indicador interactivo si el FakeGPS está activo
+            // Indicador si el FakeGPS está activo
             if (posicionSimulada != null) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color(0xFF7C3AED).copy(alpha = 0.94f),
-                    shadowElevation = 4.dp,
+                SimulacionGpsChip(
+                    simulando = simulandoRecorrido,
+                    paso = pasoSimulado,
+                    totalPasos = totalPasosSimulados,
+                    onAlternar = { simulandoRecorrido = !simulandoRecorrido },
+                    onSalir = {
+                        simulandoRecorrido = false
+                        posicionSimulada = null
+                    },
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .statusBarsPadding()
                         .padding(top = 60.dp, start = 12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            if (simulandoRecorrido) "🛰️ FakeGPS ($pasoSimulado/$totalPasosSimulados)"
-                            else "🧪 FakeGPS activo",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable {
-                                simulandoRecorrido = !simulandoRecorrido
-                            }
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            if (simulandoRecorrido) "⏸" else "▶",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .clickable { simulandoRecorrido = !simulandoRecorrido }
-                                .padding(horizontal = 4.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            "✕",
-                            color = Color.White.copy(alpha = 0.85f),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .clickable {
-                                    simulandoRecorrido = false
-                                    posicionSimulada = null
-                                }
-                                .padding(horizontal = 4.dp)
-                        )
-                    }
-                }
+                )
             }
 
             // Tarjeta inferior con información del pedido (minimizable / deslizable)
@@ -826,7 +785,7 @@ fun RutaEntregaScreen(
                                         }
                                         Spacer(Modifier.height(4.dp))
                                         Text(
-                                            errorCargaBase ?: "Hay garrafones apartados en la base para este pedido. Debes cargarlos al vehículo antes de iniciar la ruta (CU-011 / CU-019).",
+                                            errorCargaBase ?: "Hay garrafones apartados en la base para este pedido. Debes cargarlos al vehículo antes de iniciar la ruta.",
                                             fontSize = 11.sp,
                                             color = HToGoColors.TextPrimary
                                         )
@@ -1156,7 +1115,7 @@ private fun EnRutaSheet(entrega: EntregaActiva, distanciaDestinoM: Double?, ruta
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "⚠️ Estás fuera de Benito Juárez. Toca el menú (⋮) arriba para simular GPS o usa 'Navegar' para abrir tu app externa.",
+                                    "Estás fuera de Benito Juárez. Toca el menú (⋮) arriba para simular GPS o usa 'Navegar' para abrir tu app externa.",
                                     fontSize = 11.sp,
                                     color = Color(0xFFB45309),
                                     lineHeight = 14.sp,
@@ -1499,7 +1458,7 @@ private fun ModalEntregado(
             ) {
                 item {
                     Text(
-                        "Revisa físicamente los envases recibidos y confirma las cantidades por línea (CU-012 / RN-032).",
+                        "Revisa físicamente los envases recibidos y confirma las cantidades por línea.",
                         fontSize = 12.sp,
                         color = HToGoColors.TextSecondary
                     )
@@ -1589,7 +1548,7 @@ private fun ModalEntregado(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                if (linea.envaseApto) "✓ Envase del cliente apto" else "⚠ Envase dañado / no apto",
+                                                if (linea.envaseApto) "Envase del cliente apto" else "Envase dañado / no apto",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = if (linea.envaseApto) HToGoColors.StatusEntregado else HToGoColors.AccentRose

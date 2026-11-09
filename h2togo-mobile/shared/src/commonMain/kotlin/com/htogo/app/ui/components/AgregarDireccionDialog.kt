@@ -103,7 +103,7 @@ fun AgregarDireccionDialog(
             if (result != null) {
                 lat = result.lat
                 lon = result.lon
-                geocodeMessage = if (result.exacto) "✓ Pin ubicado: ${result.displayName.take(45)}..."
+                geocodeMessage = if (result.exacto) "Pin ubicado: ${result.displayName.take(45)}..."
                     else GeocodingHelper.mensajeUbicacion(result)
                 if (!result.postcode.isNullOrBlank()) {
                     codigoPostal = result.postcode
@@ -350,7 +350,7 @@ fun AgregarDireccionDialog(
                                 Text(
                                     geocodeMessage!!,
                                     fontSize = 11.sp,
-                                    color = if (geocodeMessage!!.startsWith("✓")) Color(0xFF16A34A) else HToGoColors.TextSecondary
+                                    color = if (geocodeMessage!!.let { it.startsWith("Pin ubicado") || it.startsWith("Dirección detectada") || it.startsWith("Ubicación colocada") }) Color(0xFF16A34A) else HToGoColors.TextSecondary
                                 )
                             }
                         }
@@ -383,7 +383,7 @@ fun AgregarDireccionDialog(
                                     if (!res.houseNumber.isNullOrBlank()) numeroExterior = res.houseNumber
                                     if (!res.neighbourhood.isNullOrBlank()) colonia = res.neighbourhood
                                     if (!res.postcode.isNullOrBlank()) codigoPostal = res.postcode
-                                    geocodeMessage = "✓ Dirección detectada desde el mapa"
+                                    geocodeMessage = "Dirección detectada desde el mapa"
                                 }
                                 isGeocoding = false
                                 delay(600)

@@ -725,7 +725,7 @@ private fun BloquePurificadora(
                                 Text(
                                     geocodeMessage!!,
                                     fontSize = 11.sp,
-                                    color = if (geocodeMessage!!.startsWith("✓")) Color(0xFF16A34A) else HToGoColors.TextSecondary
+                                    color = if (geocodeMessage!!.let { it.startsWith("Pin ubicado") || it.startsWith("Dirección detectada") || it.startsWith("Ubicación colocada") }) Color(0xFF16A34A) else HToGoColors.TextSecondary
                                 )
                             }
                         }
@@ -758,7 +758,7 @@ private fun BloquePurificadora(
                                     else if (!res.road.isNullOrBlank()) onDireccionChange(res.road)
                                     if (!res.neighbourhood.isNullOrBlank()) onColoniaChange(res.neighbourhood)
                                     if (!res.postcode.isNullOrBlank()) onCpChange(res.postcode)
-                                    geocodeMessage = "✓ Dirección detectada desde el mapa"
+                                    geocodeMessage = "Dirección detectada desde el mapa"
                                 }
                                 isGeocoding = false
                                 delay(600)

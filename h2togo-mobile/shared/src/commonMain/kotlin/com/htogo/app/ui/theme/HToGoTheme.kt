@@ -54,7 +54,16 @@ private val LightScheme = lightColorScheme(
     onSurface         = HToGoColors.TextPrimary,
     surfaceVariant    = Color(0xFFF1F5F9),
     onSurfaceVariant  = HToGoColors.TextSecondary,
-    outline           = HToGoColors.OutlineSoft,
+    // Las superficies "container" vienen de la paleta base de Material (lila/rosa): sin estas,
+    // los interruptores apagados, menús y diálogos se ven rosados, como deshabilitados.
+    surfaceContainerLowest  = Color.White,
+    surfaceContainerLow     = Color(0xFFF8FAFC),
+    surfaceContainer        = Color.White,
+    surfaceContainerHigh    = Color.White,
+    surfaceContainerHighest = Color(0xFFF1F5F9),
+    surfaceTint       = Color.White,
+    outline           = Color(0xFFCBD5E1),
+    outlineVariant    = HToGoColors.OutlineSoft,
     error             = HToGoColors.StatusCancelado
 )
 

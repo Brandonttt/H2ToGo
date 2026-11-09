@@ -117,7 +117,7 @@ class SessionManager(private val prefs: Settings) {
         _token.value = null
     }
 
-    fun notificarSesionExpirada(motivo: String = "Tu sesión ha expirado porque se inició sesión en otro dispositivo.") {
+    fun notificarSesionExpirada(motivo: String = "Tu sesión terminó. Vuelve a iniciar sesión.") {
         cerrarSesion()
         _sesionExpiradaFlow.tryEmit(motivo)
     }

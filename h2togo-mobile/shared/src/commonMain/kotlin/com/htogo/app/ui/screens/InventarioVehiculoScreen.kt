@@ -1,5 +1,6 @@
 package com.htogo.app.ui.screens
 
+import com.htogo.app.ui.components.BarraEstadoClara
 import com.htogo.app.ui.components.DeslizarParaActualizar
 import com.htogo.app.ui.components.SelectorFecha
 import com.htogo.app.data.dto.aMapaJson
@@ -32,6 +33,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PedalBike
+import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.AttachMoney
@@ -159,7 +163,7 @@ fun InventarioVehiculoScreen(
                     nombre = p.marca,
                     capacidad = "20 L",
                     precio = p.precio,
-                    proveedor = "Proveedor oficial",
+                    proveedor = "",
                     enBase = totalBase,
                     maximoBase = p.capacidadMaxima,
                     accent = if (idx % 2 == 0) HToGoColors.Primary else HToGoColors.AccentEmerald,
@@ -184,8 +188,8 @@ fun InventarioVehiculoScreen(
                         codigo = primer.marca.take(3).uppercase(),
                         nombre = primer.marca,
                         capacidad = "20 L",
-                        precio = 45.0,
-                        proveedor = "Proveedor oficial",
+                        precio = 0.0,
+                        proveedor = "",
                         enBase = totalBase,
                         maximoBase = 50,
                         accent = when (idMarca % 3) {
@@ -242,7 +246,8 @@ fun InventarioVehiculoScreen(
     }
     var registrandoLote by remember { mutableStateOf(false) }
 
-    val marcasVehiculo = remember(liveVehiculo) {
+    val marcasVehiculo = remember(liveVehiculo, liveMiNegocio) {
+        val precios = liveMiNegocio?.productos.orEmpty().associate { it.idMarca to it.precio }
         val lotes = liveVehiculo?.lotes
         if (!lotes.isNullOrEmpty()) {
             lotes.groupBy { it.idMarca }.map { (idMarca, items) ->
@@ -254,7 +259,7 @@ fun InventarioVehiculoScreen(
                     codigo = primer.marca.take(3).uppercase(),
                     nombre = primer.marca,
                     capacidad = "20 L",
-                    precio = 45.0,
+                    precio = precios[idMarca] ?: 0.0,
                     cargados = totalCargados,
                     disponibles = maxOf(0, totalCargados - totalApartados),
                     apartados = totalApartados,
@@ -279,6 +284,7 @@ fun InventarioVehiculoScreen(
     val totalDisponiblesVehiculo = remember(marcasVehiculo) { marcasVehiculo.sumOf { it.disponibles } }
 
     val refrescando by repartidorViewModel.refrescando.collectAsState()
+    BarraEstadoClara() // el encabezado oscuro llega hasta arriba
     Scaffold(
         containerColor = HToGoColors.Background,
         topBar = {
@@ -291,11 +297,6 @@ fun InventarioVehiculoScreen(
                     title = {
                         val nom = liveMiNegocio?.nombreComercial ?: ""
                         Text(if (nom.isNotBlank()) "Mi negocio · $nom" else "Mi negocio", color = Color.White, fontWeight = FontWeight.SemiBold)
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = Color.White)
-                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
@@ -327,7 +328,7 @@ fun InventarioVehiculoScreen(
                     TabInventario.EN_BASE -> {
                         item { ResumenBaseCard(totalGarrafones = totalBaseStock, capacidad = totalCapacidadBase, numMarcas = marcasBase.size) }
                         item { ProductosPreciosShortcut(onProductosPrecios) }
-                        item { SectionTitle("Marcas en base · ${marcasBase.size}") }
+                        item { SectionTitle("Marcas en base") }
                         if (marcasBase.isEmpty()) {
                             item {
                                 Card(
@@ -362,35 +363,27 @@ fun InventarioVehiculoScreen(
                             items(marcasBase) { m -> MarcaBaseCard(m) }
                         }
                         if (esDueno) item {
-                            Button(
-                                onClick = { showRegistrarEntrada = true },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(54.dp),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
-                            ) {
-                                Icon(Icons.Filled.Add, null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Registrar entrada", fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                        if (esDueno) item {
-                            OutlinedButton(
-                                onClick = { showSalidaManual = true },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(54.dp),
-                                shape = RoundedCornerShape(14.dp),
-                                border = BorderStroke(1.5.dp, HToGoColors.AccentRose)
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.Logout, null, tint = HToGoColors.AccentRose)
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "Registrar salida manual",
-                                    color = HToGoColors.AccentRose,
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Button(
+                                    onClick = { showRegistrarEntrada = true },
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
+                                ) {
+                                    Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Entrada", fontWeight = FontWeight.SemiBold)
+                                }
+                                OutlinedButton(
+                                    onClick = { showSalidaManual = true },
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                    shape = RoundedCornerShape(24.dp),
+                                    border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
+                                ) {
+                                    Icon(Icons.Filled.Remove, null, tint = HToGoColors.TextPrimary, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Salida manual", color = HToGoColors.TextPrimary, fontWeight = FontWeight.SemiBold)
+                                }
                             }
                         }
                         item {
@@ -417,8 +410,8 @@ fun InventarioVehiculoScreen(
                                 onClick = { showCargarVehiculo = true },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(54.dp),
-                                shape = RoundedCornerShape(14.dp),
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(24.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                             ) {
                                 Icon(Icons.Filled.MoveToInbox, null)
@@ -457,7 +450,7 @@ fun InventarioVehiculoScreen(
                                 }
                             }
                         } else {
-                            item { SectionTitle("Carga actual · ${marcasVehiculo.size} marcas") }
+                            item { SectionTitle("Carga actual") }
                             items(marcasVehiculo) { m -> MarcaVehiculoCard(m) }
                         }
                     }
@@ -477,7 +470,7 @@ fun InventarioVehiculoScreen(
                                     )
                                     Spacer(Modifier.height(2.dp))
                                     Text(
-                                        "Toda alta, modificación o baja requiere aprobación del administrador (RN-019).",
+                                        "Toda alta, modificación o baja requiere aprobación del administrador.",
                                         fontSize = 12.sp,
                                         color = HToGoColors.TextSecondary
                                     )
@@ -521,23 +514,23 @@ fun InventarioVehiculoScreen(
                                         color = HToGoColors.TextPrimary
                                     )
                                     Text(
-                                        "${listaAMostrar.size} vehículo(s) en tu negocio · RN-014",
+                                        if (listaAMostrar.size == 1) "1 vehículo en tu negocio" else "${listaAMostrar.size} vehículos en tu negocio",
                                         fontSize = 12.sp,
                                         color = HToGoColors.TextSecondary
                                     )
                                 }
-                                if (esDueno) Button(
+                                if (esDueno) OutlinedButton(
                                     onClick = {
                                         vehiculoParaEditar = null
                                         showEditarVehiculoDialog = true
                                     },
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                    shape = RoundedCornerShape(99.dp),
+                                    border = BorderStroke(1.dp, HToGoColors.Primary),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                                 ) {
-                                    Icon(Icons.Filled.Add, null, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Filled.Add, null, tint = HToGoColors.Primary, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text("Agregar", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text("Agregar", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = HToGoColors.Primary)
                                 }
                             }
                         }
@@ -564,7 +557,7 @@ fun InventarioVehiculoScreen(
                                         Text("No tienes vehículos registrados", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = HToGoColors.TextPrimary)
                                         Spacer(Modifier.height(6.dp))
                                         Text(
-                                            "Para iniciar jornada y recibir pedidos necesitas tener al menos un vehículo registrado (RN-014).",
+                                            "Para iniciar jornada y recibir pedidos necesitas tener al menos un vehículo registrado.",
                                             fontSize = 12.sp,
                                             color = HToGoColors.TextSecondary,
                                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -706,7 +699,7 @@ fun InventarioVehiculoScreen(
                     repartidorViewModel.solicitarAgregarVehiculo(
                         request = req,
                         onSuccess = {
-                            mostrarAviso("Solicitud de alta enviada al Administrador para su aprobación (RN-019).", largo = true)
+                            mostrarAviso("Solicitud de alta enviada al Administrador para su aprobación.", largo = true)
                             showEditarVehiculoDialog = false
                             vehiculoParaEditar = null
                         },
@@ -721,7 +714,7 @@ fun InventarioVehiculoScreen(
                             idVehiculo = idVeh,
                             request = req,
                             onSuccess = {
-                                mostrarAviso("Solicitud enviada al Administrador. El vehículo conserva sus datos actuales hasta la aprobación (RN-019).", largo = true)
+                                mostrarAviso("Solicitud enviada al Administrador. El vehículo conserva sus datos actuales hasta la aprobación.", largo = true)
                                 showEditarVehiculoDialog = false
                                 vehiculoParaEditar = null
                             },
@@ -774,7 +767,7 @@ fun InventarioVehiculoScreen(
                         }
                     }
                     Text(
-                        "De acuerdo con RN-019 y CU-009, el vehículo seguirá funcionando con normalidad hasta que el Administrador apruebe la solicitud.",
+                        "El vehículo seguirá funcionando con normalidad hasta que el Administrador apruebe la solicitud.",
                         fontSize = 12.sp,
                         color = HToGoColors.TextSecondary
                     )
@@ -932,7 +925,7 @@ private fun ProductosPreciosShortcut(onClick: () -> Unit) {
                     color = HToGoColors.TextPrimary
                 )
                 Text(
-                    "Gestiona el catálogo del negocio · CU-23",
+                    "Gestiona el catálogo del negocio",
                     fontSize = 11.sp,
                     color = HToGoColors.TextSecondary
                 )
@@ -946,49 +939,13 @@ private fun ProductosPreciosShortcut(onClick: () -> Unit) {
 }
 
 @Composable
-private fun ResumenBaseCard(totalGarrafones: Int = 38, capacidad: Int = 50, numMarcas: Int = 3) {
-    val pct = if (capacidad > 0) "${(totalGarrafones * 100) / capacidad}%" else "0%"
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = HToGoColors.PrimaryDark),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-    ) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .background(Brush.linearGradient(listOf(HToGoColors.PrimaryDark, HToGoColors.Primary)))
-                .padding(18.dp)
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color.White.copy(alpha = .15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Warehouse, null, tint = Color.White)
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column {
-                        Text("Stock en base · compartido", color = Color.White.copy(alpha = .8f), fontSize = 12.sp)
-                        Text("$totalGarrafones garrafones", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                        Text("$numMarcas marcas · capacidad $capacidad", color = Color.White.copy(alpha = .85f), fontSize = 12.sp)
-                    }
-                }
-                Spacer(Modifier.height(14.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = .18f))
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    HeroStat(pct, "Capacidad ocupada")
-                    HeroStat("$totalGarrafones", "Disponibles")
-                    HeroStat("${maxOf(0, capacidad - totalGarrafones)}", "Espacios libres")
-                }
-            }
-        }
-    }
+private fun ResumenBaseCard(totalGarrafones: Int, capacidad: Int, numMarcas: Int) {
+    val pct = if (capacidad > 0) (totalGarrafones * 100) / capacidad else 0
+    ResumenCompacto(
+        icono = Icons.Filled.Warehouse,
+        titulo = "$totalGarrafones garrafones en base",
+        detalle = "$pct% de $capacidad · ${maxOf(0, capacidad - totalGarrafones)} espacios libres"
+    )
 }
 
 @Composable
@@ -999,45 +956,31 @@ private fun ResumenVehiculoCard(
     capacidad: Int,
     numMarcas: Int
 ) {
+    ResumenCompacto(
+        icono = Icons.Filled.LocalShipping,
+        titulo = "$cargados de $capacidad garrafones",
+        detalle = "$disponibles disponibles · $apartados apartados"
+    )
+}
+
+/** Resumen de una fila: el detalle por marca ya está en las tarjetas de abajo. */
+@Composable
+private fun ResumenCompacto(icono: ImageVector, titulo: String, detalle: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = HToGoColors.Primary),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
     ) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .background(Brush.linearGradient(listOf(Color(0xFF1E3A8A), HToGoColors.Primary)))
-                .padding(18.dp)
-        ) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(HToGoColors.PrimarySoft),
+                contentAlignment = Alignment.Center
+            ) { Icon(icono, null, tint = HToGoColors.Primary, modifier = Modifier.size(22.dp)) }
+            Spacer(Modifier.width(12.dp))
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color.White.copy(alpha = .15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.LocalShipping, null, tint = Color.White)
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column {
-                        Text("En mi vehículo · hoy", color = Color.White.copy(alpha = .8f), fontSize = 12.sp)
-                        Text("$cargados garrafones", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                        Text("$numMarcas marcas cargadas · $capacidad cap. máx.", color = Color.White.copy(alpha = .85f), fontSize = 12.sp)
-                    }
-                }
-                Spacer(Modifier.height(14.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = .18f))
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    HeroStat("$disponibles", "Disponibles")
-                    HeroStat("$apartados", "Apartados")
-                    val libres = maxOf(0, capacidad - cargados)
-                    HeroStat("$libres", "Espacio libre")
-                }
+                Text(titulo, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
+                Text(detalle, fontSize = 12.sp, color = HToGoColors.TextSecondary)
             }
         }
     }
@@ -1054,8 +997,8 @@ private fun HeroStat(value: String, label: String) {
 @Composable
 private fun SectionTitle(title: String) {
     Text(
-        title.uppercase(),
-        fontSize = 12.sp,
+        title,
+        fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         color = HToGoColors.TextSecondary,
         modifier = Modifier.padding(top = 4.dp, bottom = 4.dp, start = 4.dp)
@@ -1066,13 +1009,13 @@ private fun SectionTitle(title: String) {
 private fun MarcaBaseCard(m: MarcaBaseStock) {
     val porcentaje = m.enBase.toFloat() / m.maximoBase
     val (estadoTxt, estadoColor, estadoIcon) = when {
-        porcentaje < 0.25f -> Triple("Stock bajo", HToGoColors.AccentRose, Icons.Filled.Error)
-        porcentaje < 0.5f -> Triple("Stock medio", HToGoColors.AccentAmber, Icons.Filled.Warning)
+        porcentaje < 0.1f -> Triple("Stock bajo", HToGoColors.AccentRose, Icons.Filled.Error)
+        porcentaje < 0.25f -> Triple("Stock medio", HToGoColors.AccentAmber, Icons.Filled.Warning)
         else -> Triple("Disponible", HToGoColors.AccentEmerald, Icons.Filled.CheckCircle)
     }
     val barColor = when {
-        porcentaje < 0.25f -> HToGoColors.AccentRose
-        porcentaje < 0.5f -> HToGoColors.AccentAmber
+        porcentaje < 0.1f -> HToGoColors.AccentRose
+        porcentaje < 0.25f -> HToGoColors.AccentAmber
         else -> HToGoColors.AccentEmerald
     }
     Card(
@@ -1090,13 +1033,13 @@ private fun MarcaBaseCard(m: MarcaBaseStock) {
                         .background(m.accent.copy(alpha = .12f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(m.codigo, color = m.accent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Icon(Icons.Filled.WaterDrop, null, tint = m.accent, modifier = Modifier.size(24.dp))
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("${m.nombre} · ${m.capacidad}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "$%.0f / pieza · ${m.proveedor}".format(m.precio),
+                    Text(if (m.nombre.contains("20")) m.nombre else "${m.nombre} · ${m.capacidad}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    if (m.precio > 0) Text(
+                        listOf("$%.0f / pieza".format(m.precio), m.proveedor).filter { it.isNotBlank() }.joinToString(" · "),
                         fontSize = 12.sp, color = HToGoColors.TextSecondary
                     )
                 }
@@ -1196,12 +1139,12 @@ private fun MarcaVehiculoCard(m: MarcaVehiculoStock) {
                         .background(m.accent.copy(alpha = .12f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(m.codigo, color = m.accent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Icon(Icons.Filled.WaterDrop, null, tint = m.accent, modifier = Modifier.size(24.dp))
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("${m.nombre} · ${m.capacidad}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    Text("$%.0f / pieza".format(m.precio), fontSize = 12.sp, color = HToGoColors.TextSecondary)
+                    Text(if (m.nombre.contains("20")) m.nombre else "${m.nombre} · ${m.capacidad}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    if (m.precio > 0) Text("$%.0f / pieza".format(m.precio), fontSize = 12.sp, color = HToGoColors.TextSecondary)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("${m.cargados}", fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -1297,7 +1240,6 @@ private fun SolicitudVehiculoCard(
                         Text("Pendiente de aprobación", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB45309))
                     }
                 }
-                Text("RN-019", fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.Medium)
             }
             Spacer(Modifier.height(8.dp))
             Text(titulo, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = HToGoColors.TextPrimary)
@@ -1347,15 +1289,18 @@ private fun VehiculoDetalleCard(
         else -> vehiculo?.tipoVehiculo?.replaceFirstChar { it.uppercase() } ?: "Vehículo de reparto"
     }
     val iconVehiculo = when (tipoNormalizado) {
+        "motocicleta" -> Icons.Filled.TwoWheeler
+        "bicicleta", "bicicleta_carga", "triciclo_carga" -> Icons.Filled.PedalBike
         "camioneta" -> Icons.Filled.LocalShipping
         else -> Icons.Filled.DirectionsCar
     }
-    val marcaDisplay = vehiculo?.marca?.takeIf { it.isNotBlank() } ?: "Italika"
-    val modeloDisplay = vehiculo?.modelo?.takeIf { it.isNotBlank() } ?: "FT150"
-    val placasDisplay = vehiculo?.placas?.takeIf { it.isNotBlank() } ?: "ABC1234"
-    val colorDisplay = vehiculo?.color?.takeIf { it.isNotBlank() } ?: "Rojo"
-    val capacidadNum = vehiculo?.capacidadGarrafones ?: 30
-    val kgTotal = capacidadNum * 20
+    // Solo datos reales: un campo vacío no se muestra (antes se rellenaba con ejemplos).
+    val marca = vehiculo?.marca?.takeIf { it.isNotBlank() }
+    val modelo = vehiculo?.modelo?.takeIf { it.isNotBlank() }
+    val placas = vehiculo?.placas?.takeIf { it.isNotBlank() }
+    val color = vehiculo?.color?.takeIf { it.isNotBlank() }?.replaceFirstChar { it.uppercase() }
+    val capacidadNum = vehiculo?.capacidadGarrafones ?: 0
+    val titulo = listOfNotNull(marca, modelo).joinToString(" ").ifBlank { tipoDisplay }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1363,59 +1308,38 @@ private fun VehiculoDetalleCard(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, HToGoColors.OutlineSoft)
     ) {
-        Column {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .background(Brush.linearGradient(listOf(Color(0xFF1E293B), Color(0xFF475569)))),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(iconVehiculo, null, tint = Color.White.copy(alpha = .4f), modifier = Modifier.size(80.dp))
-                Surface(
-                    shape = RoundedCornerShape(99.dp),
-                    color = HToGoColors.AccentEmerald,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(10.dp)
-                    ) {
-                    Row(
-                        Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.Verified, null, tint = Color.White, modifier = Modifier.size(13.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(HToGoColors.PrimarySoft),
+                    contentAlignment = Alignment.Center
+                ) { Icon(iconVehiculo, null, tint = HToGoColors.Primary, modifier = Modifier.size(26.dp)) }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(titulo, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = HToGoColors.TextPrimary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+                        EtiquetaVehiculo(
                             if (vehiculo?.activo != false) "Verificado" else "Inactivo",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
+                            if (vehiculo?.activo != false) HToGoColors.AccentEmerald else HToGoColors.TextSecondary
                         )
+                        if (esJornadaActiva) EtiquetaVehiculo("En uso hoy", HToGoColors.Primary)
                     }
                 }
-            }
-            Column(Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "$marcaDisplay · $modeloDisplay",
-                        fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (puedeSolicitar) Surface(
+                if (puedeSolicitar) {
+                    Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = HToGoColors.PrimarySoft,
                         modifier = Modifier.clickable(onClick = onSolicitarCambio)
                     ) {
-                        Text(
-                            "Solicitar cambio",
-                            color = HToGoColors.Primary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        Icon(
+                            Icons.Filled.Edit,
+                            contentDescription = "Solicitar cambio",
+                            tint = HToGoColors.Primary,
+                            modifier = Modifier.padding(6.dp).size(18.dp)
                         )
                     }
-                    if (puedeSolicitar) Spacer(Modifier.width(6.dp))
-                    if (puedeSolicitar) Surface(
+                    Spacer(Modifier.width(6.dp))
+                    Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = HToGoColors.AccentRose.copy(alpha = 0.12f),
                         modifier = Modifier.clickable(onClick = onEliminar)
@@ -1428,100 +1352,69 @@ private fun VehiculoDetalleCard(
                         )
                     }
                 }
-                if (solicitudPendiente != null) {
-                    Spacer(Modifier.height(10.dp))
-                    val esBaja = solicitudPendiente.codigoCambio == "ELIMINAR_VEHICULO"
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (esBaja) HToGoColors.AccentRose.copy(alpha = 0.12f) else HToGoColors.AccentAmber.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, if (esBaja) HToGoColors.AccentRose.copy(alpha = 0.4f) else HToGoColors.AccentAmber.copy(alpha = 0.5f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                if (esBaja) Icons.Filled.Delete else Icons.Filled.Schedule,
-                                contentDescription = null,
-                                tint = if (esBaja) HToGoColors.AccentRose else Color(0xFFB45309),
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                if (esBaja) "Solicitud de baja en revisión por el Administrador. Sigue activo hasta su resolución (CU-009, RN-019)."
-                                else "Solicitud de cambio en revisión por el Administrador. Conserva sus datos actuales hasta la aprobación (CU-009, RN-019).",
-                                fontSize = 11.5.sp,
-                                color = if (esBaja) HToGoColors.AccentRose else Color(0xFFB45309),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
+            }
+            if (solicitudPendiente != null) {
                 Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    VField("Tipo", tipoDisplay, Modifier.weight(1f), iconVehiculo)
-                    VField("Modelo", modeloDisplay, Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(10.dp))
-                VField("Placas", "$placasDisplay · CDMX", Modifier.fillMaxWidth())
-                Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    VField("Color", colorDisplay, Modifier.weight(1f))
-                    VField("Combustible", "Gasolina", Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(14.dp))
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Brush.linearGradient(listOf(HToGoColors.PrimarySoft, HToGoColors.PrimaryWash)))
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                val esBaja = solicitudPendiente.codigoCambio == "ELIMINAR_VEHICULO"
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (esBaja) HToGoColors.AccentRose.copy(alpha = 0.10f) else HToGoColors.AccentAmber.copy(alpha = 0.12f),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(
-                        Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.WaterDrop, null, tint = HToGoColors.Primary)
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            "CAPACIDAD MÁXIMA",
-                            fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold
+                    Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            if (esBaja) Icons.Filled.Delete else Icons.Filled.Schedule,
+                            contentDescription = null,
+                            tint = if (esBaja) HToGoColors.AccentRose else Color(0xFFB45309),
+                            modifier = Modifier.size(18.dp)
                         )
+                        Spacer(Modifier.width(8.dp))
                         Text(
-                            "$capacidadNum garrafones",
-                            fontSize = 18.sp, color = HToGoColors.PrimaryDark, fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "de 20 L cada uno · ~$kgTotal kg total",
-                            fontSize = 12.sp, color = HToGoColors.TextSecondary
+                            if (esBaja) "Baja en revisión. Sigue activo mientras tanto."
+                            else "Cambio en revisión. Conserva sus datos actuales mientras tanto.",
+                            fontSize = 12.sp,
+                            color = if (esBaja) HToGoColors.AccentRose else Color(0xFFB45309),
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
-                Spacer(Modifier.height(16.dp))
+            }
+            Spacer(Modifier.height(14.dp))
+            val campos = listOfNotNull(
+                "Tipo" to tipoDisplay,
+                placas?.let { "Placas" to it },
+                color?.let { "Color" to it },
+                (if (capacidadNum > 0) "Capacidad" to "$capacidadNum garrafones" else null),
+            )
+            campos.chunked(2).forEachIndexed { i, fila ->
+                if (i > 0) Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    fila.forEach { (etiqueta, valor) -> VField(etiqueta, valor, Modifier.weight(1f)) }
+                    if (fila.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+            if (!esJornadaActiva) {
+                Spacer(Modifier.height(14.dp))
                 Button(
                     onClick = onIniciarJornada,
                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (esJornadaActiva) HToGoColors.AccentEmerald else HToGoColors.Primary
-                    )
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                 ) {
-                    Icon(
-                        if (esJornadaActiva) Icons.Filled.CheckCircle else Icons.Filled.DirectionsCar,
-                        null
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (esJornadaActiva) "Jornada activa con este vehículo" else "Iniciar jornada con este vehículo",
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Text("Iniciar jornada con este vehículo", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun EtiquetaVehiculo(texto: String, color: Color) {
+    Surface(shape = RoundedCornerShape(99.dp), color = color.copy(alpha = 0.12f)) {
+        Text(
+            texto, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = color,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+        )
     }
 }
 
@@ -1533,7 +1426,7 @@ private fun VField(label: String, value: String, modifier: Modifier = Modifier, 
         modifier = modifier
     ) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Text(label.uppercase(), fontSize = 11.sp, color = HToGoColors.TextSecondary)
+            Text(label, fontSize = 11.sp, color = HToGoColors.TextSecondary)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                 if (icon != null) {
                     Icon(icon, null, tint = HToGoColors.Primary, modifier = Modifier.size(16.dp))
@@ -1726,7 +1619,7 @@ private fun RegistrarEntradaDialog(
                     isError = fechaCaducidad.length == 10 && !caducidadValida,
                     supportingText = {
                         Text(
-                            if (fechaCaducidad.length == 10 && !caducidadValida) "Debe caducar en más de 7 días (RN-030)"
+                            if (fechaCaducidad.length == 10 && !caducidadValida) "Debe caducar en más de 7 días"
                             else "Escribe DD/MM/AAAA o toca el calendario"
                         )
                     }
@@ -1740,7 +1633,7 @@ private fun RegistrarEntradaDialog(
                     ) {
                         Column(Modifier.padding(12.dp)) {
                             Text(
-                                "LOTES ACTIVOS DE ${seleccionMarca.nombre.uppercase()}",
+                                "Lotes activos de ${seleccionMarca.nombre}",
                                 fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
                                 color = HToGoColors.TextSecondary
                             )
@@ -2192,7 +2085,7 @@ private fun SolicitarCambioVehiculoDialog(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Toda alta o modificación requiere aprobación del Administrador antes de aplicarse (RN-019, CU-009).",
+                    "Toda alta o modificación requiere aprobación del Administrador antes de aplicarse.",
                     fontSize = 13.sp, color = HToGoColors.TextSecondary
                 )
                 Spacer(Modifier.height(14.dp))
@@ -2382,7 +2275,7 @@ private fun IniciarJornadaDialog(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text("Iniciar jornada", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
-                        Text("CU-008: Activar disponibilidad", fontSize = 12.sp, color = HToGoColors.TextSecondary)
+                        Text("Activar disponibilidad", fontSize = 12.sp, color = HToGoColors.TextSecondary)
                     }
                 }
                 Spacer(Modifier.height(14.dp))
@@ -2403,7 +2296,7 @@ private fun IniciarJornadaDialog(
                                 fontSize = 14.sp
                             )
                             Text(
-                                "Capacidad máxima: $capacidadVehiculo garrafones (RN-008)",
+                                "Capacidad máxima: $capacidadVehiculo garrafones",
                                 fontSize = 12.sp,
                                 color = HToGoColors.TextSecondary
                             )
@@ -2414,7 +2307,7 @@ private fun IniciarJornadaDialog(
                 Text("CARGA INICIAL DESDE BASE", fontSize = 11.sp, color = HToGoColors.TextSecondary, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Carga garrafones al vehículo para habilitar la disponibilidad operativa (RN-008, RN-013).",
+                    "Carga garrafones al vehículo para habilitar la disponibilidad operativa.",
                     fontSize = 12.sp, color = HToGoColors.TextSecondary
                 )
                 Spacer(Modifier.height(10.dp))
@@ -2450,28 +2343,28 @@ private fun IniciarJornadaDialog(
                 }
                 if (cantidad == 0) {
                     Text(
-                        "ℹ Iniciarás jornada sin garrafones en el vehículo (Flujo S3). Podrás cargar después.",
+                        "Iniciarás jornada sin garrafones en el vehículo. Podrás cargar después.",
                         fontSize = 11.sp,
                         color = HToGoColors.TextSecondary,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 } else if (errorExcedeCapacidad) {
                     Text(
-                        "⚠ Excede la capacidad máxima ($capacidadVehiculo garrafones) · Flujo S1",
+                        "Excede la capacidad máxima ($capacidadVehiculo garrafones)",
                         fontSize = 11.sp,
                         color = HToGoColors.AccentRose,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 } else if (errorSinStock) {
                     Text(
-                        "⚠ Stock insuficiente en base (disponibles: $stockBase) · Flujo S2",
+                        "Stock insuficiente en base (disponibles: $stockBase)",
                         fontSize = 11.sp,
                         color = HToGoColors.AccentRose,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 } else {
                     Text(
-                        "✓ Se registrará salida en base + entrada en vehículo con ID enlazado (RN-013).",
+                        "Se registrará salida en base + entrada en vehículo con ID enlazado.",
                         fontSize = 11.sp,
                         color = HToGoColors.AccentEmerald,
                         modifier = Modifier.padding(top = 4.dp)

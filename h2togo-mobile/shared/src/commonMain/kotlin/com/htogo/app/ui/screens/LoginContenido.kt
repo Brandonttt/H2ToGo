@@ -83,8 +83,10 @@ fun LoginContenido(
         Column(
             Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                // Primero el margen del teclado: así el área desplazable se encoge y el botón
+                // "Iniciar sesión" se alcanza con el teclado abierto.
                 .safeDrawingPadding()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

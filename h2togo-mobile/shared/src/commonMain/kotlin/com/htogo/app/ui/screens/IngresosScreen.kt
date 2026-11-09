@@ -177,10 +177,7 @@ fun IngresosScreen(
                 ) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = onBack) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = Color.White)
-                            }
-                            Spacer(Modifier.width(2.dp))
+                            Spacer(Modifier.width(10.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(saludo, color = Color.White.copy(alpha = .7f), fontSize = 13.sp)
                                 Text(

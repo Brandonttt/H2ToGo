@@ -43,8 +43,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.htogo.app.data.dto.PedidoResponse
 import com.htogo.app.ui.ClienteViewModel
 import com.htogo.app.ui.components.EstadoPedido
-import com.htogo.app.ui.components.EstadoPedidoChip
 import com.htogo.app.ui.components.OsmRouteMapView
+import com.htogo.app.ui.components.OpcionSimulacion
+import com.htogo.app.ui.components.SimulacionGpsChip
 import com.htogo.app.ui.theme.HToGoColors
 import com.htogo.app.ui.theme.HToGoTheme
 
@@ -65,8 +66,18 @@ data class TrackedOrder(
     val address: String,
     val total: Double,
     /** null cuando no hay repartidor o el pedido ya se cerró: oculta el botón de llamar. */
-    val driverPhone: String? = null
+    val driverPhone: String? = null,
+    val tieneRepartidor: Boolean = true,
+    val garrafones: Int = 0,
+    /** El cliente entrega garrafones vacíos a cambio (si no, paga el envase). */
+    val intercambiaEnvases: Boolean = false
 )
+
+/** Pedidos cuya tarjeta de llegada ya se cerró en esta sesión de la app. */
+private object LlegadasVistas { val ids = mutableSetOf<String>() }
+
+/** Pedido en la puerta: el panel cambia a "Sal a recibir tu pedido". */
+data class LlegadaInfo(val minutos: Int)
 
 @Composable
 private fun MapMock(modifier: Modifier = Modifier, purificadoraName: String) {
@@ -292,7 +303,7 @@ private fun FloatingTopBar(
         Box {
             Surface(
                 shape = CircleShape,
-                color = if (enModoDemo) Color(0xFF7C3AED) else Color.White,
+                color = Color.White,
                 shadowElevation = 4.dp,
                 modifier = Modifier.size(40.dp).clickable { menuAbierto = true }
             ) {
@@ -300,35 +311,26 @@ private fun FloatingTopBar(
                     Icon(
                         Icons.Filled.MoreVert,
                         contentDescription = "Simulador FakeGPS",
-                        tint = if (enModoDemo) Color.White else HToGoColors.TextPrimary,
+                        tint = HToGoColors.TextPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
             }
             DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            if (simulandoRecorrido) "⏸️ Pausar recorrido en vivo (FakeGPS)"
-                            else "▶️ Simular recorrido completo (FakeGPS)",
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    onClick = { menuAbierto = false; onAlternarRecorridoDemo() }
-                )
-                DropdownMenuItem(
-                    text = { Text("🏪 Saltar a la purificadora (inicio de ruta)") },
-                    onClick = { menuAbierto = false; onSaltarInicioDemo() }
-                )
-                DropdownMenuItem(
-                    text = { Text("🏁 Saltar al domicilio (llegada)") },
-                    onClick = { menuAbierto = false; onSaltarLlegadaDemo() }
-                )
+                OpcionSimulacion(
+                    if (simulandoRecorrido) "Pausar recorrido simulado" else "Simular recorrido",
+                    if (simulandoRecorrido) Icons.Filled.Pause else Icons.Filled.PlayArrow
+                ) { menuAbierto = false; onAlternarRecorridoDemo() }
+                OpcionSimulacion("Ir a la purificadora", Icons.Filled.Storefront) {
+                    menuAbierto = false; onSaltarInicioDemo()
+                }
+                OpcionSimulacion("Ir al domicilio", Icons.Filled.Home) {
+                    menuAbierto = false; onSaltarLlegadaDemo()
+                }
                 if (enModoDemo) {
-                    DropdownMenuItem(
-                        text = { Text("📍 Volver al rastreo real") },
-                        onClick = { menuAbierto = false; onDesactivarDemo() }
-                    )
+                    OpcionSimulacion("Volver a la ubicación real", Icons.Filled.MyLocation) {
+                        menuAbierto = false; onDesactivarDemo()
+                    }
                 }
             }
         }
@@ -345,7 +347,8 @@ private fun TrackingSheet(
     onMinimizedChange: (Boolean) -> Unit = {},
     onPedidoEntregado: () -> Unit,
     onAbrirPurificadora: () -> Unit,
-    onCancelarPedido: () -> Unit = {}
+    onCancelarPedido: () -> Unit = {},
+    llegada: LlegadaInfo? = null
 ) {
     val isEntregado = order.estado == EstadoPedido.ENTREGADO
     val scrollState = rememberScrollState()
@@ -360,7 +363,7 @@ private fun TrackingSheet(
     }
 
     val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val sheetMaxHeight = maxScreenHeight * 0.65f + navBarBottom
+    val sheetMaxHeight = maxScreenHeight * 0.52f + navBarBottom
     val sheetMinHeight = 88.dp + navBarBottom
     val animatedHeight by animateDpAsState(
         targetValue = if (isMinimized) sheetMinHeight else sheetMaxHeight,
@@ -414,8 +417,6 @@ private fun TrackingSheet(
                         .padding(horizontal = 18.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    EstadoPedidoChip(order.estado)
-                    Spacer(Modifier.width(10.dp))
                     if (isMinimized) {
                         Column(Modifier.weight(1f)) {
                             Text(
@@ -437,7 +438,6 @@ private fun TrackingSheet(
                             )
                         }
                     } else {
-                        Spacer(Modifier.weight(1f))
                         if (etaResumen != null) {
                             Surface(
                                 shape = RoundedCornerShape(99.dp),
@@ -462,8 +462,8 @@ private fun TrackingSheet(
                                     )
                                 }
                             }
-                            Spacer(Modifier.width(6.dp))
                         }
+                        Spacer(Modifier.weight(1f))
                     }
                     IconButton(
                         onClick = { onMinimizedChange(!isMinimized) },
@@ -485,7 +485,12 @@ private fun TrackingSheet(
                         .verticalScroll(scrollState)
                         .padding(horizontal = 18.dp)
                 ) {
-                    DriverCard(order, onAbrirPurificadora)
+                    if (llegada != null) {
+                        // Ya trae nombre y botón de llamar: sustituye a la tarjeta del repartidor.
+                        PanelLlegada(order, llegada)
+                    } else {
+                        DriverCard(order, onAbrirPurificadora)
+                    }
                     Spacer(Modifier.height(14.dp))
 
                     Timeline(steps)
@@ -514,17 +519,13 @@ private fun TrackingSheet(
                             Text("Confirmar pedido entregado", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                         }
                     } else if (order.estado == EstadoPedido.PENDIENTE) {
-                        Button(
+                        TextButton(
                             onClick = onCancelarPedido,
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Filled.Cancel, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Cancelar pedido", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                            Text("Cancelar pedido", fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.error)
                         }
-                        Spacer(Modifier.height(6.dp))
                         Text(
                             "Puedes cancelar mientras ningún repartidor haya tomado tu pedido.",
                             fontSize = 11.sp, color = HToGoColors.TextTertiary,
@@ -592,32 +593,32 @@ private fun DriverCard(order: TrackedOrder, onAbrirPurificadora: () -> Unit) {
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(52.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
+                Modifier.size(44.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
                 contentAlignment = Alignment.Center
             ) {
-                Text(order.driverInitials, fontSize = 18.sp, fontWeight = FontWeight.Bold,
-                    color = HToGoColors.Primary)
+                if (order.tieneRepartidor && order.driverInitials.isNotBlank()) {
+                    Text(order.driverInitials, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                        color = HToGoColors.Primary)
+                } else {
+                    Icon(Icons.Filled.Storefront, null, tint = HToGoColors.Primary, modifier = Modifier.size(22.dp))
+                }
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(
-                    "${order.purificadoraName} · ${order.driverName.substringBefore(' ')}",
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                    color = HToGoColors.TextSecondary
-                )
-                Text(order.driverName, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-                    color = HToGoColors.TextPrimary)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable(onClick = onAbrirPurificadora)
-                ) {
-                    Icon(Icons.Filled.Storefront, null, tint = HToGoColors.Primary,
-                        modifier = Modifier.size(13.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(order.purificadoraName,
-                        fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = HToGoColors.Primary)
+                if (order.tieneRepartidor) {
+                    Text(order.driverName, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                        color = HToGoColors.TextPrimary, maxLines = 1)
+                    Text(
+                        listOf(order.purificadoraName, order.driverVehicle).filter { it.isNotBlank() }.joinToString(" · "),
+                        fontSize = 12.sp, color = HToGoColors.TextSecondary, maxLines = 2,
+                        modifier = Modifier.clickable(onClick = onAbrirPurificadora)
+                    )
+                } else {
+                    Text(order.purificadoraName, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                        color = HToGoColors.TextPrimary, maxLines = 1)
+                    Text("Ver purificadora", fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                        color = HToGoColors.Primary, modifier = Modifier.clickable(onClick = onAbrirPurificadora))
                 }
-                Text(order.driverVehicle, fontSize = 11.sp, color = HToGoColors.TextTertiary)
             }
             if (order.driverPhone != null) {
                 val uriHandler = LocalUriHandler.current
@@ -652,7 +653,7 @@ private fun Timeline(steps: List<TrackingStep>) {
                         TimelineDot(step.state)
                         if (i < steps.lastIndex) {
                             Box(
-                                Modifier.width(2.dp).height(28.dp)
+                                Modifier.width(2.dp).height(if (step.state == TrackingStep.StepState.PENDING) 16.dp else 26.dp)
                                     .background(
                                         if (step.state == TrackingStep.StepState.DONE)
                                             HToGoColors.StatusEntregado
@@ -662,12 +663,12 @@ private fun Timeline(steps: List<TrackingStep>) {
                         }
                     }
                     Spacer(Modifier.width(12.dp))
-                    Column(Modifier.padding(bottom = if (i < steps.lastIndex) 14.dp else 0.dp)) {
+                    Column(Modifier.padding(bottom = if (i < steps.lastIndex) 8.dp else 0.dp)) {
                         Text(step.title,
                             fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                             color = if (step.state == TrackingStep.StepState.PENDING)
                                 HToGoColors.TextTertiary else HToGoColors.TextPrimary)
-                        Text(step.time,
+                        if (step.state != TrackingStep.StepState.PENDING) Text(step.time,
                             fontSize = 11.sp,
                             color = when (step.state) {
                                 TrackingStep.StepState.ACTIVE -> HToGoColors.StatusEnCamino
@@ -865,16 +866,23 @@ fun SeguimientoPedidoScreen(
             estado = estEnum,
             driverName = nombreRep ?: "Por asignar",
             driverInitials = nombreRep?.split(" ")?.filter { it.isNotBlank() }?.take(2)
-                ?.joinToString("") { it.first().uppercase() } ?: "H2",
+                ?.joinToString("") { it.first().uppercase() } ?: "",
             purificadoraName = rep?.negocio ?: p.nombreNegocio ?: clienteViewModel.purificadoraSeleccionadaNombre ?: "Purificadora",
             driverVehicle = listOfNotNull(rep?.vehiculo, rep?.placas?.takeIf { it.isNotBlank() }?.let { "Placas $it" })
                 .joinToString(" · ").ifBlank { if (rep == null) "Esperando que una purificadora acepte" else "Vehículo por confirmar" },
             items = p.detalles.orEmpty().takeIf { it.isNotEmpty() }
-                ?.joinToString(", ") { d -> "${d.cantidad} × ${d.nombreMarca ?: nombresMarca[d.idMarca] ?: "Garrafón"} 20 L" }
+                ?.joinToString(", ") { d ->
+                    val marca = d.nombreMarca ?: nombresMarca[d.idMarca] ?: "Garrafón"
+                    // La marca suele traer ya los litros ("Agua Demo 20L"): no repetirlos.
+                    "${d.cantidad} × " + if (marca.contains("20")) marca else "$marca 20 L"
+                }
                 ?: "${p.garrafonesTotales ?: 0} × Garrafón 20 L",
             address = p.direccionTexto?.takeIf { it.isNotBlank() } ?: "Domicilio de entrega",
             total = p.totalPagar ?: 0.0,
-            driverPhone = rep?.telefono?.takeIf { it.isNotBlank() }
+            driverPhone = rep?.telefono?.takeIf { it.isNotBlank() },
+            tieneRepartidor = nombreRep != null,
+            garrafones = p.garrafonesTotales ?: p.detalles.orEmpty().sumOf { it.cantidad },
+            intercambiaEnvases = p.detalles.orEmpty().any { it.tieneEnvase }
         )
     }
 
@@ -1040,7 +1048,7 @@ fun SeguimientoPedidoScreen(
         }
         if (idx >= pasosRuta.size) {
             simulandoDemo = false
-            mostrarAviso("Recorrido FakeGPS completado: repartidor en el domicilio")
+            mostrarAviso("Recorrido simulado completado")
         }
     }
 
@@ -1050,7 +1058,7 @@ fun SeguimientoPedidoScreen(
     BoxWithConstraints(Modifier.fillMaxSize().background(HToGoColors.Background)) {
         val screenHeight = maxHeight
         val margenInferiorMapa by animateDpAsState(
-            targetValue = if (isSheetMinimized) (88.dp + navBarBottomMapa) else (screenHeight * 0.65f + navBarBottomMapa),
+            targetValue = if (isSheetMinimized) (88.dp + navBarBottomMapa) else (screenHeight * 0.52f + navBarBottomMapa),
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioLowBouncy,
                 stiffness = Spring.StiffnessMediumLow
@@ -1090,7 +1098,7 @@ fun SeguimientoPedidoScreen(
                 destLon = lonDestino,
                 routePoints = puntosRutaMapa,
                 seguirRepartidor = true,
-                repartidorLabel = if (posicionDemo != null) "Tu repartidor (FakeGPS)" else "Tu repartidor",
+                repartidorLabel = if (posicionDemo != null) "Tu repartidor" else "Tu repartidor",
                 avisoSinUbicacion = null, // el aviso del cliente se muestra abajo (CU-006 S1)
                 estadoPedido = if (posicionDemo != null && !pedidoCerrado) "en_camino" else pedido.estado,
                 margenInferior = margenInferiorMapa, // centra arriba del panel del pedido (con brújula Norte + Centrar como el repartidor)
@@ -1112,11 +1120,11 @@ fun SeguimientoPedidoScreen(
                 onAlternarRecorridoDemo = {
                     if (simulandoDemo) {
                         simulandoDemo = false
-                        mostrarAviso("Simulación FakeGPS en pausa")
+                        mostrarAviso("Simulación en pausa")
                     } else {
                         pasoDemo = 0
                         simulandoDemo = true
-                        mostrarAviso("Iniciando recorrido FakeGPS por la ruta...")
+                        mostrarAviso("Simulando el recorrido del repartidor")
                     }
                 },
                 onSaltarInicioDemo = {
@@ -1125,14 +1133,14 @@ fun SeguimientoPedidoScreen(
                         pasoDemo = 0
                         val inicio = ubicacionPurificadora ?: rutaBaseDemo.firstOrNull() ?: (latDestino + 0.0085 to lonDestino - 0.0065)
                         posicionDemo = inicio
-                        mostrarAviso("FakeGPS: repartidor en la purificadora (${order.purificadoraName})")
+                        mostrarAviso("Repartidor simulado en ${order.purificadoraName}")
                     }
                 },
                 onSaltarLlegadaDemo = {
                     if (latDestino != null && lonDestino != null) {
                         simulandoDemo = false
                         posicionDemo = (latDestino + 0.00010) to (lonDestino + 0.00007)
-                        mostrarAviso("FakeGPS: repartidor afuera del domicilio (~15 m)")
+                        mostrarAviso("Repartidor simulado afuera del domicilio")
                     }
                 },
                 onDesactivarDemo = {
@@ -1145,46 +1153,21 @@ fun SeguimientoPedidoScreen(
         }
 
         if (posicionDemo != null || simulandoDemo) {
-            Surface(
-                shape = RoundedCornerShape(99.dp),
-                color = Color(0xFF7C3AED),
-                shadowElevation = 6.dp,
+            SimulacionGpsChip(
+                simulando = simulandoDemo,
+                paso = pasoDemo + 1,
+                totalPasos = totalPasosDemo,
+                onAlternar = { simulandoDemo = !simulandoDemo },
+                onSalir = {
+                    simulandoDemo = false
+                    pasoDemo = 0
+                    posicionDemo = null
+                },
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .statusBarsPadding()
                     .padding(start = 16.dp, top = 66.dp)
-            ) {
-                Row(
-                    Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val etiqueta = if (simulandoDemo && totalPasosDemo > 0) {
-                        "🛰️ FakeGPS (${pasoDemo + 1}/$totalPasosDemo)"
-                    } else {
-                        "🛰️ Modo Demo GPS"
-                    }
-                    Text(etiqueta, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Text(
-                        if (simulandoDemo) "⏸" else "▶",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { simulandoDemo = !simulandoDemo }
-                    )
-                    Text(
-                        "✕",
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable {
-                            simulandoDemo = false
-                            pasoDemo = 0
-                            posicionDemo = null
-                        }
-                    )
-                }
-            }
+            )
         }
 
         // CU-006 S1: en camino pero sin posición tras dar margen a la carga inicial, o sin cambios en más de 2 minutos.
@@ -1257,15 +1240,20 @@ fun SeguimientoPedidoScreen(
             )
         }
 
-        // CU-012: el repartidor pulsó "Llegué al destino". Primero una tarjeta animada; al
-        // cerrarla queda un recordatorio arriba que la vuelve a abrir.
+        // CU-012: el repartidor pulsó "Llegué al destino". Primero una tarjeta al centro; al
+        // cerrarla, el panel del pedido se queda en "Sal a recibir tu pedido".
         val avisoLlegada = order.estado == EstadoPedido.EN_CAMINO && repartidorLlego
-        var llegadaVista by rememberSaveable(order.id) { mutableStateOf(false) }
-        if (avisoLlegada && llegadaVista) {
-            AvisoRepartidorAfuera(
-                Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 70.dp)
-                    .clickable { llegadaVista = false }
-            )
+        // Se recuerda por pedido mientras la app esté abierta: al volver a la pantalla no reaparece.
+        var llegadaVista by remember(order.id) { mutableStateOf(order.id in LlegadasVistas.ids) }
+        val llegadaMs = remember(order.id, avisoLlegada) { if (avisoLlegada) ahoraMs() else null }
+        var minutosLlegada by remember(llegadaMs) { mutableStateOf(0) }
+        LaunchedEffect(llegadaMs) {
+            if (llegadaMs == null) return@LaunchedEffect
+            isSheetMinimized = false
+            while (true) {
+                minutosLlegada = ((ahoraMs() - llegadaMs) / 60_000L).toInt()
+                kotlinx.coroutines.delay(15_000L)
+            }
         }
 
         Box(Modifier.align(Alignment.BottomCenter)) {
@@ -1344,13 +1332,14 @@ fun SeguimientoPedidoScreen(
             TrackingSheet(
                 order = order,
                 steps = stepsEnVivo,
-                etaResumen = etaResumen,
+                etaResumen = if (avisoLlegada) null else etaResumen,
                 maxScreenHeight = screenHeight,
                 isMinimized = isSheetMinimized,
                 onMinimizedChange = { isSheetMinimized = it },
                 onPedidoEntregado = onPedidoEntregado,
                 onAbrirPurificadora = onAbrirPurificadora,
-                onCancelarPedido = { mostrarDialogCancelar = true }
+                onCancelarPedido = { mostrarDialogCancelar = true },
+                llegada = if (avisoLlegada) LlegadaInfo(minutosLlegada) else null
             )
         }
 
@@ -1358,8 +1347,9 @@ fun SeguimientoPedidoScreen(
         if (avisoLlegada && !llegadaVista) {
             RepartidorLlegoOverlay(
                 nombreRepartidor = order.driverName,
+                garrafones = order.garrafones,
                 telefono = order.driverPhone,
-                onCerrar = { llegadaVista = true }
+                onCerrar = { llegadaVista = true; LlegadasVistas.ids += order.id }
             )
         }
     }
@@ -1367,87 +1357,72 @@ fun SeguimientoPedidoScreen(
 
 /** CU-012: aviso a pantalla completa cuando el repartidor llega, con anillos que laten. */
 @Composable
-private fun RepartidorLlegoOverlay(nombreRepartidor: String, telefono: String?, onCerrar: () -> Unit) {
+private fun RepartidorLlegoOverlay(
+    nombreRepartidor: String,
+    garrafones: Int,
+    telefono: String?,
+    onCerrar: () -> Unit
+) {
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
-    val escala by animateFloatAsState(
-        if (visible) 1f else 0.6f,
-        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "escalaLlegada"
-    )
-    val opacidad by animateFloatAsState(if (visible) 1f else 0f, tween(250), label = "opacidadLlegada")
-    val pulso = rememberInfiniteTransition(label = "pulsoLlegada")
-    val anillo by pulso.animateFloat(
-        0f, 1f, infiniteRepeatable(tween(1600, easing = LinearEasing)), label = "anilloLlegada"
-    )
-    val rebote by pulso.animateFloat(
-        0f, -8f, infiniteRepeatable(tween(600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "reboteLlegada"
-    )
+    val escala by animateFloatAsState(if (visible) 1f else 0.92f, tween(220), label = "escalaLlegada")
+    val opacidad by animateFloatAsState(if (visible) 1f else 0f, tween(220), label = "opacidadLlegada")
     val uriHandler = LocalUriHandler.current
+    val nombre = nombreRepartidor.substringBefore(' ').ifBlank { "Tu repartidor" }
+    val queLleva = when (garrafones) {
+        0 -> "con tu pedido"
+        1 -> "con tu garrafón"
+        else -> "con tus $garrafones garrafones"
+    }
 
     Box(
         Modifier.fillMaxSize()
             .graphicsLayer { alpha = opacidad }
-            .background(Color.Black.copy(alpha = 0.55f))
+            .background(Color.Black.copy(alpha = 0.45f))
             .clickable(onClick = onCerrar),
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(24.dp),
             color = Color.White,
             shadowElevation = 12.dp,
-            modifier = Modifier.padding(horizontal = 28.dp).fillMaxWidth()
+            modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth()
                 .graphicsLayer { scaleX = escala; scaleY = escala }
                 .clickable(enabled = false) {} // los toques en la tarjeta no la cierran
         ) {
             Column(
-                Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
+                Modifier.padding(horizontal = 24.dp, vertical = 26.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
-                    // Dos anillos desfasados que crecen y se desvanecen.
-                    listOf(anillo, (anillo + 0.5f) % 1f).forEach { t ->
-                        Box(
-                            Modifier.size(150.dp)
-                                .graphicsLayer { scaleX = 0.45f + 0.55f * t; scaleY = 0.45f + 0.55f * t; alpha = 1f - t }
-                                .clip(CircleShape)
-                                .background(HToGoColors.AccentEmerald.copy(alpha = 0.35f))
-                        )
-                    }
-                    Box(
-                        Modifier.size(78.dp).graphicsLayer { translationY = rebote.dp.toPx() }
-                            .clip(CircleShape).background(HToGoColors.AccentEmerald),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.LocalShipping, null, tint = Color.White, modifier = Modifier.size(40.dp))
-                    }
+                Box(
+                    Modifier.size(72.dp).clip(CircleShape).background(HToGoColors.PrimarySoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.LocalShipping, null, tint = HToGoColors.Primary, modifier = Modifier.size(36.dp))
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
+                Text("Tu repartidor llegó", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
+                Spacer(Modifier.height(6.dp))
                 Text(
-                    "¡Tu repartidor llegó!",
-                    fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = HToGoColors.TextPrimary
+                    "$nombre está afuera $queLleva.",
+                    fontSize = 15.sp, color = HToGoColors.TextSecondary,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 21.sp
                 )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "$nombreRepartidor ya está afuera de tu domicilio con tu pedido. Sal a recibirlo.",
-                    fontSize = 16.sp, color = HToGoColors.TextSecondary,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 22.sp
-                )
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(20.dp))
                 Button(
                     onClick = onCerrar,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(26.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentEmerald)
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(25.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                 ) {
-                    Text("¡Voy para allá!", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Voy para allá", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
                 if (telefono != null) {
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(4.dp))
                     TextButton(onClick = { runCatching { uriHandler.openUri("tel:$telefono") } }) {
-                        Icon(Icons.Filled.Call, null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.Call, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Llamar al repartidor", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Llamar", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = HToGoColors.Primary)
                     }
                 }
             }
@@ -1455,23 +1430,46 @@ private fun RepartidorLlegoOverlay(nombreRepartidor: String, telefono: String?, 
     }
 }
 
-/** Recordatorio compacto tras cerrar la tarjeta de llegada; al tocarlo se vuelve a abrir. */
+/** Propuesta C: el panel del pedido cambia a "Sal a recibir tu pedido" mientras el repartidor está afuera. */
 @Composable
-private fun AvisoRepartidorAfuera(modifier: Modifier = Modifier) {
-    val pulso = rememberInfiniteTransition(label = "pulsoAfuera")
-    val alfa by pulso.animateFloat(
-        0.35f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "alfaAfuera"
-    )
+private fun PanelLlegada(order: TrackedOrder, llegada: LlegadaInfo) {
+    val uriHandler = LocalUriHandler.current
+    val nombre = order.driverName.substringBefore(' ').ifBlank { "Tu repartidor" }
+    val total = (if (order.total % 1.0 == 0.0) "$%.0f" else "$%.2f").format(order.total)
     Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = HToGoColors.AccentEmerald,
-        shadowElevation = 6.dp,
-        modifier = modifier
+        shape = RoundedCornerShape(16.dp),
+        color = HToGoColors.PrimaryWash,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(10.dp).graphicsLayer { alpha = alfa }.clip(CircleShape).background(Color.White))
-            Spacer(Modifier.width(10.dp))
-            Text("Tu repartidor está afuera", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Column(Modifier.padding(16.dp)) {
+            Surface(shape = RoundedCornerShape(99.dp), color = HToGoColors.Primary.copy(alpha = 0.12f)) {
+                Text(
+                    if (llegada.minutos < 1) "Llegó hace un momento" else "Llegó hace ${llegada.minutos} min",
+                    fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = HToGoColors.Primary,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Text("Sal a recibir tu pedido", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "$nombre te espera afuera. Ten listos $total" +
+                    if (order.intercambiaEnvases) " y tus garrafones vacíos." else ".",
+                fontSize = 13.sp, color = HToGoColors.TextSecondary, lineHeight = 18.sp
+            )
+            if (order.driverPhone != null) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { runCatching { uriHandler.openUri("tel:${order.driverPhone}") } },
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, HToGoColors.Primary)
+                ) {
+                    Icon(Icons.Filled.Call, null, tint = HToGoColors.Primary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Llamar a $nombre", color = HToGoColors.Primary, fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
     }
 }
