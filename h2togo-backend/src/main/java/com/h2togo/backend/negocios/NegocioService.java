@@ -239,7 +239,7 @@ public class NegocioService {
     private Negocio negocioComoDueno(int idRepartidor) {
         Negocio negocio = negocioDelRepartidor(idRepartidor);
         if (!Integer.valueOf(idRepartidor).equals(negocio.getIdDueno())) {
-            throw new AccessDeniedException("Solo el dueño del negocio puede realizar este cambio (RN-021).");
+            throw new AccessDeniedException("Solo el dueño del negocio puede realizar este cambio.");
         }
         return negocio;
     }
@@ -249,7 +249,7 @@ public class NegocioService {
         Negocio negocio = negocioRepository.findById(idNegocio)
                 .orElseThrow(() -> new NotFoundException("NEGOCIO_NO_ENCONTRADO", "Negocio no encontrado."));
         if (!Integer.valueOf(idRepartidor).equals(negocio.getIdDueno())) {
-            throw new AccessDeniedException("Solo el dueño del negocio puede realizar este cambio (RN-021).");
+            throw new AccessDeniedException("Solo el dueño del negocio puede realizar este cambio.");
         }
     }
 

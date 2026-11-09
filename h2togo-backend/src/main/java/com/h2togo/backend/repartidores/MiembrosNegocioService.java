@@ -121,7 +121,7 @@ public class MiembrosNegocioService {
         Negocio negocio = negocioRepository.findById(r.getIdNegocio())
                 .orElseThrow(() -> new NotFoundException("NEGOCIO_NO_ENCONTRADO", "Negocio no encontrado."));
         if (!Integer.valueOf(idRepartidor).equals(negocio.getIdDueno())) {
-            throw new AccessDeniedException("Solo el dueño de la purificadora puede gestionar sus repartidores (RN-021).");
+            throw new AccessDeniedException("Solo el dueño de la purificadora puede gestionar sus repartidores.");
         }
         return negocio;
     }

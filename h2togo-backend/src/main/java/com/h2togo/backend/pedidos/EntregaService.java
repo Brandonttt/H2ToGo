@@ -149,7 +149,7 @@ public class EntregaService {
                         .addValue("radio", radioM).addValue("dir", idDireccion), Boolean.class);
         if (!Boolean.TRUE.equals(dentro)) {
             throw new BusinessRuleException("FUERA_DE_RANGO",
-                    "Debes estar a menos de " + radioM + " m del domicilio para entregar (RF-014).");
+                    "Debes estar a menos de " + radioM + " m del domicilio para entregar.");
         }
     }
 
@@ -185,7 +185,7 @@ public class EntregaService {
                                 .addValue("d", idDetalle).addValue("p", idPedido));
                 if (filas == 0) {
                     throw new BusinessRuleException("CANTIDAD_INVALIDA",
-                            "La cantidad entregada excede la solicitada o el detalle no existe (RN-032).");
+                            "La cantidad entregada excede la solicitada o el detalle no existe.");
                 }
             }
         }

@@ -55,7 +55,7 @@ public class RutaService {
             throw new NotFoundException("PEDIDO_NO_ENCONTRADO", "Pedido no encontrado.");
         }
         if (!Integer.valueOf(idRepartidor).equals(pedido.get("id_repartidor"))) {
-            throw new AccessDeniedException("Solo el repartidor asignado puede ver la ruta (RN-016).");
+            throw new AccessDeniedException("Solo el repartidor asignado puede ver la ruta.");
         }
         String estado = (String) pedido.get("estado_actual");
         if (!ESTADOS_RUTA_REPARTIDOR.contains(estado)) {
@@ -91,7 +91,7 @@ public class RutaService {
             throw new NotFoundException("PEDIDO_NO_ENCONTRADO", "Pedido no encontrado.");
         }
         if (!Integer.valueOf(idCliente).equals(pedido.get("id_cliente"))) {
-            throw new AccessDeniedException("Solo el cliente del pedido puede ver su seguimiento (RN-016).");
+            throw new AccessDeniedException("Solo el cliente del pedido puede ver su seguimiento.");
         }
         Integer idDireccion = (Integer) pedido.get("id_direccion_entrega");
         if (coordenadaValida(origenLat, origenLon)) {

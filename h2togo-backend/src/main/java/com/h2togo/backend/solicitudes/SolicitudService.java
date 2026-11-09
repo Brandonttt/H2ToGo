@@ -417,7 +417,7 @@ public class SolicitudService {
     private Negocio negocioComoDueno(int idRepartidor) {
         Negocio negocio = negocioDelRepartidor(idRepartidor);
         if (!Integer.valueOf(idRepartidor).equals(negocio.getIdDueno())) {
-            throw new AccessDeniedException("Solo el dueño puede solicitar cambios (RN-021).");
+            throw new AccessDeniedException("Solo el dueño puede solicitar cambios.");
         }
         return negocio;
     }

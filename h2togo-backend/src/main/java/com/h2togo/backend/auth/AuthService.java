@@ -125,7 +125,7 @@ public class AuthService {
     public RegistroResponse registrar(RegistroRequest req) {
         if (req.rol() == RolUsuario.admin) {
             throw new BusinessRuleException("ROL_INVALIDO",
-                    "Los administradores no se registran por este medio (CU-014).");
+                    "Los administradores no se registran por este medio.");
         }
         // RN-015: sin duplicados de correo/teléfono.
         if (usuarioRepository.existsByCorreo(req.correo())) {

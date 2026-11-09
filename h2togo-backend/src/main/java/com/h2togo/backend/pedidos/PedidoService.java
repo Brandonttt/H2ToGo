@@ -92,7 +92,7 @@ public class PedidoService {
                 new MapSqlParameterSource("id", idCliente), Boolean.class);
         if (Boolean.TRUE.equals(suspendido)) {
             throw new BusinessRuleException("CLIENTE_SUSPENDIDO",
-                    "La cuenta está suspendida temporalmente por ausencias (RN-006).");
+                    "La cuenta está suspendida temporalmente por ausencias.");
         }
 
         // Dirección propia, activa y en zona de cobertura (RN-001).
@@ -101,7 +101,7 @@ public class PedidoService {
                 .orElseThrow(() -> new NotFoundException("DIRECCION_NO_ENCONTRADA", "Dirección no encontrada."));
         if (!dir.isEnZonaCobertura()) {
             throw new BusinessRuleException("FUERA_DE_COBERTURA",
-                    "La dirección está fuera de la zona de cobertura (RN-001).");
+                    "La dirección está fuera de la zona de cobertura.");
         }
 
         boolean programado = req.programado() != null;
@@ -173,7 +173,7 @@ public class PedidoService {
         // RN-028: debe existir al menos una purificadora que cumpla el precio en TODAS las marcas.
         if (!existePurificadoraQueCumple(marcas, req.precioMaximoGarrafon())) {
             throw new BusinessRuleException("SIN_PURIFICADORAS",
-                    "Ninguna purificadora cumple el precio máximo para todas las marcas (RN-028).");
+                    "Ninguna purificadora cumple el precio máximo para todas las marcas.");
         }
 
         Pedido p = baseComun(idCliente, req, programado);
@@ -342,7 +342,7 @@ public class PedidoService {
             case repartidor -> actor.id().equals(p.getIdRepartidor());
         };
         if (!permitido) {
-            throw new AccessDeniedException("No tiene permiso para ver este pedido (RN-016).");
+            throw new AccessDeniedException("No tiene permiso para ver este pedido.");
         }
     }
 

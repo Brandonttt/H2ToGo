@@ -219,7 +219,7 @@ public class AsignacionService {
                 new MapSqlParameterSource("id", idPedido), Integer.class);
         if (apartadosEnBase != null && apartadosEnBase > 0) {
             throw new BusinessRuleException("CARGA_PENDIENTE_EN_BASE",
-                    "Tienes " + apartadosEnBase + " garrafones apartados en la base para este pedido. Debes cargarlos al vehículo antes de iniciar la ruta (CU-019).");
+                    "Tienes " + apartadosEnBase + " garrafones apartados en la base para este pedido. Debes cargarlos al vehículo antes de iniciar la ruta.");
         }
 
         jdbc.update("UPDATE pedidos SET estado_actual = 'en_camino'::estado_pedido WHERE id_pedido = :id",
@@ -351,7 +351,7 @@ public class AsignacionService {
                         Integer.class);
                 if (count == null || count == 0) {
                     throw new BusinessRuleException("PEDIDO_NO_COMPATIBLE",
-                            "Tu negocio no cumple el precio máximo para todas las marcas (RN-028).");
+                            "Tu negocio no cumple el precio máximo para todas las marcas.");
                 }
             }
         }
@@ -381,7 +381,7 @@ public class AsignacionService {
             int totalDisponible = (dispVehiculo != null ? dispVehiculo : 0) + (dispBase != null ? dispBase : 0);
             if (totalDisponible < cantidadSolicitada) {
                 throw new BusinessRuleException("STOCK_INSUFICIENTE",
-                        "Stock insuficiente: ni el vehículo ni la base cuentan con producto suficiente para cubrir el pedido (RN-008).");
+                        "Stock insuficiente: ni el vehículo ni la base cuentan con producto suficiente para cubrir el pedido.");
             }
         }
     }

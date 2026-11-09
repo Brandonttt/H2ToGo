@@ -26,7 +26,7 @@ public class RastreoPedidoController {
     @GetMapping("/{id}/ubicacion-repartidor")
     public ResponseEntity<Map<String, Object>> ubicacionRepartidor(@PathVariable int id) {
         if (!acceso.puedeVer(SecurityUtils.idActual(), id)) {
-            throw new AccessDeniedException("No tiene permiso para ver este pedido (RN-016).");
+            throw new AccessDeniedException("No tiene permiso para ver este pedido.");
         }
         return rastreoService.ultimaUbicacion(id)
                 .map(ResponseEntity::ok)

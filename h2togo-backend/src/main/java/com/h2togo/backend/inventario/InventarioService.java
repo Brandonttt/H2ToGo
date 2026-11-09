@@ -350,7 +350,7 @@ public class InventarioService {
     private Negocio negocioComoDueno(int idRepartidor) {
         Negocio negocio = negocioDelRepartidor(idRepartidor);
         if (!Integer.valueOf(idRepartidor).equals(negocio.getIdDueno())) {
-            throw new AccessDeniedException("Solo el dueño del negocio puede registrar inventario (RN-021).");
+            throw new AccessDeniedException("Solo el dueño del negocio puede registrar inventario.");
         }
         return negocio;
     }
