@@ -232,9 +232,6 @@ fun PerfilRepartidorScreen(
                             tint = if (notifPush) Color.White else Color.White.copy(alpha = 0.6f)
                         )
                     }
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Filled.Settings, null, tint = Color.White)
-                    }
                 }
         }
         LazyColumn(

@@ -404,7 +404,6 @@ private fun ProfileTopBar(onBack: () -> Unit) {
                 Text("Mi perfil",
                     Modifier.weight(1f),
                     fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                HeaderIconBtn(Icons.Filled.Settings, onClick = {})
             }
         }
     }
