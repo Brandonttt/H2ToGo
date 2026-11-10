@@ -294,17 +294,17 @@ fun HomeClienteScreen(
                                 }
                                 val textoTiempo = when (estadoNorm) {
                                     "pendiente_programado" -> {
-                                        val fp = pedidoEnCurso.fechaProgramada
-                                        if (!fp.isNullOrBlank() && fp.length >= 16) {
-                                            "Programado · ${fp.substring(8, 10)}/${fp.substring(5, 7)} ${fp.substring(11, 16)}"
+                                        val fp = com.htogo.app.util.fechaProgramadaLegible(pedidoEnCurso.fechaProgramada)
+                                        if (!fp.isNullOrBlank()) { "Programado · $fp" //
+                                            // convertido a hora local CDMX
                                         } else {
                                             "Pedido programado · esperando horario"
                                         }
                                     }
                                     "pendiente" -> {
-                                        val fp = pedidoEnCurso.fechaProgramada
-                                        if (pedidoEnCurso.esProgramado && !fp.isNullOrBlank() && fp.length >= 16) {
-                                            "Programado · ${fp.substring(8, 10)}/${fp.substring(5, 7)} ${fp.substring(11, 16)}"
+                                        val fp = com.htogo.app.util.fechaProgramadaLegible(pedidoEnCurso.fechaProgramada)
+                                        if (pedidoEnCurso.esProgramado && !fp.isNullOrBlank()) { "Programado · $fp" //
+                                            // convertido a hora local CDMX
                                         } else {
                                             "Esperando que acepten tu pedido…"
                                         }
@@ -352,8 +352,8 @@ fun HomeClienteScreen(
                                         else -> 1
                                     },
                                     textoTiempo = when (estadoOtro) {
-                                        "pendiente_programado" -> "Pedido programado · esperando horario"
-                                        "pendiente" -> if (otro.esProgramado) "Pedido programado" else "Esperando que acepten tu pedido…"
+                                        "pendiente_programado" -> com.htogo.app.util.fechaProgramadaLegible(otro.fechaProgramada)?.let { "Programado · $it" } ?: "Pedido programado · esperando horario"
+                                        "pendiente" -> if (otro.esProgramado) (com.htogo.app.util.fechaProgramadaLegible(otro.fechaProgramada)?.let { "Programado · $it" } ?: "Pedido programado") else "Esperando que acepten tu pedido…"
                                         "asignado" -> "Repartidor asignado · preparando tu pedido"
                                         "en_camino" -> "En camino a tu domicilio"
                                         else -> "Actualizando estado…"

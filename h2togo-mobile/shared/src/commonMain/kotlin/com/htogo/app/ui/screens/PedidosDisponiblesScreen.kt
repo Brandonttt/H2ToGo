@@ -184,6 +184,10 @@ fun PedidosDisponiblesScreen(
         repartidorViewModel.cargarPedidosDisponibles()
         repartidorViewModel.cargarInventarios()
         if (liveMiNegocio == null) repartidorViewModel.cargarMiNegocio()
+        while (true) {
+            kotlinx.coroutines.delay(4_000L)
+            repartidorViewModel.cargarPedidosDisponibles()
+        }
     }
 
     val pedidos = remember(liveDisponibles, liveMiNegocio) {

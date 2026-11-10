@@ -38,7 +38,7 @@ public class PedidosProgramadosJob {
         this.clock = clock;
     }
 
-    @Scheduled(fixedRateString = "${h2togo.scheduling.pedidos-ms:60000}")
+    @Scheduled(fixedRateString = "${h2togo.scheduling.pedidos-ms:2000}")
     @Transactional
     public void activar() {
         OffsetDateTime ahora = OffsetDateTime.now(clock);

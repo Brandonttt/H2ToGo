@@ -35,4 +35,12 @@ class GeoTest {
         assertEquals("3 h", formatearTiempoTranscurrido(3 * 3_600_000L))
         assertEquals("1 h 20 min", formatearTiempoTranscurrido(80 * 60_000L))
     }
+
+    @Test
+    fun formatoFechaProgramadaEnHoraCdmx() {
+        assertEquals(
+            "09/11 05:11 p.m.",
+            com.htogo.app.util.fechaProgramadaLegible("2026-11-09T23:11:00Z")
+        )
+    }
 }

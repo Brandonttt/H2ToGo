@@ -16,6 +16,7 @@ public record PedidoResumen(
         BigDecimal totalPagar,
         Integer garrafonesTotales,
         boolean esProgramado,
+        OffsetDateTime fechaProgramada,
         OffsetDateTime fechaCreacion,
         String nombreCliente,
         String direccionTexto,
@@ -29,8 +30,21 @@ public record PedidoResumen(
             BigDecimal totalPagar,
             Integer garrafonesTotales,
             boolean esProgramado,
+            OffsetDateTime fechaProgramada,
             OffsetDateTime fechaCreacion) {
-        this(id, estado, tipoSolicitud, totalPagar, garrafonesTotales, esProgramado, fechaCreacion,
+        this(id, estado, tipoSolicitud, totalPagar, garrafonesTotales, esProgramado, fechaProgramada, fechaCreacion,
+                null, null, null, null);
+    }
+
+    public PedidoResumen(
+            Integer id,
+            EstadoPedido estado,
+            TipoSolicitudPedido tipoSolicitud,
+            BigDecimal totalPagar,
+            Integer garrafonesTotales,
+            boolean esProgramado,
+            OffsetDateTime fechaCreacion) {
+        this(id, estado, tipoSolicitud, totalPagar, garrafonesTotales, esProgramado, null, fechaCreacion,
                 null, null, null, null);
     }
 }

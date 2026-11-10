@@ -19,8 +19,9 @@ fun ahoraCdmx(): LocalDateTime = Clock.System.now().toLocalDateTime(ZONA_CDMX)
 /** Fecha ISO del backend ("2026-10-04T12:37:00.123-06:00" o con Z) → hora de la CDMX. */
 fun fechaCdmx(iso: String?): LocalDateTime? =
     iso?.trim()?.takeIf { it.isNotEmpty() }?.let { raw ->
-        runCatching { Instant.parse(raw).toLocalDateTime(ZONA_CDMX) }
-            .recoverCatching { LocalDateTime.parse(raw.replace(' ', 'T').take(19)) }
+        val norm = raw.replace(' ', 'T')
+        runCatching { Instant.parse(norm).toLocalDateTime(ZONA_CDMX) }
+            .recoverCatching { LocalDateTime.parse(norm.take(19)) }
             .getOrNull()
     }
 
@@ -76,6 +77,10 @@ fun LocalDateTime.diaMesHoraLegible(): String {
     val mm = monthNumber.toString().padStart(2, '0')
     return "$dd/$mm ${horaAmPm()}"
 }
+
+/** Convierte una fecha ISO del backend a formato corto CDMX ("09/11 05:11 p.m."). */
+fun fechaProgramadaLegible(iso: String?): String? =
+    fechaCdmx(iso)?.diaMesHoraLegible()
 
 /** Fecha y hora de la CDMX → instante ISO-8601 en UTC para el backend ("2026-10-15T16:00:00Z"). */
 fun LocalDateTime.aIsoUtc(): String = toInstant(ZONA_CDMX).toString()

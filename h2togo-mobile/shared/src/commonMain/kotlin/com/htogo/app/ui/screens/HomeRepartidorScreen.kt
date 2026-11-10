@@ -110,6 +110,11 @@ fun HomeRepartidorScreen(
         repartidorViewModel.cargarInventarios()
         repartidorViewModel.cargarMiNegocio()
         repartidorViewModel.cargarMisEntregas()
+        while (true) {
+            kotlinx.coroutines.delay(4_000L)
+            repartidorViewModel.cargarPedidosDisponibles()
+            repartidorViewModel.cargarMisEntregas()
+        }
     }
 
     BarraEstadoClara() // el encabezado oscuro llega hasta arriba
@@ -464,7 +469,7 @@ fun HomeRepartidorScreen(
                             "cancelado" -> EstadoPedido.CANCELADO
                             else -> EstadoPedido.PENDIENTE
                         }
-                        val formattedFecha = fechaCdmx(p.fechaCreacion)?.textoCorto()
+                        val formattedFecha = fechaCdmx(p.fechaProgramada ?: p.fechaCreacion)?.textoCorto()
                             ?: p.fechaCreacion?.take(10)
                             ?: "Hoy"
                         ColaItem(

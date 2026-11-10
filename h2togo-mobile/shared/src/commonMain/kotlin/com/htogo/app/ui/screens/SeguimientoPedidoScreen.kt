@@ -887,10 +887,10 @@ fun SeguimientoPedidoScreen(
     }
 
     val historialPedido = pedido.historial
-    val pasos = remember(order.estado, repartidorLlego) {
+    val pasos = remember(order.estado, repartidorLlego, pedido.esProgramado, pedido.fechaProgramada) {
         when (order.estado) {
             EstadoPedido.PENDIENTE -> listOf(
-                TrackingStep("Pedido recibido", "En espera de repartidor", TrackingStep.StepState.ACTIVE),
+                TrackingStep("Pedido recibido", if (pedido.esProgramado) (com.htogo.app.util.fechaProgramadaLegible(pedido.fechaProgramada)?.let { "Programado · $it" } ?: "Pedido programado") else "En espera de repartidor", TrackingStep.StepState.ACTIVE),
                 TrackingStep("Repartidor asignado", "Pendiente", TrackingStep.StepState.PENDING),
                 TrackingStep("En camino a tu domicilio", "Pendiente", TrackingStep.StepState.PENDING),
                 TrackingStep("Entregado", "Pendiente", TrackingStep.StepState.PENDING)
@@ -1188,6 +1188,7 @@ fun SeguimientoPedidoScreen(
                     "Ubicación del repartidor no disponible por ahora"
                 u != null && ahoraMs - u.recibidaMs > 120_000 ->
                     "Última ubicación hace ${com.htogo.app.data.location.formatearTiempoTranscurrido(ahoraMs - u.recibidaMs)}"
+                order.estado == EstadoPedido.PENDIENTE && pedido.esProgramado && posicionDemo == null -> com.htogo.app.util.fechaProgramadaLegible(pedido.fechaProgramada)?.let { "Programado · $it" }
                 else -> null
             }
             if (aviso != null) {
@@ -1300,6 +1301,7 @@ fun SeguimientoPedidoScreen(
                     kmRestantesVivo?.let { "~${com.htogo.app.data.location.formatearDuracionRuta(it, minutosExtra = 2)}" }
                 (order.estado == EstadoPedido.EN_CAMINO || posicionDemo != null) && kmRestantesVivo != null ->
                     "~${com.htogo.app.data.location.formatearDuracionRuta(kmRestantesVivo)} · ${com.htogo.app.data.location.formatearDistanciaCorta(kmRestantesVivo)}"
+                order.estado == EstadoPedido.PENDIENTE && pedido.esProgramado && posicionDemo == null -> com.htogo.app.util.fechaProgramadaLegible(pedido.fechaProgramada)?.let { "Programado · $it" }
                 else -> null
             }
             val stepsEnVivo = remember(steps, order.estado, kmRestantesVivo, llegoEfectivo, posicionDemo) {

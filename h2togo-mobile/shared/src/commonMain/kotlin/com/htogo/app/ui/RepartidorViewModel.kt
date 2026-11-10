@@ -1253,10 +1253,14 @@ class RepartidorViewModel : ViewModel() {
         viewModelScope.launch {
             CanalNotificaciones.avisos.collect { aviso ->
                 when (aviso.datos["tipo"]) {
-                    "pedido_nuevo" -> cargarPedidosDisponibles()
+                    "pedido_nuevo" -> {
+                        cargarPedidosDisponibles()
+                        cargarPlan()
+                    }
                     "pedido_reasignado", "ruta_recalculada" -> {
                         cargarPedidosDisponibles()
                         cargarMisEntregas()
+                        cargarPlan()
                     }
                     "lotes_por_caducar" -> {
                         cargarInventarioBase()

@@ -300,7 +300,7 @@ public class PedidoService {
         // Negocio: el solicitado (directa) o el del repartidor que tomó el pedido (abierta).
         List<PedidoResumen> lista = jdbc.query("""
                 SELECT p.id_pedido, p.estado_actual, p.tipo_solicitud, p.total_pagar,
-                       p.garrafones_totales, p.es_programado, p.fecha_creacion,
+                       p.garrafones_totales, p.es_programado, p.fecha_programada, p.fecha_creacion,
                        CONCAT_WS(' ', uc.nombre, uc.apellidos) AS nombre_cliente,
                        CONCAT_WS(', ', NULLIF(CONCAT_WS(' ', d.calle, d.numero_exterior), ''), NULLIF(d.colonia, '')) AS direccion,
                        n.nombre_comercial AS nombre_negocio,
@@ -320,7 +320,7 @@ public class PedidoService {
                         TipoSolicitudPedido.valueOf(rs.getString("tipo_solicitud")),
                         rs.getBigDecimal("total_pagar"),
                         rs.getInt("garrafones_totales"),
-                        rs.getBoolean("es_programado"),
+                        rs.getBoolean("es_programado"), rs.getObject("fecha_programada", OffsetDateTime.class),
                         rs.getObject("fecha_creacion", OffsetDateTime.class),
                         rs.getString("nombre_cliente"),
                         rs.getString("direccion"),

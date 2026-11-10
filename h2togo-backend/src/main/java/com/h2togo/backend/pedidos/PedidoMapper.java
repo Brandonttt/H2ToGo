@@ -31,7 +31,7 @@ public final class PedidoMapper {
 
     public static PedidoResumen toResumen(Pedido p) {
         return new PedidoResumen(p.getId(), p.getEstadoActual(), p.getTipoSolicitud(),
-                p.getTotalPagar(), p.getGarrafonesTotales(), p.isEsProgramado(), p.getFechaCreacion());
+                p.getTotalPagar(), p.getGarrafonesTotales(), p.isEsProgramado(), p.getFechaProgramada(), p.getFechaCreacion());
     }
 
     private static DetalleResponse toDetalle(DetallePedido d) {
