@@ -1182,8 +1182,11 @@ fun SeguimientoPedidoScreen(
                 }
             }
             val u = ubicacionRepartidor
+            val cercaDeDomicilio = latEfectivaRepartidor != null && lonEfectivaRepartidor != null &&
+                latDestino != null && lonDestino != null &&
+                com.htogo.app.data.location.distanciaM(latEfectivaRepartidor, lonEfectivaRepartidor, latDestino, lonDestino) <= 80.0
             val aviso = when {
-                repartidorLlego -> null // ya está en el domicilio: se muestra el aviso de llegada
+                repartidorLlego || cercaDeDomicilio -> null // ya está en el domicilio o llegando: se muestra el aviso de llegada
                 u == null && latEfectivaRepartidor == null && ahoraMs - pantallaAbiertaMs >= 4_000L ->
                     "Ubicación del repartidor no disponible por ahora"
                 u != null && ahoraMs - u.recibidaMs > 120_000 ->
@@ -1194,7 +1197,10 @@ fun SeguimientoPedidoScreen(
             if (aviso != null) {
                 com.htogo.app.ui.components.AvisoMapa(
                     aviso,
-                    modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 112.dp, start = 16.dp, end = 64.dp)
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .statusBarsPadding()
+                        .padding(top = 108.dp, start = 12.dp, end = 68.dp)
                 )
             }
         }

@@ -254,7 +254,7 @@ fun ProductosPreciosScreen(
             if (productos.isEmpty()) {
                 item {
                     Text(
-                        "Aún no tienes productos. Agrega el primero; aparecerá aquí cuando el admin lo apruebe.",
+                        "Aún no tienes productos. Agrega el primero para comenzar a vender.",
                         fontSize = 12.sp,
                         color = HToGoColors.TextSecondary,
                         modifier = Modifier.padding(horizontal = 4.dp)
@@ -333,7 +333,7 @@ fun ProductosPreciosScreen(
                     onSuccess = {
                         enviando = false
                         mostrarAgregar = false
-                        toast = ToastInfo("Solicitud enviada al admin · pendiente de aprobación", success = false)
+                        toast = ToastInfo("Producto agregado al catálogo · aplicado al instante", success = true)
                     },
                     onError = { msg ->
                         enviando = false
@@ -381,10 +381,10 @@ private fun ReglasCard() {
             )
             Spacer(Modifier.height(8.dp))
             ReglaFila(
-                icon = Icons.Filled.HourglassTop,
-                color = HToGoColors.AccentAmber,
+                icon = Icons.Filled.Bolt,
+                color = HToGoColors.Primary,
                 titulo = "Agregar nuevo producto",
-                detalle = "Requiere aprobación del admin. Verás la solicitud abajo hasta que se apruebe."
+                detalle = "Inmediato — la nueva marca se agrega a tu catálogo activo al instante."
             )
         }
     }
@@ -563,14 +563,14 @@ private fun AgregarProductoBtn(onClick: () -> Unit) {
                     color = HToGoColors.Primary
                 )
                 Text(
-                    "Sujeto a aprobación del admin",
+                    "Se agrega de inmediato a tu catálogo",
                     fontSize = 11.sp,
                     color = HToGoColors.TextSecondary
                 )
             }
             Icon(
-                Icons.Filled.HourglassTop, null,
-                tint = HToGoColors.AccentAmber,
+                Icons.Filled.Bolt, null,
+                tint = HToGoColors.Primary,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -816,7 +816,7 @@ private fun AgregarProductoDialog(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "El admin debe aprobar antes de que aparezca en tu catálogo.",
+                    "El producto se agregará de inmediato al catálogo activo de tu negocio.",
                     fontSize = 13.sp,
                     color = HToGoColors.TextSecondary
                 )
@@ -905,10 +905,10 @@ private fun AgregarProductoDialog(
                         .fillMaxWidth()
                         .heightIn(min = 48.dp),
                     shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentAmber)
+                    colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                 ) {
                     Text(
-                        if (enviando) "Enviando…" else "Enviar a aprobación", fontWeight = FontWeight.SemiBold,
+                        if (enviando) "Guardando…" else "Agregar producto", fontWeight = FontWeight.SemiBold,
                         maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }

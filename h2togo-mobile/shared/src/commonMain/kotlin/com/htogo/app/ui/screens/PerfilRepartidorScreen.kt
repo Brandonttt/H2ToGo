@@ -507,7 +507,7 @@ fun PerfilRepartidorScreen(
                         nuevoNombre = nuevoNombre,
                         onSuccess = {
                             showModalCambioNombre = false
-                            mostrarAviso("Solicitud enviada al administrador (Pendiente de aprobación)", largo = true)
+                            mostrarAviso("Nombre comercial actualizado")
                         },
                         onError = { err ->
                             mostrarAviso(err, largo = true)
@@ -537,7 +537,7 @@ fun PerfilRepartidorScreen(
                         lon = lon,
                         onSuccess = {
                             showModalCambioDireccion = false
-                            mostrarAviso("Solicitud de cambio de dirección enviada al administrador", largo = true)
+                            mostrarAviso("Dirección de la base actualizada")
                         },
                         onError = { err ->
                             mostrarAviso(err, largo = true)
@@ -858,7 +858,7 @@ private fun DialogCambioNombreComercial(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Ingresa el nuevo nombre comercial. La solicitud quedará pendiente hasta ser aprobada por el administrador.",
+                        "Ingresa el nuevo nombre comercial. El cambio se aplicará de inmediato.",
                         fontSize = 13.sp,
                         color = HToGoColors.TextSecondary
                     )
@@ -909,7 +909,7 @@ private fun DialogCambioNombreComercial(
                     if (enviando) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
                     } else {
-                        Text("Enviar solicitud", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Text("Guardar cambio", color = Color.White, fontWeight = FontWeight.SemiBold)
                     }
                 }
             },
@@ -1083,7 +1083,7 @@ private fun ModalCambioDireccionBase(
                 ) {
                     Column {
                         Text("Cambiar dirección de la base", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = HToGoColors.TextPrimary)
-                        Text("Solicitud de cambio", fontSize = 12.sp, color = HToGoColors.TextSecondary)
+                        Text("Actualizar ubicación de la purificadora", fontSize = 12.sp, color = HToGoColors.TextSecondary)
                     }
                     IconButton(onClick = onDismiss, enabled = !enviando) {
                         Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = HToGoColors.TextSecondary)
@@ -1102,7 +1102,7 @@ private fun ModalCambioDireccionBase(
                 }
 
                 Text(
-                    "Esta solicitud quedará en estado pendiente hasta ser aprobada por el administrador.",
+                    "La nueva dirección de la base se aplicará de inmediato.",
                     fontSize = 12.sp,
                     color = HToGoColors.TextSecondary
                 )
@@ -1292,7 +1292,7 @@ private fun ModalCambioDireccionBase(
                         if (enviando) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
                         } else {
-                            Text("Enviar solicitud", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text("Guardar dirección", color = Color.White, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }

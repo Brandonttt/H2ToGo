@@ -133,7 +133,9 @@ fun OsmRouteMapView(
     /** Ubicación opcional de la purificadora base para mostrar su marcador de salida. */
     baseLat: Double? = null,
     baseLon: Double? = null,
-    baseLabel: String = "Purificadora"
+    baseLabel: String = "Purificadora",
+    /** Si es true, muestra el chip de estado en la esquina superior izquierda en Compose. */
+    mostrarEtiquetaEstado: Boolean = true
 ) {
     val leaflet = rememberLeaflet()
     var control by remember { mutableStateOf<ControlWeb?>(null) }
@@ -144,6 +146,17 @@ fun OsmRouteMapView(
     var altoBarraEstado by remember { mutableStateOf(0.dp) }
     val densidad = LocalDensity.current
     val arriba = altoBarraEstado + 72.dp
+    val infoEstado = remember(estadoPedido) {
+        when (estadoPedido?.lowercase()) {
+            "pendiente", "pendiente_programado" -> Triple("#94A3B8", Color(0xFF94A3B8), "Buscando repartidor")
+            "asignado" -> Triple("#F59E0B", Color(0xFFF59E0B), "Repartidor asignado")
+            "en_camino" -> Triple("#0284C7", Color(0xFF0284C7), "En camino")
+            "entregado" -> Triple("#10B981", Color(0xFF10B981), "Entregado")
+            "no_entregado" -> Triple("#EF4444", Color(0xFFEF4444), "No entregado")
+            "cancelado" -> Triple("#EF4444", Color(0xFFEF4444), "Cancelado")
+            else -> Triple("#0284C7", Color(0xFF0284C7), "")
+        }
+    }
 
     Box(modifier = modifier) {
         Spacer(
@@ -164,6 +177,32 @@ fun OsmRouteMapView(
                 alCrear = { control = it },
                 alMensaje = { if (it == "listo") listo = true }
             )
+            if (mostrarEtiquetaEstado && infoEstado.third.isNotEmpty()) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.White.copy(alpha = 0.96f),
+                    shadowElevation = 4.dp,
+                    modifier = Modifier.align(Alignment.TopStart).padding(top = arriba, start = 12.dp)
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            Modifier
+                                .size(9.dp)
+                                .background(infoEstado.second, RoundedCornerShape(99.dp))
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            infoEstado.third,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF0F172A)
+                        )
+                    }
+                }
+            }
             SelectorCapa(control, Modifier.align(Alignment.TopEnd).padding(top = arriba, end = 12.dp))
         }
 
@@ -204,17 +243,9 @@ fun OsmRouteMapView(
 
     LaunchedEffect(listo, estadoPedido) {
         if (!listo || estadoPedido == null) return@LaunchedEffect
-        val (color, texto) = when (estadoPedido.lowercase()) {
-            "pendiente", "pendiente_programado" -> "#94A3B8" to "Buscando repartidor"
-            "asignado" -> "#F59E0B" to "Repartidor asignado"
-            "en_camino" -> "#0284C7" to "En camino"
-            "entregado" -> "#10B981" to "Entregado"
-            "no_entregado" -> "#EF4444" to "No entregado"
-            "cancelado" -> "#EF4444" to "Cancelado"
-            else -> "#0284C7" to ""
-        }
+        val color = infoEstado.first
         val cerrado = estadoPedido.lowercase() in setOf("entregado", "no_entregado", "cancelado")
-        control?.ejecutar("setEstado('$color', '$texto', $cerrado);")
+        control?.ejecutar("setEstado('$color', '', $cerrado);")
     }
 
     val rutaJson = remember(routePoints) {

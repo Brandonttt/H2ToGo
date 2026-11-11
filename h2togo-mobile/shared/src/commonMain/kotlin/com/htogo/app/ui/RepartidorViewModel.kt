@@ -228,13 +228,15 @@ class RepartidorViewModel : ViewModel() {
                     )
                 )
                 if (resp.isSuccessful) {
+                    cargarMiNegocio()
+                    cargarInventarioBase()
                     cargarSolicitudes()
                     onSuccess()
                 } else {
-                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo agregar el producto (${resp.code()})")
                 }
             } catch (e: Exception) {
-                onError(e.message ?: "Error de red al enviar la solicitud")
+                onError(e.message ?: "Error de red al agregar el producto")
             }
         }
     }
@@ -258,7 +260,7 @@ class RepartidorViewModel : ViewModel() {
     }
 
     /**
-     * CU-009 / CU-020: Pide al admin agregar un vehículo al negocio (RN-019, RN-020).
+     * CU-009 / CU-020: Agrega un vehículo al negocio de forma inmediata.
      */
     fun solicitarAgregarVehiculo(
         request: com.htogo.app.data.dto.ActualizarVehiculoRequest,
@@ -281,19 +283,20 @@ class RepartidorViewModel : ViewModel() {
                     )
                 )
                 if (resp.isSuccessful) {
+                    cargarMiNegocio()
                     cargarSolicitudes()
                     onSuccess()
                 } else {
-                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo agregar el vehículo (${resp.code()})")
                 }
             } catch (e: Exception) {
-                onError(e.message ?: "Error de red al enviar la solicitud")
+                onError(e.message ?: "Error de red al agregar el vehículo")
             }
         }
     }
 
     /**
-     * CU-009 / CU-020: Pide al admin modificar los datos de un vehículo del negocio (RN-019).
+     * CU-009 / CU-020: Modifica los datos de un vehículo del negocio de forma inmediata.
      */
     fun solicitarModificarVehiculo(
         idVehiculo: Int,
@@ -318,19 +321,20 @@ class RepartidorViewModel : ViewModel() {
                     )
                 )
                 if (resp.isSuccessful) {
+                    cargarMiNegocio()
                     cargarSolicitudes()
                     onSuccess()
                 } else {
-                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo actualizar el vehículo (${resp.code()})")
                 }
             } catch (e: Exception) {
-                onError(e.message ?: "Error de red al enviar la solicitud")
+                onError(e.message ?: "Error de red al actualizar el vehículo")
             }
         }
     }
 
     /**
-     * CU-009 / CU-020: Pide al admin dar de baja un vehículo del negocio (RN-019).
+     * CU-009 / CU-020: Da de baja un vehículo del negocio de forma inmediata.
      */
     fun solicitarEliminarVehiculo(
         idVehiculo: Int,
@@ -347,19 +351,20 @@ class RepartidorViewModel : ViewModel() {
                     )
                 )
                 if (resp.isSuccessful) {
+                    cargarMiNegocio()
                     cargarSolicitudes()
                     onSuccess()
                 } else {
-                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo dar de baja el vehículo (${resp.code()})")
                 }
             } catch (e: Exception) {
-                onError(e.message ?: "Error de red al enviar la solicitud")
+                onError(e.message ?: "Error de red al dar de baja el vehículo")
             }
         }
     }
 
     /**
-     * CU-020: Pide al admin cambiar el nombre comercial del negocio (RN-019, RN-021).
+     * CU-020: Cambia el nombre comercial del negocio de forma inmediata.
      */
     fun solicitarCambioNombreNegocio(
         nuevoNombre: String,
@@ -375,19 +380,20 @@ class RepartidorViewModel : ViewModel() {
                     )
                 )
                 if (resp.isSuccessful) {
+                    cargarMiNegocio()
                     cargarSolicitudes()
                     onSuccess()
                 } else {
-                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo actualizar el nombre (${resp.code()})")
                 }
             } catch (e: Exception) {
-                onError(e.message ?: "Error de red al enviar la solicitud")
+                onError(e.message ?: "Error de red al actualizar el nombre")
             }
         }
     }
 
     /**
-     * CU-020: Pide al admin cambiar la dirección de la base del negocio (RN-019, RN-021).
+     * CU-020: Cambia la dirección de la base del negocio de forma inmediata.
      */
     fun solicitarCambioDireccionBase(
         calle: String,
@@ -422,13 +428,14 @@ class RepartidorViewModel : ViewModel() {
                     )
                 )
                 if (resp.isSuccessful) {
+                    cargarMiNegocio()
                     cargarSolicitudes()
                     onSuccess()
                 } else {
-                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo enviar la solicitud (${resp.code()})")
+                    onError(parseError(resp.errorBody()?.string()) ?: "No se pudo actualizar la dirección (${resp.code()})")
                 }
             } catch (e: Exception) {
-                onError(e.message ?: "Error de red al enviar la solicitud")
+                onError(e.message ?: "Error de red al actualizar la dirección")
             }
         }
     }

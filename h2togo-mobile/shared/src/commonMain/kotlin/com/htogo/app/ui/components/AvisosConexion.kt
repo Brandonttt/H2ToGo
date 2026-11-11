@@ -60,14 +60,33 @@ fun SinConexionBanner(visible: Boolean, modifier: Modifier = Modifier) {
 fun AvisoMapa(texto: String, modifier: Modifier = Modifier, icono: ImageVector = Icons.Filled.GpsNotFixed) {
     Surface(
         shape = RoundedCornerShape(99.dp),
-        color = Color(0xFFFEF3C7),
-        shadowElevation = 2.dp,
+        color = Color(0xFFFFFBEB),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.55f)),
+        shadowElevation = 4.dp,
         modifier = modifier
     ) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icono, null, tint = Color(0xFFB45309), modifier = Modifier.size(15.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(texto, fontSize = 12.sp, color = Color(0xFF92400E), fontWeight = FontWeight.Medium)
+        Row(
+            Modifier.padding(start = 6.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(99.dp),
+                color = Color(0xFFFEF3C7),
+                modifier = Modifier.size(20.dp)
+            ) {
+                androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+                    Icon(icono, null, tint = Color(0xFFD97706), modifier = Modifier.size(13.dp))
+                }
+            }
+            Spacer(Modifier.width(7.dp))
+            Text(
+                texto,
+                fontSize = 11.sp,
+                color = Color(0xFF92400E),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
         }
     }
 }

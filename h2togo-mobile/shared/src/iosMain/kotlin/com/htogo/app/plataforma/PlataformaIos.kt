@@ -89,7 +89,9 @@ object UiPlataformaIos : UiPlataforma {
                 web.customUserAgent = "HToGo-App/1.0 (iOS; info@h2togo.mx)"
                 web.scrollView.scrollEnabled = false // el mapa maneja sus propios gestos
                 web.scrollView.bounces = false
-                web.loadHTMLString(html, baseURL = NSURL.URLWithString("https://openstreetmap.org"))
+                web.scrollView.contentInsetAdjustmentBehavior =
+                    platform.UIKit.UIScrollViewContentInsetAdjustmentBehavior.UIScrollViewContentInsetAdjustmentNever
+                web.loadHTMLString(html, baseURL = NSURL.URLWithString("https://app.h2togo.mx/"))
                 alCrear(object : ControlWeb {
                     override fun ejecutar(js: String) = web.evaluateJavaScript(js, completionHandler = null)
                 })

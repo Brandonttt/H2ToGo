@@ -47,6 +47,7 @@ fun VistaWebAndroid(
                 )
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
+                settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                 settings.loadWithOverviewMode = false
                 settings.useWideViewPort = false
                 // La política de tiles de OpenStreetMap exige identificar la app.
@@ -59,6 +60,16 @@ fun VistaWebAndroid(
                     }
                 }
                 webViewClient = WebViewClient()
+                addOnLayoutChangeListener { _, l, t, r, b, ol, ot, or, ob ->
+                    if ((r - l) != (or - ol) || (b - t) != (ob - ot)) {
+                        post {
+                            evaluateJavascript(
+                                "if (window.ajustarTamano) ajustarTamano(true); if (window.fixMapHeight) fixMapHeight();",
+                                null
+                            )
+                        }
+                    }
+                }
                 // Dentro de pantallas con scroll, el mapa se queda con los gestos mientras se usa.
                 if (interactiva) {
                     setOnTouchListener { v, event ->
@@ -71,7 +82,7 @@ fun VistaWebAndroid(
                         false
                     }
                 }
-                loadDataWithBaseURL("https://openstreetmap.org", html, "text/html", "UTF-8", null)
+                loadDataWithBaseURL("https://app.h2togo.mx/", html, "text/html", "UTF-8", null)
                 val web = this
                 alCrear(object : ControlWeb {
                     override fun ejecutar(js: String) = web.evaluateJavascript(js, null)

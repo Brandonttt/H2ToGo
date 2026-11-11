@@ -708,7 +708,7 @@ fun InventarioVehiculoScreen(
                     repartidorViewModel.solicitarAgregarVehiculo(
                         request = req,
                         onSuccess = {
-                            mostrarAviso("Solicitud de alta enviada al Administrador para su aprobación.", largo = true)
+                            mostrarAviso("Vehículo agregado exitosamente a tu negocio.")
                             showEditarVehiculoDialog = false
                             vehiculoParaEditar = null
                         },
@@ -723,7 +723,7 @@ fun InventarioVehiculoScreen(
                             idVehiculo = idVeh,
                             request = req,
                             onSuccess = {
-                                mostrarAviso("Solicitud enviada al Administrador. El vehículo conserva sus datos actuales hasta la aprobación.", largo = true)
+                                mostrarAviso("Datos del vehículo actualizados exitosamente.")
                                 showEditarVehiculoDialog = false
                                 vehiculoParaEditar = null
                             },
@@ -747,12 +747,12 @@ fun InventarioVehiculoScreen(
                 Icon(Icons.Filled.Warning, null, tint = HToGoColors.AccentRose, modifier = Modifier.size(32.dp))
             },
             title = {
-                Text("¿Solicitar baja de vehículo?", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = HToGoColors.TextPrimary)
+                Text("¿Dar de baja vehículo?", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = HToGoColors.TextPrimary)
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Se enviará una solicitud al Administrador para dar de baja el siguiente vehículo:",
+                        "Se dará de baja el siguiente vehículo de tu negocio:",
                         fontSize = 13.sp,
                         color = HToGoColors.TextSecondary
                     )
@@ -776,7 +776,7 @@ fun InventarioVehiculoScreen(
                         }
                     }
                     Text(
-                        "El vehículo seguirá funcionando con normalidad hasta que el Administrador apruebe la solicitud.",
+                        "El vehículo dejará de aparecer como activo de inmediato.",
                         fontSize = 12.sp,
                         color = HToGoColors.TextSecondary
                     )
@@ -791,7 +791,7 @@ fun InventarioVehiculoScreen(
                             repartidorViewModel.solicitarEliminarVehiculo(
                                 idVehiculo = idVeh,
                                 onSuccess = {
-                                    mostrarAviso("Solicitud de baja enviada al Administrador para su aprobación.", largo = true)
+                                    mostrarAviso("Vehículo dado de baja exitosamente.")
                                 },
                                 onError = { err ->
                                     mostrarAviso(err, largo = true)
@@ -802,7 +802,7 @@ fun InventarioVehiculoScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.AccentRose),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Confirmar baja", fontWeight = FontWeight.SemiBold)
+                    Text("Dar de baja", fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
@@ -2143,13 +2143,13 @@ private fun SolicitarCambioVehiculoDialog(
         ) {
             Column(Modifier.padding(20.dp)) {
                 Text(
-                    if (esNuevo) "Solicitar alta de nuevo vehículo" else "Solicitar cambio de vehículo",
+                    if (esNuevo) "Agregar nuevo vehículo" else "Editar vehículo",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Toda alta o modificación requiere aprobación del Administrador antes de aplicarse.",
+                    "Los cambios se aplicarán de inmediato en tu negocio.",
                     fontSize = 13.sp, color = HToGoColors.TextSecondary
                 )
                 Spacer(Modifier.height(14.dp))
@@ -2173,11 +2173,6 @@ private fun SolicitarCambioVehiculoDialog(
                             Text(
                                 "Capacidad actual: ${vehiculo?.capacidadGarrafones ?: 30} garrafones",
                                 fontSize = 11.sp, color = HToGoColors.TextSecondary
-                            )
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                "Seguirá funcionando con estos datos hasta la resolución del Administrador.",
-                                fontSize = 11.sp, color = HToGoColors.PrimaryDark, fontWeight = FontWeight.Medium
                             )
                         }
                     }
@@ -2307,7 +2302,7 @@ private fun SolicitarCambioVehiculoDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = HToGoColors.Primary)
                 ) {
                     Text(
-                        if (esNuevo) "Enviar a aprobación" else "Solicitar cambio",
+                        if (esNuevo) "Agregar vehículo" else "Guardar cambios",
                         fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
                 }

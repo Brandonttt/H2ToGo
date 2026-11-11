@@ -66,12 +66,35 @@ internal fun htmlMapaSelector(
             function fixMapHeight() {
               var mapDiv = document.getElementById('map');
               if (!mapDiv) return;
-              var h = window.innerHeight;
+              var h = document.documentElement.clientHeight || window.innerHeight;
+              var w = document.documentElement.clientWidth || window.innerWidth;
               if (h && h > 50) {
                 mapDiv.style.height = h + 'px';
               } else {
                 mapDiv.style.height = fallbackHeight + 'px';
               }
+              if (w && w > 50) {
+                mapDiv.style.width = w + 'px';
+              }
+            }
+
+            function configurarRespaldoTiles(layer, coordsFn) {
+              layer.on('tileerror', function(err) {
+                var tile = err && err.tile;
+                var c = err && err.coords;
+                if (!tile || !c) return;
+                var intento = parseInt(tile.getAttribute('data-retry') || '0', 10);
+                if (intento >= 3) return;
+                tile.setAttribute('data-retry', String(intento + 1));
+                var s = ['a', 'b', 'c', 'd'][(c.x + c.y + intento) % 4];
+                if (intento === 0) {
+                  tile.src = 'https://' + s + '.basemaps.cartocdn.com/rastertiles/voyager/' + c.z + '/' + c.x + '/' + c.y + '.png';
+                } else if (intento === 1) {
+                  tile.src = 'https://tile.openstreetmap.org/' + c.z + '/' + c.x + '/' + c.y + '.png?r=1';
+                } else {
+                  tile.src = 'https://mt1.google.com/vt/lyrs=m&x=' + c.x + '&y=' + c.y + '&z=' + c.z;
+                }
+              });
             }
 
             var pinSvg = '<svg width="38" height="38" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
@@ -105,12 +128,21 @@ internal fun htmlMapaSelector(
                 });
 
                 // Capa de Google Maps (alternativa)
-                var googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20 });
-                // Capa OpenStreetMap Humanitaria (HOT) con subdominios públicos libres
-                var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-                  subdomains: 'abc',
-                  maxZoom: 19
+                var googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                  maxZoom: 20,
+                  keepBuffer: 4,
+                  updateWhenIdle: false,
+                  updateWhenZooming: false
                 });
+                // Capa OpenStreetMap con CDN global de alta disponibilidad y respaldo automático por tile
+                var osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                  maxZoom: 19,
+                  keepBuffer: 4,
+                  updateWhenIdle: false,
+                  updateWhenZooming: false
+                });
+                configurarRespaldoTiles(osmLayer);
+                configurarRespaldoTiles(googleLayer);
                 var currentTileLayer = osmLayer; // OSM por defecto; Google como alternativa
                 currentTileLayer.addTo(map);
 
@@ -118,6 +150,7 @@ internal fun htmlMapaSelector(
                   if (currentTileLayer) map.removeLayer(currentTileLayer);
                   currentTileLayer = (tipo === 'osm') ? osmLayer : googleLayer;
                   currentTileLayer.addTo(map);
+                  if (map) map.invalidateSize(false);
                 };
 
                 marker = L.marker([initialLat, initialLon], {
@@ -260,25 +293,58 @@ internal fun htmlMapaRuta(
 
             // Dentro de Compose el WebView arranca con altura 0 y "height: 100%" deja el mapa en
             // 0 px: se fija la altura real en píxeles y Leaflet recalcula su tamaño (igual que OsmMapView).
-            // Cuando SEGUIR está activo el contenedor mantiene siempre el tamaño de la diagonal (lado × lado)
-            // para que al rotar o arrastrar nunca cambie de dimensiones ni salte el origen de píxeles.
+            // Solo cuando el modo de rotación de rumbo (rumboArriba) está activo se expande el contenedor
+            // a la diagonal (lado × lado); en modo Norte arriba usa exactamente w × h para cargar menos tiles y más rápido.
             var SEGUIR = $seguirRepartidor;
-            function ajustarTamano() {
+            var INTERACTIVO = $isInteractive;
+            var siguiendo = SEGUIR, siguiendoCliente = true, rumboArriba = false, anguloMapa = 0, pedidoCerrado = false;
+            var repPos = null, objetivoRep = null, rumbo = 0, anim = null;
+            var destino = [$destLat, $destLon];
+            var ultimoW = 0, ultimoH = 0, ultimaDiag = false;
+            function ajustarTamano(forzar) {
+              var wrap = document.getElementById('wrap');
               var div = document.getElementById('map');
-              var w = window.innerWidth || 360, h = window.innerHeight;
-              h = (h && h > 50 ? h : 400);
-              var lado = SEGUIR ? Math.ceil(Math.sqrt(w * w + h * h)) : 0;
-              div.style.width = (SEGUIR ? lado : w) + 'px';
-              div.style.height = (SEGUIR ? lado : h) + 'px';
-              div.style.left = (SEGUIR ? (w - lado) / 2 : 0) + 'px';
-              div.style.top = (SEGUIR ? (h - lado) / 2 : 0) + 'px';
-              if (typeof map !== 'undefined' && map) {
-                map.invalidateSize({ pan: false });
+              if (!div) return;
+              var w = (wrap && wrap.clientWidth) || document.documentElement.clientWidth || window.innerWidth || screen.width || 360;
+              var h = (wrap && wrap.clientHeight) || document.documentElement.clientHeight || window.innerHeight || screen.height || 640;
+              if (w < 50) w = screen.width || 360;
+              if (h < 50) h = screen.height || 640;
+              var usarDiagonal = SEGUIR && (rumboArriba || Math.abs(anguloMapa % 360) > 0.5);
+              var lado = usarDiagonal ? Math.ceil(Math.sqrt(w * w + h * h)) : 0;
+              div.style.width = (usarDiagonal ? lado : w) + 'px';
+              div.style.height = (usarDiagonal ? lado : h) + 'px';
+              div.style.left = (usarDiagonal ? Math.round((w - lado) / 2) : 0) + 'px';
+              div.style.top = (usarDiagonal ? Math.round((h - lado) / 2) : 0) + 'px';
+              var cambioDimension = forzar || Math.abs(w - ultimoW) > 2 || Math.abs(h - ultimoH) > 2 || usarDiagonal !== ultimaDiag;
+              ultimoW = w;
+              ultimoH = h;
+              ultimaDiag = usarDiagonal;
+              if (typeof map !== 'undefined' && map && cambioDimension) {
+                map.invalidateSize({ pan: false, animate: false });
                 if (SEGUIR && siguiendo && repPos) map.setView(centroVisible(repPos, map.getZoom()), map.getZoom(), { animate: false });
                 else if (SEGUIR && siguiendo && !repPos) map.setView(centroVisible(destino, map.getZoom()), map.getZoom(), { animate: false });
               }
             }
-            ajustarTamano();
+            ajustarTamano(true);
+
+            function configurarRespaldoTiles(layer) {
+              layer.on('tileerror', function(err) {
+                var tile = err && err.tile;
+                var c = err && err.coords;
+                if (!tile || !c) return;
+                var intento = parseInt(tile.getAttribute('data-retry') || '0', 10);
+                if (intento >= 3) return;
+                tile.setAttribute('data-retry', String(intento + 1));
+                var s = ['a', 'b', 'c', 'd'][(c.x + c.y + intento) % 4];
+                if (intento === 0) {
+                  tile.src = 'https://' + s + '.basemaps.cartocdn.com/rastertiles/voyager/' + c.z + '/' + c.x + '/' + c.y + '.png';
+                } else if (intento === 1) {
+                  tile.src = 'https://tile.openstreetmap.org/' + c.z + '/' + c.x + '/' + c.y + '.png?r=1';
+                } else {
+                  tile.src = 'https://mt1.google.com/vt/lyrs=m&x=' + c.x + '&y=' + c.y + '&z=' + c.z;
+                }
+              });
+            }
 
             var map = L.map('map', {
               center: [$destLat, $destLon], zoom: 15, zoomControl: false, attributionControl: false,
@@ -286,12 +352,21 @@ internal fun htmlMapaRuta(
               inertia: false
             });
             // Capa de Google Maps (alternativa)
-            var googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20 });
-            // Capa OpenStreetMap Humanitaria (HOT) con subdominios públicos libres
-            var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-              subdomains: 'abc',
-              maxZoom: 19
+            var googleLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+              maxZoom: 20,
+              keepBuffer: 4,
+              updateWhenIdle: false,
+              updateWhenZooming: false
             });
+            // Capa OpenStreetMap con CDN global de alta disponibilidad y respaldo automático por tile
+            var osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              maxZoom: 19,
+              keepBuffer: 4,
+              updateWhenIdle: false,
+              updateWhenZooming: false
+            });
+            configurarRespaldoTiles(osmLayer);
+            configurarRespaldoTiles(googleLayer);
             var currentLayer = osmLayer; // OSM por defecto; Google como alternativa
             currentLayer.addTo(map);
 
@@ -299,19 +374,24 @@ internal fun htmlMapaRuta(
               if (currentLayer) map.removeLayer(currentLayer);
               currentLayer = (tipo === 'osm') ? osmLayer : googleLayer;
               currentLayer.addTo(map);
+              ajustarTamano(true);
             }
 
-            if (window.ResizeObserver) new ResizeObserver(ajustarTamano).observe(document.body);
-            window.addEventListener('resize', ajustarTamano);
-            [100, 350, 800].forEach(function (ms) { setTimeout(ajustarTamano, ms); });
+            if (window.ResizeObserver) {
+              var ro = new ResizeObserver(function() { ajustarTamano(true); });
+              var wrapEl = document.getElementById('wrap');
+              if (wrapEl) ro.observe(wrapEl);
+              ro.observe(document.body);
+            }
+            window.addEventListener('resize', function() { ajustarTamano(true); });
+            [50, 150, 350, 700, 1200, 2000].forEach(function (ms) {
+              setTimeout(function() { ajustarTamano(true); }, ms);
+            });
 
             var markerDest = L.marker([$destLat, $destLon], { icon: destIcon }).addTo(map).bindPopup('<b>Destino de entrega</b>');
             var markerRep = null, markerBase = null, lineasRuta = [], encuadrado = false, rutaPrevia = '';
-            var rutaActual = [], paradasActuales = [], destino = [$destLat, $destLon];
+            var rutaActual = [], paradasActuales = [];
             var PALETA_TRAMOS = ['#10B981', '#7C3AED', '#EA580C', '#2563EB', '#DB2777', '#0891B2'];
-            var repPos = null, objetivoRep = null, rumbo = 0, anim = null;
-            var INTERACTIVO = $isInteractive;
-            var siguiendo = SEGUIR, siguiendoCliente = true, rumboArriba = false, anguloMapa = 0, pedidoCerrado = false;
             var brujula = document.getElementById('brujula'), centrar = document.getElementById('centrar');
             if (SEGUIR) brujula.style.display = 'flex';
             else if (INTERACTIVO) centrar.style.display = 'flex';
@@ -521,6 +601,7 @@ internal fun htmlMapaRuta(
               var objetivo = (SEGUIR && rumboArriba && repPos && !pedidoCerrado) ? rumbo : 0;
               var delta = ((objetivo - anguloMapa) % 360 + 540) % 360 - 180; // giro más corto
               anguloMapa += delta;
+              ajustarTamano(false);
               if (repPos && SEGUIR && siguiendo) map.setView(centroVisible(repPos, map.getZoom()), map.getZoom(), { animate: false });
               document.getElementById('map').style.transform = 'rotate(' + (-anguloMapa) + 'deg)';
               brujula.querySelector('svg').style.transform = 'rotate(' + (-anguloMapa) + 'deg)';

@@ -74,7 +74,9 @@ public class SolicitudService {
         s.setIdVehiculo(req.idVehiculo());
         s.setValorAnterior(valorAnterior(req, negocio));
         s.setValorNuevo(toJson(req.valorNuevo()));
-        s.setEstado(EstadoSolicitud.pendiente);
+        aplicarCambio(s);
+        s.setEstado(EstadoSolicitud.aprobado);
+        s.setFechaResolucion(OffsetDateTime.now());
         solicitudRepository.save(s);
         return toResponse(s);
     }

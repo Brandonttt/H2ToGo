@@ -552,6 +552,7 @@ fun RutaEntregaScreen(
                 baseLat = ubicacionBasePurificadora.first,
                 baseLon = ubicacionBasePurificadora.second,
                 baseLabel = nombrePurificadora,
+                mostrarEtiquetaEstado = posicionSimulada == null,
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -647,7 +648,7 @@ fun RutaEntregaScreen(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .statusBarsPadding()
-                        .padding(top = 60.dp, start = 12.dp)
+                        .padding(top = 72.dp, start = 12.dp)
                 )
             }
 
