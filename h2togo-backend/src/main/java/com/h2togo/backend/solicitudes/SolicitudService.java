@@ -1,6 +1,7 @@
 package com.h2togo.backend.solicitudes;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.h2togo.backend.bd.TareaSistema;
 import com.h2togo.backend.common.BusinessRuleException;
 import com.h2togo.backend.common.ConflictException;
 import com.h2togo.backend.common.NotFoundException;
@@ -37,48 +38,65 @@ public class SolicitudService {
     private final NegocioRepository negocioRepository;
     private final PushService pushService;
     private final NamedParameterJdbcTemplate jdbc;
+    private final TareaSistema tareaSistema;
     private final ObjectMapper json = new ObjectMapper();
 
     public SolicitudService(SolicitudCambioPerfilRepository solicitudRepository,
             RepartidorRepository repartidorRepository, NegocioRepository negocioRepository,
-            PushService pushService, NamedParameterJdbcTemplate jdbc) {
+            PushService pushService, NamedParameterJdbcTemplate jdbc, TareaSistema tareaSistema) {
         this.solicitudRepository = solicitudRepository;
         this.repartidorRepository = repartidorRepository;
         this.negocioRepository = negocioRepository;
         this.pushService = pushService;
         this.jdbc = jdbc;
+        this.tareaSistema = tareaSistema;
     }
 
-    // ---------------------------------------------------------------- CU-020: crear
+    // ---------------------------------------------------------------- CU-020: crear y aplicar al instante
 
-    @Transactional
     public SolicitudResponse crear(int idRepartidor, SolicitudRequest req) {
-        Negocio negocio = negocioComoDueno(idRepartidor); // RN-021
-        if (req.codigoCambio() == CodigoCambioPerfil.AGREGAR_PRODUCTO) {
-            validarAgregarProducto(negocio.getId(), req.valorNuevo());
-        } else if (req.codigoCambio() == CodigoCambioPerfil.AGREGAR_VEHICULO) {
-            validarAgregarVehiculo(negocio.getId(), req.valorNuevo());
-        } else if (req.codigoCambio() == CodigoCambioPerfil.DATOS_VEHICULO) {
-            validarModificarVehiculo(negocio.getId(), req.idVehiculo(), req.valorNuevo());
-        } else if (req.codigoCambio() == CodigoCambioPerfil.ELIMINAR_VEHICULO) {
-            validarEliminarVehiculo(negocio.getId(), req.idVehiculo());
-        } else if (req.codigoCambio() == CodigoCambioPerfil.NOMBRE_NEGOCIO) {
-            validarNombreNegocio(negocio.getId(), req.valorNuevo());
-        } else if (req.codigoCambio() == CodigoCambioPerfil.DIRECCION_BASE) {
-            validarDireccionBase(negocio.getId(), req.valorNuevo());
-        }
+        // Se ejecuta con rol h2togo_sistema (vía TareaSistema) porque h2togo_repartidor no tiene
+        // permisos de escritura directa sobre negocios, vehiculos_negocio ni productos_negocio (INSERT),
+        // ni para insertar solicitudes ya resueltas (pol_solicitudes_dueno_alta).
+        return tareaSistema.consultar(() -> {
+            Negocio negocio = negocioComoDueno(idRepartidor); // RN-021
+            if (req.codigoCambio() == CodigoCambioPerfil.AGREGAR_PRODUCTO) {
+                validarAgregarProducto(negocio.getId(), req.valorNuevo());
+            } else if (req.codigoCambio() == CodigoCambioPerfil.AGREGAR_VEHICULO) {
+                validarAgregarVehiculo(negocio.getId(), req.valorNuevo());
+            } else if (req.codigoCambio() == CodigoCambioPerfil.DATOS_VEHICULO) {
+                validarModificarVehiculo(negocio.getId(), req.idVehiculo(), req.valorNuevo());
+            } else if (req.codigoCambio() == CodigoCambioPerfil.ELIMINAR_VEHICULO) {
+                validarEliminarVehiculo(negocio.getId(), req.idVehiculo());
+            } else if (req.codigoCambio() == CodigoCambioPerfil.NOMBRE_NEGOCIO) {
+                validarNombreNegocio(negocio.getId(), req.valorNuevo());
+            } else if (req.codigoCambio() == CodigoCambioPerfil.DIRECCION_BASE) {
+                validarDireccionBase(negocio.getId(), req.valorNuevo());
+            }
 
-        SolicitudCambioPerfil s = new SolicitudCambioPerfil();
-        s.setCodigoCambio(req.codigoCambio());
-        s.setIdNegocio(negocio.getId());
-        s.setIdVehiculo(req.idVehiculo());
-        s.setValorAnterior(valorAnterior(req, negocio));
-        s.setValorNuevo(toJson(req.valorNuevo()));
-        aplicarCambio(s);
-        s.setEstado(EstadoSolicitud.aprobado);
-        s.setFechaResolucion(OffsetDateTime.now());
-        solicitudRepository.save(s);
-        return toResponse(s);
+            // Limpia solicitudes pendientes previas del mismo tipo para que no queden colgadas
+            jdbc.update("""
+                    DELETE FROM solicitudes_cambio_perfil
+                    WHERE id_negocio = :neg AND estado = 'pendiente' AND codigo_cambio = CAST(:cod AS codigo_cambio_perfil)""",
+                    new MapSqlParameterSource().addValue("neg", negocio.getId()).addValue("cod", req.codigoCambio().name()));
+
+            Integer idRevisor = jdbc.query(
+                    "SELECT id_usuario FROM usuarios WHERE rol = 'admin' ORDER BY id_usuario LIMIT 1",
+                    rs -> rs.next() ? rs.getInt(1) : null);
+
+            SolicitudCambioPerfil s = new SolicitudCambioPerfil();
+            s.setCodigoCambio(req.codigoCambio());
+            s.setIdNegocio(negocio.getId());
+            s.setIdVehiculo(req.idVehiculo());
+            s.setValorAnterior(valorAnterior(req, negocio));
+            s.setValorNuevo(toJson(req.valorNuevo()));
+            aplicarCambio(s);
+            s.setEstado(EstadoSolicitud.aprobado);
+            s.setIdAdminRevisor(idRevisor != null ? idRevisor : idRepartidor);
+            s.setFechaResolucion(OffsetDateTime.now());
+            solicitudRepository.save(s);
+            return toResponse(s);
+        });
     }
 
     @Transactional(readOnly = true)
@@ -195,12 +213,23 @@ public class SolicitudService {
                             .addValue("marca", texto(v, "marca")).addValue("modelo", texto(v, "modelo"))
                             .addValue("color", texto(v, "color")).addValue("placas", texto(v, "placas"))
                             .addValue("cap", intg(v, "capacidadGarrafones")));
-            case ELIMINAR_VEHICULO -> jdbc.update(
-                    "UPDATE vehiculos_negocio SET activo = FALSE WHERE id_vehiculo = :veh AND id_negocio = :neg",
-                    new MapSqlParameterSource().addValue("veh", s.getIdVehiculo()).addValue("neg", idNegocio));
+            case ELIMINAR_VEHICULO -> {
+                var psVeh = new MapSqlParameterSource().addValue("veh", s.getIdVehiculo()).addValue("neg", idNegocio);
+                jdbc.update("""
+                        UPDATE repartidores SET id_vehiculo_actual = NULL, estado_operativo = FALSE
+                        WHERE id_vehiculo_actual = :veh AND id_negocio = :neg""", psVeh);
+                jdbc.update(
+                        "UPDATE vehiculos_negocio SET activo = FALSE WHERE id_vehiculo = :veh AND id_negocio = :neg",
+                        psVeh);
+            }
             case AGREGAR_PRODUCTO -> jdbc.update("""
-                    INSERT INTO productos_negocio (id_negocio, id_marca, precio, precio_envase, capacidad_maxima)
-                    VALUES (:neg, :marca, :precio, :precioEnvase, :cap)""",
+                    INSERT INTO productos_negocio (id_negocio, id_marca, precio, precio_envase, capacidad_maxima, activo)
+                    VALUES (:neg, :marca, :precio, :precioEnvase, :cap, TRUE)
+                    ON CONFLICT (id_negocio, id_marca) DO UPDATE SET
+                        precio = EXCLUDED.precio,
+                        precio_envase = EXCLUDED.precio_envase,
+                        capacidad_maxima = EXCLUDED.capacidad_maxima,
+                        activo = TRUE""",
                     new MapSqlParameterSource().addValue("neg", idNegocio).addValue("marca", intg(v, "idMarca"))
                             .addValue("precio", bdec(v, "precio")).addValue("precioEnvase", bdec(v, "precioEnvase"))
                             .addValue("cap", intg(v, "capacidadMaxima")));
@@ -228,14 +257,12 @@ public class SolicitudService {
         if (!Boolean.TRUE.equals(marcaActiva)) {
             throw new NotFoundException("MARCA_NO_ENCONTRADA", "La marca no existe o está inactiva.");
         }
-        Integer yaExiste = jdbc.queryForObject("""
-                SELECT (SELECT COUNT(*) FROM productos_negocio WHERE id_negocio = :neg AND id_marca = :marca)
-                     + (SELECT COUNT(*) FROM solicitudes_cambio_perfil
-                        WHERE id_negocio = :neg AND estado = 'pendiente' AND codigo_cambio = 'AGREGAR_PRODUCTO'
-                          AND (valor_nuevo::jsonb ->> 'idMarca')::int = :marca)""", p, Integer.class);
+        Integer yaExiste = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM productos_negocio WHERE id_negocio = :neg AND id_marca = :marca AND activo = TRUE",
+                p, Integer.class);
         if (yaExiste != null && yaExiste > 0) {
             throw new ConflictException("PRODUCTO_YA_EN_CATALOGO",
-                    "Esa marca ya está en tu catálogo o tiene una solicitud pendiente.");
+                    "Esa marca ya está activa en tu catálogo.");
         }
     }
 
@@ -259,14 +286,12 @@ public class SolicitudService {
         if (placas == null) return;
 
         var p = new MapSqlParameterSource().addValue("placas", placas.toUpperCase()).addValue("neg", idNegocio);
-        Integer yaExiste = jdbc.queryForObject("""
-                SELECT (SELECT COUNT(*) FROM vehiculos_negocio WHERE id_negocio = :neg AND UPPER(placas) = :placas AND activo = TRUE)
-                     + (SELECT COUNT(*) FROM solicitudes_cambio_perfil
-                        WHERE id_negocio = :neg AND estado = 'pendiente' AND codigo_cambio = 'AGREGAR_VEHICULO'
-                          AND UPPER(valor_nuevo::jsonb ->> 'placas') = :placas)""", p, Integer.class);
+        Integer yaExiste = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM vehiculos_negocio WHERE id_negocio = :neg AND UPPER(placas) = :placas AND activo = TRUE",
+                p, Integer.class);
         if (yaExiste != null && yaExiste > 0) {
             throw new ConflictException("VEHICULO_DUPLICADO",
-                    "Ya existe un vehículo registrado con esas placas en tu negocio o tiene una solicitud pendiente.");
+                    "Ya existe un vehículo activo registrado con esas placas en tu negocio.");
         }
     }
 
@@ -332,14 +357,6 @@ public class SolicitudService {
         if (nombre.trim().length() > 150) {
             throw new BusinessRuleException("NOMBRE_INVALIDO", "El nombre comercial no puede exceder 150 caracteres.");
         }
-        Integer yaPendiente = jdbc.queryForObject("""
-                SELECT COUNT(*) FROM solicitudes_cambio_perfil
-                WHERE id_negocio = :neg AND estado = 'pendiente' AND codigo_cambio = 'NOMBRE_NEGOCIO'""",
-                new MapSqlParameterSource("neg", idNegocio), Integer.class);
-        if (yaPendiente != null && yaPendiente > 0) {
-            throw new ConflictException("SOLICITUD_PENDIENTE",
-                    "Ya existe una solicitud pendiente para cambiar el nombre comercial.");
-        }
     }
 
     private void validarDireccionBase(int idNegocio, Map<String, Object> v) {
@@ -351,14 +368,6 @@ public class SolicitudService {
                 || colonia == null || colonia.trim().isBlank() || cp == null || cp.trim().isBlank()) {
             throw new BusinessRuleException("DIRECCION_INVALIDA",
                     "La dirección requiere calle, número exterior, colonia y código postal.");
-        }
-        Integer yaPendiente = jdbc.queryForObject("""
-                SELECT COUNT(*) FROM solicitudes_cambio_perfil
-                WHERE id_negocio = :neg AND estado = 'pendiente' AND codigo_cambio = 'DIRECCION_BASE'""",
-                new MapSqlParameterSource("neg", idNegocio), Integer.class);
-        if (yaPendiente != null && yaPendiente > 0) {
-            throw new ConflictException("SOLICITUD_PENDIENTE",
-                    "Ya existe una solicitud pendiente para cambiar la dirección de la base.");
         }
     }
 
