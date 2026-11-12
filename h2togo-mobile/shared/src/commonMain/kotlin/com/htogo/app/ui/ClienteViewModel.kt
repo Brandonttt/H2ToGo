@@ -864,6 +864,7 @@ class ClienteViewModel : ViewModel() {
     }
 
     private fun recargarDatosDeSesion() {
+        _errorMessage.value = null // un error de la cuenta anterior (p. ej. suspendida) no debe verse en la nueva
         cargarMarcas()
         cargarDirecciones()
         cargarHistorial()
@@ -952,5 +953,6 @@ class ClienteViewModel : ViewModel() {
         _repartidorLlego.value = false
         _rutaSeguimiento.value = emptyList()
         _distanciaRutaKm.value = null
+        _errorMessage.value = null
     }
 }

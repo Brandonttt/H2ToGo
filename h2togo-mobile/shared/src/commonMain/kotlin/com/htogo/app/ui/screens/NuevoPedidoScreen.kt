@@ -749,7 +749,10 @@ fun NuevoPedidoScreen(
     val perfilActual = perfil?.takeIf { it.id == purificadoraId }
     val direccionesDisponibles by clienteViewModel.direcciones.collectAsState()
     // Refresca al abrir: si se agregó un domicilio en otra pantalla, aparece aquí sin reiniciar la app.
-    LaunchedEffect(Unit) { clienteViewModel.cargarDirecciones() }
+    LaunchedEffect(Unit) {
+        clienteViewModel.clearError() // al abrir, sin errores de un intento anterior
+        clienteViewModel.cargarDirecciones()
+    }
     val isLoading by clienteViewModel.isLoading.collectAsState()
     val errorMsg by clienteViewModel.errorMessage.collectAsState()
 

@@ -109,6 +109,7 @@ fun NuevoPedidoAbiertoScreen(
     var tieneEnvase by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
+        clienteViewModel.clearError() // al abrir, sin errores de un intento anterior
         if (marcasDisponibles.isEmpty()) clienteViewModel.cargarMarcas()
     }
     LaunchedEffect(marcasDisponibles) {
