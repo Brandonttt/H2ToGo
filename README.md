@@ -1,7 +1,7 @@
 # H2ToGo
 # Manual de Usuario — Plataforma H2ToGo
 
-![Banner Manual de Usuario H2ToGo](ux/banner_manual.svg)
+![Banner Manual de Usuario H2ToGo](docs/ux/banner_manual.svg)
 
 > [!NOTE]
 > **Acerca de H2ToGo**
