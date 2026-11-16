@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 380" width="100%" height="380">
+  <rect width="920" height="380" rx="18" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+  <text x="32" y="38" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="18" font-weight="800" fill="#0F172A">Guía Visual de Controles del Mapa Interactivo (Cliente y Repartidor)</text>
+  <text x="32" y="58" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="12.5" fill="#475569">Todos los elementos se actualizan en tiempo real mediante WebSockets STOMP + respaldo HTTP</text>
+
+  <!-- Simulated Map Viewport -->
+  <g transform="translate(32, 76)">
+    <rect width="480" height="276" rx="16" fill="#E2E8F0" stroke="#94A3B8"/>
+    <!-- Street grid lines -->
+    <line x1="0" y1="60" x2="480" y2="95" stroke="#FFFFFF" stroke-width="10"/>
+    <line x1="0" y1="150" x2="480" y2="185" stroke="#FFFFFF" stroke-width="12"/>
+    <line x1="0" y1="225" x2="480" y2="255" stroke="#FFFFFF" stroke-width="8"/>
+    <line x1="110" y1="0" x2="85" y2="276" stroke="#FFFFFF" stroke-width="10"/>
+    <line x1="255" y1="0" x2="225" y2="276" stroke="#FFFFFF" stroke-width="14"/>
+    <line x1="395" y1="0" x2="365" y2="276" stroke="#FFFFFF" stroke-width="9"/>
+
+    <!-- Top-left Status Chip -->
+    <rect x="14" y="14" width="108" height="30" rx="15" fill="#FFFFFF" stroke="#CBD5E1"/>
+    <circle cx="30" cy="29" r="5" fill="#0284C7"/>
+    <text x="42" y="33" font-family="Segoe UI, sans-serif" font-size="11.5" font-weight="700" fill="#0F172A">En camino</text>
+    <circle cx="14" cy="14" r="9" fill="#0284C7"/>
+    <text x="14" y="18" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" font-weight="800" fill="#FFFFFF">A</text>
+
+    <!-- Top-right Layer Switcher -->
+    <rect x="372" y="14" width="94" height="30" rx="15" fill="#FFFFFF" stroke="#CBD5E1"/>
+    <text x="419" y="33" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11.5" font-weight="700" fill="#0F172A">OSM / Maps</text>
+    <circle cx="466" cy="14" r="9" fill="#0284C7"/>
+    <text x="466" y="18" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" font-weight="800" fill="#FFFFFF">B</text>
+
+    <!-- Compass Button -->
+    <circle cx="444" cy="78" r="21" fill="#FFFFFF" stroke="#0284C7" stroke-width="2"/>
+    <text x="444" y="68" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="8" font-weight="800" fill="#EF4444">N</text>
+    <polygon points="444,70 449,80 444,78 439,80" fill="#EF4444"/>
+    <polygon points="444,90 439,80 444,82 449,80" fill="#94A3B8"/>
+    <circle cx="465" cy="59" r="9" fill="#0284C7"/>
+    <text x="465" y="63" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" font-weight="800" fill="#FFFFFF">C</text>
+
+    <!-- Centrar Button -->
+    <rect x="382" y="110" width="84" height="32" rx="16" fill="#FFFFFF" stroke="#CBD5E1"/>
+    <text x="424" y="130" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11.5" font-weight="700" fill="#0284C7">◎ Centrar</text>
+    <circle cx="466" cy="110" r="9" fill="#0284C7"/>
+    <text x="466" y="114" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" font-weight="800" fill="#FFFFFF">D</text>
+
+    <!-- Base Pin -->
+    <rect x="86" y="62" width="28" height="28" rx="8" fill="#0F172A" stroke="#38BDF8" stroke-width="2.5"/>
+    <text x="100" y="81" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" font-weight="800" fill="#FFFFFF">P</text>
+    <circle cx="86" cy="62" r="9" fill="#0284C7"/>
+    <text x="86" y="66" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" font-weight="800" fill="#FFFFFF">E</text>
+
+    <!-- Route Polyline -->
+    <polyline points="195,125 243,130 232,208 308,215" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="195,125 243,130 232,208 308,215" fill="none" stroke="#7C3AED" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Driver Marker -->
+    <circle cx="195" cy="125" r="17" fill="#0284C7" stroke="#FFFFFF" stroke-width="3"/>
+    <polygon points="216,125 207,119 207,131" fill="#0284C7" stroke="#FFFFFF" stroke-width="1"/>
+    <circle cx="195" cy="125" r="6" fill="#FFFFFF"/>
+    <circle cx="175" cy="108" r="9" fill="#0284C7"/>
+    <text x="175" y="112" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" font-weight="800" fill="#FFFFFF">F</text>
+
+    <!-- Destination Pin -->
+    <circle cx="315" cy="212" r="15" fill="#10B981" stroke="#FFFFFF" stroke-width="3"/>
+    <circle cx="315" cy="212" r="5" fill="#FFFFFF"/>
+    <circle cx="333" cy="197" r="9" fill="#0284C7"/>
+    <text x="333" y="201" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" font-weight="800" fill="#FFFFFF">G</text>
+  </g>
+
+  <!-- Legend on the right -->
+  <g transform="translate(534, 82)" font-family="Segoe UI, Inter, Arial, sans-serif">
+    <g transform="translate(0, 0)">
+      <circle cx="12" cy="12" r="11" fill="#0284C7"/>
+      <text x="12" y="16" text-anchor="middle" font-size="11" font-weight="800" fill="#FFFFFF">A</text>
+      <text x="32" y="13" font-size="13" font-weight="700" fill="#0F172A">Chip de Estado en Vivo</text>
+      <text x="32" y="28" font-size="11.5" fill="#475569">Muestra la fase actual del pedido (En camino, Asignado…).</text>
+    </g>
+    <g transform="translate(0, 40)">
+      <circle cx="12" cy="12" r="11" fill="#0284C7"/>
+      <text x="12" y="16" text-anchor="middle" font-size="11" font-weight="800" fill="#FFFFFF">B</text>
+      <text x="32" y="13" font-size="13" font-weight="700" fill="#0F172A">Selector de Cartografía (OSM / Google Maps)</text>
+      <text x="32" y="28" font-size="11.5" fill="#475569">Alterna con un toque entre OpenStreetMap y Google Maps.</text>
+    </g>
+    <g transform="translate(0, 80)">
+      <circle cx="12" cy="12" r="11" fill="#0284C7"/>
+      <text x="12" y="16" text-anchor="middle" font-size="11" font-weight="800" fill="#FFFFFF">C</text>
+      <text x="32" y="13" font-size="13" font-weight="700" fill="#0F172A">Brújula (Norte arriba / Rumbo del repartidor)</text>
+      <text x="32" y="28" font-size="11.5" fill="#475569">Gira el mapa automáticamente en la dirección de avance.</text>
+    </g>
+    <g transform="translate(0, 120)">
+      <circle cx="12" cy="12" r="11" fill="#0284C7"/>
+      <text x="12" y="16" text-anchor="middle" font-size="11" font-weight="800" fill="#FFFFFF">D</text>
+      <text x="32" y="13" font-size="13" font-weight="700" fill="#0F172A">Botón ◎ Centrar</text>
+      <text x="32" y="28" font-size="11.5" fill="#475569">Aparece al mover el mapa; reencuadra repartidor y destino.</text>
+    </g>
+    <g transform="translate(0, 160)">
+      <circle cx="12" cy="12" r="11" fill="#0284C7"/>
+      <text x="12" y="16" text-anchor="middle" font-size="11" font-weight="800" fill="#FFFFFF">E</text>
+      <text x="32" y="13" font-size="13" font-weight="700" fill="#0F172A">Marcador de Purificadora Base</text>
+      <text x="32" y="28" font-size="11.5" fill="#475569">Punto de salida registrado por la purificadora.</text>
+    </g>
+    <g transform="translate(0, 200)">
+      <circle cx="12" cy="12" r="11" fill="#0284C7"/>
+      <text x="12" y="16" text-anchor="middle" font-size="11" font-weight="800" fill="#FFFFFF">F</text>
+      <text x="32" y="13" font-size="13" font-weight="700" fill="#0F172A">Repartidor + Ruta Vial A* / OR-Tools</text>
+      <text x="32" y="28" font-size="11.5" fill="#475569">Se desliza en vivo y recorta el tramo conforme avanza.</text>
+    </g>
+    <g transform="translate(0, 240)">
+      <circle cx="12" cy="12" r="11" fill="#0284C7"/>
+      <text x="12" y="16" text-anchor="middle" font-size="11" font-weight="800" fill="#FFFFFF">G</text>
+      <text x="32" y="13" font-size="13" font-weight="700" fill="#0F172A">Pin de Domicilio (o Paradas 1, 2, 3…)</text>
+      <text x="32" y="28" font-size="11.5" fill="#475569">Valida radio ≤ 30 m por GPS para habilitar la entrega.</text>
+    </g>
+  </g>
+</svg>

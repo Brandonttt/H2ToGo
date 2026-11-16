@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 220" width="100%" height="220">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#072A5E"/>
+      <stop offset="55%" stop-color="#0369A1"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.07"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="220" rx="20" fill="url(#bgGrad)"/>
+  <circle cx="880" cy="40" r="110" fill="#38BDF8" opacity="0.12"/>
+  <circle cx="760" cy="195" r="85" fill="#7DD3FC" opacity="0.10"/>
+
+  <!-- Water drop badge -->
+  <rect x="36" y="36" width="68" height="68" rx="18" fill="#E0F2FE"/>
+  <path d="M70 48 C59 63 52 72 52 81 A18 18 0 0 0 88 81 C88 72 81 63 70 48 Z" fill="#0284C7"/>
+  <circle cx="64" cy="79" r="4" fill="#BAE6FD"/>
+
+  <!-- Title & subtitle -->
+  <text x="122" y="66" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="28" font-weight="800" fill="#FFFFFF">Manual de Usuario — H2ToGo</text>
+  <text x="122" y="92" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="14" font-weight="500" fill="#E0F2FE">Plataforma móvil y web para distribución de agua purificada en la Alcaldía Benito Juárez, CDMX</text>
+
+  <!-- 3 Role Cards -->
+  <g transform="translate(36, 122)">
+    <rect width="280" height="72" rx="14" fill="url(#cardGrad)" stroke="#7DD3FC" stroke-opacity="0.35"/>
+    <circle cx="36" cy="36" r="18" fill="#38BDF8" fill-opacity="0.25"/>
+    <text x="36" y="42" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">1</text>
+    <text x="66" y="31" font-family="Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">Módulo Cliente</text>
+    <text x="66" y="50" font-family="Segoe UI, sans-serif" font-size="11.5" fill="#E0F2FE">Pedidos directos, precio tope y rastreo GPS</text>
+  </g>
+
+  <g transform="translate(340, 122)">
+    <rect width="280" height="72" rx="14" fill="url(#cardGrad)" stroke="#7DD3FC" stroke-opacity="0.35"/>
+    <circle cx="36" cy="36" r="18" fill="#10B981" fill-opacity="0.30"/>
+    <text x="36" y="42" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">2</text>
+    <text x="66" y="31" font-family="Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">Repartidor y Dueño</text>
+    <text x="66" y="50" font-family="Segoe UI, sans-serif" font-size="11.5" fill="#E0F2FE">Ruta OR-Tools/A*, lotes FIFO, flota y catálogo</text>
+  </g>
+
+  <g transform="translate(644, 122)">
+    <rect width="280" height="72" rx="14" fill="url(#cardGrad)" stroke="#7DD3FC" stroke-opacity="0.35"/>
+    <circle cx="36" cy="36" r="18" fill="#F59E0B" fill-opacity="0.30"/>
+    <text x="36" y="42" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">3</text>
+    <text x="66" y="31" font-family="Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">Panel Administrador</text>
+    <text x="66" y="50" font-family="Segoe UI, sans-serif" font-size="11.5" fill="#E0F2FE">Métricas en vivo, marcas, usuarios y auditoría</text>
+  </g>
+</svg>

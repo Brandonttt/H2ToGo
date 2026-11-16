@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 190" width="100%" height="190">
+  <rect width="920" height="190" rx="18" fill="#F0F9FF" stroke="#BAE6FD" stroke-width="1.5"/>
+  <text x="28" y="34" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="16" font-weight="800" fill="#072A5E">Ciclo de Inventario por Lotes con Despacho FIFO (First-In, First-Out)</text>
+
+  <!-- Step 1 -->
+  <g transform="translate(24, 52)">
+    <rect width="195" height="114" rx="14" fill="#FFFFFF" stroke="#7DD3FC" stroke-width="1.5"/>
+    <rect x="14" y="14" width="32" height="32" rx="8" fill="#E0F2FE"/>
+    <text x="30" y="35" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" font-weight="800" fill="#0284C7">1</text>
+    <text x="56" y="28" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#0F172A">Entrada en Base</text>
+    <text x="56" y="43" font-family="Segoe UI, sans-serif" font-size="10.5" fill="#0284C7" font-weight="600">lotes_inventario</text>
+    <text x="14" y="68" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">El dueño registra marca,</text>
+    <text x="14" y="84" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">cantidad, proveedor, costo</text>
+    <text x="14" y="100" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#0F172A">y fecha de caducidad.</text>
+  </g>
+
+  <text x="231" y="114" font-family="Segoe UI, sans-serif" font-size="20" font-weight="800" fill="#0284C7">→</text>
+
+  <!-- Step 2 -->
+  <g transform="translate(250, 52)">
+    <rect width="195" height="114" rx="14" fill="#FFFFFF" stroke="#7DD3FC" stroke-width="1.5"/>
+    <rect x="14" y="14" width="32" height="32" rx="8" fill="#FEF3C7"/>
+    <text x="30" y="35" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" font-weight="800" fill="#D97706">2</text>
+    <text x="56" y="28" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#0F172A">Carga FIFO a Vehículo</text>
+    <text x="56" y="43" font-family="Segoe UI, sans-serif" font-size="10.5" fill="#D97706" font-weight="600">inventario_vehiculo</text>
+    <text x="14" y="68" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">Al subir garrafones a la</text>
+    <text x="14" y="84" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">unidad, toma primero del lote</text>
+    <text x="14" y="100" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#0F172A">más próximo a vencer.</text>
+  </g>
+
+  <text x="457" y="114" font-family="Segoe UI, sans-serif" font-size="20" font-weight="800" fill="#0284C7">→</text>
+
+  <!-- Step 3 -->
+  <g transform="translate(476, 52)">
+    <rect width="195" height="114" rx="14" fill="#FFFFFF" stroke="#7DD3FC" stroke-width="1.5"/>
+    <rect x="14" y="14" width="32" height="32" rx="8" fill="#F3E8FF"/>
+    <text x="30" y="35" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" font-weight="800" fill="#7C3AED">3</text>
+    <text x="56" y="28" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#0F172A">Apartado por Pedido</text>
+    <text x="56" y="43" font-family="Segoe UI, sans-serif" font-size="10.5" fill="#7C3AED" font-weight="600">apartados_pedido</text>
+    <text x="14" y="68" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">Al aceptar o reservar un</text>
+    <text x="14" y="84" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">pedido se bloquea el stock</text>
+    <text x="14" y="100" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#0F172A">para evitar sobreventa.</text>
+  </g>
+
+  <text x="683" y="114" font-family="Segoe UI, sans-serif" font-size="20" font-weight="800" fill="#0284C7">→</text>
+
+  <!-- Step 4 -->
+  <g transform="translate(702, 52)">
+    <rect width="195" height="114" rx="14" fill="#FFFFFF" stroke="#7DD3FC" stroke-width="1.5"/>
+    <rect x="14" y="14" width="32" height="32" rx="8" fill="#D1FAE5"/>
+    <text x="30" y="35" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="15" font-weight="800" fill="#059669">4</text>
+    <text x="56" y="28" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#0F172A">Entrega o Devolución</text>
+    <text x="56" y="43" font-family="Segoe UI, sans-serif" font-size="10.5" fill="#059669" font-weight="600">movimientos_inventario</text>
+    <text x="14" y="68" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">Descuenta lo entregado; lo</text>
+    <text x="14" y="84" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">no entregado regresa libre y</text>
+    <text x="14" y="100" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#0F172A">vuelve a base al cerrar turno.</text>
+  </g>
+</svg>
