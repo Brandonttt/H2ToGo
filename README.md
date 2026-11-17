@@ -5,7 +5,7 @@
 
 > [!NOTE]
 > **Acerca de H2ToGo**
-> **H2ToGo** es una plataforma integral (aplicación móvil multiplataforma para **Android** e **iOS** + **Panel Web Administrativo**) diseñada para gestionar el pedido, asignación, ruteo óptimo, seguimiento en tiempo real e inventario por lotes de agua purificada embotellada en garrafones de 20 L dentro de la **Alcaldía Benito Juárez, Ciudad de México**.
+> **H2ToGo** es una plataforma integral (aplicación móvil multiplataforma para **Android** e **iOS** + **Panel Web Administrativo**) diseñada para gestionar el pedido, asignación, ruteo, seguimiento e inventario por lotes de agua purificada embotellada en garrafones de 20 L dentro de la **Alcaldía Benito Juárez, Ciudad de México**.
 
 ---
 
@@ -51,7 +51,7 @@ flowchart LR
     U --> R["🚚 Repartidor / Dueño"]
     U --> A["🛡️ Administrador (Web)"]
     C --> C1["Pide agua (directo o por precio tope)"]
-    C --> C2["Programa entregas y rastrea en vivo"]
+    C --> C2["Programa entregas y rastrea pedidos"]
     R --> R1["Dueño: administra catálogo, lotes FIFO, flota, horarios y equipo"]
     R --> R2["Repartidor: carga vehículo, toma pedidos y sigue la Ruta del Día"]
     A --> A1["Supervisa métricas, marcas, negocios y usuarios"]
@@ -70,7 +70,7 @@ flowchart LR
      - **Unirme a una purificadora existente (Repartidor empleado)**: Selecciona la purificadora de la lista. Tu cuenta quedará en espera de que el **dueño de esa purificadora** te apruebe desde su perfil.
 
 ### 2.2 Verificación de teléfono por SMS (OTP)
-1. Tras registrarte, recibirás un **código de 6 dígitos por SMS** (vigencia de 10 minutos, máximo 5 intentos).
+1. Tras registrarte, recibirás un **código de 6 dígitos por SMS** (vigencia de 2 minutos).
 2. Ingresa el código en la pantalla de verificación para activar tu cuenta.
 3. Si escribiste mal tu número telefónico al registrarte, pulsa **"Cambiar número de teléfono"** en esa misma pantalla para corregirlo y recibir un nuevo código.
 
@@ -85,7 +85,7 @@ flowchart LR
 
 | Vista de Perfil y Direcciones | Opciones disponibles en `Perfil` |
 | :---: | :--- |
-| <img src="ux/perfil_direcciones.jpg" width="260" alt="Perfil y direcciones del cliente"/> | • **Mis direcciones**: Agregar, editar, eliminar o marcar domicilio predeterminado (`☆ Predeterminar`).<br/>• **Notificaciones**: Interruptor para activar/desactivar alertas push.<br/>• **Términos y privacidad**: Consulta de políticas de uso.<br/>• **Cambiar contraseña**: Actualización con validación de contraseña actual.<br/>• **Cerrar sesión**: Cierra la sesión activa en el dispositivo.<br/>• **Eliminar cuenta**: Baja definitiva previa confirmación de contraseña (valida que no existan pedidos activos ni repartidores dependientes). |
+| <img src="docs/ux/perfil_direcciones.jpg" width="260" alt="Perfil y direcciones del cliente"/> | • **Mis direcciones**: Agregar, editar, eliminar o marcar domicilio predeterminado (`☆ Predeterminar`).<br/>• **Notificaciones**: Interruptor para activar/desactivar alertas push.<br/>• **Términos y privacidad**: Consulta de políticas de uso.<br/>• **Cambiar contraseña**: Actualización con validación de contraseña actual.<br/>• **Cerrar sesión**: Cierra la sesión activa en el dispositivo.<br/>• **Eliminar cuenta**: Baja definitiva previa confirmación de contraseña (valida que no existan pedidos activos ni repartidores dependientes). |
 
 ---
 
@@ -95,7 +95,7 @@ flowchart LR
 
 | Pantalla Principal del Cliente (`Inicio`) | Funcionalidades clave |
 | :---: | :--- |
-| <img src="ux/home_cliente.jpg" width="260" alt="Pantalla de Inicio del Cliente"/> | **1. Selector de dirección superior**: Muestra el alias y colonia de tu dirección activa. Tócalo para cambiar de domicilio.<br/><br/>**2. Carrusel de `Pedidos en curso`**: Muestra el folio (`#ID`), estado actual, barra de avance y **tiempo/distancia estimada** (o la fecha y hora programada en horario CDMX).<br/><br/>**3. Acciones rápidas (`¿Cómo quieres pedir?`)**:<br/>• *Directo a purificadora*<br/>• *Precio máximo*<br/>• *Repetir pedido*<br/><br/>**4. Purificadoras cerca de ti**: Ordenadas por distancia en metros/kilómetros, indicando si están **Abiertas** o **Cerradas** según su horario del día. |
+| <img src="docs/ux/home_cliente.jpg" width="260" alt="Pantalla de Inicio del Cliente"/> | **1. Selector de dirección superior**: Muestra el alias y colonia de tu dirección activa. Tócalo para cambiar de domicilio.<br/><br/>**2. Carrusel de `Pedidos en curso`**: Muestra el folio (`#ID`), estado actual, barra de avance y **tiempo/distancia estimada** (o la fecha y hora programada en horario CDMX).<br/><br/>**3. Acciones rápidas (`¿Cómo quieres pedir?`)**:<br/>• *Directo a purificadora*<br/>• *Precio máximo*<br/>• *Repetir pedido*<br/><br/>**4. Purificadoras cerca de ti**: Ordenadas por distancia en metros/kilómetros, indicando si están **Abiertas** o **Cerradas** según su horario del día. |
 
 ---
 
@@ -118,7 +118,7 @@ flowchart TD
     A["Iniciar Pedido (+ Pedir agua)"] --> B{"¿Cómo quieres pedir?"}
     B -->|Directo a purificadora| C["Seleccionar purificadora y marca de su catálogo"]
     B -->|Por precio máximo| D["Definir precio tope por garrafón ($ MXN) y marca"]
-    C --> E["Elegir cantidad (1 a 5 garrafones)"]
+    C --> E["Elegir cantidad (1 o más garrafones)"]
     D --> E
     E --> F["Indicar si tienes garrafones vacíos para intercambiar"]
     F --> G{"¿Entrega inmediata o programada?"}
@@ -130,8 +130,8 @@ flowchart TD
 
 | Pedido Directo y Entrega Programada | Pedido Abierto con Precio Máximo | Edición Directa del Tope de Precio |
 | :---: | :---: | :---: |
-| <img src="ux/pedido_programado.jpg" width="240" alt="Pedido directo y programado"/> | <img src="ux/precio_editable.png" width="240" alt="Pedido con precio máximo"/> | <img src="ux/precio_dialogo.png" width="240" alt="Diálogo de precio máximo"/> |
-| Permite elegir purificadora, marca, cantidad (1 a 5), intercambio de envases y activar **Programar entrega** dentro del horario del negocio. | El cliente fija cuánto desea pagar por garrafón con los botones `− / +` o tocando el monto para escribirlo directamente. | Teclado numérico rápido para definir el precio máximo por garrafón (entre \$25 y \$80 MXN). |
+| <img src="docs/ux/pedido_programado.jpg" width="240" alt="Pedido directo y programado"/> | <img src="docs/ux/precio_editable.png" width="240" alt="Pedido con precio máximo"/> | <img src="docs/ux/precio_dialogo.png" width="240" alt="Diálogo de precio máximo"/> |
+| Permite elegir purificadora, marca, cantidad, intercambio de envases y activar **Programar entrega** dentro del horario del negocio. | El cliente fija cuánto desea pagar por garrafón con los botones `− / +` o tocando el monto para escribirlo directamente. | Teclado numérico rápido para definir el precio máximo por garrafón (entre \$20 y \$120 MXN). |
 
 ---
 
@@ -143,7 +143,7 @@ Al tocar tu pedido activo se abre la pantalla **Tu pedido `#ID`**, donde puedes 
 
 | 1. Buscando Repartidor (`Pendiente`) | 2. Repartidor en Camino (`En ruta`) | 3. Aviso de Llegada en Domicilio | 4. Panel de Recepción Activo |
 | :---: | :---: | :---: | :---: |
-| <img src="ux/seguimiento_nuevo.png" width="205" alt="Buscando repartidor"/> | <img src="ux/seguimiento_en_camino.jpg" width="205" alt="Repartidor en camino"/> | <img src="ux/llegada_tarjeta.png" width="205" alt="Tarjeta tu repartidor llegó"/> | <img src="ux/llegada_panel.png" width="205" alt="Sal a recibir tu pedido"/> |
+| <img src="docs/ux/seguimiento_nuevo.png" width="205" alt="Buscando repartidor"/> | <img src="docs/ux/seguimiento_en_camino.jpg" width="205" alt="Repartidor en camino"/> | <img src="docs/ux/llegada_tarjeta.png" width="205" alt="Tarjeta tu repartidor llegó"/> | <img src="docs/ux/llegada_panel.png" width="205" alt="Sal a recibir tu pedido"/> |
 | Muestra el pin de tu domicilio y los detalles del pedido mientras se asigna un repartidor. | Traza la ruta vial `A*`, muestra el pin del repartidor en movimiento, ETA (`~3 min · 938 m`) y botón de llamada (`📞`). | Alerta emergente e instantánea cuando el repartidor pulsa *"Llegué al destino"* a ≤ 30 m de tu puerta. | Al cerrar la alerta, el panel inferior destaca **"Sal a recibir tu pedido"** con el monto exacto a preparar. |
 
 ---
@@ -247,11 +247,11 @@ flowchart TD
 
 ### 4.5 Gestión de Inventario Base (FIFO), Carga de Vehículo y Mermas
 
-![Ciclo de Inventario por Lotes con Despacho FIFO](ux/flujo_inventario_fifo.svg)
+![Ciclo de Inventario por Lotes con Despacho FIFO](docs/ux/flujo_inventario_fifo.svg)
 
 | 1. Inventario en Base (`En base`) | 2. Inventario a Bordo (`En mi vehículo`) | 3. Diálogo de Carga Rápida al Vehículo |
 | :---: | :---: | :---: |
-| <img src="ux/inv_base_nuevo.png" width="240" alt="Inventario en base"/> | <img src="ux/inv_vehiculo.png" width="240" alt="Inventario en mi vehículo"/> | <img src="ux/cargar_vehiculo_nuevo.png" width="240" alt="Cargar al vehículo"/> |
+| <img src="docs/ux/inv_base_nuevo.png" width="240" alt="Inventario en base"/> | <img src="docs/ux/inv_vehiculo.png" width="240" alt="Inventario en mi vehículo"/> | <img src="docs/ux/cargar_vehiculo_nuevo.png" width="240" alt="Cargar al vehículo"/> |
 | Muestra capacidad total ocupada en base, estado de caducidad por lote (`Caducidad OK`), botón **`+ Entrada`** para nuevos lotes y **`− Salida manual`** para mermas o roturas. | Desglosa garrafones **Disponibles**, **Apartados para pedidos** y **Espacio libre** restante en la unidad, con botón directo para cargar más desde la base. | Permite elegir marca, ajustar piezas con `− / +`, tocar el número para editarlo o pulsar **`Llenar`** para completar la capacidad libre del vehículo en un toque. |
 
 ---
@@ -260,7 +260,7 @@ flowchart TD
 
 | Gestión de Vehículos (`Vehículo`) | Reglas y capacidades de unidades |
 | :---: | :--- |
-| <img src="ux/inv_flota_nuevo.png" width="240" alt="Flota de vehículos del negocio"/> | • **Aplicación inmediata sin esperar autorización del admin**: Toda alta, modificación o baja de vehículos se refleja al instante en el negocio.<br/>• **Agregar vehículo (`+ Agregar`)**: Soporta *Motocicleta*, *Camioneta*, *Automóvil*, *Bicicleta de carga* y *Triciclo de carga* (las bicicletas y triciclos no requieren placas ni marca/modelo, únicamente color y capacidad).<br/>• **Editar (`✎`) y Dar de baja (`🗑`)**: Actualiza datos o desactiva unidades de forma inmediata. |
+| <img src="docs/ux/inv_flota_nuevo.png" width="240" alt="Flota de vehículos del negocio"/> | • **Aplicación inmediata sin esperar autorización del admin**: Toda alta, modificación o baja de vehículos se refleja al instante en el negocio.<br/>• **Agregar vehículo (`+ Agregar`)**: Soporta *Motocicleta*, *Camioneta*, *Automóvil*, *Bicicleta de carga* y *Triciclo de carga* (las bicicletas y triciclos no requieren placas ni marca/modelo, únicamente color y capacidad).<br/>• **Editar (`✎`) y Dar de baja (`🗑`)**: Actualiza datos o desactiva unidades de forma inmediata. |
 
 ---
 
