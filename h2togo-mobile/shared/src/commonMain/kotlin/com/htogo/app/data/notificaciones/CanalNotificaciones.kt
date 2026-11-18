@@ -29,12 +29,15 @@ data class AvisoBackend(val id: String, val titulo: String, val mensaje: String,
 object CanalNotificaciones {
 
     private var job: Job? = null
+    private var mostrarLocal: ((AvisoBackend) -> Unit)? = null
+    private val mostradosRecientes = mutableSetOf<String>()
 
     private val _avisos = MutableSharedFlow<AvisoBackend>(extraBufferCapacity = 16)
     /** Los avisos que llegan, para que las pantallas abiertas reaccionen (p. ej. "tu repartidor llegó"). */
     val avisos: SharedFlow<AvisoBackend> = _avisos.asSharedFlow()
 
     fun iniciar(scope: CoroutineScope, mostrar: (AvisoBackend) -> Unit) {
+        mostrarLocal = mostrar
         if (job?.isActive == true) return
         val sesion = SessionManager.getInstance()
         job = scope.launch {
@@ -49,6 +52,10 @@ object CanalNotificaciones {
                         .takeWhile { it !is EventoStomp.Desconectado }
                         .collect { evento ->
                             if (evento is EventoStomp.Mensaje) leer(evento.cuerpo)?.let { aviso ->
+                                val clave = "${aviso.datos["tipo"]}-${aviso.datos["idPedido"]}-${aviso.datos["recordatorio"].orEmpty()}"
+                                if (aviso.datos["recordatorio"] != null) {
+                                    if (!mostradosRecientes.add(clave)) return@let
+                                }
                                 _avisos.tryEmit(aviso)
                                 mostrar(aviso)
                             }
@@ -60,6 +67,15 @@ object CanalNotificaciones {
                 delay(3_000) // espera antes de reconectar
             }
         }
+    }
+
+    /** Dispara una notificación local del sistema (y en la app) si no se ha emitido ya ese recordatorio. */
+    fun emitirLocal(id: String, titulo: String, mensaje: String, datos: Map<String, String> = emptyMap()) {
+        val clave = "${datos["tipo"]}-${datos["idPedido"]}-${datos["recordatorio"].orEmpty()}"
+        if (datos["recordatorio"] != null && !mostradosRecientes.add(clave)) return
+        val aviso = AvisoBackend(id, titulo, mensaje, datos)
+        _avisos.tryEmit(aviso)
+        mostrarLocal?.invoke(aviso)
     }
 
     fun detener() {

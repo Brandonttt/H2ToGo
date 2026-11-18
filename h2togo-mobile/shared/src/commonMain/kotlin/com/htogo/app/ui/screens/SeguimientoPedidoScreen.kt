@@ -1250,17 +1250,53 @@ fun SeguimientoPedidoScreen(
 
         // CU-012: el repartidor pulsó "Llegué al destino". Primero una tarjeta al centro; al
         // cerrarla, el panel del pedido se queda en "Sal a recibir tu pedido".
+        // Además, cada 3 minutos dentro de los 10 minutos de espera se vuelve a notificar al cliente.
         val avisoLlegada = order.estado == EstadoPedido.EN_CAMINO && repartidorLlego
-        // Se recuerda por pedido mientras la app esté abierta: al volver a la pantalla no reaparece.
+        // Se recuerda por pedido mientras la app esté abierta: al volver a la pantalla no reaparece, salvo en los recordatorios cada 3 min.
         var llegadaVista by remember(order.id) { mutableStateOf(order.id in LlegadasVistas.ids) }
         val llegadaMs = remember(order.id, avisoLlegada) { if (avisoLlegada) ahoraMs() else null }
         var minutosLlegada by remember(llegadaMs) { mutableStateOf(0) }
+        var ultimoEscalonCliente by remember(llegadaMs) { mutableStateOf(0) }
+        LaunchedEffect(order.id, avisoLlegada) {
+            if (!avisoLlegada) return@LaunchedEffect
+            com.htogo.app.data.notificaciones.CanalNotificaciones.avisos.collect { aviso ->
+                if (aviso.datos["tipo"] == "repartidor_llego" &&
+                    aviso.datos["idPedido"] == order.id &&
+                    aviso.datos["recordatorio"] != null
+                ) {
+                    LlegadasVistas.ids -= order.id
+                    llegadaVista = false
+                    isSheetMinimized = false
+                }
+            }
+        }
         LaunchedEffect(llegadaMs) {
             if (llegadaMs == null) return@LaunchedEffect
             isSheetMinimized = false
             while (true) {
-                minutosLlegada = ((ahoraMs() - llegadaMs) / 60_000L).toInt()
-                kotlinx.coroutines.delay(15_000L)
+                val transcurridosSeg = ((ahoraMs() - llegadaMs) / 1_000L).toInt()
+                minutosLlegada = transcurridosSeg / 60
+                val escalon = (transcurridosSeg / 180).coerceIn(0, 3)
+                if (escalon in 1..3 && escalon > ultimoEscalonCliente && transcurridosSeg < 600) {
+                    ultimoEscalonCliente = escalon
+                    val minTrans = escalon * 3
+                    val minRest = (10 - minTrans).coerceAtLeast(1)
+                    LlegadasVistas.ids -= order.id
+                    llegadaVista = false
+                    isSheetMinimized = false
+                    com.htogo.app.data.notificaciones.CanalNotificaciones.emitirLocal(
+                        id = "llegada-rec-${order.id}-$escalon",
+                        titulo = "Tu repartidor te espera afuera",
+                        mensaje = "El repartidor lleva $minTrans min esperando afuera de tu domicilio (quedan $minRest min). Sal a recibir tu pedido.",
+                        datos = mapOf(
+                            "tipo" to "repartidor_llego",
+                            "idPedido" to order.id,
+                            "recordatorio" to escalon.toString()
+                        )
+                    )
+                    mostrarAviso("Tu repartidor sigue afuera esperando · quedan $minRest min", largo = true)
+                }
+                kotlinx.coroutines.delay(5_000L)
             }
         }
 

@@ -513,12 +513,28 @@ fun RutaEntregaScreen(
         }
     }
     var segundosRestantes by remember { mutableStateOf(10 * 60) }
+    var ultimoEscalonRecordado by remember(idPedidoRuta) { mutableStateOf(0) }
     LaunchedEffect(estado, idPedidoRuta) {
         if (estado == EstadoRuta.LLEGADO) {
             val llegada = idPedidoRuta?.let { LlegadaEntrega.registrar(it) } ?: ahoraMs()
+            ultimoEscalonRecordado = (((ahoraMs() - llegada) / 1000).toInt() / 180).coerceIn(0, 3)
             do {
                 val transcurridos = ((ahoraMs() - llegada) / 1000).toInt()
                 segundosRestantes = (10 * 60 - transcurridos).coerceAtLeast(0)
+                val escalon = (transcurridos / 180).coerceIn(0, 3)
+                if (escalon in 1..3 && escalon > ultimoEscalonRecordado && segundosRestantes > 0) {
+                    ultimoEscalonRecordado = escalon
+                    val posActual = posicionSimulada ?: posicionReal ?: repartidorViewModel.ultimaPosicionRealConocida
+                    if (idPedidoRuta != null && posActual != null) {
+                        repartidorViewModel.avisarLlegada(
+                            idPedidoRuta, posActual.lat, posActual.lon,
+                            onSuccess = {},
+                            onError = { _, _ -> }
+                        )
+                    }
+                    val minRest = (10 - escalon * 3).coerceAtLeast(1)
+                    mostrarAviso("Se notificó nuevamente al cliente ($minRest min restantes)")
+                }
                 if (segundosRestantes > 0) delay(1000)
             } while (segundosRestantes > 0)
         }
@@ -888,9 +904,10 @@ fun RutaEntregaScreen(
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     OutlinedButton(
                                         onClick = { mostrarModalNoEntregado = true },
-                                        modifier = Modifier.weight(1f).height(54.dp),
+                                        modifier = Modifier.weight(1.12f).height(54.dp),
                                         shape = RoundedCornerShape(27.dp),
                                         enabled = puedeMarcarNoEntregado,
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                                         border = BorderStroke(
                                             1.5.dp,
                                             if (puedeMarcarNoEntregado) HToGoColors.AccentRose else HToGoColors.OutlineSoft
@@ -899,26 +916,37 @@ fun RutaEntregaScreen(
                                         Icon(
                                             if (puedeMarcarNoEntregado) Icons.Filled.Cancel else Icons.Filled.Lock,
                                             null,
-                                            tint = if (puedeMarcarNoEntregado) HToGoColors.AccentRose else HToGoColors.TextTertiary
+                                            tint = if (puedeMarcarNoEntregado) HToGoColors.AccentRose else HToGoColors.TextTertiary,
+                                            modifier = Modifier.size(16.dp)
                                         )
-                                        Spacer(Modifier.width(4.dp))
+                                        Spacer(Modifier.width(5.dp))
                                         Text(
                                             "No entregado",
                                             color = if (puedeMarcarNoEntregado) HToGoColors.AccentRose else HToGoColors.TextTertiary,
-                                            fontWeight = FontWeight.SemiBold
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 13.sp,
+                                            maxLines = 1,
+                                            softWrap = false
                                         )
                                     }
                                     Button(
                                         onClick = { mostrarModalEntregado = true },
-                                        modifier = Modifier.weight(1.5f).height(54.dp),
+                                        modifier = Modifier.weight(1.38f).height(54.dp),
                                         shape = RoundedCornerShape(27.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = HToGoColors.StatusEntregado
                                         )
                                     ) {
-                                        Icon(Icons.Filled.CheckCircle, null)
-                                        Spacer(Modifier.width(4.dp))
-                                        Text("Marcar entregado", fontWeight = FontWeight.SemiBold)
+                                        Icon(Icons.Filled.CheckCircle, null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(5.dp))
+                                        Text(
+                                            "Marcar entregado",
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 13.5.sp,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
                                     }
                                 }
                             }

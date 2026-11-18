@@ -111,9 +111,11 @@ fun HorarioNegocioDialog(
 
     AlertDialog(
         onDismissRequest = { if (!guardando) onDismiss() },
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.fillMaxWidth(0.92f),
         title = { Text("Horario de atención", fontWeight = FontWeight.Bold) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                 Text(
                     "Los clientes solo pueden pedir dentro de este horario; fuera de él se ofrece programar.",
                     fontSize = 12.sp,
@@ -134,18 +136,27 @@ fun HorarioNegocioDialog(
                         Modifier.fillMaxWidth().padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(DIAS[i], fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1,
-                            modifier = Modifier.width(88.dp))
+                        Text(
+                            DIAS[i],
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            modifier = Modifier.width(76.dp)
+                        )
                         if (d.cerrado) {
                             Text("Cerrado", fontSize = 13.sp, color = HToGoColors.TextSecondary, modifier = Modifier.weight(1f))
                         } else {
-                            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 HoraChip(d.apertura) { elegirHora(d.apertura) { actualizar(i, d.copy(apertura = it)) } }
                                 Text("–", fontSize = 13.sp)
                                 HoraChip(d.cierre) { elegirHora(d.cierre) { actualizar(i, d.copy(cierre = it)) } }
                             }
                         }
+                        Spacer(Modifier.width(6.dp))
                         Switch(checked = !d.cerrado, onCheckedChange = { abierto -> actualizar(i, d.copy(cerrado = !abierto)) })
                     }
                 }
@@ -193,6 +204,8 @@ private fun HoraChip(hora: String, onClick: () -> Unit) {
             fontWeight = FontWeight.SemiBold,
             color = HToGoColors.Primary,
             maxLines = 1,
+            softWrap = false,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
         )
     }
